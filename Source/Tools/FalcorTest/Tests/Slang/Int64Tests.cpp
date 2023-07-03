@@ -46,9 +46,9 @@ void test(GPUUnitTestContext& ctx, const std::string& shaderModel, bool useUav)
 {
     ref<Device> pDevice = ctx.getDevice();
 
-    Program::DefineList defines = {{"USE_UAV", useUav ? "1" : "0"}};
+    DefineList defines = {{"USE_UAV", useUav ? "1" : "0"}};
 
-    ctx.createProgram("Tests/Slang/Int64Tests.cs.slang", "testInt64", defines, Shader::CompilerFlags::None, shaderModel);
+    ctx.createProgram("Tests/Slang/Int64Tests.cs.slang", "testInt64", defines, Program::CompilerFlags::None, shaderModel);
     ctx.allocateStructuredBuffer("result", kNumElems * 2);
 
     std::vector<uint64_t> elems(kNumElems);
@@ -64,7 +64,7 @@ void test(GPUUnitTestContext& ctx, const std::string& shaderModel, bool useUav)
     ctx.runProgram(kNumElems, 1, 1);
 
     // Verify results.
-    const uint32_t* result = ctx.mapBuffer<const uint32_t>("result");
+    std::vector<uint32_t> result = ctx.readBuffer<uint32_t>("result");
     for (uint32_t i = 0; i < kNumElems; i++)
     {
         uint32_t lo = result[2 * i];
@@ -72,7 +72,6 @@ void test(GPUUnitTestContext& ctx, const std::string& shaderModel, bool useUav)
         uint64_t res = ((uint64_t)hi << 32) | lo;
         EXPECT_EQ(res, elems[i]) << "i = " << i << " shaderModel=" << shaderModel;
     }
-    ctx.unmapBuffer("result");
 }
 } // namespace
 

@@ -36,11 +36,11 @@ class TestRtProgram : public RenderPass
 public:
     FALCOR_PLUGIN_CLASS(TestRtProgram, "TestRtProgram", "Test pass for RtProgram.");
 
-    static ref<TestRtProgram> create(ref<Device> pDevice, const Dictionary& dict) { return make_ref<TestRtProgram>(pDevice, dict); }
+    static ref<TestRtProgram> create(ref<Device> pDevice, const Properties& props) { return make_ref<TestRtProgram>(pDevice, props); }
 
-    TestRtProgram(ref<Device> pDevice, const Dictionary& dict);
+    TestRtProgram(ref<Device> pDevice, const Properties& props);
 
-    virtual Dictionary getScriptingDictionary() override;
+    virtual Properties getProperties() const override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
     virtual void compile(RenderContext* pRenderContext, const CompileData& compileData) override {}
     virtual void setScene(RenderContext* pRenderContext, const ref<Scene>& pScene) override;

@@ -33,7 +33,7 @@ GPU_TEST(SlangMutating)
 {
     ref<Device> pDevice = ctx.getDevice();
 
-    ctx.createProgram("Tests/Slang/SlangMutatingTests.cs.slang", "main", Program::DefineList(), Shader::CompilerFlags::None, "6_3");
+    ctx.createProgram("Tests/Slang/SlangMutatingTests.cs.slang", "main", DefineList(), Program::CompilerFlags::None, "6_3");
     ctx.allocateStructuredBuffer("result", 1);
 
     ShaderVar var = ctx.vars().getRootVar();
@@ -42,8 +42,7 @@ GPU_TEST(SlangMutating)
 
     ctx.runProgram();
 
-    const uint32_t* result = ctx.mapBuffer<const uint32_t>("result");
+    std::vector<uint32_t> result = ctx.readBuffer<uint32_t>("result");
     EXPECT_EQ(result[0], 33);
-    ctx.unmapBuffer("result");
 }
 } // namespace Falcor

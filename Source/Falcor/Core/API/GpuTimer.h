@@ -40,6 +40,7 @@ namespace Falcor
  */
 class FALCOR_API GpuTimer : public Object
 {
+    FALCOR_OBJECT(GpuTimer)
 public:
     /**
      * Create a new timer object.

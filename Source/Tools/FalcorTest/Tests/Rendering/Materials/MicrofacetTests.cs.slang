@@ -179,7 +179,7 @@ void sigmaIntegration(uint3 threadId: SV_DispatchThreadID)
         float pdf;
         float3 wm = sample_cosine_hemisphere_concentric(sampleNext2D(sg), pdf);
         double integrand = max(0.f, dot(-wi, wm)) * mf.evalD(wm);
-        sum += integrand / pdf;
+        sum += integrand / (double)pdf;
     }
     sum /= N;
     result1[threadId.x] = (float)sum;

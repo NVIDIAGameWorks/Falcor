@@ -42,10 +42,5 @@ RasterizerState::~RasterizerState() = default;
 FALCOR_SCRIPT_BINDING(RasterizerState)
 {
     pybind11::class_<RasterizerState, ref<RasterizerState>>(m, "RasterizerState");
-
-    pybind11::enum_<RasterizerState::CullMode> cullMode(m, "CullMode");
-    cullMode.value("CullBack", RasterizerState::CullMode::Back);
-    cullMode.value("CullFront", RasterizerState::CullMode::Front);
-    cullMode.value("CullNone", RasterizerState::CullMode::None);
 }
 } // namespace Falcor

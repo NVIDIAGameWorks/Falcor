@@ -72,7 +72,7 @@ struct FullScreenPass::SharedData
 
 static SharedCache<FullScreenPass::SharedData, Device*> sSharedCache;
 
-FullScreenPass::FullScreenPass(ref<Device> pDevice, const Program::Desc& progDesc, const Program::DefineList& programDefines)
+FullScreenPass::FullScreenPass(ref<Device> pDevice, const Program::Desc& progDesc, const DefineList& programDefines)
     : BaseGraphicsPass(pDevice, progDesc, programDefines)
 {
     // Get shared VB and VAO.
@@ -88,15 +88,10 @@ FullScreenPass::FullScreenPass(ref<Device> pDevice, const Program::Desc& progDes
 
 FullScreenPass::~FullScreenPass() = default;
 
-ref<FullScreenPass> FullScreenPass::create(
-    ref<Device> pDevice,
-    const Program::Desc& desc,
-    const Program::DefineList& defines,
-    uint32_t viewportMask
-)
+ref<FullScreenPass> FullScreenPass::create(ref<Device> pDevice, const Program::Desc& desc, const DefineList& defines, uint32_t viewportMask)
 {
     Program::Desc d = desc;
-    Program::DefineList defs = defines;
+    DefineList defs = defines;
     std::string gs;
 
     if (viewportMask)
@@ -114,7 +109,7 @@ ref<FullScreenPass> FullScreenPass::create(
 ref<FullScreenPass> FullScreenPass::create(
     ref<Device> pDevice,
     const std::filesystem::path& path,
-    const Program::DefineList& defines,
+    const DefineList& defines,
     uint32_t viewportMask
 )
 {

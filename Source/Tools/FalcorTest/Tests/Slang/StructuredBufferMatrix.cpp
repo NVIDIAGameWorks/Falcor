@@ -32,13 +32,13 @@ namespace Falcor
 {
 namespace
 {
-void runTest2(GPUUnitTestContext& ctx, Program::DefineList defines)
+void runTest2(GPUUnitTestContext& ctx, DefineList defines)
 {
     ref<Device> pDevice = ctx.getDevice();
 
     ctx.createProgram(
-        "Tests/Slang/StructuredBufferMatrix.cs.slang", "testStructuredBufferMatrixLoad2", defines, Shader::CompilerFlags::DumpIntermediates,
-        "6_5"
+        "Tests/Slang/StructuredBufferMatrix.cs.slang", "testStructuredBufferMatrixLoad2", defines,
+        Program::CompilerFlags::DumpIntermediates, "6_5"
     );
     ctx.allocateStructuredBuffer("result", 16);
 
@@ -59,12 +59,11 @@ void runTest2(GPUUnitTestContext& ctx, Program::DefineList defines)
     ctx.runProgram(1, 1, 1);
 
     // Verify results.
-    const float* result = ctx.mapBuffer<const float>("result");
+    std::vector<float> result = ctx.readBuffer<float>("result");
     for (size_t i = 0; i < 16; i++)
     {
         EXPECT_EQ(result[i], (float)i + 0.75f) << "i = " << i;
     }
-    ctx.unmapBuffer("result");
 }
 } // namespace
 
@@ -73,8 +72,7 @@ GPU_TEST(StructuredBufferMatrixLoad1)
     ref<Device> pDevice = ctx.getDevice();
 
     ctx.createProgram(
-        "Tests/Slang/StructuredBufferMatrix.cs.slang", "testStructuredBufferMatrixLoad1", Program::DefineList(),
-        Shader::CompilerFlags::None, "6_5"
+        "Tests/Slang/StructuredBufferMatrix.cs.slang", "testStructuredBufferMatrixLoad1", DefineList(), Program::CompilerFlags::None, "6_5"
     );
     ctx.allocateStructuredBuffer("result", 32);
 
@@ -97,31 +95,30 @@ GPU_TEST(StructuredBufferMatrixLoad1)
     ctx.runProgram(1, 1, 1);
 
     // Verify results.
-    const float* result = ctx.mapBuffer<const float>("result");
+    std::vector<float> result = ctx.readBuffer<float>("result");
     for (size_t i = 0; i < 32; i++)
     {
         EXPECT_EQ(result[i], (float)i + 0.5f) << "i = " << i;
     }
-    ctx.unmapBuffer("result");
 }
 
 GPU_TEST(StructuredBufferMatrixLoad2_1)
 {
-    Program::DefineList defines = {{"LAYOUT", "1"}};
+    DefineList defines = {{"LAYOUT", "1"}};
     runTest2(ctx, defines);
 }
 
 // TODO: Enable when https://github.com/microsoft/DirectXShaderCompiler/issues/4492 has been resolved.
 GPU_TEST(StructuredBufferMatrixLoad2_2, "Disabled due to compiler bug")
 {
-    Program::DefineList defines = {{"LAYOUT", "2"}};
+    DefineList defines = {{"LAYOUT", "2"}};
     runTest2(ctx, defines);
 }
 
 // TODO: Enable when https://github.com/microsoft/DirectXShaderCompiler/issues/4492 has been resolved.
 GPU_TEST(StructuredBufferMatrixLoad2_3, "Disabled due to compiler bug")
 {
-    Program::DefineList defines = {{"LAYOUT", "3"}};
+    DefineList defines = {{"LAYOUT", "3"}};
     runTest2(ctx, defines);
 }
 } // namespace Falcor

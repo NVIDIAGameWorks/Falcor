@@ -44,9 +44,9 @@ ref<SampleGenerator> SampleGenerator::create(ref<Device> pDevice, uint32_t type)
     }
 }
 
-Shader::DefineList SampleGenerator::getDefines() const
+DefineList SampleGenerator::getDefines() const
 {
-    Shader::DefineList defines;
+    DefineList defines;
     defines.add("SAMPLE_GENERATOR_TYPE", std::to_string(mType));
     return defines;
 }

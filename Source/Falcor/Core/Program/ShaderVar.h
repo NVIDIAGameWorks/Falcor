@@ -142,6 +142,15 @@ struct FALCOR_API ShaderVar
      * If this shader variable points at a constant buffer or parameter block, then the lookup will proceed in the contents of that block.
      * Otherwise an error is logged and an invalid `ShaderVar` is returned.
      */
+    ShaderVar operator[](std::string_view name) const;
+
+    /**
+     * Get a shader variable pointer to a sub-field.
+     *
+     * This shader variable must point to a value of `struct` type, with a field matching the given `name`.
+     * If this shader variable points at a constant buffer or parameter block, then the lookup will proceed in the contents of that block.
+     * Otherwise an error is logged and an invalid `ShaderVar` is returned.
+     */
     ShaderVar operator[](const std::string& name) const;
 
     /**

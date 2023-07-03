@@ -42,7 +42,7 @@ GPU_TEST(BufferAliasing_Read)
         pDevice, initData.size() * sizeof(float), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, initData.data()
     );
 
-    ctx.createProgram("Tests/Core/ResourceAliasing.cs.slang", "testRead", Program::DefineList(), Shader::CompilerFlags::None);
+    ctx.createProgram("Tests/Core/ResourceAliasing.cs.slang", "testRead");
     ctx.allocateStructuredBuffer("result", N * 3);
 
     // Bind buffer to two separate vars to test resource aliasing.
@@ -52,14 +52,13 @@ GPU_TEST(BufferAliasing_Read)
 
     ctx.runProgram(N, 1, 1);
 
-    const float* result = ctx.mapBuffer<const float>("result");
+    std::vector<float> result = ctx.readBuffer<float>("result");
     for (size_t i = 0; i < N; i++)
     {
         EXPECT_EQ(result[i], (float)i) << "i = " << i;
         EXPECT_EQ(result[i + N], (float)i) << "i = " << i;
         EXPECT_EQ(result[i + 2 * N], (float)i) << "i = " << i;
     }
-    ctx.unmapBuffer("result");
 }
 
 GPU_TEST(BufferAliasing_ReadWrite)
@@ -76,7 +75,7 @@ GPU_TEST(BufferAliasing_ReadWrite)
         Buffer::CpuAccess::None, initData.data()
     );
 
-    ctx.createProgram("Tests/Core/ResourceAliasing.cs.slang", "testReadWrite", Program::DefineList(), Shader::CompilerFlags::None);
+    ctx.createProgram("Tests/Core/ResourceAliasing.cs.slang", "testReadWrite");
 
     // Bind buffer to two separate vars to test resource aliasing.
     ctx["bufB1"] = pBuffer;
@@ -108,7 +107,7 @@ GPU_TEST(BufferAliasing_StructRead, "Disabled because <uint> version fails")
         pDevice, initData.size() * sizeof(float), 1, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, initData.data(), false
     );
 
-    ctx.createProgram("Tests/Core/ResourceAliasing.cs.slang", "testStructRead", Program::DefineList(), Shader::CompilerFlags::None);
+    ctx.createProgram("Tests/Core/ResourceAliasing.cs.slang", "testStructRead");
     ctx.allocateStructuredBuffer("result", N * 3);
 
     // Bind buffer to three separate vars to test resource aliasing.
@@ -118,13 +117,12 @@ GPU_TEST(BufferAliasing_StructRead, "Disabled because <uint> version fails")
 
     ctx.runProgram(N, 1, 1);
 
-    const float* result = ctx.mapBuffer<const float>("result");
+    std::vector<float> result = ctx.readBuffer<float>("result");
     for (size_t i = 0; i < N; i++)
     {
         EXPECT_EQ(result[i], (float)i) << "i = " << i;
         EXPECT_EQ(result[i + N], (float)i) << "i = " << i;
         EXPECT_EQ(result[i + 2 * N], (float)i) << "i = " << i;
     }
-    ctx.unmapBuffer("result");
 }
 } // namespace Falcor

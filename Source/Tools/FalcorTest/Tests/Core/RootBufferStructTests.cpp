@@ -44,8 +44,8 @@ void testRootBufferInStruct(GPUUnitTestContext& ctx, const std::string& shaderMo
 
     auto nextRandom = [&]() -> uint32_t { return dist(rng); };
 
-    Program::DefineList defines = {{"USE_UAV", useUav ? "1" : "0"}};
-    Shader::CompilerFlags compilerFlags = Shader::CompilerFlags::None;
+    DefineList defines = {{"USE_UAV", useUav ? "1" : "0"}};
+    Program::CompilerFlags compilerFlags = Program::CompilerFlags::None;
 
     ctx.createProgram("Tests/Core/RootBufferStructTests.cs.slang", "main", defines, compilerFlags, shaderModel);
     ctx.allocateStructuredBuffer("result", kNumElems);
@@ -88,7 +88,7 @@ void testRootBufferInStruct(GPUUnitTestContext& ctx, const std::string& shaderMo
     // Run the program to test that we can access the buffer.
     ctx.runProgram(kNumElems, 1, 1);
 
-    const uint32_t* result = ctx.mapBuffer<const uint32_t>("result");
+    std::vector<uint32_t> result = ctx.readBuffer<uint32_t>("result");
     for (uint32_t i = 0; i < kNumElems; i++)
     {
         uint32_t r = 0;
@@ -97,7 +97,6 @@ void testRootBufferInStruct(GPUUnitTestContext& ctx, const std::string& shaderMo
         r += rootBuf[i] * 3;
         EXPECT_EQ(result[i], r) << "i = " << i;
     }
-    ctx.unmapBuffer("result");
 }
 } // namespace
 

@@ -38,7 +38,7 @@ BlitContext::BlitContext(Device* pDevice)
     FALCOR_ASSERT(pDevice);
 
     // Init the blit data.
-    Program::DefineList defines = {
+    DefineList defines = {
         {"SAMPLE_COUNT", "1"},
         {"COMPLEX_BLIT", "0"},
         {"SRC_INT", "0"},

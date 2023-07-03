@@ -333,6 +333,11 @@ namespace Falcor
         */
         SceneBuilder(ref<Device> pDevice, const std::filesystem::path& path, const Settings& settings, Flags flags = Flags::Default);
 
+        /** Create a new builder and import a scene/model from memory.
+            Throws an ImporterError if importing went wrong.
+        */
+        SceneBuilder(ref<Device> pDevice, const void* buffer, size_t byteSize, std::string_view extension, const Settings& settings, Flags flags = Flags::Default);
+
         ~SceneBuilder();
 
         /** Import a scene/model file
@@ -340,6 +345,15 @@ namespace Falcor
             Throws an ImporterError if something went wrong.
         */
         void import(const std::filesystem::path& path, const pybind11::dict& dict = pybind11::dict());
+
+        /** Import a scene/model file from memory.
+            \param[in] buffer Memory buffer.
+            \param[in] byteSize Size in bytes of memory buffer.
+            \param[in] extension File extension for the format the scene is stored in.
+            \param[in] dict Optional dictionary.
+            Throws an ImporterError if something went wrong.
+        */
+        void importFromMemory(const void* buffer, size_t byteSize, std::string_view extension, const pybind11::dict& dict = pybind11::dict());
 
         /** Get the scene. Make sure to add all the objects before calling this function
             \return nullptr if something went wrong, otherwise a new Scene object

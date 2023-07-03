@@ -32,7 +32,6 @@
 extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registry)
 {
     registry.registerClass<RenderPass, BSDFViewer>();
-    ScriptBindings::registerBinding(BSDFViewer::registerBindings);
 }
 
 namespace
@@ -47,26 +46,12 @@ namespace
     const char kUseEnvMap[] = "useEnvMap";
     const char kTexCoords[] = "texCoords";
     const char kOutputAlbedo[] = "outputAlbedo";
-
-    // UI elements.
-    Gui::DropdownList kViewerModeList =
-    {
-        { (uint32_t)BSDFViewerMode::Material, "Material" },
-        { (uint32_t)BSDFViewerMode::Slice, "Slice" },
-    };
 }
 
-void BSDFViewer::registerBindings(pybind11::module& m)
-{
-    pybind11::enum_<BSDFViewerMode> mode(m, "BSDFViewerMode");
-    mode.value("Material", BSDFViewerMode::Material);
-    mode.value("Slice", BSDFViewerMode::Slice);
-}
-
-BSDFViewer::BSDFViewer(ref<Device> pDevice, const Dictionary& dict)
+BSDFViewer::BSDFViewer(ref<Device> pDevice, const Properties& props)
     : RenderPass(pDevice)
 {
-    parseDictionary(dict);
+    parseProperties(props);
 
     // Create a high-quality pseudorandom number generator.
     mpSampleGenerator = SampleGenerator::create(mpDevice, SAMPLE_GENERATOR_UNIFORM);
@@ -75,9 +60,9 @@ BSDFViewer::BSDFViewer(ref<Device> pDevice, const Dictionary& dict)
     mpFence = GpuFence::create(mpDevice);
 }
 
-void BSDFViewer::parseDictionary(const Dictionary& dict)
+void BSDFViewer::parseProperties(const Properties& props)
 {
-    for (const auto& [key, value] : dict)
+    for (const auto& [key, value] : props)
     {
         if (key == kMaterialID) mParams.materialID = value;
         else if (key == kViewerMode) mParams.viewerMode = value;
@@ -88,19 +73,19 @@ void BSDFViewer::parseDictionary(const Dictionary& dict)
             mParams.texCoords = value;
         }
         else if (key == kOutputAlbedo) mParams.outputAlbedo = value;
-        else logWarning("Unknown field '{}' in BSDFViewer dictionary.", key);
+        else logWarning("Unknown property '{}' in BSDFViewer properties.", key);
     }
 }
 
-Dictionary BSDFViewer::getScriptingDictionary()
+Properties BSDFViewer::getProperties() const
 {
-    Dictionary d;
-    d[kMaterialID] = mParams.materialID;
-    d[kViewerMode] = mParams.viewerMode;
-    d[kUseEnvMap] = mUseEnvMap;
-    if (mParams.useFixedTexCoords) d[kTexCoords] = mParams.texCoords;
-    if (mParams.outputAlbedo != 0) d[kOutputAlbedo] = mParams.outputAlbedo;
-    return d;
+    Properties props;
+    props[kMaterialID] = mParams.materialID;
+    props[kViewerMode] = mParams.viewerMode;
+    props[kUseEnvMap] = mUseEnvMap;
+    if (mParams.useFixedTexCoords) props[kTexCoords] = mParams.texCoords;
+    if (mParams.outputAlbedo != 0) props[kOutputAlbedo] = mParams.outputAlbedo;
+    return props;
 }
 
 RenderPassReflection BSDFViewer::reflect(const CompileData& compileData)
@@ -139,7 +124,7 @@ void BSDFViewer::setScene(RenderContext* pRenderContext, const ref<Scene>& pScen
         desc.addShaderLibrary(kFileViewerPass).csEntry("main");
         desc.addTypeConformances(mpScene->getTypeConformances());
 
-        Program::DefineList defines;
+        DefineList defines;
         defines.add(mpSampleGenerator->getDefines());
         defines.add(mpScene->getSceneDefines());
 
@@ -264,7 +249,7 @@ void BSDFViewer::renderUI(Gui::Widgets& widget)
 
     bool dirty = false;
 
-    dirty |= widget.dropdown("Mode", kViewerModeList, (uint32_t&)mParams.viewerMode);
+    dirty |= widget.dropdown("Mode", mParams.viewerMode);
 
     switch (mParams.viewerMode)
     {

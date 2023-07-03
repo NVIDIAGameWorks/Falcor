@@ -38,6 +38,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <algorithm>
 
 namespace Falcor
 {
@@ -49,6 +50,7 @@ namespace Falcor
     */
     class FALCOR_API GridVolume : public Animatable
     {
+        FALCOR_OBJECT(GridVolume)
     public:
         using GridSequence = std::vector<ref<Grid>>;
 
@@ -115,6 +117,15 @@ namespace Falcor
         */
         bool loadGrid(GridSlot slot, const std::filesystem::path& path, const std::string& gridname);
 
+        /** Create a GridSequence from a list of files.
+            \param[in] pDevice GPU device
+            \param[in] paths File paths of the grids. Can also include a full path or relative path from a data directory.
+            \param[in] gridname Name of the grid to load.
+            \param[in] keepEmpty Add empty (nullptr) grids to the sequence if one cannot be loaded from the file.
+            \return Returns the resulting GridSequence
+        */
+        static GridSequence createGridSequence(ref<Device> pDevice, const std::vector<std::filesystem::path>& paths, const std::string& gridname, bool keepEmpty = true);
+
         /** Load a sequence of grids from files to a grid slot.
             Note: This will replace any existing grid sequence for that slot.
             \param[in] slot Grid slot.
@@ -176,6 +187,14 @@ namespace Falcor
         /** Get the frame rate for grid playback.
         */
         double getFrameRate() const { return mFrameRate; }
+
+        /** Set the grid playback start frame.
+        */
+        void setStartFrame(uint32_t frame) { mStartFrame = mGridFrameCount > 0 ? std::clamp(frame, (uint32_t)0, mGridFrameCount - 1) : 0; }
+
+        /** Get the grid playback start frame
+        */
+        uint32_t getStartFrame() const { return mStartFrame; }
 
         /** Enable/disable grid playback.
         */
@@ -276,11 +295,13 @@ namespace Falcor
         uint32_t mGridFrame = 0;
         uint32_t mGridFrameCount = 1;
         double mFrameRate = 30.f;
+        uint32_t mStartFrame = 0;
         bool mPlaybackEnabled = false;
         AABB mBounds;
         GridVolumeData mData;
         mutable UpdateFlags mUpdates = UpdateFlags::None;
 
+        friend class Scene;
         friend class SceneCache;
     };
 

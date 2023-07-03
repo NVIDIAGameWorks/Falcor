@@ -29,8 +29,7 @@
 
 namespace Falcor
 {
-BaseGraphicsPass::BaseGraphicsPass(ref<Device> pDevice, const Program::Desc& progDesc, const Program::DefineList& programDefines)
-    : mpDevice(pDevice)
+BaseGraphicsPass::BaseGraphicsPass(ref<Device> pDevice, const Program::Desc& progDesc, const DefineList& programDefines) : mpDevice(pDevice)
 {
     auto pProg = GraphicsProgram::create(mpDevice, progDesc, programDefines);
     pProg->breakStrongReferenceToDevice();

@@ -295,6 +295,28 @@ endif()
 # Pre-built dependencies in packman
 # -----------------------------------------------------------------------------
 
+# aftermath
+set(AFTERMATH_DIR ${PACKMAN_DIR}/aftermath)
+if(EXISTS ${AFTERMATH_DIR}/include/GFSDK_Aftermath.h)
+    if(FALCOR_WINDOWS)
+        add_library(aftermath SHARED IMPORTED GLOBAL)
+        set_target_properties(aftermath PROPERTIES
+            INTERFACE_INCLUDE_DIRECTORIES ${AFTERMATH_DIR}/include
+            IMPORTED_IMPLIB ${AFTERMATH_DIR}/lib/x64/GFSDK_Aftermath_Lib.x64.lib
+            IMPORTED_LOCATION ${AFTERMATH_DIR}/lib/x64/GFSDK_Aftermath_Lib.x64.dll
+        )
+    elseif(FALCOR_LINUX)
+        add_library(aftermath SHARED IMPORTED GLOBAL)
+        set_target_properties(aftermath PROPERTIES
+            INTERFACE_INCLUDE_DIRECTORIES ${AFTERMATH_DIR}/include
+            IMPORTED_LOCATION ${AFTERMATH_DIR}/lib/x64/libGFSDK_Aftermath_Lib.x64.so
+    )
+    endif()
+    set(FALCOR_HAS_AFTERMATH ON PARENT_SCOPE)
+else()
+    set(FALCOR_HAS_AFTERMATH OFF PARENT_SCOPE)
+endif()
+
 # nvapi
 set(NVAPI_DIR ${PACKMAN_DIR}/nvapi)
 if(EXISTS ${NVAPI_DIR}/nvapi.h)

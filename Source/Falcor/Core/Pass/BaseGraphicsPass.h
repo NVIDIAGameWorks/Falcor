@@ -39,6 +39,7 @@ namespace Falcor
 {
 class FALCOR_API BaseGraphicsPass : public Object
 {
+    FALCOR_OBJECT(BaseGraphicsPass)
 public:
     virtual ~BaseGraphicsPass() = default;
 
@@ -86,7 +87,7 @@ protected:
      * @param[in] programDefines List of macro definitions to set into the program. The macro definitions will be set on all shader stages.
      * @return A new object, or an exception is thrown if creation failed.
      */
-    BaseGraphicsPass(ref<Device> pDevice, const Program::Desc& progDesc, const Program::DefineList& programDefines);
+    BaseGraphicsPass(ref<Device> pDevice, const Program::Desc& progDesc, const DefineList& programDefines);
 
     BreakableReference<Device> mpDevice;
     ref<GraphicsVars> mpVars;

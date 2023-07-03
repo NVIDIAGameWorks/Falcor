@@ -25,22 +25,32 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "Common.h"
-#include "Utils/Scripting/ScriptBindings.h"
+#include "Testing/UnitTest.h"
 
 namespace Falcor
 {
-FALCOR_SCRIPT_BINDING(ComparisonFunc)
+GPU_TEST(TransientHeapRecycling)
 {
-    pybind11::enum_<ComparisonFunc> comparisonFunc(m, "ComparisonFunc");
-    comparisonFunc.value("Disabled", ComparisonFunc::Disabled);
-    comparisonFunc.value("LessEqual", ComparisonFunc::LessEqual);
-    comparisonFunc.value("GreaterEqual", ComparisonFunc::GreaterEqual);
-    comparisonFunc.value("Less", ComparisonFunc::Less);
-    comparisonFunc.value("Greater", ComparisonFunc::Greater);
-    comparisonFunc.value("Equal", ComparisonFunc::Equal);
-    comparisonFunc.value("NotEqual", ComparisonFunc::NotEqual);
-    comparisonFunc.value("Always", ComparisonFunc::Always);
-    comparisonFunc.value("Never", ComparisonFunc::Never);
+    ref<Device> pDevice = ctx.getDevice();
+    RenderContext* pRenderContext = pDevice->getRenderContext();
+
+    size_t M = 1024 * 1024 * 1024;
+    std::vector<uint8_t> cpuBuf(M, 0);
+    ref<Buffer> A = Buffer::create(pDevice, M, ResourceBindFlags::None, Buffer::CpuAccess::Read, cpuBuf.data());
+    ref<Buffer> B = Buffer::create(pDevice, 4, ResourceBindFlags::None, Buffer::CpuAccess::None);
+
+    // Progress through N frames (and transient heaps), ending up using the
+    // same transient heap as is used for uploading the data to buffer A.
+    // Before the fix, this leads to a validation error as the buffer for
+    // uplading to buffer A is still in flight.
+    for (uint32_t i = 0; i < Device::kInFlightFrameCount; ++i)
+        pDevice->endFrame();
+
+    // The following commands will trigger a TDR even if the validation error
+    // is missed.
+    pRenderContext->copyBufferRegion(B.get(), 0, A.get(), 0, 4);
+    pRenderContext->flush(true);
+    A->map(Buffer::MapType::Read);
+    A->unmap();
 }
 } // namespace Falcor

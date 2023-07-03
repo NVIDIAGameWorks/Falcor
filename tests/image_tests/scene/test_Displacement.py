@@ -6,7 +6,7 @@ from graphs.SceneDebugger import SceneDebugger as g
 from falcor import *
 
 m.addGraph(g)
-m.loadScene('TestScenes/CornellBoxDisplaced.pyscene')
+m.loadScene('test_scenes/cornell_box_displaced.pyscene')
 
 # default
 render_frames(m, 'default', frames=[64])

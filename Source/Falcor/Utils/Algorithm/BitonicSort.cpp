@@ -43,7 +43,7 @@ BitonicSort::BitonicSort(ref<Device> pDevice) : mpDevice(pDevice)
     mSort.pState = ComputeState::create(mpDevice);
 
     // Create shaders
-    Program::DefineList defines;
+    DefineList defines;
     defines.add("CHUNK_SIZE", "256"); // Dummy values just so we can get reflection data. We'll set the actual values in execute().
     defines.add("GROUP_SIZE", "256");
     mSort.pProgram = ComputeProgram::createFromFile(mpDevice, kShaderFilename, "main", defines);

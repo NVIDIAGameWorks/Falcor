@@ -40,6 +40,7 @@
 #include <fast_float/fast_float.h>
 
 #include <atomic>
+#include <utility>
 #include <charconv>
 
 namespace Falcor::pbrt

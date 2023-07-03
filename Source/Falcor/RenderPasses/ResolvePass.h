@@ -34,7 +34,6 @@
 namespace Falcor
 {
 class RenderContext;
-class Dictionary;
 class RenderData;
 
 class FALCOR_API ResolvePass : public RenderPass
@@ -44,7 +43,7 @@ public:
     // but we still need to provide plugin type and info fields.
     FALCOR_PLUGIN_CLASS(ResolvePass, "ResolvePass", "Resolve a multi-sampled texture.");
 
-    static ref<ResolvePass> create(ref<Device> pDevice, const Dictionary& dictionary = {}) { return make_ref<ResolvePass>(pDevice); }
+    static ref<ResolvePass> create(ref<Device> pDevice, const Properties& props = {}) { return make_ref<ResolvePass>(pDevice); }
 
     ResolvePass(ref<Device> pDevice);
 

@@ -101,7 +101,8 @@ struct SheenBSDF : IBSDF
         // Default initialization to avoid divergence at returns.
         wo = {};
         weight = {};
-        pdf = 0.f;
+        pdf = {};
+        lobeType = {};
 
         float3 albedoT = evalAlbedo(wi, LobeType::All).transmission;
 

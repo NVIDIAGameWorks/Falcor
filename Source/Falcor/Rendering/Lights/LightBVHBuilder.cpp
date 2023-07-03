@@ -30,7 +30,6 @@
 #include "Core/Errors.h"
 #include "Utils/Logger.h"
 #include "Utils/Timing/Profiler.h"
-#include "Utils/Scripting/ScriptBindings.h"
 #include "Utils/Math/MathConstants.slangh"
 #include <algorithm>
 
@@ -217,13 +216,6 @@ namespace
         const float3 dims = max(float3(epsilon), bb.extent());
         return dims.x * dims.y * dims.z;
     }
-
-    const Gui::DropdownList kSplitHeuristicList =
-    {
-        { (uint32_t)LightBVHBuilder::SplitHeuristic::Equal, "Equal" },
-        { (uint32_t)LightBVHBuilder::SplitHeuristic::BinnedSAH, "Binned SAH" },
-        { (uint32_t)LightBVHBuilder::SplitHeuristic::BinnedSAOH, "Binned SAOH" }
-    };
 }
 
 namespace Falcor
@@ -329,7 +321,7 @@ namespace Falcor
 
         optionsChanged |= widget.checkbox("Allow refitting", options.allowRefitting);
         optionsChanged |= widget.var("Max triangle count per leaf", options.maxTriangleCountPerLeaf, 1u, kMaxLeafTriangleCount);
-        optionsChanged |= widget.dropdown("Split heuristic", kSplitHeuristicList, (uint32_t&)options.splitHeuristicSelection);
+        optionsChanged |= widget.dropdown("Split heuristic", options.splitHeuristicSelection);
 
         if (auto splitGroup = widget.group("Split Options", true))
         {
@@ -887,29 +879,5 @@ namespace Falcor
         default:
             throw RuntimeError("Unsupported SplitHeuristic: {}", static_cast<uint32_t>(heuristic));
         }
-    }
-
-    FALCOR_SCRIPT_BINDING(LightBVHBuilder)
-    {
-        pybind11::enum_<LightBVHBuilder::SplitHeuristic> splitHeuristic(m, "SplitHeuristic");
-        splitHeuristic.value("Equal", LightBVHBuilder::SplitHeuristic::Equal);
-        splitHeuristic.value("BinnedSAH", LightBVHBuilder::SplitHeuristic::BinnedSAH);
-        splitHeuristic.value("BinnedSAOH", LightBVHBuilder::SplitHeuristic::BinnedSAOH);
-
-        // TODO use a nested class in the bindings when supported.
-        ScriptBindings::SerializableStruct<LightBVHBuilder::Options> options(m, "LightBVHBuilderOptions");
-#define field(f_) field(#f_, &LightBVHBuilder::Options::f_)
-        options.field(splitHeuristicSelection);
-        options.field(maxTriangleCountPerLeaf);
-        options.field(binCount);
-        options.field(volumeEpsilon);
-        options.field(splitAlongLargest);
-        options.field(useVolumeOverSA);
-        options.field(useLeafCreationCost);
-        options.field(createLeavesASAP);
-        options.field(allowRefitting);
-        options.field(usePreintegration);
-        options.field(useLightingCones);
-#undef field
     }
 }

@@ -62,7 +62,7 @@ public:
         const std::filesystem::path& path,
         const std::string& csEntry,
         const DefineList& programDefines = DefineList(),
-        Shader::CompilerFlags flags = Shader::CompilerFlags::None,
+        CompilerFlags flags = CompilerFlags::None,
         const std::string& shaderModel = ""
     );
 

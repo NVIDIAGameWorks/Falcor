@@ -405,8 +405,7 @@ Bitmap::FileFormat Bitmap::getFormatFromFileExtension(const std::string& ext)
         if (kExtensions[i] == ext)
             return Bitmap::FileFormat(i);
     }
-    reportError("Can't find a matching format for file extension '" + ext + "'");
-    return Bitmap::FileFormat(-1);
+    throw ArgumentError("Can't find a matching format for file extension '{}'.", ext);
 }
 
 FileDialogFilterVec Bitmap::getFileDialogFilters(ResourceFormat format)
@@ -479,22 +478,13 @@ void Bitmap::saveImage(
 )
 {
     if (pData == nullptr)
-    {
-        reportError("Bitmap::saveImage provided no data to save.");
-        return;
-    }
+        throw ArgumentError("Provided data must not be nullptr.");
 
     if (is_set(exportFlags, ExportFlags::Uncompressed) && is_set(exportFlags, ExportFlags::Lossy))
-    {
-        reportError("Bitmap::saveImage incompatible flags: lossy cannot be combined with uncompressed.");
-        return;
-    }
+        throw ArgumentError("Incompatible flags: lossy cannot be combined with uncompressed.");
 
     if (fileFormat == FileFormat::DdsFile)
-    {
-        reportError("Bitmap::saveImage cannot save DDS files. Use ImageIO instead.");
-        return;
-    }
+        throw ArgumentError("Cannot save DDS files. Use ImageIO instead.");
 
     int flags = 0;
     FIBITMAP* pImage = nullptr;
@@ -530,8 +520,7 @@ void Bitmap::saveImage(
         }
         else if (bytesPerPixel != 16 && bytesPerPixel != 12)
         {
-            reportError("Bitmap::saveImage supports only 32-bit/channel RGB/RGBA or 16-bit RGBA images as PFM/EXR files.");
-            return;
+            throw ArgumentError("Only support for 32-bit/channel RGB/RGBA or 16-bit RGBA images as PFM/EXR files.");
         }
 
         const bool exportAlpha = is_set(exportFlags, ExportFlags::ExportAlpha);
@@ -539,22 +528,13 @@ void Bitmap::saveImage(
         if (fileFormat == Bitmap::FileFormat::PfmFile)
         {
             if (is_set(exportFlags, ExportFlags::Lossy))
-            {
-                reportError("Bitmap::saveImage: PFM does not support lossy compression mode.");
-                return;
-            }
+                throw ArgumentError("PFM does not support lossy compression mode.");
             if (exportAlpha)
-            {
-                reportError("Bitmap::saveImage: PFM does not support alpha channel.");
-                return;
-            }
+                throw ArgumentError("PFM does not support alpha channel.");
         }
 
         if (exportAlpha && bytesPerPixel != 16)
-        {
-            reportError("Bitmap::saveImage requesting to export alpha-channel to EXR file, but the resource doesn't have an alpha-channel");
-            return;
-        }
+            throw ArgumentError("Requesting to export alpha-channel to EXR file, but the resource doesn't have an alpha-channel");
 
         // Upload the image manually and flip it vertically
         bool scanlineCopy = exportAlpha ? bytesPerPixel == 16 : bytesPerPixel == 12;
@@ -663,9 +643,8 @@ void Bitmap::saveImage(
     }
 
     if (!FreeImage_Save(toFreeImageFormat(fileFormat), pImage, path.string().c_str(), flags))
-    {
-        reportError("Bitmap::saveImage: FreeImage failed to save image");
-    }
+        throw RuntimeError("FreeImage failed to save image");
+
     FreeImage_Unload(pImage);
 }
 } // namespace Falcor

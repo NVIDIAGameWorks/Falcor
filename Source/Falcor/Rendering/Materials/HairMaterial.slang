@@ -44,8 +44,9 @@ struct HairMaterial : MaterialBase, IMaterial
 
         HairChiang16Data d = {};
 
-        d.IoR = data.IoR;
-        d.eta = sd.frontFacing ? (sd.IoR / data.IoR) : (data.IoR / sd.IoR);
+        float16_t IoR = header.getIoR();
+        d.IoR = IoR;
+        d.eta = sd.frontFacing ? (sd.IoR / IoR) : (IoR / sd.IoR);
 
         // Sample base color.
         const float3 baseColor = ms.sampleTexture(data.texBaseColor, s, sd.uv, data.baseColor, lod).rgb;

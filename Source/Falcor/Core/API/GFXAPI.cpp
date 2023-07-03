@@ -28,10 +28,33 @@
 #include "GFXAPI.h"
 #include "Core/ErrorHandling.h"
 
+#if FALCOR_HAS_D3D12
+#include "dxgi.h"
+#endif
+
 namespace Falcor
 {
 void gfxReportError(const char* msg, gfx::Result result)
 {
-    reportFatalError(fmt::format("{}\nResult: {}", msg, result));
+    const char* resultStr = nullptr;
+#if FALCOR_HAS_D3D12
+    switch (result)
+    {
+    case DXGI_ERROR_DEVICE_REMOVED:
+        resultStr = "DXGI_ERROR_DEVICE_REMOVED";
+        break;
+    case DXGI_ERROR_DEVICE_HUNG:
+        resultStr = "DXGI_ERROR_DEVICE_HUNG";
+        break;
+    case DXGI_ERROR_DEVICE_RESET:
+        resultStr = "DXGI_ERROR_DEVICE_RESET";
+        break;
+    }
+#endif
+
+    if (resultStr)
+        reportFatalError(fmt::format("GFX ERROR: {}\nResult: {} ({})", msg, result, resultStr));
+    else
+        reportFatalError(fmt::format("GFX ERROR: {}\nResult: {}", msg, result));
 }
 } // namespace Falcor

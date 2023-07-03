@@ -3,13 +3,13 @@ from falcor import *
 def render_graph_HalfRes():
     g = RenderGraph('HalfRes')
 
-    GBuffer = createPass("GBufferRaster", {'outputSize': IOSize.Half, 'samplePattern': SamplePattern.Stratified})
+    GBuffer = createPass("GBufferRaster", {'outputSize': 'Half', 'samplePattern': 'Stratified'})
     g.addPass(GBuffer, "GBuffer")
-    AccumulatePass = createPass("AccumulatePass", {'outputSize': IOSize.Half, 'enabled': True})
+    AccumulatePass = createPass("AccumulatePass", {'outputSize': 'Half', 'enabled': True})
     g.addPass(AccumulatePass, "AccumulatePass")
-    ToneMapper = createPass('ToneMapper', {'outputSize': IOSize.Half})
+    ToneMapper = createPass('ToneMapper', {'outputSize': 'Half'})
     g.addPass(ToneMapper, 'ToneMapper')
-    PostFXPass = createPass("SimplePostFX", {'outputSize': IOSize.Half, 'enabled': True, 'bloomAmount': 0.5})
+    PostFXPass = createPass("SimplePostFX", {'outputSize': 'Half', 'enabled': True, 'bloomAmount': 0.5})
     g.addPass(PostFXPass, "SimplePostFX")
 
     g.addEdge('GBuffer.normW', 'AccumulatePass.input')

@@ -47,7 +47,7 @@ BEGIN_NAMESPACE_FALCOR
 */
 struct BasicMaterialData
 {
-    // MaterialHeader (8B) is stored just before this struct in memory.
+    // MaterialHeader (16B) is stored just before this struct in memory.
     uint        flags                   = 0;                ///< Material flags and packed sampler IDs. See accessors below.
     float       emissiveFactor          = 1.f;              ///< Multiplication factor for the emissive color to control light intensity. Range [0,inf).
 
@@ -60,7 +60,7 @@ struct BasicMaterialData
     float16_t   diffuseTransmission     = 0.h;              ///< Diffuse transmission. Range [0,1].
 
     float16_t3  volumeScattering        = float16_t3(0.h);  ///< Volume scattering coefficient. Range [0,inf).
-    float16_t   IoR                     = 1.5h;             ///< Index of refraction. Range [1,inf).
+    float16_t   _pad0                   = 0.h;
     float16_t3  volumeAbsorption        = float16_t3(0.h);  ///< Volume absorption coefficient. Range [0,inf).
     float16_t   volumeAnisotropy        = 0.h;              ///< Volume phase function anisotropy (g). Range [-1,1].
 

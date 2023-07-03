@@ -62,6 +62,8 @@ ParameterBlock<GUIPass> gGUIPass;
 
 bool iBoundingBox(in float3 ro, in float3 rd, in float3 halfExtent, in float e, out float t)
 {
+    t = {};
+
     float2 boxT;
     if (!intersectRayAABB(ro, rd, -halfExtent, halfExtent, boxT))
     {
@@ -141,6 +143,8 @@ float4 traceSDFBoundingBox(Ray cameraRay, uint instanceID, float distanceToHitPo
 
 bool sdfIntersectPrimitive(float3 rayOrigin, float3 rayDir, float3 bbCenter, float3 bbExtent, SDF3DPrimitive primitive, out float t)
 {
+    t = {};
+
     float ilen = 1.f / length(rayDir);
     rayDir *= ilen;
 

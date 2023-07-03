@@ -25,7 +25,6 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "FalcorTest.h"
 #include "Utils/StringUtils.h"
 #include "Testing/UnitTest.h"
 
@@ -35,32 +34,30 @@
 #include <string>
 #include <vector>
 
+using namespace Falcor;
+
 FALCOR_EXPORT_D3D12_AGILITY_SDK
-
-FalcorTest::FalcorTest(const SampleAppConfig& config, const Options& options) : SampleApp(config), mOptions(options) {}
-
-FalcorTest::~FalcorTest() {}
-
-void FalcorTest::onFrameRender(RenderContext* pRenderContext, const ref<Fbo>& pTargetFbo)
-{
-    int returnCode =
-        runTests(getDevice(), getTargetFbo().get(), mOptions.categoryFlags, mOptions.filter, mOptions.xmlReportPath, mOptions.repeat);
-    shutdown(returnCode);
-}
 
 int main(int argc, char** argv)
 {
     args::ArgumentParser parser("Falcor unit tests.");
     parser.helpParams.programName = "FalcorTest";
     args::HelpFlag helpFlag(parser, "help", "Display this help menu.", {'h', "help"});
-    args::ValueFlag<std::string> categoryFlag(parser, "all,cpu,gpu", "Test categories to run (default: all).", {'c', "category"});
+    args::ValueFlag<uint32_t> parallelFlag(parser, "N", "EXPERIMENTAL: Number of worker threads (default: 1).", {'p', "parallel"});
     args::ValueFlag<std::string> deviceTypeFlag(parser, "d3d12|vulkan", "Graphics device type.", {'d', "device-type"});
     args::Flag listGPUsFlag(parser, "", "List available GPUs", {"list-gpus"});
     args::ValueFlag<uint32_t> gpuFlag(parser, "index", "Select specific GPU to use", {"gpu"});
-    args::ValueFlag<std::string> filterFlag(parser, "filter", "Regular expression for filtering tests to run.", {'f', "filter"});
+    args::Flag listTestSuites(parser, "", "List test suites", {"list-test-suites"});
+    args::Flag listTestCases(parser, "", "List test cases", {"list-test-cases"});
+    args::Flag listTags(parser, "", "List tags", {"list-tags"});
+    args::ValueFlag<std::string> testSuiteFilterFlag(parser, "regex", "Filter test suites to run.", {'s', "test-suite"});
+    args::ValueFlag<std::string> testCaseFilterFlag(parser, "regex", "Filter test cases to run.", {'f', "test-case"});
+    args::ValueFlag<std::string> tagFilterFlag(parser, "tags", "Filter test cases by tags.", {'t', "tags"});
     args::ValueFlag<std::string> xmlReportFlag(parser, "path", "XML report output file.", {'x', "xml-report"});
     args::ValueFlag<uint32_t> repeatFlag(parser, "N", "Number of times to repeat the test.", {'r', "repeat"});
     args::Flag enableDebugLayerFlag(parser, "", "Enable debug layer (enabled by default in Debug build).", {"enable-debug-layer"});
+    args::Flag enableAftermathFlag(parser, "", "Enable Aftermath GPU crash dump.", {"enable-aftermath"});
+
     args::CompletionFlag completionFlag(parser, {"complete"});
 
     try
@@ -90,15 +87,14 @@ int main(int argc, char** argv)
         return 1;
     }
 
-    SampleAppConfig config;
-    config.headless = true;
+    unittest::RunOptions options;
 
     if (deviceTypeFlag)
     {
         if (args::get(deviceTypeFlag) == "d3d12")
-            config.deviceDesc.type = Device::Type::D3D12;
+            options.deviceDesc.type = Device::Type::D3D12;
         else if (args::get(deviceTypeFlag) == "vulkan")
-            config.deviceDesc.type = Device::Type::Vulkan;
+            options.deviceDesc.type = Device::Type::Vulkan;
         else
         {
             std::cerr << "Invalid device type, use 'd3d12' or 'vulkan'" << std::endl;
@@ -107,47 +103,70 @@ int main(int argc, char** argv)
     }
     if (listGPUsFlag)
     {
-        const auto gpus = Device::getGPUs(config.deviceDesc.type);
+        const auto gpus = Device::getGPUs(options.deviceDesc.type);
         for (size_t i = 0; i < gpus.size(); ++i)
             fmt::print("GPU {}: {}\n", i, gpus[i].name);
         return 0;
     }
+
     if (gpuFlag)
-        config.deviceDesc.gpu = args::get(gpuFlag);
+        options.deviceDesc.gpu = args::get(gpuFlag);
     if (enableDebugLayerFlag)
-        config.deviceDesc.enableDebugLayer = true;
+        options.deviceDesc.enableDebugLayer = true;
+    if (enableAftermathFlag)
+        options.deviceDesc.enableAftermath = true;
 
-    FalcorTest::Options options;
-
-    if (categoryFlag)
-    {
-        options.categoryFlags = UnitTestCategoryFlags::None;
-        std::vector<std::string> tokens = splitString(args::get(categoryFlag), ",");
-        for (const auto& token : tokens)
-        {
-            if (token == "all")
-                options.categoryFlags |= UnitTestCategoryFlags::All;
-            else if (token == "cpu")
-                options.categoryFlags |= UnitTestCategoryFlags::CPU;
-            else if (token == "gpu")
-                options.categoryFlags |= UnitTestCategoryFlags::GPU;
-            else
-            {
-                std::cerr << "Invalid test category '" << token << "'" << std::endl;
-                return 1;
-            }
-        }
-    }
-    if (filterFlag)
-        options.filter = args::get(filterFlag);
+    if (testSuiteFilterFlag)
+        options.testSuiteFilter = args::get(testSuiteFilterFlag);
+    if (testCaseFilterFlag)
+        options.testCaseFilter = args::get(testCaseFilterFlag);
+    if (tagFilterFlag)
+        options.tagFilter = args::get(tagFilterFlag);
     if (xmlReportFlag)
         options.xmlReportPath = args::get(xmlReportFlag);
+    if (parallelFlag)
+        options.parallel = args::get(parallelFlag);
     if (repeatFlag)
         options.repeat = args::get(repeatFlag);
 
-    // Disable logging to console, we don't want to clutter the test runner output with log messages.
-    Logger::setOutputs(Logger::OutputFlags::File | Logger::OutputFlags::DebugWindow);
+    if (listTestSuites || listTestCases || listTags)
+    {
+        std::vector<unittest::Test> tests = unittest::enumerateTests();
+        tests = unittest::filterTests(tests, options.testSuiteFilter, options.testCaseFilter, options.tagFilter, options.deviceDesc.type);
 
-    FalcorTest falcorTest(config, options);
-    return falcorTest.run();
+        if (listTestSuites)
+        {
+            std::set<std::string> suites;
+            for (const auto& test : tests)
+                suites.insert(test.suiteName);
+            for (const auto& suite : suites)
+                fmt::print("{}\n", suite);
+            return 0;
+        }
+        if (listTestCases)
+        {
+            for (const auto& test : tests)
+                fmt::print("{}:{}\n", test.suiteName, test.name);
+            return 0;
+        }
+        if (listTags)
+        {
+            std::set<std::string> tags;
+            for (const auto& test : tests)
+                for (const auto& tag : test.tags)
+                    tags.insert(tag);
+            for (const auto& tag : tags)
+                fmt::print("{}\n", tag);
+            return 0;
+        }
+    }
+
+    try
+    {
+        return unittest::runTests(options);
+    }
+    catch (const std::exception& e)
+    {
+        reportFatalError("FalcorTest crashed unexpectedly...\n" + std::string(e.what()), false);
+    }
 }

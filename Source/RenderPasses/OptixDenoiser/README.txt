@@ -42,8 +42,7 @@ By default, when connecting the OptiX denoiser to a render graph, it is:
       alpha is irrelevant.
 
   (d) Uses either the HDR or Temporal OptiX denoiser (depending if motion vectors are provided)
-      - Can be overridden in the Python file via 'model' : OptixDenoiserModel.LDR, OptixDenoiserModel.HDR,
-        or OptixDenoiserModel.Temporal
+      - Can be overridden in the Python file via 'model' : 'LDR', 'HDR', 'AOV' or 'Temporal'
 
   (e) Using the most guides possible.
       - If you pass in noisy color only, no guides are used.

@@ -37,7 +37,10 @@ namespace
     void regBlitPass(pybind11::module& m)
     {
         pybind11::class_<BlitPass, RenderPass, ref<BlitPass>> pass(m, "BlitPass");
-        pass.def_property(kFilter, &BlitPass::getFilter, &BlitPass::setFilter);
+        pass.def_property("filter",
+            [](const BlitPass& self) { return enumToString(self.getFilter()); },
+            [](BlitPass& self, const std::string& value) {self.setFilter(stringToEnum<Sampler::Filter>(value)); }
+        );
     }
 }
 
@@ -47,10 +50,10 @@ extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registr
     ScriptBindings::registerBinding(regBlitPass);
 }
 
-BlitPass::BlitPass(ref<Device> pDevice, const Dictionary& dict)
+BlitPass::BlitPass(ref<Device> pDevice, const Properties& props)
     : RenderPass(pDevice)
 {
-    parseDictionary(dict);
+    parseProperties(props);
 }
 
 RenderPassReflection BlitPass::reflect(const CompileData& compileData)
@@ -61,22 +64,22 @@ RenderPassReflection BlitPass::reflect(const CompileData& compileData)
     return r;
 }
 
-void BlitPass::parseDictionary(const Dictionary& dict)
+void BlitPass::parseProperties(const Properties& props)
 {
-    for (const auto& [key, value] : dict)
+    for (const auto& [key, value] : props)
     {
         if (key == kFilter) setFilter(value);
         if (key == kOutputFormat) mOutputFormat = value;
-        else logWarning("Unknown field '{}' in a BlitPass dictionary.", key);
+        else logWarning("Unknown property '{}' in a BlitPass properties.", key);
     }
 }
 
-Dictionary BlitPass::getScriptingDictionary()
+Properties BlitPass::getProperties() const
 {
-    Dictionary d;
-    d[kFilter] = mFilter;
-    if (mOutputFormat != ResourceFormat::Unknown) d[kOutputFormat] = mOutputFormat;
-    return d;
+    Properties props;
+    props[kFilter] = mFilter;
+    if (mOutputFormat != ResourceFormat::Unknown) props[kOutputFormat] = mOutputFormat;
+    return props;
 }
 
 void BlitPass::execute(RenderContext* pRenderContext, const RenderData& renderData)
@@ -96,12 +99,5 @@ void BlitPass::execute(RenderContext* pRenderContext, const RenderData& renderDa
 
 void BlitPass::renderUI(Gui::Widgets& widget)
 {
-    static const Gui::DropdownList kFilterList =
-    {
-        { (uint32_t)Sampler::Filter::Linear, "Linear" },
-        { (uint32_t)Sampler::Filter::Point, "Point" },
-    };
-    uint32_t f = (uint32_t)mFilter;
-
-    if (widget.dropdown("Filter", kFilterList, f)) setFilter((Sampler::Filter)f);
+    if (auto filter = mFilter; widget.dropdown("Filter", filter)) setFilter(filter);
 }

@@ -63,9 +63,9 @@ GPU_TEST(Inheritance_ManualCreate)
 {
     ref<Device> pDevice = ctx.getDevice();
 
-    Program::DefineList defines;
+    DefineList defines;
     defines.add("NUM_TESTS", std::to_string(kNumTests));
-    ctx.createProgram("Tests/Slang/InheritanceTests.cs.slang", "testInheritanceManual", defines, Shader::CompilerFlags::None, "6_5");
+    ctx.createProgram("Tests/Slang/InheritanceTests.cs.slang", "testInheritanceManual", defines, Program::CompilerFlags::None, "6_5");
     ctx.allocateStructuredBuffer("resultsInt", kNumTests);
     ctx.allocateStructuredBuffer("resultsFloat", kNumTests);
 
@@ -99,23 +99,21 @@ GPU_TEST(Inheritance_ManualCreate)
     ctx.runProgram(kNumTests, 1, 1);
 
     // Verify results.
-    const int* resultsInt = ctx.mapBuffer<const int>("resultsInt");
-    const float2* resultsFloat = ctx.mapBuffer<const float2>("resultsFloat");
+    std::vector<int> resultsInt = ctx.readBuffer<int>("resultsInt");
+    std::vector<float2> resultsFloat = ctx.readBuffer<float2>("resultsFloat");
     for (uint32_t i = 0; i < kNumTests; i++)
     {
         const auto expected = getCpuResult(testType[i], testValue[i], data[i]);
         EXPECT_EQ(resultsInt[i], expected.first) << "i = " << i;
         EXPECT_EQ(resultsFloat[i], expected.second) << "i = " << i;
     }
-    ctx.unmapBuffer("resultsInt");
-    ctx.unmapBuffer("resultsFloat");
 }
 
 GPU_TEST(Inheritance_ConformanceCreate)
 {
     ref<Device> pDevice = ctx.getDevice();
 
-    Program::DefineList defines;
+    DefineList defines;
     defines.add("NUM_TESTS", std::to_string(kNumTests));
     Program::Desc desc;
     desc.addShaderLibrary("Tests/Slang/InheritanceTests.cs.slang");
@@ -164,25 +162,23 @@ GPU_TEST(Inheritance_ConformanceCreate)
     ctx.runProgram(kNumTests, 1, 1);
 
     // Verify results.
-    const int* resultsInt = ctx.mapBuffer<const int>("resultsInt");
-    const float2* resultsFloat = ctx.mapBuffer<const float2>("resultsFloat");
+    std::vector<int> resultsInt = ctx.readBuffer<int>("resultsInt");
+    std::vector<float2> resultsFloat = ctx.readBuffer<float2>("resultsFloat");
     for (uint32_t i = 0; i < kNumTests; i++)
     {
         const auto expected = getCpuResult(testType[i], testValue[i], data[i]);
         EXPECT_EQ(resultsInt[i], expected.first) << "i = " << i;
         EXPECT_EQ(resultsFloat[i], expected.second) << "i = " << i;
     }
-    ctx.unmapBuffer("resultsInt");
-    ctx.unmapBuffer("resultsFloat");
 }
 /// This correctly and reliably fails, but there is no way to automatically test it.
 // GPU_TEST(Inheritance_CheckInvalid)
 // {
-//     Program::DefineList defines;
+//     DefineList defines;
 //     defines.add("NUM_TESTS", std::to_string(kNumTests));
 //     defines.add("COMPILE_WITH_ERROR", "1");
 
-//     ctx.createProgram("Tests/Slang/InheritanceTests.cs.slang", "testInheritance", defines, Shader::CompilerFlags::None, "6_5");
+//     ctx.createProgram("Tests/Slang/InheritanceTests.cs.slang", "testInheritance", defines, Program::CompilerFlags::None, "6_5");
 // }
 
 } // namespace Falcor

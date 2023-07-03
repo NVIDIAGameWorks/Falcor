@@ -1,12 +1,10 @@
 #!/bin/sh
 
-export pwd=`pwd`
-export project_dir=$pwd/..
-export python_dir=$project_dir/tools/.packman/python
-export python=$python_dir/bin/python3
+DIR="$( dirname -- "$BASH_SOURCE"; )";
 
-if [ ! -f "$python" ]; then
-    $project_dir/setup.sh
+if [ -z "${CONDA_PYTHON_EXE}" ]; then
+    echo "Python tests require conda environment to run."
+    exit 1
 fi
 
-env LD_LIBRARY_PATH="$python_dir/lib" $python $pwd/testing/run_python_tests.py $@
+python ${DIR}/testing/run_python_tests.py $@

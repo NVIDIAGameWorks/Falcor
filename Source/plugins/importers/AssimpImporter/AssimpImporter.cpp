@@ -436,7 +436,9 @@ void createLights(ImporterData& data)
             createPointLight(data, pAiLight);
             break;
         default:
-            logWarning("AssimpImporter: Light '{}' has unsupported type {}, ignoring.", pAiLight->mName.C_Str(), pAiLight->mType);
+            logWarning(
+                "AssimpImporter: Light '{}' has unsupported type {}, ignoring.", pAiLight->mName.C_Str(), static_cast<int>(pAiLight->mType)
+            );
             continue;
         }
     }
@@ -1088,18 +1090,8 @@ void dumpAssimpData(ImporterData& data)
     logInfo(out);
 }
 
-} // namespace
-
-std::unique_ptr<Importer> AssimpImporter::create()
+void importInternal(const void* buffer, size_t byteSize, const std::filesystem::path& path, SceneBuilder& builder)
 {
-    return std::make_unique<AssimpImporter>();
-}
-
-void AssimpImporter::importScene(const std::filesystem::path& path, SceneBuilder& builder, const pybind11::dict& dict)
-{
-    if (!path.is_absolute())
-        throw ImporterError(path, "Expected absolute path.");
-
     TimeReport timeReport;
 
     const SceneBuilder::Flags builderFlags = builder.getFlags();
@@ -1125,7 +1117,19 @@ void AssimpImporter::importScene(const std::filesystem::path& path, SceneBuilder
     Assimp::Importer importer;
     importer.SetPropertyInteger(AI_CONFIG_PP_RVC_FLAGS, removeFlags);
 
-    const aiScene* pScene = importer.ReadFile(path.string().c_str(), assimpFlags);
+    const aiScene* pScene = nullptr;
+    if (!path.empty())
+    {
+        FALCOR_ASSERT(buffer == nullptr && byteSize == 0);
+        if (!path.is_absolute())
+            throw ImporterError(path, "Expected absolute path.");
+        pScene = importer.ReadFile(path.string().c_str(), assimpFlags);
+    }
+    else
+    {
+        FALCOR_ASSERT(buffer != nullptr && byteSize != 0);
+        pScene = importer.ReadFileFromMemory(buffer, byteSize, assimpFlags);
+    }
     if (!pScene)
         throw ImporterError(path, "Failed to open scene: {}", importer.GetErrorString());
 
@@ -1168,6 +1172,29 @@ void AssimpImporter::importScene(const std::filesystem::path& path, SceneBuilder
     timeReport.measure("Creating lights");
 
     timeReport.printToLog();
+}
+
+} // namespace
+
+std::unique_ptr<Importer> AssimpImporter::create()
+{
+    return std::make_unique<AssimpImporter>();
+}
+
+void AssimpImporter::importScene(const std::filesystem::path& path, SceneBuilder& builder, const pybind11::dict& dict)
+{
+    importInternal(nullptr, 0, path, builder);
+}
+
+void AssimpImporter::importSceneFromMemory(
+    const void* buffer,
+    size_t byteSize,
+    std::string_view extension,
+    SceneBuilder& builder,
+    const pybind11::dict& dict
+)
+{
+    importInternal(buffer, byteSize, {}, builder);
 }
 
 extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registry)

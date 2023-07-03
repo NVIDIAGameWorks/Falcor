@@ -27,6 +27,8 @@
  **************************************************************************/
 #pragma once
 
+#include "Core/Enum.h"
+
 namespace Falcor
 {
 enum class ComparisonFunc
@@ -41,4 +43,21 @@ enum class ComparisonFunc
     Greater,      ///< Passes if source is greater than to the destination
     GreaterEqual, ///< Passes if source is greater than or equal to the destination
 };
-}
+
+FALCOR_ENUM_INFO(
+    ComparisonFunc,
+    {
+        {ComparisonFunc::Disabled, "Disabled"},
+        {ComparisonFunc::Never, "Never"},
+        {ComparisonFunc::Always, "Always"},
+        {ComparisonFunc::Less, "Less"},
+        {ComparisonFunc::Equal, "Equal"},
+        {ComparisonFunc::NotEqual, "NotEqual"},
+        {ComparisonFunc::LessEqual, "LessEqual"},
+        {ComparisonFunc::Greater, "Greater"},
+        {ComparisonFunc::GreaterEqual, "GreaterEqual"},
+    }
+);
+FALCOR_ENUM_REGISTER(ComparisonFunc);
+
+} // namespace Falcor

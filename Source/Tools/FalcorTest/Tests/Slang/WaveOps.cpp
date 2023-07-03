@@ -114,8 +114,8 @@ void testWaveMinMax(GPUUnitTestContext& ctx, bool conditional)
 {
     ref<Device> pDevice = ctx.getDevice();
 
-    Program::DefineList defines = {{"CONDITIONAL", conditional ? "1" : "0"}};
-    ctx.createProgram(kShaderFilename, "testWaveMinMax", defines, Shader::CompilerFlags::None, "6_0");
+    DefineList defines = {{"CONDITIONAL", conditional ? "1" : "0"}};
+    ctx.createProgram(kShaderFilename, "testWaveMinMax", defines, Program::CompilerFlags::None, "6_0");
     ctx.allocateStructuredBuffer("result", kNumElems * 2);
 
     auto var = ctx.vars().getRootVar();
@@ -147,20 +147,19 @@ void testWaveMinMax(GPUUnitTestContext& ctx, bool conditional)
     std::vector<float> expectedResult = computeMinMaxResult(testData, laneCount, conditional);
     FALCOR_ASSERT(expectedResult.size() == testData.size() * 2);
 
-    const float4* result = ctx.mapBuffer<const float4>("result");
+    std::vector<float4> result = ctx.readBuffer<float4>("result");
     for (size_t i = 0; i < testData.size(); i++)
     {
         EXPECT_EQ(result[2 * i + 0].x, expectedResult[2 * i + 0]) << "WaveActiveMin (i = " << i << ")";
         EXPECT_EQ(result[2 * i + 1].x, expectedResult[2 * i + 1]) << "WaveActiveMax (i = " << i << ")";
     }
-    ctx.unmapBuffer("result");
 }
 
 uint32_t queryLaneCount(GPUUnitTestContext& ctx)
 {
     ref<Device> pDevice = ctx.getDevice();
 
-    ctx.createProgram(kShaderFilename, "testWaveGetLaneCount", Program::DefineList(), Shader::CompilerFlags::None, "6_0");
+    ctx.createProgram(kShaderFilename, "testWaveGetLaneCount", DefineList(), Program::CompilerFlags::None, "6_0");
 
     auto var = ctx.vars().getRootVar();
     uint32_t zero = 0;
@@ -184,11 +183,11 @@ GPU_TEST(WaveGetLaneCount)
 }
 
 // WaveMatch intrinsic is available only on D3D12.
-GPU_TEST_D3D12(WaveMatch)
+GPU_TEST(WaveMatch, Device::Type::D3D12)
 {
     ref<Device> pDevice = ctx.getDevice();
 
-    ctx.createProgram(kShaderFilename, "testWaveMatch", Program::DefineList(), Shader::CompilerFlags::None, "6_5");
+    ctx.createProgram(kShaderFilename, "testWaveMatch", DefineList(), Program::CompilerFlags::None, "6_5");
     ctx.allocateStructuredBuffer("result", kNumElems);
 
     auto var = ctx.vars().getRootVar();
@@ -213,7 +212,7 @@ GPU_TEST_D3D12(WaveMatch)
     std::vector<uint4> expectedResult = computeMatchResult(matchData, laneCount);
     FALCOR_ASSERT(expectedResult.size() == matchData.size());
 
-    const uint4* result = ctx.mapBuffer<const uint4>("result");
+    std::vector<uint4> result = ctx.readBuffer<uint4>("result");
     for (size_t i = 0; i < matchData.size(); i++)
     {
         EXPECT_EQ(result[i].x, expectedResult[i].x) << "i = " << i;
@@ -221,7 +220,6 @@ GPU_TEST_D3D12(WaveMatch)
         EXPECT_EQ(result[i].z, expectedResult[i].z) << "i = " << i;
         EXPECT_EQ(result[i].w, expectedResult[i].w) << "i = " << i;
     }
-    ctx.unmapBuffer("result");
 }
 
 GPU_TEST(WaveMinMax)
@@ -245,13 +243,13 @@ GPU_TEST(WaveMaxSimpleFloat, "Disabled due to compiler issues")
     ref<Device> pDevice = ctx.getDevice();
 
     if (uint32_t laneCount = queryLaneCount(ctx); laneCount != 32)
-        throw SkippingTestException("Test assumes warp size 32");
+        ctx.skip("Test assumes warp size 32");
 
     std::vector<float> testData(32);
     for (size_t i = 0; i < testData.size(); i++)
         testData[i] = (float)i - 15;
 
-    ctx.createProgram(kShaderFilename, "testWaveMaxSimpleFloat", Program::DefineList(), Shader::CompilerFlags::None, "6_0");
+    ctx.createProgram(kShaderFilename, "testWaveMaxSimpleFloat", DefineList(), Program::CompilerFlags::None, "6_0");
     ctx.allocateStructuredBuffer("result", 32);
 
     auto var = ctx.vars().getRootVar();
@@ -260,13 +258,12 @@ GPU_TEST(WaveMaxSimpleFloat, "Disabled due to compiler issues")
     ctx.runProgram(32, 1, 1);
 
     // Verify result.
-    const float4* result = ctx.mapBuffer<const float4>("result");
+    std::vector<float4> result = ctx.readBuffer<float4>("result");
     for (size_t i = 0; i < 32; i++)
     {
         float expected = testData[i] <= -2.f ? -2.f : testData[i];
         EXPECT_EQ(result[i].x, expected) << "i = " << i;
     }
-    ctx.unmapBuffer("result");
 }
 
 GPU_TEST(WaveMaxSimpleInt)
@@ -280,13 +277,13 @@ GPU_TEST(WaveMaxSimpleInt)
     ref<Device> pDevice = ctx.getDevice();
 
     if (uint32_t laneCount = queryLaneCount(ctx); laneCount != 32)
-        throw SkippingTestException("Test assumes warp size 32");
+        ctx.skip("Test assumes warp size 32");
 
     std::vector<int> testData(32);
     for (size_t i = 0; i < testData.size(); i++)
         testData[i] = (int)i - 15;
 
-    ctx.createProgram(kShaderFilename, "testWaveMaxSimpleInt", Program::DefineList(), Shader::CompilerFlags::None, "6_0");
+    ctx.createProgram(kShaderFilename, "testWaveMaxSimpleInt", DefineList(), Program::CompilerFlags::None, "6_0");
     ctx.allocateStructuredBuffer("result", 32);
 
     auto var = ctx.vars().getRootVar();
@@ -295,12 +292,11 @@ GPU_TEST(WaveMaxSimpleInt)
     ctx.runProgram(32, 1, 1);
 
     // Verify result.
-    const int4* result = ctx.mapBuffer<const int4>("result");
+    std::vector<int4> result = ctx.readBuffer<int4>("result");
     for (size_t i = 0; i < 32; i++)
     {
         int expected = testData[i] <= -2 ? -2 : testData[i];
         EXPECT_EQ(result[i].x, expected) << "i = " << i;
     }
-    ctx.unmapBuffer("result");
 }
 } // namespace Falcor

@@ -48,7 +48,7 @@ GPU_TEST(SlangReinterpretCast)
 {
     ref<Device> pDevice = ctx.getDevice();
 
-    ctx.createProgram("Tests/Slang/SlangReinterpretCast.cs.slang", "main", Program::DefineList(), Shader::CompilerFlags::None, "6_5");
+    ctx.createProgram("Tests/Slang/SlangReinterpretCast.cs.slang", "main", DefineList(), Program::CompilerFlags::None, "6_5");
     ctx.allocateStructuredBuffer("resultA", kElems);
     ctx.allocateStructuredBuffer("resultB", kElems);
     ctx.allocateStructuredBuffer("resultC", kElems);
@@ -81,7 +81,7 @@ GPU_TEST(SlangReinterpretCast)
     ctx.runProgram(kElems);
 
     // Verify final result matches our input.
-    const A* result = ctx.mapBuffer<const A>("resultA");
+    std::vector<A> result = ctx.readBuffer<A>("resultA");
     for (size_t i = 0; i < data.size(); i++)
     {
         EXPECT_EQ(result[i].a, data[i].a);
@@ -101,18 +101,16 @@ GPU_TEST(SlangReinterpretCast)
         EXPECT_EQ((float)result[i].j.x, (float)data[i].j.x);
         EXPECT_EQ((float)result[i].j.y, (float)data[i].j.y);
     }
-    ctx.unmapBuffer("resultA");
 
     // Verify the intermediate results. We'll just do a binary comparison for simplicity.
     auto verify = [&](const char* bufferName)
     {
-        const uint32_t* result = ctx.mapBuffer<const uint32_t>(bufferName);
+        std::vector<uint32_t> result = ctx.readBuffer<uint32_t>(bufferName);
         const uint32_t* rawData = reinterpret_cast<const uint32_t*>(data.data());
         for (size_t i = 0; i < data.size() * sizeof(data[0]) / 4; i++)
         {
             EXPECT_EQ(result[i], rawData[i]) << "i = " << i << " buffer " << bufferName;
         }
-        ctx.unmapBuffer(bufferName);
     };
 
     verify("resultA");

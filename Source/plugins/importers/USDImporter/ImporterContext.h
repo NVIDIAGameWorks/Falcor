@@ -230,6 +230,7 @@ namespace Falcor
         std::vector<SubSkeleton> subskeletons;
     };
 
+
     // ImporterContext
 
     // Importer data and helper functions
@@ -287,6 +288,7 @@ namespace Falcor
         bool createCamera(const UsdPrim& cameraPrim);
         void createPointInstances(const UsdPrim& prim, PrototypeGeom* proto = nullptr);
         void createSkeleton(const UsdPrim& prim);
+
 
         // Animation
 

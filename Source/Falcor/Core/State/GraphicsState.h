@@ -51,6 +51,7 @@ class GraphicsVars;
  */
 class FALCOR_API GraphicsState : public Object
 {
+    FALCOR_OBJECT(GraphicsState)
 public:
     virtual ~GraphicsState();
 

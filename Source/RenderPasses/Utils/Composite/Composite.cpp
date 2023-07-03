@@ -48,31 +48,31 @@ namespace
     };
 }
 
-Composite::Composite(ref<Device> pDevice, const Dictionary& dict)
+Composite::Composite(ref<Device> pDevice, const Properties& props)
     : RenderPass(pDevice)
 {
     // Parse dictionary.
-    for (const auto& [key, value] : dict)
+    for (const auto& [key, value] : props)
     {
         if (key == kMode) mMode = value;
         else if (key == kScaleA) mScaleA = value;
         else if (key == kScaleB) mScaleB = value;
         else if (key == kOutputFormat) mOutputFormat = value;
-        else logWarning("Unknown field '{}' in Composite pass dictionary.", key);
+        else logWarning("Unknown property '{}' in Composite pass properties.", key);
     }
 
     // Create resources.
-    mCompositePass = ComputePass::create(mpDevice, kShaderFile, "main", Program::DefineList(), false);
+    mCompositePass = ComputePass::create(mpDevice, kShaderFile, "main", DefineList(), false);
 }
 
-Dictionary Composite::getScriptingDictionary()
+Properties Composite::getProperties() const
 {
-    Dictionary dict;
-    dict[kMode] = mMode;
-    dict[kScaleA] = mScaleA;
-    dict[kScaleB] = mScaleB;
-    if (mOutputFormat != ResourceFormat::Unknown) dict[kOutputFormat] = mOutputFormat;
-    return dict;
+    Properties props;
+    props[kMode] = mMode;
+    props[kScaleA] = mScaleA;
+    props[kScaleB] = mScaleB;
+    if (mOutputFormat != ResourceFormat::Unknown) props[kOutputFormat] = mOutputFormat;
+    return props;
 }
 
 RenderPassReflection Composite::reflect(const CompileData& compileData)
@@ -116,12 +116,12 @@ void Composite::execute(RenderContext* pRenderContext, const RenderData& renderD
 void Composite::renderUI(Gui::Widgets& widget)
 {
     widget.text("This pass scales and composites inputs A and B together");
-    widget.dropdown("Mode", kModeList, reinterpret_cast<uint32_t&>(mMode));
+    widget.dropdown("Mode", mMode);
     widget.var("Scale A", mScaleA);
     widget.var("Scale B", mScaleB);
 }
 
-Program::DefineList Composite::getDefines() const
+DefineList Composite::getDefines() const
 {
     uint32_t compositeMode = 0;
     switch (mMode)
@@ -152,16 +152,9 @@ Program::DefineList Composite::getDefines() const
         break;
     }
 
-    Program::DefineList defines;
+    DefineList defines;
     defines.add("COMPOSITE_MODE", std::to_string(compositeMode));
     defines.add("OUTPUT_FORMAT", std::to_string(outputFormat));
 
     return defines;
-}
-
-void Composite::registerBindings(pybind11::module& m)
-{
-    pybind11::enum_<Composite::Mode> compositeMode(m, "CompositeMode");
-    compositeMode.value("Add", Composite::Mode::Add);
-    compositeMode.value("Multiply", Composite::Mode::Multiply);
 }

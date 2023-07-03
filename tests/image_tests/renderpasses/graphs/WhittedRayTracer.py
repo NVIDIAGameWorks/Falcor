@@ -2,11 +2,11 @@ from falcor import *
 
 def render_graph_WhittedRayTracer():
     g = RenderGraph("WhittedRayTracer")
-    WhittedRayTracer = createPass("WhittedRayTracer", {'maxBounces': 7, 'texLODMode': TexLODMode.RayCones, 'rayConeMode': RayConeMode.Unified, 'rayConeFilterMode': RayFootprintFilterMode.AnisotropicWhenRefraction, 'useRoughnessToVariance': False})
+    WhittedRayTracer = createPass("WhittedRayTracer", {'maxBounces': 7, 'texLODMode': 'RayCones', 'rayConeMode': 'Unified', 'rayConeFilterMode': 'AnisotropicWhenRefraction', 'useRoughnessToVariance': False})
     g.addPass(WhittedRayTracer, "WhittedRayTracer")
-    GBufferRT = createPass("GBufferRT", {'samplePattern': SamplePattern.Center, 'sampleCount': 1})
+    GBufferRT = createPass("GBufferRT", {'samplePattern': 'Center', 'sampleCount': 1})
     g.addPass(GBufferRT, "GBufferRT")
-    ToneMapper = createPass("ToneMapper", {'autoExposure': False, 'exposureValue': 1.0, 'exposureCompensation': 2.2, 'operator': ToneMapOp.Linear})
+    ToneMapper = createPass("ToneMapper", {'autoExposure': False, 'exposureValue': 1.0, 'exposureCompensation': 2.2, 'operator': 'Linear'})
     g.addPass(ToneMapper, "ToneMapper")
     g.addEdge("WhittedRayTracer.color", "ToneMapper.src")
     g.addEdge("GBufferRT.posW", "WhittedRayTracer.posW")

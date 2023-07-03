@@ -115,6 +115,7 @@ CASE(float3, ResourceFormat::RGB32Float);
  */
 class FALCOR_API Buffer : public Resource
 {
+    FALCOR_OBJECT(Buffer)
 public:
     /**
      * Buffer access flags.

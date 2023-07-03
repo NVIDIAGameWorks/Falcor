@@ -27,6 +27,7 @@
  **************************************************************************/
 #pragma once
 #include "Falcor.h"
+#include "Core/Enum.h"
 #include "RenderGraph/RenderPass.h"
 
 using namespace Falcor;
@@ -51,20 +52,23 @@ public:
         Multiply,
     };
 
-    static ref<Composite> create(ref<Device> pDevice, const Dictionary& dict) { return make_ref<Composite>(pDevice, dict); }
+    FALCOR_ENUM_INFO(Mode, {
+        { Mode::Add, "Add" },
+        { Mode::Multiply, "Multiply" },
+    });
 
-    Composite(ref<Device> pDevice, const Dictionary& dict);
+    static ref<Composite> create(ref<Device> pDevice, const Properties& props) { return make_ref<Composite>(pDevice, props); }
 
-    virtual Dictionary getScriptingDictionary() override;
+    Composite(ref<Device> pDevice, const Properties& props);
+
+    virtual Properties getProperties() const override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
     virtual void compile(RenderContext* pRenderContext, const CompileData& compileData) override;
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
     virtual void renderUI(Gui::Widgets& widget) override;
 
-    static void registerBindings(pybind11::module& m);
-
 private:
-    Program::DefineList getDefines() const;
+    DefineList getDefines() const;
 
     uint2                       mFrameDim = { 0, 0 };
     Mode                        mMode = Mode::Add;
@@ -74,3 +78,5 @@ private:
 
     ref<ComputePass>            mCompositePass;
 };
+
+FALCOR_ENUM_REGISTER(Composite::Mode);

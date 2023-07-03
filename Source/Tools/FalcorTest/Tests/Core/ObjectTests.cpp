@@ -33,6 +33,7 @@ namespace Falcor
 
 class DummyObject : public Object
 {
+    FALCOR_OBJECT(DummyObject)
 public:
     DummyObject() { getCount()++; }
     ~DummyObject() { getCount()--; }
@@ -91,6 +92,7 @@ class DummyBuffer;
 
 class DummyDevice : public Object
 {
+    FALCOR_OBJECT(DummyDevice)
 public:
     ref<DummyBuffer> buffer;
 
@@ -106,6 +108,7 @@ public:
 
 class DummyBuffer : public Object
 {
+    FALCOR_OBJECT(DummyBuffer)
 public:
     BreakableReference<DummyDevice> device;
 

@@ -111,7 +111,7 @@ void setupSamplingTest(GPUUnitTestContext& ctx, const SamplingTestSpec& spec, co
     uint32_t testCount = (uint32_t)spec.bsdfConfigs.size();
     uint32_t binCount = spec.phiBinCount * spec.cosThetaBinCount;
 
-    Program::DefineList defines;
+    DefineList defines;
     defines.add("TEST_BSDF_IMPORT", spec.bsdfImport);
     defines.add("TEST_BSDF", spec.bsdf);
     defines.add("TEST_BSDF_INIT", spec.bsdfInit);

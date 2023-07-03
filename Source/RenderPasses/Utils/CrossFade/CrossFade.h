@@ -38,11 +38,11 @@ class CrossFade : public RenderPass
 public:
     FALCOR_PLUGIN_CLASS(CrossFade, "CrossFade", "CrossFade pass.");
 
-    static ref<CrossFade> create(ref<Device> pDevice, const Dictionary& dict) { return make_ref<CrossFade>(pDevice, dict); }
+    static ref<CrossFade> create(ref<Device> pDevice, const Properties& props) { return make_ref<CrossFade>(pDevice, props); }
 
-    CrossFade(ref<Device> pDevice, const Dictionary& dict);
+    CrossFade(ref<Device> pDevice, const Properties& props);
 
-    virtual Dictionary getScriptingDictionary() override;
+    virtual Properties getProperties() const override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
     virtual void setScene(RenderContext* pRenderContext, const ref<Scene>& pScene) override;
     virtual void compile(RenderContext* pRenderContext, const CompileData& compileData) override;

@@ -108,6 +108,7 @@ namespace Falcor
     */
     class FALCOR_API Scene : public Object
     {
+        FALCOR_OBJECT(Scene)
     public:
         using GeometryType = ::Falcor::GeometryType;
         using GeometryTypeFlags = ::Falcor::GeometryTypeFlags;
@@ -451,6 +452,7 @@ namespace Falcor
         /** Create scene from file.
             \param[in] pDevice GPU device.
             \param[in] path Import the scene from this file path.
+            \param[in] settings Optional settings.
             \return Scene object, or throws an ImporterError if import went wrong.
         */
         static ref<Scene> create(ref<Device> pDevice, const std::filesystem::path& path, const Settings& settings = Settings());
@@ -472,7 +474,7 @@ namespace Falcor
             The user is responsible to check for this and update all programs that access the scene.
             \return List of shader defines.
         */
-        Shader::DefineList getSceneDefines() const;
+        DefineList getSceneDefines() const;
 
         /** Get type conformances.
             These type conformances must be set on all programs that access the scene.
@@ -1109,7 +1111,7 @@ namespace Falcor
         void createMeshUVTiles(const std::vector<MeshDesc>& meshDesc, const std::vector<uint32_t>& indexData, const std::vector<PackedStaticVertexData>& staticData);
 
         void updateSceneDefines();
-        Shader::DefineList getSceneSDFGridDefines() const;
+        DefineList getSceneSDFGridDefines() const;
 
         /** Set the SDF grid config if this scene contains any SDF grid geometry.
         */
@@ -1309,8 +1311,8 @@ namespace Falcor
         Metadata mMetadata;                                         ///< Importer-provided metadata.
         RenderSettings mRenderSettings;                             ///< Render settings.
         RenderSettings mPrevRenderSettings;
-        Shader::DefineList mSceneDefines;                           ///< Current list of defines that need to be set on any program accessing the scene.
-        Shader::DefineList mPrevSceneDefines;                       ///< List of defines for the previous frame.
+        DefineList mSceneDefines;                           ///< Current list of defines that need to be set on any program accessing the scene.
+        DefineList mPrevSceneDefines;                       ///< List of defines for the previous frame.
         Program::TypeConformanceList mTypeConformances;             ///< Current list of type conformances that need to be set on any program accessing the scene.
 
         UpdateCallback mUpdateCallback;                             ///< Scene update callback.

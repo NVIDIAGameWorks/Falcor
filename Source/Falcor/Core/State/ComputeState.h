@@ -44,6 +44,7 @@ class ComputeVars;
  */
 class FALCOR_API ComputeState : public Object
 {
+    FALCOR_OBJECT(ComputeState)
 public:
     ~ComputeState() = default;
 

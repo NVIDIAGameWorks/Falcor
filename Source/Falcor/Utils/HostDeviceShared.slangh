@@ -55,6 +55,7 @@
 #define CONST_FUNCTION const
 #define STD_NAMESPACE std::
 
+#include "Core/Enum.h"
 #include "Utils/Math/ScalarMath.h"
 #include "Utils/Math/Vector.h"
 #include "Utils/Math/Matrix.h"
@@ -84,5 +85,8 @@ namespace Falcor
 #define SETTER_DECL [mutating]
 #define CONST_FUNCTION
 #define STD_NAMESPACE
+
+#define FALCOR_ENUM_INFO(T, ...)
+#define FALCOR_ENUM_REGISTER(T)
 
 #endif // HOST_CODE

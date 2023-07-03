@@ -2,13 +2,13 @@ from falcor import *
 
 def render_graph_PathTracerNRD():
     g = RenderGraph("PathTracerNRD")
-    GBufferRT = createPass("GBufferRT", {'samplePattern': SamplePattern.Halton, 'sampleCount': 32, 'useAlphaTest': True})
+    GBufferRT = createPass("GBufferRT", {'samplePattern': 'Halton', 'sampleCount': 32, 'useAlphaTest': True})
     g.addPass(GBufferRT, "GBufferRT")
     PathTracer = createPass("PathTracer", {'samplesPerPixel': 1, 'maxSurfaceBounces': 10, 'useRussianRoulette': True})
     g.addPass(PathTracer, "PathTracer")
 
     # Reference path passes
-    AccumulatePass = createPass("AccumulatePass", {'enabled': True, 'precisionMode': AccumulatePrecision.Single})
+    AccumulatePass = createPass("AccumulatePass", {'enabled': True, 'precisionMode': 'Single'})
     g.addPass(AccumulatePass, "AccumulatePass")
     ToneMapperReference = createPass("ToneMapper", {'autoExposure': False, 'exposureCompensation': 0.0})
     g.addPass(ToneMapperReference, "ToneMapperReference")
@@ -16,19 +16,19 @@ def render_graph_PathTracerNRD():
     # NRD path passes
     NRDDiffuseSpecular = createPass("NRD", {'maxIntensity': 250.0})
     g.addPass(NRDDiffuseSpecular, "NRDDiffuseSpecular")
-    NRDDeltaReflection = createPass("NRD", {'method': NRDMethod.RelaxDiffuse, 'maxIntensity': 250.0, 'worldSpaceMotion': False,
+    NRDDeltaReflection = createPass("NRD", {'method': 'RelaxDiffuse', 'maxIntensity': 250.0, 'worldSpaceMotion': False,
                                             'enableReprojectionTestSkippingWithoutMotion': True, 'spatialVarianceEstimationHistoryThreshold': 1})
     g.addPass(NRDDeltaReflection, "NRDDeltaReflection")
-    NRDDeltaTransmission = createPass("NRD", {'method': NRDMethod.RelaxDiffuse, 'maxIntensity': 250.0, 'worldSpaceMotion': False,
+    NRDDeltaTransmission = createPass("NRD", {'method': 'RelaxDiffuse', 'maxIntensity': 250.0, 'worldSpaceMotion': False,
                                               'enableReprojectionTestSkippingWithoutMotion': True})
     g.addPass(NRDDeltaTransmission, "NRDDeltaTransmission")
-    NRDReflectionMotionVectors = createPass("NRD", {'method': NRDMethod.SpecularReflectionMv, 'worldSpaceMotion': False})
+    NRDReflectionMotionVectors = createPass("NRD", {'method': 'SpecularReflectionMv', 'worldSpaceMotion': False})
     g.addPass(NRDReflectionMotionVectors, "NRDReflectionMotionVectors")
-    NRDTransmissionMotionVectors = createPass("NRD", {'method': NRDMethod.SpecularDeltaMv, 'worldSpaceMotion': False})
+    NRDTransmissionMotionVectors = createPass("NRD", {'method': 'SpecularDeltaMv', 'worldSpaceMotion': False})
     g.addPass(NRDTransmissionMotionVectors, "NRDTransmissionMotionVectors")
     ModulateIllumination = createPass("ModulateIllumination", {'useResidualRadiance': False})
     g.addPass(ModulateIllumination, "ModulateIllumination")
-    DLSS = createPass("DLSSPass", {'enabled': True, 'profile': DLSSProfile.Balanced, 'motionVectorScale': DLSSMotionVectorScale.Relative, 'isHDR': True, 'sharpness': 0.0, 'exposure': 0.0})
+    DLSS = createPass("DLSSPass", {'enabled': True, 'profile': 'Balanced', 'motionVectorScale': 'Relative', 'isHDR': True, 'sharpness': 0.0, 'exposure': 0.0})
     g.addPass(DLSS, "DLSS")
     ToneMapperNRD = createPass("ToneMapper", {'autoExposure': False, 'exposureCompensation': 0.0})
     g.addPass(ToneMapperNRD, "ToneMapperNRD")

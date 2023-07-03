@@ -65,6 +65,8 @@ struct HomogeneousVolumeSampler
     */
     static bool sampleDistance<S : ISampleGenerator>(const float3 sigmaA, const float3 sigmaS, const float3 thp, inout S sg, out DistanceSample ds)
     {
+        ds = {};
+
         if (all(sigmaS == 0.f)) return false;
 
         const float3 sigmaT = sigmaA + sigmaS;

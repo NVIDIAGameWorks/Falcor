@@ -40,6 +40,16 @@ enum class ToneMapperOperator : uint32_t
     Aces,               ///< Aces Filmic Tone-Mapping
 };
 
+FALCOR_ENUM_INFO(ToneMapperOperator, {
+    { ToneMapperOperator::Linear, "Linear" },
+    { ToneMapperOperator::Reinhard, "Reinhard" },
+    { ToneMapperOperator::ReinhardModified, "ReinhardModified" },
+    { ToneMapperOperator::HejiHableAlu, "HejiHableAlu" },
+    { ToneMapperOperator::HableUc2, "HableUc2" },
+    { ToneMapperOperator::Aces, "Aces" },
+});
+FALCOR_ENUM_REGISTER(ToneMapperOperator);
+
 /** Tone mapper parameters shared between host and device.
     Make sure struct layout follows the HLSL packing rules as it is uploaded as a memory blob.
     Do not use bool's as they are 1 byte in Visual Studio, 4 bytes in HLSL.

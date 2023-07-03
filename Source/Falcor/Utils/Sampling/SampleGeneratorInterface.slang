@@ -73,3 +73,14 @@ float3 sampleNext3D<S : ISampleGenerator>(inout S sg)
     sample.z = sampleNext1D(sg);
     return sample;
 }
+
+float4 sampleNext4D<S : ISampleGenerator>(inout S sg)
+{
+    float4 sample;
+    // Don't use the float4 initializer to ensure consistent order of evaluation.
+    sample.x = sampleNext1D(sg);
+    sample.y = sampleNext1D(sg);
+    sample.z = sampleNext1D(sg);
+    sample.w = sampleNext1D(sg);
+    return sample;
+}

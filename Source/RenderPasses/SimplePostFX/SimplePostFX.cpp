@@ -80,11 +80,11 @@ extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registr
     ScriptBindings::registerBinding(regSimplePostFX);
 }
 
-SimplePostFX::SimplePostFX(ref<Device> pDevice, const Dictionary& dict)
+SimplePostFX::SimplePostFX(ref<Device> pDevice, const Properties& props)
     : RenderPass(pDevice)
 {
     // Deserialize pass from dictionary.
-    for (const auto& [key, value] : dict)
+    for (const auto& [key, value] : props)
     {
         if (key == kEnabled) setEnabled(value);
         else if (key == kOutputSize) mOutputSizeSelection = value;
@@ -103,7 +103,7 @@ SimplePostFX::SimplePostFX(ref<Device> pDevice, const Dictionary& dict)
         else if (key == kColorOffsetScalar) setColorOffsetScalar(value);
         else if (key == kColorScaleScalar) setColorScaleScalar(value);
         else if (key == kColorPowerScalar) setColorPowerScalar(value);
-        else logWarning("Unknown field '{}' in SimplePostFX dictionary.", key);
+        else logWarning("Unknown property '{}' in SimplePostFX properties.", key);
     }
 
     Sampler::Desc samplerDesc;
@@ -111,33 +111,33 @@ SimplePostFX::SimplePostFX(ref<Device> pDevice, const Dictionary& dict)
     samplerDesc.setAddressingMode(Sampler::AddressMode::Border, Sampler::AddressMode::Border, Sampler::AddressMode::Border);
     mpLinearSampler = Sampler::create(mpDevice, samplerDesc);
 
-    Program::DefineList defines;
+    DefineList defines;
     mpDownsamplePass = ComputePass::create(mpDevice, kShaderFile, "downsample", defines);
     mpUpsamplePass = ComputePass::create(mpDevice, kShaderFile, "upsample", defines);
     mpPostFXPass = ComputePass::create(mpDevice, kShaderFile, "runPostFX", defines);
 }
 
-Dictionary SimplePostFX::getScriptingDictionary()
+Properties SimplePostFX::getProperties() const
 {
-    Dictionary dict;
-    dict[kEnabled] = getEnabled();
-    dict[kOutputSize] = mOutputSizeSelection;
-    if (mOutputSizeSelection == RenderPassHelpers::IOSize::Fixed) dict[kFixedOutputSize] = mFixedOutputSize;
-    dict[kWipe] = getWipe();
-    dict[kBloomAmount] = getBloomAmount();
-    dict[kStarAmount] = getStarAmount();
-    dict[kStarAngle] = getStarAngle();
-    dict[kVignetteAmount] = getVignetteAmount();
-    dict[kChromaticAberrationAmount] = getChromaticAberrationAmount();
-    dict[kBarrelDistortAmount] = getBarrelDistortAmount();
-    dict[kSaturationCurve] = getSaturationCurve();
-    dict[kColorOffset] = getColorOffset();
-    dict[kColorScale] = getColorScale();
-    dict[kColorPower] = getColorPower();
-    dict[kColorOffsetScalar] = getColorOffsetScalar();
-    dict[kColorScaleScalar] = getColorScaleScalar();
-    dict[kColorPowerScalar] = getColorPowerScalar();
-    return dict;
+    Properties props;
+    props[kEnabled] = getEnabled();
+    props[kOutputSize] = mOutputSizeSelection;
+    if (mOutputSizeSelection == RenderPassHelpers::IOSize::Fixed) props[kFixedOutputSize] = mFixedOutputSize;
+    props[kWipe] = getWipe();
+    props[kBloomAmount] = getBloomAmount();
+    props[kStarAmount] = getStarAmount();
+    props[kStarAngle] = getStarAngle();
+    props[kVignetteAmount] = getVignetteAmount();
+    props[kChromaticAberrationAmount] = getChromaticAberrationAmount();
+    props[kBarrelDistortAmount] = getBarrelDistortAmount();
+    props[kSaturationCurve] = getSaturationCurve();
+    props[kColorOffset] = getColorOffset();
+    props[kColorScale] = getColorScale();
+    props[kColorPower] = getColorPower();
+    props[kColorOffsetScalar] = getColorOffsetScalar();
+    props[kColorScaleScalar] = getColorScaleScalar();
+    props[kColorPowerScalar] = getColorPowerScalar();
+    return props;
 }
 
 RenderPassReflection SimplePostFX::reflect(const CompileData& compileData)
@@ -286,7 +286,7 @@ void SimplePostFX::renderUI(Gui::Widgets& widget)
 {
     // Controls for output size.
     // When output size requirements change, we'll trigger a graph recompile to update the render pass I/O sizes.
-    if (widget.dropdown("Output size", RenderPassHelpers::kIOSizeList, (uint32_t&)mOutputSizeSelection)) requestRecompile();
+    if (widget.dropdown("Output size", mOutputSizeSelection)) requestRecompile();
     if (mOutputSizeSelection == RenderPassHelpers::IOSize::Fixed)
     {
         if (widget.var("Size in pixels", mFixedOutputSize, 32u, 16384u)) requestRecompile();

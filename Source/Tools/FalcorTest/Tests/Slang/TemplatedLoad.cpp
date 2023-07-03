@@ -50,7 +50,7 @@ void test(GPUUnitTestContext& ctx, const std::string& entryPoint, const size_t n
 
     std::vector<uint16_t> elems = generateData(n);
 
-    ctx.createProgram("Tests/Slang/TemplatedLoad.cs.slang", entryPoint, Program::DefineList(), Shader::CompilerFlags::None, "6_5");
+    ctx.createProgram("Tests/Slang/TemplatedLoad.cs.slang", entryPoint, DefineList(), Program::CompilerFlags::None, "6_5");
     ctx.allocateStructuredBuffer("result", (uint32_t)elems.size());
 
     auto var = ctx.vars().getRootVar();
@@ -60,12 +60,11 @@ void test(GPUUnitTestContext& ctx, const std::string& entryPoint, const size_t n
     ctx.runProgram(1, 1, 1);
 
     // Verify results.
-    const uint16_t* result = ctx.mapBuffer<const uint16_t>("result");
+    std::vector<uint16_t> result = ctx.readBuffer<uint16_t>("result");
     for (size_t i = 0; i < elems.size(); i++)
     {
         EXPECT_EQ(result[i], elems[i]) << "i = " << i;
     }
-    ctx.unmapBuffer("result");
 }
 } // namespace
 

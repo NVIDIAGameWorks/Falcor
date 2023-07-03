@@ -38,12 +38,11 @@ GPU_TEST(RadicalInverse)
     ctx["TestCB"]["resultSize"] = 4;
     ctx.runProgram();
 
-    const float* s = ctx.mapBuffer<const float>("result");
+    std::vector<float> s = ctx.readBuffer<float>("result");
     EXPECT_EQ(s[0], 0.f);
     EXPECT_EQ(s[1], 0.5f);
     EXPECT_EQ(s[2], 0.25f);
     EXPECT_EQ(s[3], 0.75f);
-    ctx.unmapBuffer("result");
 }
 
 } // namespace Falcor

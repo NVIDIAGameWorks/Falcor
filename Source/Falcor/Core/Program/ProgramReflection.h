@@ -582,6 +582,7 @@ private:
  */
 class FALCOR_API ReflectionType : public Object
 {
+    FALCOR_OBJECT(ReflectionType)
 public:
     virtual ~ReflectionType() = default;
 
@@ -1205,6 +1206,7 @@ private:
  */
 class FALCOR_API ReflectionVar : public Object
 {
+    FALCOR_OBJECT(ReflectionVar)
 public:
     /**
      * Create a new object
@@ -1249,6 +1251,7 @@ class ProgramReflection;
  */
 class FALCOR_API ParameterBlockReflection : public Object
 {
+    FALCOR_OBJECT(ParameterBlockReflection)
 public:
     static constexpr uint32_t kInvalidIndex = 0xffffffff;
 
@@ -1490,6 +1493,7 @@ typedef EntryPointGroupReflection EntryPointBaseReflection;
  */
 class FALCOR_API ProgramReflection : public Object
 {
+    FALCOR_OBJECT(ProgramReflection)
 public:
     /**
      * Data structured describing a shader input/output variable. Used mostly to communicate VS inputs and PS outputs

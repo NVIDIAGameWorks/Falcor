@@ -30,7 +30,7 @@
 
 namespace Falcor
 {
-GPU_TEST_D3D12(WarpProfiler)
+GPU_TEST(WarpProfiler, Device::Type::D3D12)
 {
     WarpProfiler profiler(ctx.getDevice(), 4);
 

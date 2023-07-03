@@ -40,6 +40,7 @@ namespace Falcor
 {
 class FALCOR_API ComputePass : public Object
 {
+    FALCOR_OBJECT(ComputePass)
 public:
     /**
      * Create a new compute pass from file.
@@ -54,7 +55,7 @@ public:
         ref<Device> pDevice,
         const std::filesystem::path& path,
         const std::string& csEntry = "main",
-        const Program::DefineList& defines = Program::DefineList(),
+        const DefineList& defines = DefineList(),
         bool createVars = true
     );
 
@@ -69,7 +70,7 @@ public:
     static ref<ComputePass> create(
         ref<Device> pDevice,
         const Program::Desc& desc,
-        const Program::DefineList& defines = Program::DefineList(),
+        const DefineList& defines = DefineList(),
         bool createVars = true
     );
 
@@ -142,7 +143,7 @@ public:
     uint3 getThreadGroupSize() const { return mpState->getProgram()->getReflector()->getThreadGroupSize(); }
 
 protected:
-    ComputePass(ref<Device> pDevice, const Program::Desc& desc, const Program::DefineList& defines, bool createVars);
+    ComputePass(ref<Device> pDevice, const Program::Desc& desc, const DefineList& defines, bool createVars);
 
     ref<Device> mpDevice;
     ref<ComputeVars> mpVars;

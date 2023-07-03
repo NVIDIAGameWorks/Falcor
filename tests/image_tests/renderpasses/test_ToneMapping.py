@@ -14,9 +14,10 @@ m.addGraph(g)
 render_frames(m, 'default')
 
 # operator
-for operator in [ToneMapOp.Linear, ToneMapOp.Reinhard, ToneMapOp.ReinhardModified, ToneMapOp.HejiHableAlu, ToneMapOp.HableUc2, ToneMapOp.Aces]:
+for operator in ['Linear', 'Reinhard', 'ReinhardModified', 'HejiHableAlu', 'HableUc2', 'Aces']:
     g.updatePass('ToneMapping', {'operator': operator})
-    render_frames(m, 'operator.' + str(operator))
+    # TODO: Remove "ToneMapOp." from name.
+    render_frames(m, 'operator.ToneMapOp.' + operator)
 
 # autoExposure
 for b in [False, True]:

@@ -39,16 +39,14 @@ class ColorMapPass : public RenderPass
 public:
     FALCOR_PLUGIN_CLASS(ColorMapPass, "ColorMapPass", "Pass that applies a color map to the input.");
 
-    static ref<ColorMapPass> create(ref<Device> pDevice, const Dictionary& dict) { return make_ref<ColorMapPass>(pDevice, dict); }
+    static ref<ColorMapPass> create(ref<Device> pDevice, const Properties& props) { return make_ref<ColorMapPass>(pDevice, props); }
 
-    ColorMapPass(ref<Device> pDevice, const Dictionary& dict);
+    ColorMapPass(ref<Device> pDevice, const Properties& props);
 
-    virtual Dictionary getScriptingDictionary() override;
+    virtual Properties getProperties() const override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
     virtual void renderUI(Gui::Widgets& widget) override;
-
-    static void registerScriptBindings(pybind11::module& m);
 
 private:
     ColorMap mColorMap = ColorMap::Jet;

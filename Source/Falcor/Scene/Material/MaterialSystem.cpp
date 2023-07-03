@@ -42,6 +42,7 @@ namespace Falcor
         const std::string kMaterialSamplersName = "materialSamplers";
         const std::string kMaterialTexturesName = "materialTextures";
         const std::string kMaterialBuffersName = "materialBuffers";
+        const std::string kMaterialTextures3DName = "materialTextures3D";
 
         const size_t kMaxSamplerCount = 1ull << MaterialHeader::kSamplerIDBits;
         const size_t kMaxTextureCount = 1ull << TextureHandle::kTextureIDBits;
@@ -185,6 +186,25 @@ namespace Falcor
 
         mBuffers[id] = pBuffer;
         mBuffersChanged = true;
+    }
+
+    uint32_t MaterialSystem::addTexture3D(const ref<Texture>& pTexture)
+    {
+        FALCOR_ASSERT(pTexture && pTexture->getType() == Texture::Type::Texture3D && pTexture->getSampleCount() == 1);
+
+        // Reuse previously added texture.
+        if (auto it = std::find_if(mTextures3D.begin(), mTextures3D.end(), [&](auto pOther) { return pTexture == pOther; }); it != mTextures3D.end())
+            return (uint32_t)std::distance(mTextures3D.begin(), it);
+
+        if (mTextures3D.size() >= mTexture3DDescCount)
+            throw RuntimeError("Too many 3D textures");
+
+        const uint32_t textureID = static_cast<uint32_t>(mTextures3D.size());
+
+        mTextures3D.push_back(pTexture);
+        mTextures3DChanged = true;
+
+        return textureID;
     }
 
     MaterialID MaterialSystem::addMaterial(const ref<Material>& pMaterial)
@@ -407,6 +427,8 @@ namespace Falcor
             for (uint32_t materialID = 0; materialID < (uint32_t)mMaterials.size(); ++materialID)
             {
                 auto& pMaterial = mMaterials[materialID];
+                if (pMaterial->mpDevice != mpDevice)
+                    throw RuntimeError("Material '{}' was created with a different device than the MaterialSystem.", pMaterial->getName());
                 mMaterialsUpdateFlags[materialID] = pMaterial->update(this);
             }
 
@@ -471,6 +493,17 @@ namespace Falcor
             mBuffersChanged = false;
         }
 
+        // Update 3D textures.
+        if (forceUpdate || mTextures3DChanged)
+        {
+            auto var = blockVar[kMaterialTextures3DName];
+            for (size_t i = 0; i < mTextures3D.size(); i++)
+            {
+                var[i] = mTextures3D[i];
+            }
+            mTextures3DChanged = false;
+        }
+
 
         // Update shader modules and type conformances.
         // This is done by iterating over all materials to query their properties.
@@ -502,6 +535,7 @@ namespace Falcor
     {
         mTextureDescCount = 0;
         mBufferDescCount = 0;
+        mTexture3DDescCount = 0;
 
         mMaterialCountByType.resize(getMaterialTypeCount());
         std::fill(mMaterialCountByType.begin(), mMaterialCountByType.end(), 0);
@@ -512,9 +546,9 @@ namespace Falcor
         {
             // Update descriptor counts. These counts will be reported by getDefines().
             // TODO: Remove this when unbounded descriptor arrays are supported (#1321).
-            // TODO: Rename getBufferCount() -> getMaxBufferCount()
             mTextureDescCount += pMaterial->getMaxTextureCount();
-            mBufferDescCount += pMaterial->getBufferCount();
+            mBufferDescCount += pMaterial->getMaxBufferCount();
+            mTexture3DDescCount += pMaterial->getMaxTexture3DCount();
 
             // Update material type info.
             size_t index = (size_t)pMaterial->getType();
@@ -553,7 +587,7 @@ namespace Falcor
         return s;
     }
 
-    Shader::DefineList MaterialSystem::getDefines() const
+    DefineList MaterialSystem::getDefines() const
     {
         checkInvariant(!mMaterialsChanged, "Materials have changed. Call update() first.");
 
@@ -561,10 +595,11 @@ namespace Falcor
         for (auto& it : mMaterials)
             materialInstanceByteSize = std::max(materialInstanceByteSize, it->getMaterialInstanceByteSize());
 
-        Shader::DefineList defines;
+        DefineList defines;
         defines.add("MATERIAL_SYSTEM_SAMPLER_DESC_COUNT", std::to_string(kMaxSamplerCount));
         defines.add("MATERIAL_SYSTEM_TEXTURE_DESC_COUNT", std::to_string(mTextureDescCount));
         defines.add("MATERIAL_SYSTEM_BUFFER_DESC_COUNT", std::to_string(mBufferDescCount));
+        defines.add("MATERIAL_SYSTEM_TEXTURE_3D_DESC_COUNT", std::to_string(mTexture3DDescCount));
         defines.add("MATERIAL_SYSTEM_UDIM_INDIRECTION_ENABLED", mpTextureManager->getUdimIndirectionCount() > 0 ? "1" : "0");
         defines.add("MATERIAL_SYSTEM_HAS_SPEC_GLOSS_MATERIALS", mHasSpecGlossStandardMaterial ? "1" : "0");
         defines.add("FALCOR_MATERIAL_INSTANCE_SIZE", std::to_string(materialInstanceByteSize));
@@ -573,7 +608,7 @@ namespace Falcor
         // We ensure that two materials cannot set the same define to mismatching values.
         for (const auto& material : mMaterials)
         {
-            Shader::DefineList materialDefines = material->getDefines();
+            DefineList materialDefines = material->getDefines();
             for (const auto& [name, value] : materialDefines)
             {
                 if (auto it = defines.find(name); it != defines.end())
@@ -629,7 +664,7 @@ namespace Falcor
     void MaterialSystem::createParameterBlock()
     {
         // Create parameter block.
-        Program::DefineList defines = getDefines();
+        DefineList defines = getDefines();
         defines.add("MATERIAL_SYSTEM_PARAMETER_BLOCK");
         auto pPass = ComputePass::create(mpDevice, kShaderFilename, "main", defines);
         auto pReflector = pPass->getProgram()->getReflector()->getParameterBlock("gMaterialsBlock");

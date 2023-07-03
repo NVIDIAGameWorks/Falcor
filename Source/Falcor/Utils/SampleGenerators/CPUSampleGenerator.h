@@ -37,6 +37,7 @@ namespace Falcor
  */
 class FALCOR_API CPUSampleGenerator : public Object
 {
+    FALCOR_OBJECT(CPUSampleGenerator)
 public:
     virtual ~CPUSampleGenerator() = default;
 

@@ -36,7 +36,7 @@ using namespace Falcor;
 class ComparisonPass : public RenderPass
 {
 public:
-    virtual Dictionary getScriptingDictionary() override;
+    virtual Properties getProperties() const override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
     virtual void renderUI(Gui::Widgets& widget) override;
@@ -44,7 +44,7 @@ public:
 protected:
     ComparisonPass(ref<Device> pDevice);
     virtual void createProgram() = 0;
-    bool parseKeyValuePair(const std::string key, const Dictionary::Value val);
+    bool parseKeyValuePair(const std::string key, const Properties::ConstValue& val);
 
     ref<FullScreenPass> mpSplitShader;
     ref<Texture> pLeftSrcTex;

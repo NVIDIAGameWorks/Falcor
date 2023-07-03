@@ -76,7 +76,7 @@ GPU_TEST(ShaderStringInline)
     desc.addShaderLibrary("Tests/Slang/ShaderStringInline.cs.slang").csEntry("main");
     desc.addShaderString(kShaderModuleA, "ModuleA", "", false);
 
-    ctx.createProgram(desc, Program::DefineList());
+    ctx.createProgram(desc, DefineList());
     ctx.allocateStructuredBuffer("result", kSize);
 
     // Create and bind test data.
@@ -95,12 +95,11 @@ GPU_TEST(ShaderStringInline)
     // Run program and validate results.
     ctx.runProgram(kSize, 1, 1);
 
-    const uint32_t* result = ctx.mapBuffer<const uint32_t>("result");
+    std::vector<uint32_t> result = ctx.readBuffer<uint32_t>("result");
     for (uint32_t i = 0; i < kSize; i++)
     {
         EXPECT_EQ(result[i], values[i] * 991);
     }
-    ctx.unmapBuffer("result");
 }
 
 GPU_TEST(ShaderStringModule)
@@ -111,18 +110,17 @@ GPU_TEST(ShaderStringModule)
     desc.addShaderString(kShaderModuleD, "GeneratedModule", "Tests/Slang/GeneratedModule.slang", true);
     desc.addShaderLibrary("Tests/Slang/ShaderStringModule.cs.slang").csEntry("main");
 
-    ctx.createProgram(desc, Program::DefineList());
+    ctx.createProgram(desc, DefineList());
     ctx.allocateStructuredBuffer("result", kSize);
 
     // Run program and validate results.
     ctx.runProgram(kSize, 1, 1);
 
-    const uint32_t* result = ctx.mapBuffer<const uint32_t>("result");
+    std::vector<uint32_t> result = ctx.readBuffer<uint32_t>("result");
     for (uint32_t i = 0; i < kSize; i++)
     {
         EXPECT_EQ(result[i], i * 997);
     }
-    ctx.unmapBuffer("result");
 }
 
 GPU_TEST(ShaderStringImport)
@@ -133,18 +131,17 @@ GPU_TEST(ShaderStringImport)
     desc.addShaderLibrary("Tests/Slang/ShaderStringImport.cs.slang").csEntry("main");
     desc.addShaderString(kShaderModuleC, "ModuleC", "", false);
 
-    ctx.createProgram(desc, Program::DefineList());
+    ctx.createProgram(desc, DefineList());
     ctx.allocateStructuredBuffer("result", kSize);
 
     // Run program and validate results.
     ctx.runProgram(kSize, 1, 1);
 
-    const uint32_t* result = ctx.mapBuffer<const uint32_t>("result");
+    std::vector<uint32_t> result = ctx.readBuffer<uint32_t>("result");
     for (uint32_t i = 0; i < kSize; i++)
     {
         EXPECT_EQ(result[i], i * 993);
     }
-    ctx.unmapBuffer("result");
 }
 
 GPU_TEST(ShaderStringImportDuplicate, "Duplicate import not working")
@@ -162,12 +159,11 @@ GPU_TEST(ShaderStringImportDuplicate, "Duplicate import not working")
     // Run program and validate results.
     ctx.runProgram(kSize, 1, 1);
 
-    const uint32_t* result = ctx.mapBuffer<const uint32_t>("result");
+    std::vector<uint32_t> result = ctx.readBuffer<uint32_t>("result");
     for (uint32_t i = 0; i < kSize; i++)
     {
         EXPECT_EQ(result[i], i * 993);
     }
-    ctx.unmapBuffer("result");
 }
 
 GPU_TEST(ShaderStringImported)
@@ -178,18 +174,17 @@ GPU_TEST(ShaderStringImported)
     desc.addShaderString(kShaderModuleD, "GeneratedModule", "Tests/Slang/GeneratedModule.slang", true);
     desc.addShaderLibrary("Tests/Slang/ShaderStringImported.cs.slang").csEntry("main");
 
-    ctx.createProgram(desc, Program::DefineList());
+    ctx.createProgram(desc, DefineList());
     ctx.allocateStructuredBuffer("result", kSize);
 
     // Run program and validate results.
     ctx.runProgram(kSize, 1, 1);
 
-    const uint32_t* result = ctx.mapBuffer<const uint32_t>("result");
+    std::vector<uint32_t> result = ctx.readBuffer<uint32_t>("result");
     for (uint32_t i = 0; i < kSize; i++)
     {
         EXPECT_EQ(result[i], i * 997);
     }
-    ctx.unmapBuffer("result");
 }
 
 GPU_TEST(ShaderStringDynamicObject)
@@ -206,7 +201,7 @@ GPU_TEST(ShaderStringDynamicObject)
     Program::TypeConformanceList typeConformances = Program::TypeConformanceList{{{"DynamicType", "IDynamicType"}, typeID}};
     desc.addTypeConformances(typeConformances);
 
-    ctx.createProgram(desc, Program::DefineList());
+    ctx.createProgram(desc, DefineList());
     ctx.allocateStructuredBuffer("result", kSize);
 
     auto var = ctx.vars().getRootVar();
@@ -215,11 +210,10 @@ GPU_TEST(ShaderStringDynamicObject)
     // Run program and validate results.
     ctx.runProgram(kSize, 1, 1);
 
-    const uint32_t* result = ctx.mapBuffer<const uint32_t>("result");
+    std::vector<uint32_t> result = ctx.readBuffer<uint32_t>("result");
     for (uint32_t i = 0; i < kSize; i++)
     {
         EXPECT_EQ(result[i], i * 997);
     }
-    ctx.unmapBuffer("result");
 }
 } // namespace Falcor

@@ -39,62 +39,60 @@ namespace Falcor
 {
 // Reference implementation of the xoshiro128** algorithm.
 // See http://xoshiro.di.unimi.it/xoshiro128starstar.c
-namespace xoshiro128starstar
+struct xoshiro128starstar
 {
-static inline uint32_t rotl(const uint32_t x, int k)
-{
-    return (x << k) | (x >> (32 - k));
-}
+    static inline uint32_t rotl(const uint32_t x, int k) { return (x << k) | (x >> (32 - k)); }
 
-static uint32_t s[4];
+    uint32_t s[4];
 
-uint32_t next()
-{
-    const uint32_t result_starstar = rotl(s[0] * 5, 7) * 9;
+    uint32_t next()
+    {
+        const uint32_t result_starstar = rotl(s[0] * 5, 7) * 9;
 
-    const uint32_t t = s[1] << 9;
+        const uint32_t t = s[1] << 9;
 
-    s[2] ^= s[0];
-    s[3] ^= s[1];
-    s[1] ^= s[2];
-    s[0] ^= s[3];
+        s[2] ^= s[0];
+        s[3] ^= s[1];
+        s[1] ^= s[2];
+        s[0] ^= s[3];
 
-    s[2] ^= t;
+        s[2] ^= t;
 
-    s[3] = rotl(s[3], 11);
+        s[3] = rotl(s[3], 11);
 
-    return result_starstar;
-}
-} // namespace xoshiro128starstar
+        return result_starstar;
+    }
+};
 
 // Reference implementation of the SplitMix64 algorithm.
 // See http://xoshiro.di.unimi.it/splitmix64.c
-namespace splitmix64
+struct splitmix64
 {
-static uint64_t x;
+    uint64_t x;
 
-uint64_t next()
-{
-    uint64_t z = (x += 0x9e3779b97f4a7c15);
-    z = (z ^ (z >> 30)) * 0xbf58476d1ce4e5b9;
-    z = (z ^ (z >> 27)) * 0x94d049bb133111eb;
-    return z ^ (z >> 31);
-}
-}; // namespace splitmix64
+    uint64_t next()
+    {
+        uint64_t z = (x += 0x9e3779b97f4a7c15);
+        z = (z ^ (z >> 30)) * 0xbf58476d1ce4e5b9;
+        z = (z ^ (z >> 27)) * 0x94d049bb133111eb;
+        return z ^ (z >> 31);
+    }
+};
 
 // Reference implementation of the LCG from Numerical Recipes.
 // See https://en.wikipedia.org/wiki/Linear_congruential_generator
-namespace lcg
+struct lcg
 {
-static uint32_t state;
-uint32_t next()
-{
-    const uint32_t a = 1664525;
-    const uint32_t c = 1013904223;
-    state = a * state + c;
-    return state;
-}
-} // namespace lcg
+    uint32_t state;
+
+    uint32_t next()
+    {
+        const uint32_t a = 1664525;
+        const uint32_t c = 1013904223;
+        state = a * state + c;
+        return state;
+    }
+};
 
 // Shared test utils.
 namespace
@@ -135,23 +133,23 @@ GPU_TEST(XoshiroPRNG)
     ctx.runProgram(kInstances);
 
     // Compare result against reference implementation.
-    const uint32_t* result = ctx.mapBuffer<const uint32_t>("result");
+    std::vector<uint32_t> result = ctx.readBuffer<uint32_t>("result");
     for (uint32_t i = 0; i < kInstances; i++)
     {
+        xoshiro128starstar rng;
         // Set seed.
-        xoshiro128starstar::s[0] = seed[i * 4 + 0];
-        xoshiro128starstar::s[1] = seed[i * 4 + 1];
-        xoshiro128starstar::s[2] = seed[i * 4 + 2];
-        xoshiro128starstar::s[3] = seed[i * 4 + 3];
+        rng.s[0] = seed[i * 4 + 0];
+        rng.s[1] = seed[i * 4 + 1];
+        rng.s[2] = seed[i * 4 + 2];
+        rng.s[3] = seed[i * 4 + 3];
 
         for (uint32_t j = 0; j < kDimensions; j++)
         {
-            const uint32_t ref = xoshiro128starstar::next();
+            const uint32_t ref = rng.next();
             const uint32_t res = result[j * kInstances + i];
             EXPECT_EQ(ref, res) << "instance = " << i << " dimension = " << j;
         }
     }
-    ctx.unmapBuffer("result");
 }
 
 /** GPU test for SplitMix64 pseudorandom number generator.
@@ -163,26 +161,26 @@ GPU_TEST(SplitMixPRNG)
     auto pSeedBuf = createSeed(ctx.getDevice(), kInstances * 2, seed);
 
     // Setup and run GPU test. Note it requires SM 6.0 or higher.
-    ctx.createProgram(kShaderFile, "testSplitMix", Program::DefineList(), Shader::CompilerFlags::None);
+    ctx.createProgram(kShaderFile, "testSplitMix");
     ctx.allocateStructuredBuffer("result64", kInstances * kDimensions);
     ctx["seed"] = pSeedBuf;
     ctx.runProgram(kInstances);
 
     // Compare result against reference implementation.
-    const uint64_t* result = ctx.mapBuffer<const uint64_t>("result64");
+    std::vector<uint64_t> result = ctx.readBuffer<uint64_t>("result64");
     for (uint32_t i = 0; i < kInstances; i++)
     {
+        splitmix64 rng;
         // Set seed.
-        splitmix64::x = (uint64_t(seed[i * 2 + 1]) << 32) | uint64_t(seed[i * 2 + 0]);
+        rng.x = (uint64_t(seed[i * 2 + 1]) << 32) | uint64_t(seed[i * 2 + 0]);
 
         for (uint32_t j = 0; j < kDimensions; j++)
         {
-            const uint64_t ref = splitmix64::next();
+            const uint64_t ref = rng.next();
             const uint64_t res = result[j * kInstances + i];
             EXPECT_EQ(ref, res) << "instance = " << i << " dimension = " << j;
         }
     }
-    ctx.unmapBuffer("result64");
 }
 
 /** GPU test for LCG pseudorandom number generator.
@@ -200,19 +198,19 @@ GPU_TEST(LCGPRNG)
     ctx.runProgram(kInstances);
 
     // Compare result against reference implementation.
-    const uint32_t* result = ctx.mapBuffer<const uint32_t>("result");
+    std::vector<uint32_t> result = ctx.readBuffer<uint32_t>("result");
     for (uint32_t i = 0; i < kInstances; i++)
     {
+        lcg rng;
         // Set seed.
-        lcg::state = seed[i];
+        rng.state = seed[i];
 
         for (uint32_t j = 0; j < kDimensions; j++)
         {
-            const uint32_t ref = lcg::next();
+            const uint32_t ref = rng.next();
             const uint32_t res = result[j * kInstances + i];
             EXPECT_EQ(ref, res) << "instance = " << i << " dimension = " << j;
         }
     }
-    ctx.unmapBuffer("result");
 }
 } // namespace Falcor

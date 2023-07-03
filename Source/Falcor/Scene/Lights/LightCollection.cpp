@@ -62,7 +62,7 @@ namespace Falcor
         initIntegrator(pRenderContext, *mpScene);
 
         // Create programs for building/updating the mesh lights.
-        Shader::DefineList defines = mpScene->getSceneDefines();
+        DefineList defines = mpScene->getSceneDefines();
         mpTriangleListBuilder = ComputePass::create(mpDevice, kBuildTriangleListFile, "buildTriangleList", defines);
         mpTrianglePositionUpdater = ComputePass::create(mpDevice, kUpdateTriangleVerticesFile, "updateTriangleVertices", defines);
         mpFinalizeIntegration = ComputePass::create(mpDevice, kFinalizeIntegrationFile, "finalizeIntegration", defines);

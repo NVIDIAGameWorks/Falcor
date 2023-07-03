@@ -62,8 +62,7 @@ TypedShaderVarOffset TypedShaderVarOffset::operator[](const std::string& name) c
         }
     }
 
-    reportError(fmt::format("No member named '{}' found.", name));
-    return TypedShaderVarOffset();
+    throw RuntimeError("No member named '{}' found.", name);
 }
 
 TypedShaderVarOffset TypedShaderVarOffset::operator[](const char* name) const

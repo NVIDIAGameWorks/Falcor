@@ -151,6 +151,9 @@ struct SDFSBS : SDFGridBase, ISDFGrid
 
     bool intersectSDF(const float3 rayOrigin, const float3 rayDir, const float tMin, const float tMax, const uint primitiveID, out float t, out SDFGridHitData hitData)
     {
+        t = {};
+        hitData = {};
+
         // Normalize ray direction.
         float dirLength = length(rayDir);
         float inverseDirLength = 1.0f / dirLength;

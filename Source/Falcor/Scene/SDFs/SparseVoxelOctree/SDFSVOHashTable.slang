@@ -169,6 +169,10 @@ struct SDFSVOHashTable
     */
     bool lookup(uint2 locationCode, out uint svoOffset, out uint validMask, out uint2 packedValues)
     {
+        svoOffset = {};
+        validMask = {};
+        packedValues = {};
+
         uint hash = hashLocationCode(locationCode);
         uint slot = (hash & (capacity - 1));
 

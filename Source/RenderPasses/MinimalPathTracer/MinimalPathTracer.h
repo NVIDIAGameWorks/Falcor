@@ -46,11 +46,11 @@ class MinimalPathTracer : public RenderPass
 public:
     FALCOR_PLUGIN_CLASS(MinimalPathTracer, "MinimalPathTracer", "Minimal path tracer.");
 
-    static ref<MinimalPathTracer> create(ref<Device> pDevice, const Dictionary& dict) { return make_ref<MinimalPathTracer>(pDevice, dict); }
+    static ref<MinimalPathTracer> create(ref<Device> pDevice, const Properties& props) { return make_ref<MinimalPathTracer>(pDevice, props); }
 
-    MinimalPathTracer(ref<Device> pDevice, const Dictionary& dict);
+    MinimalPathTracer(ref<Device> pDevice, const Properties& props);
 
-    virtual Dictionary getScriptingDictionary() override;
+    virtual Properties getProperties() const override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
     virtual void renderUI(Gui::Widgets& widget) override;
@@ -59,7 +59,7 @@ public:
     virtual bool onKeyEvent(const KeyboardEvent& keyEvent) override { return false; }
 
 private:
-    void parseDictionary(const Dictionary& dict);
+    void parseProperties(const Properties& props);
     void prepareVars();
 
     // Internal state

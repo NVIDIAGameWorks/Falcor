@@ -27,10 +27,11 @@
  **************************************************************************/
 #pragma once
 #include "ProgramReflection.h"
+#include "DefineList.h"
 #include "Core/Macros.h"
 #include "Core/Object.h"
 #include "Core/API/fwd.h"
-#include "Core/API/Shader.h"
+#include "Core/API/ShaderType.h"
 #include "Core/API/Handles.h"
 #include <memory>
 #include <string>
@@ -46,10 +47,87 @@ class FALCOR_API ProgramVars;
 class FALCOR_API ProgramVersion;
 
 /**
+ * Represents a single program entry point and its associated kernel code.
+ *
+ * In GFX, we do not generate actual shader code at program creation.
+ * The actual shader code will only be generated and cached when all specialization arguments
+ * are known, which is right before a draw/dispatch command is issued, and this is done
+ * internally within GFX.
+ * The `EntryPointKernel` implementation here serves as a helper utility for application code that
+ * uses raw graphics API to get shader kernel code from an ordinary slang source.
+ * Since most users/render-passes do not need to get shader kernel code, we defer
+ * the call to slang's `getEntryPointCode` function until it is actually needed.
+ * to avoid redundant shader compiler invocation.
+ */
+class FALCOR_API EntryPointKernel : public Object
+{
+    FALCOR_OBJECT(EntryPointKernel)
+public:
+    struct BlobData
+    {
+        const void* data;
+        size_t size;
+    };
+
+    /**
+     * Create a shader object
+     * @param[in] linkedSlangEntryPoint The Slang IComponentType that defines the shader entry point.
+     * @param[in] type The Type of the shader
+     * @return If success, a new shader object, otherwise nullptr
+     */
+    static ref<EntryPointKernel> create(
+        Slang::ComPtr<slang::IComponentType> linkedSlangEntryPoint,
+        ShaderType type,
+        const std::string& entryPointName
+    )
+    {
+        return ref<EntryPointKernel>(new EntryPointKernel(linkedSlangEntryPoint, type, entryPointName));
+    }
+
+    /**
+     * Get the shader Type
+     */
+    ShaderType getType() const { return mType; }
+
+    /**
+     * Get the name of the entry point.
+     */
+    const std::string& getEntryPointName() const { return mEntryPointName; }
+
+    BlobData getBlobData() const
+    {
+        if (!mpBlob)
+        {
+            Slang::ComPtr<ISlangBlob> pDiagnostics;
+            if (SLANG_FAILED(mLinkedSlangEntryPoint->getEntryPointCode(0, 0, mpBlob.writeRef(), pDiagnostics.writeRef())))
+            {
+                throw RuntimeError(std::string("Shader compilation failed. \n") + (const char*)pDiagnostics->getBufferPointer());
+            }
+        }
+
+        BlobData result;
+        result.data = mpBlob->getBufferPointer();
+        result.size = mpBlob->getBufferSize();
+        return result;
+    }
+
+protected:
+    EntryPointKernel(Slang::ComPtr<slang::IComponentType> linkedSlangEntryPoint, ShaderType type, const std::string& entryPointName)
+        : mLinkedSlangEntryPoint(linkedSlangEntryPoint), mType(type), mEntryPointName(entryPointName)
+    {}
+
+    Slang::ComPtr<slang::IComponentType> mLinkedSlangEntryPoint;
+    ShaderType mType;
+    std::string mEntryPointName;
+    mutable Slang::ComPtr<ISlangBlob> mpBlob;
+};
+
+/**
  * A collection of one or more entry points in a program kernels object.
  */
 class FALCOR_API EntryPointGroupKernels : public Object
 {
+    FALCOR_OBJECT(EntryPointGroupKernels)
 public:
     /**
      * Types of entry point groups.
@@ -62,25 +140,27 @@ public:
         RtHitGroup,     ///< A ray tracing "hit group"
     };
 
-    using Shaders = std::vector<ref<Shader>>;
-
-    static ref<const EntryPointGroupKernels> create(Type type, const Shaders& shaders, const std::string& exportName);
+    static ref<const EntryPointGroupKernels> create(
+        Type type,
+        const std::vector<ref<EntryPointKernel>>& kernels,
+        const std::string& exportName
+    );
 
     virtual ~EntryPointGroupKernels() = default;
 
     Type getType() const { return mType; }
-    const Shader* getShader(ShaderType type) const;
-    const Shader* getShaderByIndex(int32_t index) const { return mShaders[index].get(); }
+    const EntryPointKernel* getKernel(ShaderType type) const;
+    const EntryPointKernel* getKernelByIndex(size_t index) const { return mKernels[index].get(); }
     const std::string& getExportName() const { return mExportName; }
 
 protected:
-    EntryPointGroupKernels(Type type, const Shaders& shaders, const std::string& exportName);
+    EntryPointGroupKernels(Type type, const std::vector<ref<EntryPointKernel>>& shaders, const std::string& exportName);
     EntryPointGroupKernels() = default;
     EntryPointGroupKernels(const EntryPointGroupKernels&) = delete;
     EntryPointGroupKernels& operator=(const EntryPointGroupKernels&) = delete;
 
     Type mType;
-    Shaders mShaders;
+    std::vector<ref<EntryPointKernel>> mKernels;
     std::string mExportName;
 };
 
@@ -90,6 +170,7 @@ protected:
  */
 class FALCOR_API ProgramKernels : public Object
 {
+    FALCOR_OBJECT(ProgramKernels)
 public:
     typedef std::vector<ref<const EntryPointGroupKernels>> UniqueEntryPointGroups;
 
@@ -121,7 +202,7 @@ public:
     /**
      * Get an attached shader object, or nullptr if no shader is attached to the slot.
      */
-    const Shader* getShader(ShaderType type) const;
+    const EntryPointKernel* getKernel(ShaderType type) const;
 
     /**
      * Get the program name
@@ -162,9 +243,8 @@ protected:
 
 class ProgramVersion : public Object
 {
+    FALCOR_OBJECT(ProgramVersion)
 public:
-    using DefineList = Shader::DefineList;
-
     /**
      * Get the program that this version was created from
      */

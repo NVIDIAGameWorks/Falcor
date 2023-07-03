@@ -139,10 +139,10 @@ using math::operator""h;
 
 // Formatter for the float16_t.
 template<>
-struct fmt::formatter<::Falcor::math::float16_t> : formatter<float>
+struct fmt::formatter<Falcor::math::float16_t> : formatter<float>
 {
     template<typename FormatContext>
-    auto format(::Falcor::math::float16_t value, FormatContext& ctx) const
+    auto format(Falcor::math::float16_t value, FormatContext& ctx) const
     {
         return formatter<float>::format(float(value), ctx);
     }

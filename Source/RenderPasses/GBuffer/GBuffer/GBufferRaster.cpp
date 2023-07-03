@@ -55,7 +55,7 @@ namespace
     const std::string kDepthName = "depth";
 }
 
-GBufferRaster::GBufferRaster(ref<Device> pDevice, const Dictionary& dict)
+GBufferRaster::GBufferRaster(ref<Device> pDevice, const Properties& props)
     : GBuffer(pDevice)
 {
     // Check for required features.
@@ -68,7 +68,7 @@ GBufferRaster::GBufferRaster(ref<Device> pDevice, const Dictionary& dict)
         throw RuntimeError("GBufferRaster: Rasterizer ordered views (ROVs) are not supported by the current device");
     }
 
-    parseDictionary(dict);
+    parseProperties(props);
 
     // Initialize graphics state
     mDepthPass.pState = GraphicsState::create(mpDevice);

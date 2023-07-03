@@ -26,59 +26,41 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "UnitTest.h"
+#include "Core/Version.h"
+#include "Core/Platform/OS.h"
 #include "Core/API/Device.h"
 #include "Core/API/RenderContext.h"
+#include "Core/Program/ProgramManager.h"
+#include "Utils/Scripting/Scripting.h"
+#include "Utils/Threading.h"
 #include "Utils/StringUtils.h"
 #include "Utils/TermColor.h"
 #include "Utils/Logger.h"
 #include "Utils/Math/Common.h"
 #include "Utils/Math/Vector.h"
+
 #include <fmt/format.h>
 #include <fmt/color.h>
+#include <pugixml.hpp>
+#include <BS_thread_pool_light.hpp>
+
 #include <algorithm>
 #include <chrono>
 #include <regex>
-#include <inttypes.h>
-
-#include <pugixml.hpp>
+#include <cstdint>
 
 namespace Falcor
 {
-namespace
+namespace unittest
 {
-struct Test
+
+struct TestDesc
 {
-    std::string getTitle() const
-    {
-        std::string tag;
-        if (cpuFunc)
-        {
-            tag = "CPU";
-        }
-        else
-        {
-            tag = "GPU";
-            switch (deviceType)
-            {
-            case Device::Type::D3D12:
-                tag += " D3D12";
-                break;
-            case Device::Type::Vulkan:
-                tag += " Vulkan";
-                break;
-            }
-        }
-
-        return fmt::format("{}/{} ({})", path.filename(), name, tag);
-    }
-
     std::filesystem::path path;
     std::string name;
-    std::string skipMessage;
+    unittest::Options options;
     CPUTestFunc cpuFunc;
     GPUTestFunc gpuFunc;
-    UnitTestDeviceFlags supportedDevices;
-    Device::Type deviceType;
 };
 
 struct TestResult
@@ -96,46 +78,80 @@ struct TestResult
     uint64_t elapsedMS = 0;
 };
 
-static std::vector<Test>& getTestRegistry()
+static std::vector<TestDesc>& getTestRegistry()
 {
-    static std::vector<Test> registry;
+    static std::vector<TestDesc> registry;
     return registry;
 }
 
-} // end anonymous namespace
+class DevicePool
+{
+public:
+    DevicePool(Device::Desc defaultDesc) : mDefaultDesc(defaultDesc) {}
 
-const char* plural(size_t count, const char* suffix)
+    ref<Device> acquireDevice(Device::Type deviceType)
+    {
+        std::lock_guard<std::mutex> lock(mMutex);
+        auto& devices = mDevices[deviceType];
+        if (devices.empty())
+        {
+            Device::Desc desc = mDefaultDesc;
+            desc.type = deviceType;
+            ref<Device> device = make_ref<Device>(desc);
+
+            // Set global shader defines
+            DefineList globalDefines = {
+                {"FALCOR_NVAPI_AVAILABLE", (FALCOR_NVAPI_AVAILABLE && device->getType() == Device::Type::D3D12) ? "1" : "0"},
+#if FALCOR_NVAPI_AVAILABLE
+                {"NV_SHADER_EXTN_SLOT", "u999"},
+#endif
+            };
+            device->getProgramManager()->addGlobalDefines(globalDefines);
+
+            return device;
+        }
+        auto device = devices.back();
+        devices.pop_back();
+        return device;
+    }
+
+    void releaseDevice(ref<Device>&& device)
+    {
+        std::lock_guard<std::mutex> lock(mMutex);
+        mDevices[device->getType()].push_back(device);
+    }
+
+private:
+    Device::Desc mDefaultDesc;
+    std::mutex mMutex;
+    std::map<Device::Type, std::vector<ref<Device>>> mDevices;
+};
+
+inline const char* plural(size_t count, const char* suffix)
 {
     if (count == 1)
         return "";
     return suffix;
 }
 
-void registerCPUTest(const std::filesystem::path& path, const std::string& name, const std::string& skipMessage, CPUTestFunc func)
+void registerCPUTest(std::filesystem::path path, std::string name, unittest::Options options, CPUTestFunc func)
 {
-    Test test;
-    test.path = path;
-    test.name = name;
-    test.skipMessage = skipMessage;
-    test.cpuFunc = std::move(func);
-    getTestRegistry().push_back(test);
+    TestDesc desc;
+    desc.path = std::move(path);
+    desc.name = std::move(name);
+    desc.options = std::move(options);
+    desc.cpuFunc = std::move(func);
+    getTestRegistry().push_back(desc);
 }
 
-void registerGPUTest(
-    const std::filesystem::path& path,
-    const std::string& name,
-    const std::string& skipMessage,
-    GPUTestFunc func,
-    UnitTestDeviceFlags supportedDevices
-)
+void registerGPUTest(std::filesystem::path path, std::string name, unittest::Options options, GPUTestFunc func)
 {
-    Test test;
-    test.path = path;
-    test.name = name;
-    test.skipMessage = skipMessage;
-    test.gpuFunc = std::move(func);
-    test.supportedDevices = supportedDevices;
-    getTestRegistry().push_back(test);
+    TestDesc desc;
+    desc.path = std::move(path);
+    desc.name = std::move(name);
+    desc.options = std::move(options);
+    desc.gpuFunc = std::move(func);
+    getTestRegistry().push_back(desc);
 }
 
 /// Prints the UnitTest report line, making sure it is always printed to the console once.
@@ -146,8 +162,14 @@ void reportLine(const std::string_view format, Args&&... args)
     bool willLogPrint = is_set(Logger::getOutputs(), Logger::OutputFlags::Console) ||
                         (is_set(Logger::getOutputs(), Logger::OutputFlags::DebugWindow) && isDebuggerPresent());
 
+    static std::mutex mutex;
+    std::lock_guard<std::mutex> lock(mutex);
+
     if (!willLogPrint)
+    {
         std::cout << report << std::endl;
+        std::flush(std::cout);
+    }
     logInfo(report);
 }
 
@@ -161,55 +183,60 @@ inline void writeXmlReport(const std::filesystem::path& path, const std::vector<
     pugi::xml_document doc;
 
     pugi::xml_node testsuitesNode = doc.append_child("testsuites");
+    testsuitesNode.append_attribute("name").set_value("Unit Tests");
 
-    pugi::xml_node testsuiteNode = testsuitesNode.append_child("testsuite");
-    testsuiteNode.append_attribute("name").set_value("Unit Tests");
+    // Split reports into suites.
+    std::map<std::string, std::vector<std::pair<Test, TestResult>>> reportBySuite;
+    for (const auto& item : report)
+        reportBySuite[item.first.suiteName].push_back(item);
 
-    for (const auto& [test, result] : report)
+    for (const auto& [suiteName, suiteReport] : reportBySuite)
     {
-        pugi::xml_node testcaseNode = testsuiteNode.append_child("testcase");
-        testcaseNode.append_attribute("name").set_value(test.getTitle().c_str());
-        testcaseNode.append_attribute("time").set_value(result.elapsedMS / 1000.0);
+        pugi::xml_node testsuiteNode = testsuitesNode.append_child("testsuite");
+        testsuiteNode.append_attribute("name").set_value(suiteName.c_str());
 
-        switch (result.status)
+        for (const auto& [test, result] : suiteReport)
         {
-        case TestResult::Status::Passed:
+            pugi::xml_node testcaseNode = testsuiteNode.append_child("testcase");
+            testcaseNode.append_attribute("name").set_value(test.name.c_str());
+            testcaseNode.append_attribute("time").set_value(result.elapsedMS / 1000.0);
+
+            switch (result.status)
+            {
+            case TestResult::Status::Passed:
+                break;
+            case TestResult::Status::Skipped:
+                testcaseNode.append_child("skipped");
+                break;
+            case TestResult::Status::Failed:
+            default:
+            {
+                std::string message = joinStrings(result.messages, "\n");
+                testcaseNode.append_child("failure").append_attribute("message").set_value(message.c_str());
+            }
             break;
-        case TestResult::Status::Skipped:
-            testcaseNode.append_child("skipped");
-            break;
-        case TestResult::Status::Failed:
-        default:
-        {
-            std::string message = joinStrings(result.messages, "\n");
-            testcaseNode.append_child("failure").append_attribute("message").set_value(message.c_str());
-        }
-        break;
+            }
         }
     }
 
     doc.save_file(path.native().c_str());
 }
 
-inline TestResult runTest(const Test& test, ref<Device> pDevice, Fbo* pTargetFbo)
+inline TestResult runTest(const Test& test, DevicePool& devicePool)
 {
     if (!test.skipMessage.empty())
         return {TestResult::Status::Skipped, {test.skipMessage}};
 
-    if (test.gpuFunc)
-    {
-        if (pDevice->getType() == Device::Type::D3D12 && !is_set(test.supportedDevices, UnitTestDeviceFlags::D3D12))
-            return {TestResult::Status::Skipped, {"Not supported on D3D12."}};
-        if (pDevice->getType() == Device::Type::Vulkan && !is_set(test.supportedDevices, UnitTestDeviceFlags::Vulkan))
-            return {TestResult::Status::Skipped, {"Not supported on Vulkan."}};
-    }
-
     TestResult result{TestResult::Status::Passed};
 
-    auto startTime = std::chrono::steady_clock::now();
+    ref<Device> pDevice;
+    if (test.gpuFunc)
+        pDevice = devicePool.acquireDevice(test.deviceType);
 
     CPUUnitTestContext cpuCtx;
-    GPUUnitTestContext gpuCtx(pDevice, pTargetFbo);
+    GPUUnitTestContext gpuCtx(pDevice);
+
+    auto startTime = std::chrono::steady_clock::now();
 
     try
     {
@@ -256,20 +283,17 @@ inline TestResult runTest(const Test& test, ref<Device> pDevice, Fbo* pTargetFbo
     result.elapsedMS = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
 
     // Release GPU resources.
-    if (test.gpuFunc)
+    if (pDevice)
+    {
+        pDevice->endFrame();
         pDevice->flushAndSync();
+        devicePool.releaseDevice(std::move(pDevice));
+    }
 
     return result;
 }
 
-int32_t runTests(
-    ref<Device> pDevice,
-    Fbo* pTargetFbo,
-    UnitTestCategoryFlags categoryFlags,
-    const std::string& testFilter,
-    const std::filesystem::path& xmlReportPath,
-    uint32_t repeatCount
-)
+inline int32_t runTestsParallel(const RunOptions& options)
 {
     // Abort on Ctrl-C.
     std::atomic<bool> abort{false};
@@ -281,65 +305,143 @@ int32_t runTests(
         }
     );
 
-    size_t totalTestCount = 0;
-    std::map<std::string, std::vector<Test>> tests;
-    std::vector<std::pair<Test, TestResult>> report;
-    std::map<std::string, std::vector<Test>> failedTests;
+    auto startTime = std::chrono::steady_clock::now();
 
-    // Filter tests.
-    std::regex testFilterRegex(testFilter, std::regex::icase | std::regex::basic);
-    for (auto& it : getTestRegistry())
+    DevicePool devicePool(options.deviceDesc);
+
+    // Gather tests.
+    std::vector<Test> tests = enumerateTests();
+    tests = filterTests(tests, options.testSuiteFilter, options.testCaseFilter, options.tagFilter, options.deviceDesc.type);
+
+    std::vector<TestResult> results(tests.size());
+
+    BS::thread_pool_light threadPool(options.parallel);
+
+    reportLine("[==========] Running {} test{}.", tests.size(), plural(tests.size(), "s"));
+
+    for (size_t testIndex = 0; testIndex < tests.size(); ++testIndex)
     {
-        if (it.cpuFunc && !is_set(categoryFlags, UnitTestCategoryFlags::CPU))
-            continue;
-        if (it.gpuFunc && !is_set(categoryFlags, UnitTestCategoryFlags::GPU))
-            continue;
+        threadPool.push_task(
+            [&abort, &tests, &results, &devicePool, testIndex]()
+            {
+                if (abort)
+                    return;
 
-        it.deviceType = pDevice->getType();
+                const Test& test = tests[testIndex];
+                TestResult& result = results[testIndex];
+                std::string repeats;
 
-        if (std::regex_search(it.getTitle(), testFilterRegex))
-        {
-            totalTestCount++;
-            tests[it.path.filename().string()].push_back(it);
-        }
+                reportLine("[ RUN      ] {}:{}{}", test.suiteName, test.name, repeats);
+
+                result = runTest(test, devicePool);
+
+                std::string statusTag;
+                switch (result.status)
+                {
+                case TestResult::Status::Passed:
+                    statusTag = "[       OK ]";
+                    break;
+                case TestResult::Status::Failed:
+                    statusTag = "[  FAILED  ]";
+                    break;
+                case TestResult::Status::Skipped:
+                    statusTag = "[  SKIPPED ]";
+                    break;
+                }
+                if (!result.extraMessage.empty())
+                    reportLine("{}", result.extraMessage);
+                reportLine("{} {}:{}{} ({} ms)", statusTag, test.suiteName, test.name, repeats, result.elapsedMS);
+            }
+        );
     }
 
-    // Sort tests by name.
-    for (auto& it : tests)
+    threadPool.wait_for_tasks();
+
+    if (abort)
     {
-        std::sort(it.second.begin(), it.second.end(), [](const Test& a, const Test& b) { return a.name < b.name; });
+        reportLine("[ ABORTED  ]");
+        return 1;
     }
+
+    auto endTime = std::chrono::steady_clock::now();
+    uint64_t totalMS = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
 
     int32_t failureCount = 0;
-    uint64_t totalMS = 0;
-    reportLine(
-        "[==========] Running {} test{} from {} test suite{}.", totalTestCount, plural(totalTestCount, "s"), tests.size(),
-        plural(tests.size(), "s")
+    for (const auto& result : results)
+        failureCount += result.status == TestResult::Status::Failed ? 1 : 0;
+
+    reportLine("[==========] {} test{} ran. ({} ms total)", tests.size(), plural(tests.size(), "s"), totalMS);
+    reportLine("[  PASSED  ] {} test{}.", tests.size() - failureCount, plural(tests.size() - failureCount, "s"));
+    if (failureCount > 0)
+    {
+        reportLine("[  FAILED  ] {} test{}, listed below.", failureCount, plural(failureCount, "s"));
+        for (size_t i = 0; i < tests.size(); ++i)
+            if (results[i].status == TestResult::Status::Failed)
+                reportLine("[  FAILED  ] {}:{}", tests[i].suiteName, tests[i].name);
+        reportLine("");
+        reportLine("{} FAILED TEST{}", failureCount, plural(failureCount, "S"));
+    }
+
+    return failureCount;
+}
+
+inline int32_t runTestsSerial(const RunOptions& options)
+{
+    // Abort on Ctrl-C.
+    std::atomic<bool> abort{false};
+    setKeyboardInterruptHandler(
+        [&abort]()
+        {
+            reportLine("\nDetected Ctrl-C, aborting ...\n");
+            abort = true;
+        }
     );
-    for (auto suiteIt = tests.begin(); suiteIt != tests.end(); ++suiteIt)
+
+    auto startTime = std::chrono::steady_clock::now();
+
+    DevicePool devicePool(options.deviceDesc);
+
+    // Gather tests.
+    std::vector<Test> tests = enumerateTests();
+    tests = filterTests(tests, options.testSuiteFilter, options.testCaseFilter, options.tagFilter, options.deviceDesc.type);
+
+    // Split tests into suites.
+    std::map<std::string, std::vector<Test>> suites;
+    for (const auto& test : tests)
+        suites[test.suiteName].push_back(test);
+
+    std::map<std::string, std::vector<Test>> failedTests;
+    std::vector<std::pair<Test, TestResult>> report;
+
+    size_t suiteCount = suites.size();
+    size_t testCount = tests.size();
+    int32_t failureCount = 0;
+    reportLine(
+        "[==========] Running {} test{} from {} test suite{}.", testCount, plural(testCount, "s"), suiteCount, plural(suiteCount, "s")
+    );
+    for (const auto& [suiteName, suiteTests] : suites)
     {
         if (abort)
             break;
 
-        const std::string& suiteName = suiteIt->first;
-        reportLine("[----------] {} test{} from {}", suiteIt->second.size(), plural(suiteIt->second.size(), "s"), suiteName);
+        reportLine("[----------] {} test{} from {}", suiteTests.size(), plural(suiteTests.size(), "s"), suiteName);
         uint64_t suiteMS = 0;
-        for (auto& test : suiteIt->second)
+        for (const auto& test : suiteTests)
         {
             if (abort)
                 break;
 
             bool success = true;
-            for (uint32_t repeatIndex = 0; repeatIndex < repeatCount; ++repeatIndex)
+            for (uint32_t repeatIndex = 0; repeatIndex < options.repeat; ++repeatIndex)
             {
                 if (abort)
                     break;
 
                 std::string repeats;
-                if (repeatCount > 1)
-                    repeats = fmt::format("[{}/{}]", repeatIndex + 1, repeatCount);
+                if (options.repeat > 1)
+                    repeats = fmt::format("[{}/{}]", repeatIndex + 1, options.repeat);
                 reportLine("[ RUN      ] {}:{}{}", suiteName, test.name, repeats);
-                TestResult result = runTest(test, pDevice, pTargetFbo);
+                TestResult result = runTest(test, devicePool);
                 report.emplace_back(test, result);
 
                 std::string statusTag;
@@ -367,12 +469,8 @@ int32_t runTests(
                 }
             }
         }
-        reportLine(
-            "[----------] {} test{} from {} ({} ms total)", suiteIt->second.size(), plural(suiteIt->second.size(), "s"), suiteIt->first,
-            suiteMS
-        );
+        reportLine("[----------] {} test{} from {} ({} ms total)", suiteTests.size(), plural(suiteTests.size(), "s"), suiteName, suiteMS);
         reportLine("");
-        totalMS += suiteMS;
     }
 
     if (abort)
@@ -381,14 +479,17 @@ int32_t runTests(
         return 1;
     }
 
-    if (!xmlReportPath.empty())
-        writeXmlReport(xmlReportPath, report);
+    auto endTime = std::chrono::steady_clock::now();
+    uint64_t totalMS = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
+
+    if (!options.xmlReportPath.empty())
+        writeXmlReport(options.xmlReportPath, report);
 
     reportLine(
-        "[==========] {} test{} from {} test suite{} ran. ({} ms total)", totalTestCount, plural(totalTestCount, "s"), tests.size(),
-        plural(tests.size(), "s"), totalMS
+        "[==========] {} test{} from {} test suite{} ran. ({} ms total)", testCount, plural(testCount, "s"), suiteCount,
+        plural(suiteCount, "s"), totalMS
     );
-    reportLine("[  PASSED  ] {} test{}.", totalTestCount - failureCount, plural(totalTestCount - failureCount, "s"));
+    reportLine("[  PASSED  ] {} test{}.", testCount - failureCount, plural(testCount - failureCount, "s"));
     if (failureCount > 0)
     {
         reportLine("[  FAILED  ] {} test{}, listed below.", failureCount, plural(failureCount, "s"));
@@ -400,6 +501,139 @@ int32_t runTests(
     }
 
     return failureCount;
+}
+
+int32_t runTests(const RunOptions& options)
+{
+    // Disable logging to console, we don't want to clutter the test runner output with log messages.
+    Logger::setOutputs(Logger::OutputFlags::File | Logger::OutputFlags::DebugWindow);
+
+    logInfo("Falcor {}", getLongVersionString());
+
+    OSServices::start();
+    Threading::start();
+    Scripting::start();
+
+    int32_t failureCount = options.parallel > 1 ? runTestsParallel(options) : runTestsSerial(options);
+
+    Scripting::shutdown();
+    Threading::shutdown();
+    OSServices::stop();
+
+    return failureCount;
+}
+
+std::vector<Test> enumerateTests()
+{
+    std::vector<Test> tests;
+
+    for (auto& desc : getTestRegistry())
+    {
+        Test test;
+
+        test.suiteName = desc.path.filename().string();
+        test.name = desc.name;
+        test.tags = desc.options.tags;
+        test.skipMessage = desc.options.skipMessage;
+        test.deviceType = Device::Type::Default;
+        test.cpuFunc = desc.cpuFunc;
+        test.gpuFunc = desc.gpuFunc;
+
+        if (test.cpuFunc)
+        {
+            tests.push_back(test);
+        }
+        else if (test.gpuFunc)
+        {
+#if FALCOR_HAS_D3D12
+            if (desc.options.deviceTypes.empty() || desc.options.deviceTypes.count(Device::Type::D3D12))
+            {
+                test.deviceType = Device::Type::D3D12;
+                test.name = fmt::format("{} (D3D12)", desc.name);
+                tests.push_back(test);
+            }
+#endif
+#if FALCOR_HAS_VULKAN
+            if (desc.options.deviceTypes.empty() || desc.options.deviceTypes.count(Device::Type::Vulkan))
+            {
+                test.deviceType = Device::Type::Vulkan;
+                test.name = fmt::format("{} (Vulkan)", desc.name);
+                tests.push_back(test);
+            }
+#endif
+        }
+    }
+
+    // Sort by suite name first, followed by test name.
+    std::sort(
+        tests.begin(), tests.end(),
+        [](const Test& a, const Test& b)
+        {
+            if (a.suiteName == b.suiteName)
+                return a.name < b.name;
+            return a.suiteName < b.suiteName;
+        }
+    );
+
+    return tests;
+}
+
+std::vector<Test> filterTests(
+    std::vector<Test> tests,
+    std::string testSuiteFilter,
+    std::string testCaseFilter,
+    std::string tagFilter,
+    Device::Type deviceType
+)
+{
+    std::vector<Test> filtered;
+
+    std::regex suiteFilterRegex(testSuiteFilter, std::regex::icase | std::regex::basic);
+    std::regex testFilterRegex(testCaseFilter, std::regex::icase | std::regex::basic);
+
+    std::set<std::string> includeTags;
+    std::set<std::string> excludeTags;
+    for (const auto& token : splitString(tagFilter, ","))
+    {
+        if (token.empty())
+            continue;
+        if (token[0] == '-' || token[0] == '!' || token[0] == '~')
+            excludeTags.insert(token.substr(1));
+        else if (token[0] == '+')
+            includeTags.insert(token.substr(1));
+        else
+            includeTags.insert(token);
+    }
+
+    auto matchTags =
+        [](const std::set<std::string>& tags, const std::set<std::string>& includeTags, const std::set<std::string>& excludeTags)
+    {
+        bool include = includeTags.empty();
+        bool exclude = false;
+
+        for (const auto& tag : tags)
+        {
+            include |= includeTags.count(tag) == 1;
+            exclude |= excludeTags.count(tag) == 1;
+        }
+
+        return include && !exclude;
+    };
+
+    for (auto&& test : tests)
+    {
+        if (!testSuiteFilter.empty() && !std::regex_search(test.suiteName, suiteFilterRegex))
+            continue;
+        if (!testCaseFilter.empty() && !std::regex_search(test.name, testFilterRegex))
+            continue;
+        if (!matchTags(test.tags, includeTags, excludeTags))
+            continue;
+        if (deviceType != Device::Type::Default && test.deviceType != deviceType)
+            continue;
+        filtered.push_back(test);
+    }
+
+    return filtered;
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -417,8 +651,8 @@ void UnitTestContext::reportFailure(const std::string& message)
 void GPUUnitTestContext::createProgram(
     const std::filesystem::path& path,
     const std::string& entry,
-    const Program::DefineList& programDefines,
-    Shader::CompilerFlags flags,
+    const DefineList& programDefines,
+    Program::CompilerFlags flags,
     const std::string& shaderModel,
     bool createShaderVars
 )
@@ -433,7 +667,7 @@ void GPUUnitTestContext::createProgram(
         createVars();
 }
 
-void GPUUnitTestContext::createProgram(const Program::Desc& desc, const Program::DefineList& programDefines, bool createShaderVars)
+void GPUUnitTestContext::createProgram(const Program::Desc& desc, const DefineList& programDefines, bool createShaderVars)
 {
     // Create program.
     mpProgram = ComputeProgram::create(mpDevice, desc, programDefines);
@@ -461,16 +695,16 @@ void GPUUnitTestContext::createVars()
 void GPUUnitTestContext::allocateStructuredBuffer(const std::string& name, uint32_t nElements, const void* pInitData, size_t initDataSize)
 {
     checkInvariant(mpVars != nullptr, "Program vars not created");
-    mStructuredBuffers[name].pBuffer = Buffer::createStructured(mpDevice, mpProgram.get(), name, nElements);
-    FALCOR_ASSERT(mStructuredBuffers[name].pBuffer);
+    mStructuredBuffers[name] = Buffer::createStructured(mpDevice, mpProgram.get(), name, nElements);
     if (pInitData)
     {
-        size_t expectedDataSize = mStructuredBuffers[name].pBuffer->getStructSize() * mStructuredBuffers[name].pBuffer->getElementCount();
+        ref<Buffer> buffer = mStructuredBuffers[name];
+        size_t expectedDataSize = buffer->getStructSize() * buffer->getElementCount();
         if (initDataSize == 0)
             initDataSize = expectedDataSize;
         else if (initDataSize != expectedDataSize)
             throw ErrorRunningTestException("StructuredBuffer '" + name + "' initial data size mismatch");
-        mStructuredBuffers[name].pBuffer->setBlob(pInitData, 0, initDataSize);
+        buffer->setBlob(pInitData, 0, initDataSize);
     }
 }
 
@@ -479,7 +713,7 @@ void GPUUnitTestContext::runProgram(const uint3& dimensions)
     checkInvariant(mpVars != nullptr, "Program vars not created");
     for (const auto& buffer : mStructuredBuffers)
     {
-        mpVars->setBuffer(buffer.first, buffer.second.pBuffer);
+        mpVars->setBuffer(buffer.first, buffer.second);
     }
 
     uint3 groups = div_round_up(dimensions, mThreadGroupSize);
@@ -493,27 +727,7 @@ void GPUUnitTestContext::runProgram(const uint3& dimensions)
     mpDevice->getRenderContext()->dispatch(mpState.get(), mpVars.get(), groups);
 }
 
-void GPUUnitTestContext::unmapBuffer(const char* bufferName)
-{
-    FALCOR_ASSERT(mStructuredBuffers.find(bufferName) != mStructuredBuffers.end());
-    if (!mStructuredBuffers[bufferName].mapped)
-        throw ErrorRunningTestException(std::string(bufferName) + ": buffer not mapped");
-    mStructuredBuffers[bufferName].pBuffer->unmap();
-    mStructuredBuffers[bufferName].mapped = false;
-}
-
-const void* GPUUnitTestContext::mapRawRead(const char* bufferName)
-{
-    FALCOR_ASSERT(mStructuredBuffers.find(bufferName) != mStructuredBuffers.end());
-    if (mStructuredBuffers.find(bufferName) == mStructuredBuffers.end())
-    {
-        throw ErrorRunningTestException(std::string(bufferName) + ": couldn't find buffer to map");
-    }
-    if (mStructuredBuffers[bufferName].mapped)
-        throw ErrorRunningTestException(std::string(bufferName) + ": buffer already mapped");
-    mStructuredBuffers[bufferName].mapped = true;
-    return mStructuredBuffers[bufferName].pBuffer->map(Buffer::MapType::Read);
-}
+} // namespace unittest
 
 /**
  * Simple tests of the testing framework. How meta.
@@ -557,7 +771,7 @@ GPU_TEST(TestGPUTest)
     ctx["TestCB"]["scale"] = 2.f;
     ctx.runProgram();
 
-    const float* s = ctx.mapBuffer<const float>("result");
+    std::vector<float> s = ctx.readBuffer<float>("result");
     // s[i] == 2*i
     EXPECT(s[1] == 2);
     EXPECT_EQ(s[1], 2);
@@ -566,7 +780,21 @@ GPU_TEST(TestGPUTest)
     EXPECT_LE(s[4], 8);
     EXPECT_GT(s[5], 5);
     EXPECT_GE(s[6], 11);
-
-    ctx.unmapBuffer("result");
 }
+
+CPU_TEST(TestSkip1, "skipped")
+{
+    EXPECT(false);
+}
+
+CPU_TEST(TestSkip2, SKIP("skipped"))
+{
+    EXPECT(false);
+}
+
+CPU_TEST(TestTags, TAGS("tag1", "tag2", "tag3"))
+{
+    EXPECT(true);
+}
+
 } // namespace Falcor

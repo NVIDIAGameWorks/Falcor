@@ -96,7 +96,7 @@ void setupSamplingTest(GPUUnitTestContext& ctx, const SamplingTestSpec& spec, co
 
     uint32_t testCount = spec.visibleNormals ? (uint32_t)spec.incidentAngles.size() : 1;
 
-    Program::DefineList defines;
+    DefineList defines;
     defines.add("TEST_NDF_TYPE", spec.ndf);
     ctx.createProgram(kShaderFile, csEntry, defines);
 
@@ -281,7 +281,7 @@ GPU_TEST(MicrofacetSigmaIntegration)
     // by Dupuy et al. 2016, Eq. 18.
     for (uint32_t t = 0; t < kNdfs.size(); ++t)
     {
-        Program::DefineList defines;
+        DefineList defines;
         defines.add("TEST_NDF_TYPE", kNdfs[t]);
         ctx.createProgram(kShaderFile, "sigmaIntegration", defines);
 
@@ -298,8 +298,8 @@ GPU_TEST(MicrofacetSigmaIntegration)
         ctx.allocateStructuredBuffer("result2", N);
 
         ctx.runProgram(N, 1, 1);
-        const float* result1 = ctx.mapBuffer<const float>("result1");
-        const float* result2 = ctx.mapBuffer<const float>("result2");
+        std::vector<float> result1 = ctx.readBuffer<float>("result1");
+        std::vector<float> result2 = ctx.readBuffer<float>("result2");
         for (uint32_t i = 0; i < N; ++i)
         {
             float sigmaRef = result1[i];
@@ -307,8 +307,6 @@ GPU_TEST(MicrofacetSigmaIntegration)
             float diff = std::abs(sigmaRef - sigmaEval);
             EXPECT_LT(diff, 5e-3f);
         }
-        ctx.unmapBuffer("result1");
-        ctx.unmapBuffer("result2");
     }
 }
 
@@ -320,7 +318,7 @@ GPU_TEST(MicrofacetSigmaLambdaConsistency)
     // by Dupuy et al. 2016, Eq. 18.
     for (uint32_t t = 0; t < kNdfs.size(); ++t)
     {
-        Program::DefineList defines;
+        DefineList defines;
         defines.add("TEST_NDF_TYPE", kNdfs[t]);
         ctx.createProgram(kShaderFile, "sigmaLambdaConsistency", defines);
 
@@ -337,8 +335,8 @@ GPU_TEST(MicrofacetSigmaLambdaConsistency)
         ctx.allocateStructuredBuffer("result2", N);
 
         ctx.runProgram(N, 1, 1);
-        const float* result1 = ctx.mapBuffer<const float>("result1");
-        const float* result2 = ctx.mapBuffer<const float>("result2");
+        std::vector<float> result1 = ctx.readBuffer<float>("result1");
+        std::vector<float> result2 = ctx.readBuffer<float>("result2");
         for (uint32_t i = 0; i < N; ++i)
         {
             float mu = -1 + 2 * float(i) / (N - 1);
@@ -357,8 +355,6 @@ GPU_TEST(MicrofacetSigmaLambdaConsistency)
             float diff = std::abs(sigma - rhs);
             EXPECT_LT(diff, 1e-3f);
         }
-        ctx.unmapBuffer("result1");
-        ctx.unmapBuffer("result2");
     }
 }
 
@@ -369,7 +365,7 @@ GPU_TEST(MicrofacetLambdaNonsymmetry)
     // by Dupuy et al. 2016, Eq. 18 and 19.
     for (uint32_t t = 0; t < kNdfs.size(); ++t)
     {
-        Program::DefineList defines;
+        DefineList defines;
         defines.add("TEST_NDF_TYPE", kNdfs[t]);
         ctx.createProgram(kShaderFile, "lambdaNonsymmetry", defines);
 
@@ -386,8 +382,8 @@ GPU_TEST(MicrofacetLambdaNonsymmetry)
         ctx.allocateStructuredBuffer("result2", N);
 
         ctx.runProgram(N, 1, 1);
-        const float* result1 = ctx.mapBuffer<const float>("result1");
-        const float* result2 = ctx.mapBuffer<const float>("result2");
+        std::vector<float> result1 = ctx.readBuffer<float>("result1");
+        std::vector<float> result2 = ctx.readBuffer<float>("result2");
         for (uint32_t i = 0; i < N; ++i)
         {
             float LambdaPos = result1[i];
@@ -397,8 +393,6 @@ GPU_TEST(MicrofacetLambdaNonsymmetry)
             float diff = std::abs(lhs - rhs);
             EXPECT_LT(diff, 1e-3f);
         }
-        ctx.unmapBuffer("result1");
-        ctx.unmapBuffer("result2");
     }
 }
 
@@ -407,7 +401,7 @@ GPU_TEST(MicrofacetG1Symmetry)
     // Test the symmetry of the Smith bistatic shadowing function G1.
     for (uint32_t t = 0; t < kNdfs.size(); ++t)
     {
-        Program::DefineList defines;
+        DefineList defines;
         defines.add("TEST_NDF_TYPE", kNdfs[t]);
         ctx.createProgram(kShaderFile, "g1Symmetry", defines);
 
@@ -424,8 +418,8 @@ GPU_TEST(MicrofacetG1Symmetry)
         ctx.allocateStructuredBuffer("result2", N);
 
         ctx.runProgram(N, 1, 1);
-        const float* result1 = ctx.mapBuffer<const float>("result1");
-        const float* result2 = ctx.mapBuffer<const float>("result2");
+        std::vector<float> result1 = ctx.readBuffer<float>("result1");
+        std::vector<float> result2 = ctx.readBuffer<float>("result2");
         for (uint32_t i = 0; i < N; ++i)
         {
             float g1Pos = result1[i];
@@ -433,8 +427,6 @@ GPU_TEST(MicrofacetG1Symmetry)
             float diff = std::abs(g1Pos - g1Neg);
             EXPECT_LT(diff, 1e-3f);
         }
-        ctx.unmapBuffer("result1");
-        ctx.unmapBuffer("result2");
     }
 }
 

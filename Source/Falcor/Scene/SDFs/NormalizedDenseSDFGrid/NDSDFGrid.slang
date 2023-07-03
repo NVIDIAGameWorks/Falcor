@@ -128,6 +128,9 @@ struct NDSDFGrid : SDFGridBase, ISDFGrid
 
     bool intersectSDF(const float3 rayOrigin, const float3 rayDir, const float tMin, const float tMax, const uint primitiveID, out float t, out SDFGridHitData hitData)
     {
+        t = {};
+        hitData = {};
+
         // Add 0.5f to origin so that it is in [0, 1] instead of [-0.5, 0.5].
         float3 rayOrigLocal = rayOrigin + 0.5f;
 

@@ -26,6 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+#include "Core/Enum.h"
 #include <pybind11/pytypes.h>
 #include <filesystem>
 #include <memory>
@@ -34,13 +35,13 @@
 
 namespace Falcor
 {
-class Dictionary
+class PythonDictionary
 {
 public:
     using Container = pybind11::dict;
 
-    Dictionary() = default;
-    Dictionary(const Container& c) : mMap(c) {}
+    PythonDictionary() = default;
+    PythonDictionary(const Container& c) : mMap(c) {}
 
     class Value
     {
@@ -58,7 +59,10 @@ public:
         template<typename T>
         void operator=(const T& t)
         {
-            mContainer[mName.c_str()] = t;
+            if constexpr (has_enum_info_v<T>)
+                mContainer[mName.c_str()] = enumToString(t);
+            else
+                mContainer[mName.c_str()] = t;
         }
 
         void operator=(const std::filesystem::path& path)
@@ -70,7 +74,10 @@ public:
         template<typename T>
         operator T() const
         {
-            return mContainer[mName.c_str()].cast<T>();
+            if constexpr (has_enum_info_v<T>)
+                return stringToEnum<T>(mContainer[mName.c_str()].cast<std::string>());
+            else
+                return mContainer[mName.c_str()].cast<T>();
         }
 
     private:

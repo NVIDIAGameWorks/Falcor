@@ -50,12 +50,12 @@ ref<Texture> RenderData::getTexture(const std::string_view name) const
     return pResource ? pResource->asTexture() : nullptr;
 }
 
-ref<RenderPass> RenderPass::create(std::string_view type, ref<Device> pDevice, const Dictionary& dict, PluginManager& pm)
+ref<RenderPass> RenderPass::create(std::string_view type, ref<Device> pDevice, const Properties& props, PluginManager& pm)
 {
     // Try to load a plugin of the same name, if render pass class is not registered yet.
     if (!pm.hasClass<RenderPass>(type))
         pm.loadPluginByName(type);
 
-    return pm.createClass<RenderPass>(type, pDevice, dict);
+    return pm.createClass<RenderPass>(type, pDevice, props);
 }
 } // namespace Falcor

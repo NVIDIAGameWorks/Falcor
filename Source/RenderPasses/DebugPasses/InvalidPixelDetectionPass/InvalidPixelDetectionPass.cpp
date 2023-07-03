@@ -34,7 +34,7 @@ namespace
     const std::string kFormatWarning = "Non-float format can't represent Inf/NaN values. Expect black output.";
 }
 
-InvalidPixelDetectionPass::InvalidPixelDetectionPass(ref<Device> pDevice, const Dictionary& dict)
+InvalidPixelDetectionPass::InvalidPixelDetectionPass(ref<Device> pDevice, const Properties& props)
     : RenderPass(pDevice)
 {
     mpInvalidPixelDetectPass = FullScreenPass::create(mpDevice, "RenderPasses/DebugPasses/InvalidPixelDetectionPass/InvalidPixelDetection.ps.slang");

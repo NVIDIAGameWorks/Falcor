@@ -47,6 +47,7 @@ namespace Falcor
     */
     class FALCOR_API HairMaterial : public BasicMaterial
     {
+        FALCOR_OBJECT(HairMaterial)
     public:
         static ref<HairMaterial> create(ref<Device> pDevice, const std::string& name) { return make_ref<HairMaterial>(pDevice, name); };
 

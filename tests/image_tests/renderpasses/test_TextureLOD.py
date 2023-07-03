@@ -6,19 +6,21 @@ from graphs.WhittedRayTracer import WhittedRayTracer as g
 from falcor import *
 
 m.addGraph(g)
-m.loadScene('TestScenes/texLOD/spheres_cube.pyscene')
+m.loadScene('test_scenes/tex_lod/spheres_cube.pyscene')
 
 # default
 render_frames(m, 'default')
 
 # texLODMode
-for mode in [TexLODMode.Mip0, TexLODMode.RayCones, TexLODMode.RayDiffs]:
+for mode in ['Mip0', 'RayCones', 'RayDiffs']:
     g.updatePass('WhittedRayTracer', {'maxBounces': 7, 'texLODMode': mode})
-    render_frames(m, 'texLODMode.' + str(mode))
+    # TODO: Remove "TexLODMode." from name.
+    render_frames(m, 'texLODMode.TexLODMode.' + mode)
 
 # rayConeFilterMode
-for mode in [RayFootprintFilterMode.Isotropic, RayFootprintFilterMode.Anisotropic, RayFootprintFilterMode.AnisotropicWhenRefraction]:
-    g.updatePass('WhittedRayTracer', {'maxBounces': 7, 'texLODMode': TexLODMode.RayCones, 'rayConeFilterMode': mode})
-    render_frames(m, 'rayConeFilterMode.' + str(mode))
+for mode in ['Isotropic', 'Anisotropic', 'AnisotropicWhenRefraction']:
+    g.updatePass('WhittedRayTracer', {'maxBounces': 7, 'texLODMode': 'RayCones', 'rayConeFilterMode': mode})
+    # TODO: Remove "RayFootprintFilterMode." from name.
+    render_frames(m, 'rayConeFilterMode.RayFootprintFilterMode.' + mode)
 
 exit()

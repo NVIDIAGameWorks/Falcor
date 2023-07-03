@@ -2,7 +2,7 @@ from falcor import *
 
 def render_graph_GBufferRTCullBack():
     g = RenderGraph('GBufferRTCullBack')
-    GBufferRT = createPass('GBufferRT', {'samplePattern': SamplePattern.Center, 'forceCullMode': True, 'cull': CullMode.CullBack})
+    GBufferRT = createPass('GBufferRT', {'samplePattern': 'Center', 'forceCullMode': True, 'cull': 'Back'})
     g.addPass(GBufferRT, 'GBufferRT')
     g.markOutput('GBufferRT.faceNormalW')
     return g

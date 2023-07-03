@@ -337,7 +337,7 @@ bool Program::setDefines(const DefineList& dl)
 
 bool Program::addTypeConformance(const std::string& typeName, const std::string interfaceType, uint32_t id)
 {
-    Shader::TypeConformance conformance = Shader::TypeConformance(typeName, interfaceType);
+    TypeConformance conformance = TypeConformance(typeName, interfaceType);
     if (mTypeConformanceList.find(conformance) == mTypeConformanceList.end())
     {
         markDirty();
@@ -349,7 +349,7 @@ bool Program::addTypeConformance(const std::string& typeName, const std::string 
 
 bool Program::removeTypeConformance(const std::string& typeName, const std::string interfaceType)
 {
-    Shader::TypeConformance conformance = Shader::TypeConformance(typeName, interfaceType);
+    TypeConformance conformance = TypeConformance(typeName, interfaceType);
     if (mTypeConformanceList.find(conformance) != mTypeConformanceList.end())
     {
         markDirty();

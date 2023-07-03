@@ -38,6 +38,7 @@ namespace Falcor
  */
 class FALCOR_API DepthStencilState : public Object
 {
+    FALCOR_OBJECT(DepthStencilState)
 public:
     /**
      * Used for stencil control.

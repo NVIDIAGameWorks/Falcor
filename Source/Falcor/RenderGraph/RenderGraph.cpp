@@ -98,9 +98,9 @@ void RenderGraph::setScene(const ref<Scene>& pScene)
     mRecompile = true;
 }
 
-ref<RenderPass> RenderGraph::createPass(const std::string& passName, const std::string& passType, const Dictionary& dict)
+ref<RenderPass> RenderGraph::createPass(const std::string& passName, const std::string& passType, const Properties& props)
 {
-    ref<RenderPass> pPass = RenderPass::create(passType, mpDevice, dict);
+    ref<RenderPass> pPass = RenderPass::create(passType, mpDevice, props);
     if (pPass)
         addPass(pPass, passName);
     return pPass;
@@ -108,18 +108,11 @@ ref<RenderPass> RenderGraph::createPass(const std::string& passName, const std::
 
 uint32_t RenderGraph::addPass(const ref<RenderPass>& pPass, const std::string& passName)
 {
-    FALCOR_ASSERT(pPass);
-    uint32_t passIndex = getPassIndex(passName);
-    if (passIndex != kInvalidIndex)
-    {
-        reportError("Pass named '" + passName + "' already exists. Ignoring call");
-        return kInvalidIndex;
-    }
-    else
-    {
-        passIndex = mpGraph->addNode();
-        mNameToIndex[passName] = passIndex;
-    }
+    checkArgument(pPass != nullptr, "Added pass must not be null.");
+    checkArgument(getPassIndex(passName) == kInvalidIndex, "Pass name '{}' already exists.", passName);
+
+    uint32_t passIndex = mpGraph->addNode();
+    mNameToIndex[passName] = passIndex;
 
     pPass->mPassChangedCB = [this]() { mRecompile = true; };
     pPass->mName = passName;
@@ -134,11 +127,7 @@ uint32_t RenderGraph::addPass(const ref<RenderPass>& pPass, const std::string& p
 void RenderGraph::removePass(const std::string& name)
 {
     uint32_t index = getPassIndex(name);
-    if (index == kInvalidIndex)
-    {
-        logWarning("Can't remove pass '{}'. Pass doesn't exist.", name);
-        return;
-    }
+    checkArgument(index != kInvalidIndex, "Can't remove render pass '{}'. Pass doesn't exist.", name);
 
     // Unmark graph outputs that belong to this pass.
     // Because the way std::vector works, we can't call unmarkOutput() immediately, so we store the outputs in a vector
@@ -161,36 +150,17 @@ void RenderGraph::removePass(const std::string& name)
     mRecompile = true;
 }
 
-void RenderGraph::applyPassSettings(const std::string& passName, const Dictionary& dict)
+void RenderGraph::updatePass(const std::string& passName, const Properties& props)
 {
     uint32_t index = getPassIndex(passName);
     const auto pPassIt = mNodeData.find(index);
 
-    if (pPassIt == mNodeData.end())
-    {
-        logError("Error in RenderGraph::updatePass(). Unable to find pass " + passName);
-        return;
-    }
-    auto pPass = pPassIt->second.pPass;
-
-    pPass->applySettings(dict);
-}
-
-void RenderGraph::updatePass(const std::string& passName, const Dictionary& dict)
-{
-    uint32_t index = getPassIndex(passName);
-    const auto pPassIt = mNodeData.find(index);
-
-    if (pPassIt == mNodeData.end())
-    {
-        reportError("Error in RenderGraph::updatePass(). Unable to find pass " + passName);
-        return;
-    }
+    checkArgument(pPassIt != mNodeData.end(), "Can't update render pass '{}'. Pass doesn't exist.", passName);
 
     // Recreate pass without changing graph using new dictionary
     auto pOldPass = pPassIt->second.pPass;
     std::string passTypeName = pOldPass->getType();
-    auto pPass = RenderPass::create(passTypeName, mpDevice, dict);
+    auto pPass = RenderPass::create(passTypeName, mpDevice, props);
     pPassIt->second.pPass = pPass;
     pPass->mPassChangedCB = [this]() { mRecompile = true; };
     pPass->mName = pOldPass->getName();
@@ -203,12 +173,9 @@ void RenderGraph::updatePass(const std::string& passName, const Dictionary& dict
 const ref<RenderPass>& RenderGraph::getPass(const std::string& name) const
 {
     uint32_t index = getPassIndex(name);
-    if (index == kInvalidIndex)
-    {
-        static const ref<RenderPass> pNull;
-        reportError("RenderGraph::getRenderPass() - can't find a pass named '" + name + "'");
-        return pNull;
-    }
+
+    checkArgument(index != kInvalidIndex, "Can't find render pass '{}'.", name);
+
     return mNodeData.at(index).pPass;
 }
 
@@ -251,28 +218,22 @@ static str_pair parseFieldName(const std::string& fullname)
 RenderPass* RenderGraph::getRenderPassAndNamePair(
     const bool input,
     const std::string& fullname,
-    const std::string& errorPrefix,
     std::pair<std::string, std::string>& nameAndField
 ) const
 {
     nameAndField = parseFieldName(fullname);
 
     RenderPass* pPass = getPass(nameAndField.first).get();
-    if (!pPass)
-    {
-        reportError(errorPrefix + " - can't find render pass named '" + nameAndField.first + "'");
-        return nullptr;
-    }
+    if (pPass == nullptr)
+        throw ArgumentError("Can't find render pass '{}'.", nameAndField.first);
 
     RenderPass::CompileData compileData;
     compileData.defaultTexDims = mCompilerDeps.defaultResourceProps.dims;
     compileData.defaultTexFormat = mCompilerDeps.defaultResourceProps.format;
 
     if (nameAndField.second.size() && checkRenderPassIoExist(pPass, nameAndField.second, input, compileData) == false)
-    {
-        reportError(errorPrefix + "- can't find field named '" + nameAndField.second + "' in render pass '" + nameAndField.first + "'");
-        return nullptr;
-    }
+        throw ArgumentError("Can't find field named '{}' in render pass '{}'.", nameAndField.second, nameAndField.first);
+
     return pPass;
 }
 
@@ -289,22 +250,17 @@ uint32_t RenderGraph::addEdge(const std::string& src, const std::string& dst)
 {
     EdgeData newEdge;
     str_pair srcPair, dstPair;
-    const auto& pSrc = getRenderPassAndNamePair(false, src, "Invalid src string in RenderGraph::addEdge()", srcPair);
-    const auto& pDst = getRenderPassAndNamePair(true, dst, "Invalid dst string in RenderGraph::addEdge()", dstPair);
+    getRenderPassAndNamePair(false, src, srcPair);
+    getRenderPassAndNamePair(true, dst, dstPair);
     newEdge.srcField = srcPair.second;
     newEdge.dstField = dstPair.second;
 
-    if (pSrc == nullptr || pDst == nullptr)
-        return kInvalidIndex;
     if (checkMatchingEdgeTypes(newEdge.srcField, newEdge.dstField) == false)
-    {
-        reportError(
-            "RenderGraph::addEdge() - can't add the edge [" + src + ", " + dst +
-            "]. One of the nodes is a resource while the other is a pass. Can't tell if you want a data-dependency or an "
-            "execution-dependency"
+        throw ArgumentError(
+            "Can't add from '{}' to '{}'. One of the nodes is a resource while the other is a pass. Can't tell if you want a "
+            "data-dependency or an execution-dependency",
+            src, dst
         );
-        return kInvalidIndex;
-    }
 
     uint32_t srcIndex = mNameToIndex[srcPair.first];
     uint32_t dstIndex = mNameToIndex[dstPair.first];
@@ -321,24 +277,19 @@ uint32_t RenderGraph::addEdge(const std::string& src, const std::string& dst)
 
             if (edgeData.dstField == newEdge.dstField)
             {
-                reportError(
-                    "RenderGraph::addEdge() - destination '" + dst +
-                    "' is already initialized. Please remove the existing connection before trying to add an edge"
+                throw ArgumentError(
+                    "Edge destination '{}' is already initialized. Please remove the existing connection before trying to add a new edge.",
+                    dst
                 );
-                return kInvalidIndex;
             }
         }
     }
 
     // Make sure that this doesn't create a cycle
     if (DirectedGraphPathDetector::hasPath(*mpGraph, dstIndex, srcIndex))
-    {
-        reportError(
-            "RenderGraph::addEdge() - can't add the edge [" + src + ", " + dst +
-            "]. The edge will create a cycle in the graph which is not allowed"
+        throw ArgumentError(
+            "Can't add the edge from '{}' to '{}'. The edge will create a cycle in the graph which is not allowed.", src, dst
         );
-        return kInvalidIndex;
-    }
 
     uint32_t e = mpGraph->addEdge(srcIndex, dstIndex);
     mEdgeData[e] = newEdge;
@@ -349,14 +300,8 @@ uint32_t RenderGraph::addEdge(const std::string& src, const std::string& dst)
 void RenderGraph::removeEdge(const std::string& src, const std::string& dst)
 {
     str_pair srcPair, dstPair;
-    const auto& pSrc = getRenderPassAndNamePair(false, src, "Invalid src string in RenderGraph::addEdge()", srcPair);
-    const auto& pDst = getRenderPassAndNamePair(true, dst, "Invalid dst string in RenderGraph::addEdge()", dstPair);
-
-    if (pSrc == nullptr || pDst == nullptr)
-    {
-        reportError("Unable to remove edge. Input or output node not found.");
-        return;
-    }
+    const RenderPass* pSrc = getRenderPassAndNamePair(false, src, srcPair);
+    const RenderPass* pDst = getRenderPassAndNamePair(true, dst, dstPair);
 
     uint32_t srcIndex = mNameToIndex[srcPair.first];
 
@@ -378,11 +323,8 @@ void RenderGraph::removeEdge(const std::string& src, const std::string& dst)
 
 void RenderGraph::removeEdge(uint32_t edgeID)
 {
-    if (mEdgeData.find(edgeID) == mEdgeData.end())
-    {
-        reportError("Can't remove edge with index " + std::to_string(edgeID) + ". The edge doesn't exist");
-        return;
-    }
+    checkArgument(mEdgeData.find(edgeID) != mEdgeData.end(), "Can't remove edge with index {}. The edge doesn't exist.", edgeID);
+
     mEdgeData.erase(edgeID);
     mpGraph->removeEdge(edgeID);
     mRecompile = true;
@@ -479,10 +421,7 @@ void RenderGraph::execute(RenderContext* pRenderContext)
 {
     std::string log;
     if (!compile(pRenderContext, log))
-    {
-        reportError("Failed to compile RenderGraph\n" + log + "Ignoring RenderGraph::execute() call");
-        return;
-    }
+        throw RuntimeError("Failed to compile render graph:\n{}", log);
 
     FALCOR_ASSERT(mpExe);
     RenderGraphExe::Context c{
@@ -564,9 +503,7 @@ void RenderGraph::update(const ref<RenderGraph>& pGraph)
 void RenderGraph::setInput(const std::string& name, const ref<Resource>& pResource)
 {
     str_pair strPair;
-    RenderPass* pPass = getRenderPassAndNamePair(true, name, "RenderGraph::setInput()", strPair);
-    if (pPass == nullptr)
-        return;
+    RenderPass* pPass = getRenderPassAndNamePair(true, name, strPair);
 
     if (pResource)
     {
@@ -576,12 +513,7 @@ void RenderGraph::setInput(const std::string& name, const ref<Resource>& pResour
     {
         if (mCompilerDeps.externalResources.find(name) == mCompilerDeps.externalResources.end())
         {
-            logWarning(
-                "RenderGraph::setInput() - Trying to remove an external resource named '{}' but the resource wasn't registered before. "
-                "Ignoring call.",
-                name
-            );
-            return;
+            throw ArgumentError("Trying to remove an external resource named '{}' but the resource wasn't registered before.", name);
         }
         mCompilerDeps.externalResources.erase(name);
     }
@@ -592,8 +524,7 @@ void RenderGraph::setInput(const std::string& name, const ref<Resource>& pResour
 
 void RenderGraph::markOutput(const std::string& name, TextureChannelFlags mask)
 {
-    if (mask == TextureChannelFlags::None)
-        throw RuntimeError("RenderGraph::markOutput() mask must be non-empty");
+    checkArgument(mask != TextureChannelFlags::None, "Mask must be non-empty");
 
     // Recursive call to handle '*' wildcard.
     if (name == "*")
@@ -605,9 +536,7 @@ void RenderGraph::markOutput(const std::string& name, TextureChannelFlags mask)
     }
 
     str_pair strPair;
-    const auto& pPass = getRenderPassAndNamePair(false, name, "RenderGraph::markOutput()", strPair);
-    if (pPass == nullptr)
-        return;
+    getRenderPassAndNamePair(false, name, strPair);
 
     GraphOut newOut;
     newOut.field = strPair.second;
@@ -632,9 +561,7 @@ void RenderGraph::markOutput(const std::string& name, TextureChannelFlags mask)
 void RenderGraph::unmarkOutput(const std::string& name)
 {
     str_pair strPair;
-    const auto& pPass = getRenderPassAndNamePair(false, name, "RenderGraph::unmarkOutput()", strPair);
-    if (pPass == nullptr)
-        return;
+    getRenderPassAndNamePair(false, name, strPair);
 
     GraphOut removeMe;
     removeMe.field = strPair.second;
@@ -651,9 +578,8 @@ void RenderGraph::unmarkOutput(const std::string& name)
 bool RenderGraph::isGraphOutput(const std::string& name) const
 {
     str_pair strPair;
-    const auto& pPass = getRenderPassAndNamePair(false, name, "RenderGraph::isGraphOutput()", strPair);
-    if (pPass == nullptr)
-        return false;
+    getRenderPassAndNamePair(false, name, strPair);
+
     uint32_t passIndex = getPassIndex(strPair.first);
     GraphOut thisOutput = {passIndex, strPair.second};
     return isGraphOutput(thisOutput);
@@ -662,24 +588,16 @@ bool RenderGraph::isGraphOutput(const std::string& name) const
 ref<Resource> RenderGraph::getOutput(const std::string& name)
 {
     if (mRecompile)
-    {
-        reportError("RenderGraph::getOutput() - can't fetch an output resource because the graph wasn't successfuly compiled yet");
-        return nullptr;
-    }
+        throw RuntimeError("Can't fetch the output '{}'. The graph wasn't successfuly compiled yet.", name);
 
     str_pair strPair;
-    RenderPass* pPass = getRenderPassAndNamePair(false, name, "RenderGraph::getOutput()", strPair);
-    if (!pPass)
-        return nullptr;
+    getRenderPassAndNamePair(false, name, strPair);
 
     uint32_t passIndex = getPassIndex(strPair.first);
     GraphOut thisOutput = {passIndex, strPair.second};
     bool isOutput = isGraphOutput(thisOutput);
     if (!isOutput)
-    {
-        reportError("RenderGraph::getOutput() - can't fetch the output '" + name + "'. The resource is wasn't marked as an output");
-        return nullptr;
-    }
+        throw RuntimeError("Can't fetch the output '{}'. The resource is wasn't marked as an output.", name);
 
     return mpExe->getResource(name);
 }
@@ -777,10 +695,11 @@ FALCOR_SCRIPT_BINDING(RenderGraph)
     renderPass.def_property_readonly("name", &RenderPass::getName);
     renderPass.def_property_readonly("type", &RenderPass::getType);
     renderPass.def_property_readonly("desc", &RenderPass::getDesc);
-    renderPass.def("get_dictionary", [](RenderPass& pass) { return pass.getScriptingDictionary().toPython(); });
+    renderPass.def_property_readonly("properties", [](RenderPass& self) { return self.getProperties().toPython(); });
+    renderPass.def("set_properties", [](RenderPass& self, pybind11::dict dict) { self.setProperties(Properties(dict)); });
 
     // PYTHONDEPRECATED BEGIN
-    renderPass.def("getDictionary", [](RenderPass& pass) { return pass.getScriptingDictionary().toPython(); });
+    renderPass.def("getDictionary", [](RenderPass& pass) { return pass.getProperties().toPython(); });
     // PYTHONDEPRECATED END
 
     // RenderGraph
@@ -790,12 +709,12 @@ FALCOR_SCRIPT_BINDING(RenderGraph)
     renderGraph.def(
         "create_pass",
         [](RenderGraph& graph, const std::string& pass_name, const std::string& pass_type, pybind11::dict dict = {})
-        { return graph.createPass(pass_name, pass_type, Dictionary(dict)); },
+        { return graph.createPass(pass_name, pass_type, Properties(dict)); },
         "pass_name"_a, "pass_type"_a, "dict"_a = pybind11::dict()
     );
     renderGraph.def("remove_pass", &RenderGraph::removePass, "name"_a);
     renderGraph.def(
-        "update_pass", [](RenderGraph& graph, const std::string& name, pybind11::dict dict) { graph.updatePass(name, Dictionary(dict)); },
+        "update_pass", [](RenderGraph& graph, const std::string& name, pybind11::dict dict) { graph.updatePass(name, Properties(dict)); },
         "name"_a, "dict"_a
     );
     renderGraph.def("add_edge", &RenderGraph::addEdge, "src"_a, "dst"_a);
@@ -821,13 +740,13 @@ FALCOR_SCRIPT_BINDING(RenderGraph)
     renderGraph.def(
         "createPass",
         [](RenderGraph& graph, const std::string& passName, const std::string& passType, pybind11::dict dict = {})
-        { return graph.createPass(passName, passType, Dictionary(dict)); },
+        { return graph.createPass(passName, passType, Properties(dict)); },
         "passName"_a, "passType"_a, "dict"_a = pybind11::dict()
     );
     renderGraph.def("addPass", &RenderGraph::addPass, "pass_"_a, "name"_a);
     renderGraph.def("removePass", &RenderGraph::removePass, "name"_a);
     renderGraph.def(
-        "updatePass", [](RenderGraph& graph, const std::string& passName, pybind11::dict d) { graph.updatePass(passName, Dictionary(d)); },
+        "updatePass", [](RenderGraph& graph, const std::string& passName, pybind11::dict d) { graph.updatePass(passName, Properties(d)); },
         "name"_a, "dict"_a
     );
     renderGraph.def("addEdge", &RenderGraph::addEdge, "src"_a, "dst"_a);
@@ -843,7 +762,7 @@ FALCOR_SCRIPT_BINDING(RenderGraph)
     // RenderPassLibrary
     const auto& globalCreateRenderPass = [](const std::string& type, pybind11::dict d = {})
     {
-        auto pPass = RenderPass::create(type, accessActivePythonRenderGraphDevice(), Dictionary(d));
+        auto pPass = RenderPass::create(type, accessActivePythonRenderGraphDevice(), Properties(d));
         if (!pPass)
             throw RuntimeError("Can't create a render pass of type '{}'. Make sure the required plugin library was loaded.", type);
         return pPass;

@@ -125,14 +125,21 @@ namespace Falcor
         return grid != nullptr;
     }
 
-    uint32_t GridVolume::loadGridSequence(GridSlot slot, const std::vector<std::filesystem::path>& paths, const std::string& gridname, bool keepEmpty)
+    GridVolume::GridSequence GridVolume::createGridSequence(ref<Device> pDevice, const std::vector<std::filesystem::path>& paths, const std::string& gridname, bool keepEmpty)
     {
         GridSequence grids;
         for (const auto& path : paths)
         {
-            auto grid = Grid::createFromFile(mpDevice, path, gridname);
+            auto grid = Grid::createFromFile(pDevice, path, gridname);
             if (keepEmpty || grid) grids.push_back(grid);
         }
+
+        return grids;
+    }
+
+    uint32_t GridVolume::loadGridSequence(GridSlot slot, const std::vector<std::filesystem::path>& paths, const std::string& gridname, bool keepEmpty)
+    {
+        GridVolume::GridSequence grids = GridVolume::createGridSequence(mpDevice, paths, gridname, keepEmpty);
         setGridSequence(slot, grids);
         return (uint32_t)grids.size();
     }
@@ -240,10 +247,9 @@ namespace Falcor
 
     void GridVolume::updatePlayback(double currentTime)
     {
-        uint32_t frameCount = getGridFrameCount();
-        if (mPlaybackEnabled && frameCount > 0)
+        if (mPlaybackEnabled && mGridFrameCount > 0)
         {
-            uint32_t frameIndex = (uint32_t)std::floor(std::max(0.0, currentTime) * mFrameRate) % frameCount;
+            uint32_t frameIndex = (mStartFrame + (uint32_t)std::floor(std::max(0.0, currentTime) * mFrameRate)) % mGridFrameCount;
             setGridFrame(frameIndex);
         }
     }
@@ -381,6 +387,7 @@ namespace Falcor
         volume.def_property("gridFrame", &GridVolume::getGridFrame, &GridVolume::setGridFrame);
         volume.def_property_readonly("gridFrameCount", &GridVolume::getGridFrameCount);
         volume.def_property("frameRate", &GridVolume::getFrameRate, &GridVolume::setFrameRate);
+        volume.def_property("startFrame", &GridVolume::getStartFrame, &GridVolume::setStartFrame);
         volume.def_property("playbackEnabled", &GridVolume::isPlaybackEnabled, &GridVolume::setPlaybackEnabled);
         volume.def_property("densityGrid", &GridVolume::getDensityGrid, &GridVolume::setDensityGrid);
         volume.def_property("densityScale", &GridVolume::getDensityScale, &GridVolume::setDensityScale);

@@ -34,31 +34,6 @@ namespace
 
     const std::string kOutput = "output";
 
-    // UI elements
-    const Gui::DropdownList kModeList =
-    {
-        // Geometry
-        { (uint32_t)SceneDebuggerMode::HitType, "Hit type" },
-        { (uint32_t)SceneDebuggerMode::InstanceID, "Instance ID" },
-        { (uint32_t)SceneDebuggerMode::MaterialID, "Material ID" },
-        { (uint32_t)SceneDebuggerMode::PrimitiveID, "Primitive ID" },
-        { (uint32_t)SceneDebuggerMode::GeometryID, "Geometry ID" },
-        { (uint32_t)SceneDebuggerMode::BlasID, "BLAS ID" },
-        { (uint32_t)SceneDebuggerMode::InstancedGeometry, "Instanced geometry" },
-        // Shading data
-        { (uint32_t)SceneDebuggerMode::FaceNormal, "Face normal" },
-        { (uint32_t)SceneDebuggerMode::ShadingNormal, "Shading normal" },
-        { (uint32_t)SceneDebuggerMode::ShadingTangent, "Shading tangent" },
-        { (uint32_t)SceneDebuggerMode::ShadingBitangent, "Shading bitangent" },
-        { (uint32_t)SceneDebuggerMode::FrontFacingFlag, "Front-facing flag" },
-        { (uint32_t)SceneDebuggerMode::BackfacingShadingNormal, "Back-facing shading normal" },
-        { (uint32_t)SceneDebuggerMode::TexCoords, "Texture coordinates" },
-        // Material properties
-        { (uint32_t)SceneDebuggerMode::GuideNormal, "Guide normal" },
-        { (uint32_t)SceneDebuggerMode::Roughness, "Roughness" },
-        { (uint32_t)SceneDebuggerMode::FlatShaded, "Flat shaded" },
-    };
-
     std::string getModeDesc(SceneDebuggerMode mode)
     {
         switch (mode)
@@ -114,30 +89,11 @@ namespace
 
     void registerBindings(pybind11::module& m)
     {
-        pybind11::enum_<SceneDebuggerMode> mode(m, "SceneDebuggerMode");
-        // Geometry
-        mode.value("HitType", SceneDebuggerMode::HitType);
-        mode.value("InstanceID", SceneDebuggerMode::InstanceID);
-        mode.value("MaterialID", SceneDebuggerMode::MaterialID);
-        mode.value("PrimitiveID", SceneDebuggerMode::PrimitiveID);
-        mode.value("GeometryID", SceneDebuggerMode::GeometryID);
-        mode.value("BlasID", SceneDebuggerMode::BlasID);
-        mode.value("InstancedGeometry", SceneDebuggerMode::InstancedGeometry);
-        // Shading data
-        mode.value("FaceNormal", SceneDebuggerMode::FaceNormal);
-        mode.value("ShadingNormal", SceneDebuggerMode::ShadingNormal);
-        mode.value("ShadingTangent", SceneDebuggerMode::ShadingTangent);
-        mode.value("ShadingBitangent", SceneDebuggerMode::ShadingBitangent);
-        mode.value("FrontFacingFlag", SceneDebuggerMode::FrontFacingFlag);
-        mode.value("BackfacingShadingNormal", SceneDebuggerMode::BackfacingShadingNormal);
-        mode.value("TexCoords", SceneDebuggerMode::TexCoords);
-        // Material properties
-        mode.value("GuideNormal", SceneDebuggerMode::GuideNormal);
-        mode.value("Roughness", SceneDebuggerMode::Roughness);
-        mode.value("FlatShaded", SceneDebuggerMode::FlatShaded);
-
         pybind11::class_<SceneDebugger, RenderPass, ref<SceneDebugger>> pass(m, "SceneDebugger");
-        pass.def_property(kMode, &SceneDebugger::getMode, &SceneDebugger::setMode);
+        pass.def_property(kMode,
+            [](const SceneDebugger& self) { return enumToString(self.getMode()); },
+            [](SceneDebugger& self, const std::string& value) {self.setMode(stringToEnum<SceneDebuggerMode>(value)); }
+        );
     }
 }
 
@@ -147,7 +103,7 @@ extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registr
     Falcor::ScriptBindings::registerBinding(registerBindings);
 }
 
-SceneDebugger::SceneDebugger(ref<Device> pDevice, const Dictionary& dict)
+SceneDebugger::SceneDebugger(ref<Device> pDevice, const Properties& props)
     : RenderPass(pDevice)
 {
     if (!mpDevice->isFeatureSupported(Device::SupportedFeatures::RaytracingTier1_1))
@@ -156,22 +112,22 @@ SceneDebugger::SceneDebugger(ref<Device> pDevice, const Dictionary& dict)
     }
 
     // Parse dictionary.
-    for (const auto& [key, value] : dict)
+    for (const auto& [key, value] : props)
     {
-        if (key == kMode) mParams.mode = (uint32_t)value;
+        if (key == kMode) mParams.mode = (uint32_t)value.operator SceneDebuggerMode();
         else if (key == kShowVolumes) mParams.showVolumes = value;
-        else logWarning("Unknown field '{}' in a SceneDebugger dictionary.", key);
+        else logWarning("Unknown property '{}' in a SceneDebugger properties.", key);
     }
 
     mpFence = GpuFence::create(mpDevice);
 }
 
-Dictionary SceneDebugger::getScriptingDictionary()
+Properties SceneDebugger::getProperties() const
 {
-    Dictionary d;
-    d[kMode] = SceneDebuggerMode(mParams.mode);
-    d[kShowVolumes] = mParams.showVolumes;
-    return d;
+    Properties props;
+    props[kMode] = SceneDebuggerMode(mParams.mode);
+    props[kShowVolumes] = mParams.showVolumes;
+    return props;
 }
 
 RenderPassReflection SceneDebugger::reflect(const CompileData& compileData)
@@ -257,7 +213,7 @@ void SceneDebugger::execute(RenderContext* pRenderContext, const RenderData& ren
 
 void SceneDebugger::renderUI(Gui::Widgets& widget)
 {
-    widget.dropdown("Mode", kModeList, mParams.mode);
+    widget.dropdown("Mode", reinterpret_cast<SceneDebuggerMode &>(mParams.mode));
     widget.tooltip("Selects visualization mode");
 
     widget.checkbox("Clamp to [0,1]", mParams.clamp);

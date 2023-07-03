@@ -7,11 +7,11 @@ from falcor import *
 m.addGraph(g)
 
 # default
-m.loadScene('TestScenes/CornellBox.pyscene')
+m.loadScene('test_scenes/cornell_box.pyscene')
 render_frames(m, 'default', frames=[1])
 
 # load other scene
-m.loadScene('TestScenes/NestedDielectrics.pyscene')
+m.loadScene('test_scenes/nested_dielectrics.pyscene')
 render_frames(m, 'nested', frames=[1])
 
 exit()

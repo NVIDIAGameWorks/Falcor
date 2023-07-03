@@ -6,18 +6,20 @@ from graphs.GBufferRTTexGrads import GBufferRT as g
 from falcor import *
 
 m.addGraph(g)
-m.loadScene('TestScenes/texLOD/spheres_cube.pyscene')
+m.loadScene('test_scenes/tex_lod/spheres_cube.pyscene')
 
-texLODModes = [TexLODMode.Mip0, TexLODMode.RayCones, TexLODMode.RayDiffs]
+texLODModes = ['Mip0', 'RayCones', 'RayDiffs']
 
 # texGrads
 for mode in texLODModes:
     g.updatePass('GBufferRT', {'texLOD': mode, "useTraceRayInline": False})
-    render_frames(m, 'texGrads.' + str(mode))
+    # TODO: Remove "TexLODMode." from name.
+    render_frames(m, 'texGrads.TexLODMode.' + mode)
 
 # texGrads trace ray inline
 for mode in texLODModes:
     g.updatePass('GBufferRT', {'texLOD': mode, "useTraceRayInline": True})
-    render_frames(m, 'texGrads-inline.' + str(mode))
+    # TODO: Remove "TexLODMode." from name.
+    render_frames(m, 'texGrads-inline.TexLODMode.' + mode)
 
 exit()

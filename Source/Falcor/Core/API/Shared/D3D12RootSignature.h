@@ -57,6 +57,7 @@ class CopyContext;
  */
 class FALCOR_API D3D12RootSignature : public Object
 {
+    FALCOR_OBJECT(D3D12RootSignature)
 public:
     using ApiHandle = ID3D12RootSignaturePtr;
     using DescType = ShaderResourceType;

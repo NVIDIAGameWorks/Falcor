@@ -29,22 +29,11 @@
 #include "Core/Assert.h"
 #include "Core/Errors.h"
 #include "Utils/Timing/Profiler.h"
-#include "Utils/Scripting/ScriptBindings.h"
 #include <algorithm>
 #include <numeric>
 
 namespace Falcor
 {
-    namespace
-    {
-        const Gui::DropdownList kSolidAngleBoundList =
-        {
-            { (uint32_t)SolidAngleBoundMethod::Sphere, "Sphere" },
-            { (uint32_t)SolidAngleBoundMethod::BoxToCenter, "Cone around center dir" },
-            { (uint32_t)SolidAngleBoundMethod::BoxToAverage, "Cone around average dir" },
-        };
-    }
-
     bool LightBVHSampler::update(RenderContext* pRenderContext)
     {
         FALCOR_PROFILE(pRenderContext, "LightBVHSampler::update");
@@ -75,7 +64,7 @@ namespace Falcor
         return samplerChanged;
     }
 
-    Program::DefineList LightBVHSampler::getDefines() const
+    DefineList LightBVHSampler::getDefines() const
     {
         // Call the base class first.
         auto defines = EmissiveLightSampler::getDefines();
@@ -121,7 +110,7 @@ namespace Falcor
             optionsChanged |= traversalGroup.checkbox("Disable node flux", mOptions.disableNodeFlux);
             optionsChanged |= traversalGroup.checkbox("Use triangle uniform sampling", mOptions.useUniformTriangleSampling);
 
-            if (traversalGroup.dropdown("Solid Angle Bound", kSolidAngleBoundList, (uint32_t&)mOptions.solidAngleBoundMethod))
+            if (traversalGroup.dropdown("Solid Angle Bound", mOptions.solidAngleBoundMethod))
             {
                 mNeedsRebuild = optionsChanged = true;
             }
@@ -147,24 +136,5 @@ namespace Falcor
         // Create the BVH and builder.
         mpBVHBuilder = std::make_unique<LightBVHBuilder>(mOptions.buildOptions);
         mpBVH = std::make_unique<LightBVH>(pScene->getDevice(), pScene->getLightCollection(pRenderContext));
-    }
-
-    FALCOR_SCRIPT_BINDING(LightBVHSampler)
-    {
-        pybind11::enum_<SolidAngleBoundMethod> solidAngleBoundMethod(m, "SolidAngleBoundMethod");
-        solidAngleBoundMethod.value("BoxToAverage", SolidAngleBoundMethod::BoxToAverage);
-        solidAngleBoundMethod.value("BoxToCenter", SolidAngleBoundMethod::BoxToCenter);
-        solidAngleBoundMethod.value("Sphere", SolidAngleBoundMethod::Sphere);
-
-        // TODO use a nested class in the bindings when supported.
-        ScriptBindings::SerializableStruct<LightBVHSampler::Options> options(m, "LightBVHSamplerOptions");
-#define field(f_) field(#f_, &LightBVHSampler::Options::f_)
-        options.field(buildOptions);
-        options.field(useBoundingCone);
-        options.field(useLightingCone);
-        options.field(disableNodeFlux);
-        options.field(useUniformTriangleSampling);
-        options.field(solidAngleBoundMethod);
-#undef field
     }
 }

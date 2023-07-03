@@ -29,10 +29,10 @@
 #include "Material.h"
 #include "Core/Macros.h"
 #include "Core/API/fwd.h"
-#include "Core/API/Shader.h"
 #include "Core/API/ParameterBlock.h"
 #include "Core/API/Buffer.h"
 #include "Core/API/Sampler.h"
+#include "Core/Program/DefineList.h"
 #include "Core/Program/Program.h"
 #include "Utils/Image/TextureManager.h"
 #include "Utils/UI/Gui.h"
@@ -86,7 +86,7 @@ namespace Falcor
             These need to be set before binding the material system parameter block.
             \return List of shader defines.
         */
-        Shader::DefineList getDefines() const;
+        DefineList getDefines() const;
 
         /** Get type conformances for all material types used.
             These need to be set on a program before using the material system in shaders
@@ -145,6 +145,16 @@ namespace Falcor
         /** Get the total number of managed buffers.
         */
         uint32_t getBufferCount() const { return (uint32_t)mBuffers.size(); }
+
+        /** Add a 3D texture resource to be managed.
+            \param[in] pTexture The texture.
+            \return The ID of the texture.
+        */
+        uint32_t addTexture3D(const ref<Texture>& pTexture);
+
+        /** Get the total number of 3D textures.
+        */
+        uint32_t getTexture3DCount() const { return (uint32_t)mTextures3D.size(); }
 
         /** Add a material.
             If an identical material already exists, the material is not added and the existing ID returned.
@@ -234,12 +244,14 @@ namespace Falcor
         // Metadata
         size_t mTextureDescCount = 0;                               ///< Number of texture descriptors in GPU descriptor array. This variable is for book-keeping until unbounded descriptor arrays are supported (see #1321).
         size_t mBufferDescCount = 0;                                ///< Number of buffer descriptors in GPU descriptor array. This variable is for book-keeping until unbounded descriptor arrays are supported (see #1321).
+        size_t mTexture3DDescCount = 0;                             ///< Number of 3D texture descriptors in GPU descriptor array. This variable is for book-keeping until unbounded descriptor arrays are supported (see #1321).
         std::vector<uint32_t> mMaterialCountByType;                 ///< Number of materials of each type, indexed by MaterialType.
         std::set<MaterialType> mMaterialTypes;                      ///< Set of all material types used.
         bool mHasSpecGlossStandardMaterial = false;                 ///< True if standard materials using the SpecGloss shading model exist.
 
         bool mSamplersChanged = false;                              ///< Flag indicating if samplers were added/removed since last update.
         bool mBuffersChanged = false;                               ///< Flag indicating if buffers were added/removed since last update.
+        bool mTextures3DChanged = false;                            ///< Flag indicating if 3D textures were added/removed since last update.
         bool mMaterialsChanged = false;                             ///< Flag indicating if materials were added/removed since last update. Per-material updates are tracked by each material's update flags.
 
         Material::UpdateFlags mMaterialUpdates = Material::UpdateFlags::None; ///< Material updates across all materials since last update.
@@ -251,6 +263,7 @@ namespace Falcor
         ref<Sampler> mpDefaultTextureSampler;                       ///< Default texture sampler to use for all materials.
         std::vector<ref<Sampler>> mTextureSamplers;                 ///< Texture sampler states. These are indexed by ID in the materials.
         std::vector<ref<Buffer>> mBuffers;                          ///< Buffers used by the materials. These are indexed by ID in the materials.
+        std::vector<ref<Texture>> mTextures3D;                      ///< 3D textures used by the materials. These are indexed by ID in the materials.
 
         // UI variables
         std::vector<uint32_t> mSortedMaterialIndices;               ///< Indices of materials, sorted alphabetically by case-insensitive name.

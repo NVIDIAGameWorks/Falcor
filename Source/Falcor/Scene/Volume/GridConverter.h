@@ -289,13 +289,14 @@ namespace Falcor
         auto range = NumericRange<int>(0, mLeafDim[0].z);
         std::for_each(std::execution::par, range.begin(), range.end(), [&](int z) { convertSlice(z); });
         for (int mip = 1; mip < 4; ++mip) computeMip(mip);
-        double dt = CpuTimer::calcDuration(t0, CpuTimer::getCurrentTimePoint());
-        logInfo("converted in {}ms: mNonEmptyCount {} vs max {}", dt, mNonEmptyCount, getAtlasMaxBrick());
 
         BrickedGrid bricks;
         bricks.range = Texture::create3D(pDevice, mLeafDim[0].x, mLeafDim[0].y, mLeafDim[0].z, ResourceFormat::RG16Float, 4, mRangeData.data(), ResourceBindFlags::ShaderResource, false);
         bricks.indirection = Texture::create3D(pDevice, mLeafDim[0].x, mLeafDim[0].y, mLeafDim[0].z, ResourceFormat::RGBA8Uint, 1, mPtrData.data(), ResourceBindFlags::ShaderResource, false);
         bricks.atlas = Texture::create3D(pDevice, getAtlasSizePixels().x, getAtlasSizePixels().y, getAtlasSizePixels().z, getAtlasFormat(), 1, mAtlasData.data(), ResourceBindFlags::ShaderResource, false);
+
+        double dt = CpuTimer::calcDuration(t0, CpuTimer::getCurrentTimePoint());
+        logDebug("Converted '{}' in {:.4}ms: mNonEmptyCount {} vs max {}", mpFloatGrid->gridName(), dt, mNonEmptyCount.load(), getAtlasMaxBrick());
         return bricks;
     }
 }

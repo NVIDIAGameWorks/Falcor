@@ -41,9 +41,9 @@ namespace Falcor
         : BasicMaterial(pDevice, name, MaterialType::Standard)
     {
         setShadingModel(shadingModel);
-        bool specGloss = getShadingModel() == ShadingModel::SpecGloss;
 
         // Setup additional texture slots.
+        bool specGloss = getShadingModel() == ShadingModel::SpecGloss;
         mTextureSlotInfo[(uint32_t)TextureSlot::BaseColor] = { specGloss ? "diffuse" : "baseColor", TextureChannelFlags::RGBA, true };
         mTextureSlotInfo[(uint32_t)TextureSlot::Specular] = specGloss ? TextureSlotInfo{ "specular", TextureChannelFlags::RGBA, true } : TextureSlotInfo{ "spec", TextureChannelFlags::Green | TextureChannelFlags::Blue, false };
         mTextureSlotInfo[(uint32_t)TextureSlot::Normal] = { "normal", TextureChannelFlags::RGB, false };

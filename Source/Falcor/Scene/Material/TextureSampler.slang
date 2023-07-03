@@ -29,6 +29,7 @@
 /** Interface for texture sampling techniques.
     Types implementing this interface support sampling using different LOD computation techniques
 */
+[anyValueSize(32)]
 interface ITextureSampler
 {
     /** Sample from a 2D texture using the level of detail computed by this method
@@ -158,5 +159,63 @@ struct ExplicitGradientTextureSampler : ITextureSampler
     float4 sampleTexture(Texture2D t, SamplerState s, float2 uv)
     {
         return t.SampleGrad(s, uv, gradX, gradY);
+    }
+};
+
+/** Texture sampling using filtered importance sampling
+    The filters applied are controlled by the UV and LOD jitter values passed at init time.
+*/
+struct StochasticTextureSampler : ITextureSampler
+{
+    float2 gradX;           ///< Gradient of texture coordinate in the screen-space X direction
+    float2 gradY;           ///< Gradient of texture coordiante in teh screen-space Y direction
+    float2 uvJitter;        ///< Stochastic uv jitter
+    float lodJitter;        ///< Stochastic lod jitter
+    float maxAnisotropy;    ///< Max anisotropy (ratio between major and minor ellipse axes)
+
+    __init(
+    float2 gradX, float2 gradY, float2 uvJitter, float lodJitter, float maxAnisotropy=64)    
+    {
+        this.gradX = gradX;
+        this.gradY = gradY;
+        this.uvJitter = uvJitter;
+        this.lodJitter = lodJitter;
+        this.maxAnisotropy = maxAnisotropy;
+    }
+
+    float4 sampleTexture(Texture2D t, SamplerState s, float2 uv)
+    {       
+        uint2 dim;
+        t.GetDimensions(dim.x, dim.y);    
+        let dudx = dim.x * gradX.x;
+        let dvdx = dim.y * gradX.y;
+        let dudy = dim.x * gradY.x;
+        let dvdy = dim.y * gradY.y;
+
+        // Find min and max ellipse axis
+        float2 maxAxis = float2(dudy, dvdy);
+        float2 minAxis = float2(dudx, dvdx);
+        if (dot(minAxis, minAxis) > dot(maxAxis, maxAxis))
+        {
+            minAxis = float2(dudy, dvdy);
+            maxAxis = float2(dudx, dvdx);
+        }
+
+        float minAxisLength = length(minAxis);
+        float maxAxisLength = length(maxAxis);
+        
+        if (minAxisLength > 0 && (minAxisLength * maxAnisotropy) < maxAxisLength)
+        {
+            let scale = maxAxisLength / (minAxisLength * maxAnisotropy);
+            minAxisLength *= scale;
+        }       
+
+        // No need to clamp to min and max lod levels, as HW should do it for free.
+        let lod = log2(minAxisLength) + lodJitter;
+
+        uv = uv * dim + uvJitter;
+        uv = (floor(uv) + 0.5) / dim;        
+
+        return t.SampleLevel(s, uv, lod);
     }
 };

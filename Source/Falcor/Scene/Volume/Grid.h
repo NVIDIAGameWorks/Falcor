@@ -58,6 +58,7 @@ namespace Falcor
     */
     class FALCOR_API Grid : public Object
     {
+        FALCOR_OBJECT(Grid)
     public:
         /** Create a sphere voxel grid.
             \param[in] pDevice GPU device.

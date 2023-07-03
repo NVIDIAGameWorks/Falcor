@@ -49,8 +49,8 @@ void testRootBuffer(GPUUnitTestContext& ctx, const std::string& shaderModel, boo
 
     auto nextRandom = [&]() -> uint32_t { return dist(rng); };
 
-    Program::DefineList defines = {{"USE_UAV", useUav ? "1" : "0"}};
-    Shader::CompilerFlags compilerFlags = Shader::CompilerFlags::None;
+    DefineList defines = {{"USE_UAV", useUav ? "1" : "0"}};
+    Program::CompilerFlags compilerFlags = Program::CompilerFlags::None;
 
     // Create parameter block based on reflection of a dummy program.
     // This is to ensure that the register index/space here do not match those of the final program.
@@ -143,7 +143,7 @@ void testRootBuffer(GPUUnitTestContext& ctx, const std::string& shaderModel, boo
     // Test that reading from all the resources in the block works.
     ctx.runProgram(kNumElems, 1, 1);
 
-    const float* result = ctx.mapBuffer<const float>("result");
+    std::vector<float> result = ctx.readBuffer<float>("result");
     for (uint32_t i = 0; i < kNumElems; i++)
     {
         float r = 0.f;
@@ -162,7 +162,6 @@ void testRootBuffer(GPUUnitTestContext& ctx, const std::string& shaderModel, boo
         r += globalTestBuffer[i] * 12;
         EXPECT_EQ(result[i], r) << "i = " << i;
     }
-    ctx.unmapBuffer("result");
 }
 } // namespace
 

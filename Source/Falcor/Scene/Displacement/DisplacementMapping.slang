@@ -415,6 +415,9 @@ void rayBilinearPatchIntersectionTest(
 
 bool traceHeightMapEstimated(const DisplacementData displacementData, float3 startPoint, float3 endPoint, out float intersectedT, out float intersectedHeight)
 {
+    intersectedT = {};
+    intersectedHeight = {};
+
     const float entryHeightData = displacementData.readValue(startPoint.xy);
 #if DISPLACEMENT_TWO_SIDED == 0
     if (startPoint.z < entryHeightData)

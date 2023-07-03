@@ -74,6 +74,7 @@ struct FALCOR_API ResourceViewInfo
  */
 class FALCOR_API ResourceView : public Object
 {
+    FALCOR_OBJECT(ResourceView)
 public:
     using Dimension = ReflectionResourceType::Dimensions;
     static const uint32_t kMaxPossible = -1;

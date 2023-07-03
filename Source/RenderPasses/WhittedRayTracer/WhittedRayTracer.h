@@ -48,11 +48,11 @@ class WhittedRayTracer : public RenderPass
 public:
     FALCOR_PLUGIN_CLASS(WhittedRayTracer, "WhittedRayTracer", "Simple Whitted ray tracer.");
 
-    static ref<WhittedRayTracer> create(ref<Device> pDevice, const Dictionary& dict) { return make_ref<WhittedRayTracer>(pDevice, dict); }
+    static ref<WhittedRayTracer> create(ref<Device> pDevice, const Properties& props) { return make_ref<WhittedRayTracer>(pDevice, props); }
 
-    WhittedRayTracer(ref<Device> pDevice, const Dictionary& dict);
+    WhittedRayTracer(ref<Device> pDevice, const Properties& props);
 
-    virtual Dictionary getScriptingDictionary() override;
+    virtual Properties getProperties() const override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
     virtual void renderUI(Gui::Widgets& widget) override;

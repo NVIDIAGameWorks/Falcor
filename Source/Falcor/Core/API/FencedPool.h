@@ -38,6 +38,7 @@ namespace Falcor
 template<typename ObjectType>
 class FALCOR_API FencedPool : public Object
 {
+    FALCOR_OBJECT(FencedPool)
 public:
     using NewObjectFuncType = ObjectType (*)(void*);
 

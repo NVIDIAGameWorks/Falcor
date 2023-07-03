@@ -776,7 +776,7 @@ struct fmt::formatter<Falcor::math::matrix<T, R, C>> : formatter<typename Falcor
             out = ::fmt::format_to(out, "{}", (r == 0) ? "{" : ", ");
             out = formatter<MatrixRowType>::format(matrix.getRow(r), ctx);
         }
-        out = ::fmt::format_to(out, "}}");
+        out = fmt::format_to(out, "}}");
         return out;
     }
 };

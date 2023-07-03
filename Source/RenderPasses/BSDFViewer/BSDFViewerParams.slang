@@ -36,6 +36,12 @@ enum class BSDFViewerMode : uint32_t
     Slice,          ///< BSDF slice viewer.
 };
 
+FALCOR_ENUM_INFO(BSDFViewerMode, {
+    { BSDFViewerMode::Material, "Material" },
+    { BSDFViewerMode::Slice, "Slice" },
+});
+FALCOR_ENUM_REGISTER(BSDFViewerMode);
+
 enum class AlbedoSelection : uint32_t
 {
     ShowAlbedo = 0x1,

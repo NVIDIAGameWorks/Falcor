@@ -54,6 +54,8 @@ struct MaterialSystem
     /// Buffer resources for all materials. TODO: Make this an unbounded array (see #1321).
     ByteAddressBuffer materialBuffers[ArrayMax<1, MATERIAL_SYSTEM_BUFFER_DESC_COUNT>.value];
 
+    Texture3D<float4> materialTextures3D[ArrayMax<1, MATERIAL_SYSTEM_TEXTURE_3D_DESC_COUNT>.value];
+
 
     /**
      * When UDIMs are used, this array contains indirection from <UDIM>-1001 to materialTextures.
@@ -116,7 +118,7 @@ struct MaterialSystem
         Currently there is a bug in glslang/spv-out that generates invalid SPIRV code for functions that returns a SamplerState.
         We workaround this issue by always inlining this function in our generated glsl code.
     */
-#ifdef FALCOR_VK
+#ifdef FALCOR_VULKAN
     [ForceInline]
 #endif
     SamplerState getTextureSampler(const uint samplerID)
@@ -129,7 +131,7 @@ struct MaterialSystem
         Currently there is a bug in glslang/spv-out that generates invalid SPIRV code for functions that returns a SamplerState.
         We workaround this issue by always inlining this function in our generated glsl code.
     */
-#ifdef FALCOR_VK
+#ifdef FALCOR_VULKAN
     [ForceInline]
 #endif
     SamplerState getDefaultTextureSampler(const uint materialID)
@@ -143,6 +145,11 @@ struct MaterialSystem
     ByteAddressBuffer getBuffer(const uint bufferID)
     {
         return materialBuffers[bufferID];
+    }
+
+    Texture3D<float4> getTexture3D(const uint textureID)
+    {
+        return materialTextures3D[textureID];
     }
 
     /** Check if a material has displacement.
@@ -204,13 +211,7 @@ struct MaterialSystem
     */
     float evalIoR(const uint materialID)
     {
-        // TODO: Move IoR field into MaterialHeader so it's available for all material types.
-        if (isBasicMaterial(materialID))
-        {
-            BasicMaterialData md = getBasicMaterialData(materialID);
-            return md.IoR;
-        }
-        return 1.f;
+        return getMaterialHeader(materialID).getIoR();
     }
 
     /** Resolves TextureHandle from possibly-UDIM to standard TextureHandle

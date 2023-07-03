@@ -45,6 +45,7 @@ using CommandQueueHandle = gfx::ICommandQueue*;
  */
 class FALCOR_API GpuFence : public Object
 {
+    FALCOR_OBJECT(GpuFence)
 public:
     ~GpuFence();
 

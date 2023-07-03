@@ -44,6 +44,7 @@ namespace Falcor
     */
     class FALCOR_API Light : public Animatable
     {
+        FALCOR_OBJECT(Light)
     public:
         virtual ~Light() = default;
 

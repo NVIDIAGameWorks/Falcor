@@ -8,14 +8,14 @@ from graphs.GBufferRasterCullBack import GBufferRasterCullBack
 from falcor import *
 
 # Load test scene that has mixed triangle winding in object/world space
-m.loadScene('TestScenes/WindingTest.pyscene')
+m.loadScene('test_scenes/winding_test.pyscene')
 
 m.addGraph(SceneDebuggerGraph)
-SceneDebuggerGraph.getPass('SceneDebugger').mode = SceneDebuggerMode.FrontFacingFlag
+SceneDebuggerGraph.getPass('SceneDebugger').mode = 'FrontFacingFlag'
 
 render_frames(m, 'frontfacing', frames=[2])
 
-SceneDebuggerGraph.getPass('SceneDebugger').mode = SceneDebuggerMode.FaceNormal
+SceneDebuggerGraph.getPass('SceneDebugger').mode = 'FaceNormal'
 
 render_frames(m, 'facenormal', frames=[2])
 

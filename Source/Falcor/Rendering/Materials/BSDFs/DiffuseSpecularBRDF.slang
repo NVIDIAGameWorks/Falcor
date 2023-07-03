@@ -66,6 +66,11 @@ struct DiffuseSpecularBRDF : IBSDF
 
     bool sample<S : ISampleGenerator>(const float3 wi, out float3 wo, out float pdf, out float3 weight, out uint lobeType, inout S sg)
     {
+        wo = {};
+        pdf = {};
+        weight = {};
+        lobeType = {};
+
         float diffuseWeight = max(0.f, luminance(diffuse));
         float specularWeight = max(0.001f, luminance(specular));
         float norm = 1.f / (diffuseWeight + specularWeight);

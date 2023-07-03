@@ -38,6 +38,7 @@ namespace Falcor
  */
 class FALCOR_API VertexBufferLayout : public Object
 {
+    FALCOR_OBJECT(VertexBufferLayout)
 public:
     enum class InputClass
     {
@@ -155,6 +156,7 @@ private:
  */
 class VertexLayout : public Object
 {
+    FALCOR_OBJECT(VertexLayout)
 public:
     /**
      * Create a new vertex layout object.

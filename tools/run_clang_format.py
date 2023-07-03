@@ -451,6 +451,8 @@ def main():
     njobs = args.j
     if njobs == 0:
         njobs = multiprocessing.cpu_count() + 1
+    # On windows we run into issues when using more than 64 processes
+    njobs = min(60, njobs)
     njobs = min(len(files), njobs)
 
     if njobs == 1:

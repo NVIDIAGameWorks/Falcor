@@ -33,6 +33,7 @@
 #include "Core/API/Formats.h"
 #include "RenderGraph/RenderGraph.h"
 #include "Scene/Scene.h"
+#include "Scene/SceneBuilder.h"
 #include "Utils/Image/ImageProcessing.h"
 #include "Utils/Timing/FrameRate.h"
 #include "Utils/Timing/Clock.h"
@@ -48,6 +49,7 @@ class ProfilerUI;
 /// This is the main Falcor application available through the Python API.
 class Testbed : public Object, private Window::ICallbacks
 {
+    FALCOR_OBJECT(Testbed)
 public:
     struct Options
     {
@@ -61,10 +63,10 @@ public:
         ResourceFormat depthFormat = ResourceFormat::D32Float;       ///< Depth buffer format of the frame buffer.
     };
 
+    static ref<Testbed> create(const Options& options) { return make_ref<Testbed>(options); }
+
     Testbed(const Options& options = Options());
     virtual ~Testbed();
-
-    static ref<Testbed> create(const Options& options);
 
     const ref<Device>& getDevice() const { return mpDevice; }
 
@@ -82,7 +84,13 @@ public:
     /// Resize the main frame buffer.
     void resizeFrameBuffer(uint32_t width, uint32_t height);
 
-    void loadScene(const std::filesystem::path& path);
+    void loadScene(const std::filesystem::path& path, SceneBuilder::Flags buildFlags = SceneBuilder::Flags::Default);
+
+    void loadSceneFromString(
+        const std::string& sceneStr,
+        const std::string extension = "pyscene",
+        SceneBuilder::Flags buildFlags = SceneBuilder::Flags::Default
+    );
 
     ref<Scene> getScene() const;
     Clock& getClock();
@@ -93,7 +101,10 @@ public:
     void setRenderGraph(const ref<RenderGraph>& graph);
     const ref<RenderGraph>& getRenderGraph() const;
 
-    void captureOutput(std::string filename, uint32_t outputIndex = 0);
+    void captureOutput(const std::filesystem::path& path, uint32_t outputIndex = 0);
+
+    bool getShowUI() const { return mUI.showUI; }
+    void setShowUI() { mUI.showUI = true; }
 
 private:
     // Implementation of Window::ICallbacks

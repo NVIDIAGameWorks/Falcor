@@ -96,14 +96,14 @@ void testDDS(GPUUnitTestContext& ctx, const std::string& testName, ResourceForma
     if (pPngTex)
     {
         // Create program to compare decompressed image with reference image
-        ctx.createProgram("Tests/Core/DDSReadTests.cs.slang", "diff", Program::DefineList(), Shader::CompilerFlags::None);
+        ctx.createProgram("Tests/Core/DDSReadTests.cs.slang", "diff");
         ctx.allocateStructuredBuffer("difference", 4 * sizeof(float) * pDst->getWidth() * pDst->getHeight());
         ctx["ref"] = pPngTex; // Reference
     }
     else
     {
         // Create program to copy decompressed image so that we can save it as the reference
-        ctx.createProgram("Tests/Core/DDSReadTests.cs.slang", "readback", Program::DefineList(), Shader::CompilerFlags::None);
+        ctx.createProgram("Tests/Core/DDSReadTests.cs.slang", "readback");
         ctx.allocateStructuredBuffer("result", 4 * sizeof(uint32_t) * pDst->getWidth() * pDst->getHeight());
     }
 
@@ -115,10 +115,8 @@ void testDDS(GPUUnitTestContext& ctx, const std::string& testName, ResourceForma
     if (pPngTex)
     {
         // Create texture from difference data
-        const uint8_t* diff = ctx.mapBuffer<const uint8_t>("difference");
-        EXPECT(diff != nullptr);
-        ref<Texture> pDiffTex(Texture::create2D(pDevice, dstDim.x, dstDim.y, ResourceFormat::RGBA32Float, 1, 1, diff));
-        ctx.unmapBuffer("difference");
+        std::vector<uint8_t> diff = ctx.readBuffer<uint8_t>("difference");
+        ref<Texture> pDiffTex(Texture::create2D(pDevice, dstDim.x, dstDim.y, ResourceFormat::RGBA32Float, 1, 1, diff.data()));
 
         // Analyze difference texture
         TextureAnalyzer analyzer(pDevice);
@@ -142,15 +140,12 @@ void testDDS(GPUUnitTestContext& ctx, const std::string& testName, ResourceForma
     else
     {
         // Save newly-created reference image
-        const uint8_t* result = ctx.mapBuffer<const uint8_t>("result");
-        EXPECT(result != nullptr);
-
-        Bitmap::UniqueConstPtr resultBitmap(Bitmap::create(dstDim.x, dstDim.y, ResourceFormat::RGBA8Unorm, (const uint8_t*)result));
+        std::vector<uint8_t> result = ctx.readBuffer<uint8_t>("result");
+        Bitmap::UniqueConstPtr resultBitmap(Bitmap::create(dstDim.x, dstDim.y, ResourceFormat::RGBA8Unorm, result.data()));
         Bitmap::saveImage(
             refPath, dstDim.x, dstDim.y, Bitmap::FileFormat::PngFile, Bitmap::ExportFlags::Uncompressed | Bitmap::ExportFlags::ExportAlpha,
-            ResourceFormat::RGBA8Unorm, false, (void*)result
+            ResourceFormat::RGBA8Unorm, false, result.data()
         );
-        ctx.unmapBuffer("result");
     }
 }
 } // namespace

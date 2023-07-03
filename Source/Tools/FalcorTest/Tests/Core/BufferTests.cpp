@@ -61,7 +61,7 @@ void testBuffer(GPUUnitTestContext& ctx, uint32_t numElems, uint32_t index = 0, 
     }
 
     // Create clear program.
-    Program::DefineList defines = {{"TYPE", std::to_string((uint32_t)type)}};
+    DefineList defines = {{"TYPE", std::to_string((uint32_t)type)}};
     ctx.createProgram("Tests/Core/BufferTests.cs.slang", "clearBuffer", defines);
 
     // Create test buffer.
@@ -106,7 +106,7 @@ void testBuffer(GPUUnitTestContext& ctx, uint32_t numElems, uint32_t index = 0, 
     ctx.runProgram(numElems, 1, 1);
 
     // Verify results.
-    const uint32_t* pResult = ctx.mapBuffer<const uint32_t>("result");
+    std::vector<uint32_t> result = ctx.readBuffer<uint32_t>("result");
     for (uint32_t i = 0; i < numElems; i++)
     {
         // Each RMW pass adds i+1 to the element at index i.
@@ -114,11 +114,10 @@ void testBuffer(GPUUnitTestContext& ctx, uint32_t numElems, uint32_t index = 0, 
         uint32_t expected = (i + 1) * kIterations * 2;
         if (i >= index && i < index + blob.size())
             expected = blob[i - index] + (i + 1) * kIterations;
-        uint32_t result = pResult[i];
+        uint32_t actual = result[i];
 
-        EXPECT_EQ(result, expected) << "i = " << i << " (numElems = " << numElems << " index = " << index << " count = " << count << ")";
+        EXPECT_EQ(actual, expected) << "i = " << i << " (numElems = " << numElems << " index = " << index << " count = " << count << ")";
     }
-    ctx.unmapBuffer("result");
 }
 } // namespace
 

@@ -37,18 +37,17 @@ class SVGFPass : public RenderPass
 public:
     FALCOR_PLUGIN_CLASS(SVGFPass, "SVGFPass", "SVGF denoising pass.");
 
-    static ref<SVGFPass> create(ref<Device> pDevice, const Dictionary& dict) { return make_ref<SVGFPass>(pDevice, dict); }
+    static ref<SVGFPass> create(ref<Device> pDevice, const Properties& props) { return make_ref<SVGFPass>(pDevice, props); }
 
-    SVGFPass(ref<Device> pDevice, const Dictionary& dict);
+    SVGFPass(ref<Device> pDevice, const Properties& props);
 
-    virtual Dictionary getScriptingDictionary() override;
+    virtual Properties getProperties() const override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
     virtual void compile(RenderContext* pRenderContext, const CompileData& compileData) override;
     virtual void renderUI(Gui::Widgets& widget) override;
 
 private:
-    bool init(const Dictionary& dict);
     void allocateFbos(uint2 dim, RenderContext* pRenderContext);
     void clearBuffers(RenderContext* pRenderContext, const RenderData& renderData);
 

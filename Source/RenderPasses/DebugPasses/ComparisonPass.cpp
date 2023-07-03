@@ -45,7 +45,7 @@ ComparisonPass::ComparisonPass(ref<Device> pDevice)
     mpTextRenderer = std::make_unique<TextRenderer>(mpDevice);
 }
 
-bool ComparisonPass::parseKeyValuePair(const std::string key, const Dictionary::Value val)
+bool ComparisonPass::parseKeyValuePair(const std::string key, const Properties::ConstValue& val)
 {
     if (key == kSplitLocation)
     {
@@ -72,14 +72,14 @@ bool ComparisonPass::parseKeyValuePair(const std::string key, const Dictionary::
     else return false;
 }
 
-Dictionary ComparisonPass::getScriptingDictionary()
+Properties ComparisonPass::getProperties() const
 {
-    Dictionary dict;
-    dict[kSplitLocation] = mSplitLoc;
-    dict[kShowTextLabels] = mShowLabels;
-    dict[kLeftLabel] = mLeftLabel;
-    dict[kRightLabel] = mRightLabel;
-    return dict;
+    Properties props;
+    props[kSplitLocation] = mSplitLoc;
+    props[kShowTextLabels] = mShowLabels;
+    props[kLeftLabel] = mLeftLabel;
+    props[kRightLabel] = mRightLabel;
+    return props;
 }
 
 RenderPassReflection ComparisonPass::reflect(const CompileData& compileData)

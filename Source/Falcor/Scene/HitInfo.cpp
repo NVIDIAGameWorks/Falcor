@@ -105,10 +105,10 @@ namespace Falcor
 
     }
 
-    Shader::DefineList HitInfo::getDefines() const
+    DefineList HitInfo::getDefines() const
     {
         FALCOR_ASSERT((mTypeBits + mInstanceIDBits) <= 32 && mPrimitiveIndexBits <= 32);
-        Shader::DefineList defines;
+        DefineList defines;
         defines.add("HIT_INFO_DEFINES", "1");
         defines.add("HIT_INFO_USE_COMPRESSION", mUseCompression ? "1" : "0");
         defines.add("HIT_INFO_TYPE_BITS", std::to_string(mTypeBits));

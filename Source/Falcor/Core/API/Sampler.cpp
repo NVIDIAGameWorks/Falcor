@@ -153,16 +153,5 @@ void Sampler::breakStrongReferenceToDevice()
 FALCOR_SCRIPT_BINDING(Sampler)
 {
     pybind11::class_<Sampler, ref<Sampler>>(m, "Sampler");
-
-    pybind11::enum_<Sampler::Filter> filter(m, "SamplerFilter");
-    filter.value("Linear", Sampler::Filter::Linear);
-    filter.value("Point", Sampler::Filter::Point);
-
-    pybind11::enum_<Sampler::AddressMode> addressMode(m, "AddressMode");
-    addressMode.value("Wrap", Sampler::AddressMode::Wrap);
-    addressMode.value("Mirror", Sampler::AddressMode::Mirror);
-    addressMode.value("Clamp", Sampler::AddressMode::Clamp);
-    addressMode.value("Border", Sampler::AddressMode::Border);
-    addressMode.value("MirrorOnce", Sampler::AddressMode::MirrorOnce);
 }
 } // namespace Falcor

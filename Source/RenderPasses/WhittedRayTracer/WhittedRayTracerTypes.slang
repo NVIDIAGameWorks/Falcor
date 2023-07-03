@@ -44,4 +44,11 @@ enum class RayFootprintFilterMode : uint32_t
     AnisotropicWhenRefraction = 2
 };
 
+FALCOR_ENUM_INFO(RayFootprintFilterMode, {
+    { RayFootprintFilterMode::Isotropic, "Isotropic" },
+    { RayFootprintFilterMode::Anisotropic, "Anisotropic" },
+    { RayFootprintFilterMode::AnisotropicWhenRefraction, "AnisotropicWhenRefraction" },
+});
+FALCOR_ENUM_REGISTER(RayFootprintFilterMode);
+
 END_NAMESPACE_FALCOR

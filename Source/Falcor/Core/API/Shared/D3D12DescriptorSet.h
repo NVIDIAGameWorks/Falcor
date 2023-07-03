@@ -31,7 +31,7 @@
 #include "Core/Macros.h"
 #include "Core/Object.h"
 #include "Core/API/fwd.h"
-#include "Core/API/Shader.h"
+#include "Core/API/ShaderResourceType.h"
 #include <memory>
 #include <vector>
 
@@ -54,6 +54,7 @@ enum class D3D12DescriptorSetBindingUsage
 
 class FALCOR_API D3D12DescriptorSet : public Object
 {
+    FALCOR_OBJECT(D3D12DescriptorSet)
 public:
     using Type = ShaderResourceType;
     using CpuHandle = D3D12DescriptorPool::CpuHandle;

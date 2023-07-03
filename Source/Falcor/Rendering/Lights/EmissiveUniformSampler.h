@@ -28,6 +28,7 @@
 #pragma once
 #include "EmissiveLightSampler.h"
 #include "Core/Macros.h"
+#include "Utils/Properties.h"
 #include "Scene/Lights/LightCollection.h"
 
 namespace Falcor
@@ -46,6 +47,11 @@ namespace Falcor
         {
             // TODO
             //bool        usePreintegration = true;           ///< Use pre-integrated flux per triangle to guide BVH build/sampling. Only relevant if mUseBVHTree == true.
+
+            template<typename Archive>
+            void serialize(Archive& ar)
+            {
+            }
         };
 
         /** Creates a EmissiveUniformSampler for a given scene.

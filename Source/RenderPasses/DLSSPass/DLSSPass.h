@@ -45,17 +45,34 @@ public:
         MaxQuality,
     };
 
+    FALCOR_ENUM_INFO(
+        Profile,
+        {
+            {Profile::MaxPerf, "MaxPerf"},
+            {Profile::Balanced, "Balanced"},
+            {Profile::MaxQuality, "MaxQuality"},
+        }
+    );
+
     enum class MotionVectorScale : uint32_t
     {
         Absolute, ///< Motion vectors are provided in absolute screen space length (pixels).
         Relative, ///< Motion vectors are provided in relative screen space length (pixels divided by screen width/height).
     };
 
-    static ref<DLSSPass> create(ref<Device> pDevice, const Dictionary& dict) { return make_ref<DLSSPass>(pDevice, dict); }
+    FALCOR_ENUM_INFO(
+        MotionVectorScale,
+        {
+            {MotionVectorScale::Absolute, "Absolute"},
+            {MotionVectorScale::Relative, "Relative"},
+        }
+    );
 
-    DLSSPass(ref<Device> pDevice, const Dictionary& dict);
+    static ref<DLSSPass> create(ref<Device> pDevice, const Properties& props) { return make_ref<DLSSPass>(pDevice, props); }
 
-    virtual Dictionary getScriptingDictionary() override;
+    DLSSPass(ref<Device> pDevice, const Properties& props);
+
+    virtual Properties getProperties() const override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
     virtual void setScene(RenderContext* pRenderContext, const ref<Scene>& pScene) override;
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
@@ -86,3 +103,6 @@ private:
 
     std::unique_ptr<NGXWrapper> mpNGXWrapper;
 };
+
+FALCOR_ENUM_REGISTER(DLSSPass::Profile);
+FALCOR_ENUM_REGISTER(DLSSPass::MotionVectorScale);

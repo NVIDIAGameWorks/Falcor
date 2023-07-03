@@ -57,17 +57,17 @@ namespace
     const std::string kSplitShader = "RenderPasses/DebugPasses/SplitScreenPass/SplitScreen.ps.slang";
 }
 
-SplitScreenPass::SplitScreenPass(ref<Device> pDevice, const Dictionary& dict)
+SplitScreenPass::SplitScreenPass(ref<Device> pDevice, const Properties& props)
     : ComparisonPass(pDevice)
 {
     mpArrowTex = Texture::create2D(mpDevice, 16, 16, ResourceFormat::R8Unorm, 1, Texture::kMaxPossible, kArrowArray);
     createProgram();
 
-    for (const auto& [key, value] : dict)
+    for (const auto& [key, value] : props)
     {
         if (!parseKeyValuePair(key, value))
         {
-            logWarning("Unknown field '{}' in a SplitScreenPass dictionary.", key);
+            logWarning("Unknown property '{}' in a SplitScreenPass properties.", key);
         }
     }
 }

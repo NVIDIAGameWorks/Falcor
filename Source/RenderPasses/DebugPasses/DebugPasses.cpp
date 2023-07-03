@@ -36,6 +36,4 @@ extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registr
     registry.registerClass<RenderPass, InvalidPixelDetectionPass>();
     registry.registerClass<RenderPass, SideBySidePass>();
     registry.registerClass<RenderPass, ColorMapPass>();
-
-    ScriptBindings::registerBinding(ColorMapPass::registerScriptBindings);
 }

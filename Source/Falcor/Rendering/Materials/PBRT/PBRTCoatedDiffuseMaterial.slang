@@ -43,7 +43,7 @@ struct PBRTCoatedDiffuseMaterial : MaterialBase, IMaterial
         const float3 baseColor = ms.sampleTexture(data.texBaseColor, s, sd.uv, data.baseColor, lod).rgb;
         // RG: Interface X&Y roughness
         const float2 roughness = ms.sampleTexture(data.texSpecular, s, sd.uv, data.specular, lod).rg;
-        float eta = 1.0f / data.IoR;
+        float eta = 1.0f / header.getIoR();
 
         // Compute final shading frame.
         ShadingFrame sf = sd.frame;

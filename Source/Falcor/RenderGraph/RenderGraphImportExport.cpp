@@ -136,7 +136,7 @@ std::string RenderGraphExporter::getIR(const ref<RenderGraph>& pGraph)
     for (const auto& node : pGraph->mNodeData)
     {
         const auto& nodeData = node.second;
-        ir.createPass(nodeData.pPass->getType(), nodeData.name, nodeData.pPass->getScriptingDictionary());
+        ir.createPass(nodeData.pPass->getType(), nodeData.name, nodeData.pPass->getProperties());
     }
 
     // Add the edges

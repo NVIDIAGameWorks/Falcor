@@ -46,7 +46,7 @@ struct PBRTCoatedConductorMaterial : MaterialBase, IMaterial
         // RG: Interface X&Y roughness
         // BA: Conductor X&Y roughness
         const float4 roughnesses = ms.sampleTexture(data.texSpecular, s, sd.uv, data.specular, lod).rgba;
-        float eta = 1.0f / data.IoR;
+        float eta = 1.0f / header.getIoR();
 
         // Compute final shading frame.
         ShadingFrame sf = sd.frame;

@@ -54,6 +54,7 @@ namespace Falcor
     */
     class FALCOR_API Material : public Object
     {
+        FALCOR_OBJECT(Material)
     public:
         /** Flags indicating if and what was updated in the material.
         */
@@ -195,6 +196,14 @@ namespace Falcor
         */
         virtual uint32_t getNestedPriority() const { return mHeader.getNestedPriority(); }
 
+        /** Set the index of refraction.
+        */
+        virtual void setIndexOfRefraction(float IoR);
+
+        /** Get the index of refraction.
+        */
+        virtual float getIndexOfRefraction() const { return (float)mHeader.getIoR(); }
+
         /** Get information about a texture slot.
             \param[in] slot The texture slot.
             \return Info about the slot. If the slot doesn't exist isEnabled() returns false.
@@ -290,11 +299,11 @@ namespace Falcor
         /** Get shader defines for the material.
             The defines must be set on any program using the material.
         */
-        virtual Program::DefineList getDefines() const { return {}; }
+        virtual DefineList getDefines() const { return {}; }
 
         /** Get the number of buffers used by this material.
         */
-        virtual int getBufferCount() const { return 0; }
+        virtual size_t getMaxBufferCount() const { return 0; }
 
         /** Returns the maximum number of textures this material will use.
             By default we use the number of texture slots. The reason for this is that,
@@ -302,6 +311,10 @@ namespace Falcor
             it is not possible to allocate more. This limitation will be lifted in the future.
         */
         virtual size_t getMaxTextureCount() const { return (size_t)Material::TextureSlot::Count; }
+
+        /** Get the number of 3D textures used by this material.
+        */
+        virtual size_t getMaxTexture3DCount() const { return 0; }
 
         // Temporary convenience function to downcast Material to BasicMaterial.
         // This is because a large portion of the interface hasn't been ported to the Material base class yet.
@@ -312,7 +325,7 @@ namespace Falcor
             Used to set `anyValueSize` on `IMaterialInstance` above the default (128B), for exceptionally large materials.
             Large material instances can have a singificant performance impact.
         */
-        virtual size_t getMaterialInstanceByteSize() { return 128; }
+        virtual size_t getMaterialInstanceByteSize() const { return 128; }
 
     protected:
         Material(ref<Device> pDevice, const std::string& name, MaterialType type);

@@ -46,9 +46,9 @@ void test(GPUUnitTestContext& ctx, const std::string& shaderModel, bool useUav)
 {
     ref<Device> pDevice = ctx.getDevice();
 
-    Program::DefineList defines = {{"USE_UAV", useUav ? "1" : "0"}};
+    DefineList defines = {{"USE_UAV", useUav ? "1" : "0"}};
 
-    ctx.createProgram("Tests/Slang/Float16Tests.cs.slang", "testFloat16", defines, Shader::CompilerFlags::None, shaderModel);
+    ctx.createProgram("Tests/Slang/Float16Tests.cs.slang", "testFloat16", defines, Program::CompilerFlags::None, shaderModel);
     ctx.allocateStructuredBuffer("result", kNumElems);
 
     std::vector<uint16_t> elems(kNumElems);
@@ -64,12 +64,11 @@ void test(GPUUnitTestContext& ctx, const std::string& shaderModel, bool useUav)
     ctx.runProgram(kNumElems, 1, 1);
 
     // Verify results.
-    const uint16_t* result = ctx.mapBuffer<const uint16_t>("result");
+    std::vector<uint16_t> result = ctx.readBuffer<uint16_t>("result");
     for (uint32_t i = 0; i < kNumElems; i++)
     {
         EXPECT_EQ(result[i], elems[i]) << "i = " << i << " shaderModel=" << shaderModel;
     }
-    ctx.unmapBuffer("result");
 }
 } // namespace
 

@@ -28,7 +28,7 @@
 #pragma once
 #include "Core/Macros.h"
 #include "Core/API/Formats.h"
-#include "Utils/Scripting/Dictionary.h"
+#include "Utils/Properties.h"
 #include <memory>
 #include <string>
 
@@ -41,8 +41,8 @@ class FALCOR_API RenderGraphIR
 public:
     RenderGraphIR(const std::string& name, bool newGraph = true);
 
-    void createPass(const std::string& passClass, const std::string& passName, const Dictionary& = Dictionary());
-    void updatePass(const std::string& passName, const Dictionary& dictionary);
+    void createPass(const std::string& passClass, const std::string& passName, const Properties& props = Properties());
+    void updatePass(const std::string& passName, const Properties& props);
     void removePass(const std::string& passName);
     void addEdge(const std::string& src, const std::string& dst);
     void removeEdge(const std::string& src, const std::string& dst);

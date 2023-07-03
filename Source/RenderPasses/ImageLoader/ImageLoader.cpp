@@ -45,10 +45,10 @@ extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registr
     registry.registerClass<RenderPass, ImageLoader>();
 }
 
-ImageLoader::ImageLoader(ref<Device> pDevice, const Dictionary& dict)
+ImageLoader::ImageLoader(ref<Device> pDevice, const Properties& props)
     : RenderPass(pDevice)
 {
-    for (const auto& [key, value] : dict)
+    for (const auto& [key, value] : props)
     {
         if (key == kOutputSize) mOutputSizeSelection = value;
         else if (key == kOutputFormat) mOutputFormat = value;
@@ -57,7 +57,7 @@ ImageLoader::ImageLoader(ref<Device> pDevice, const Dictionary& dict)
         else if (key == kMips) mGenerateMips = value;
         else if (key == kArraySlice) mArraySlice = value;
         else if (key == kMipLevel) mMipLevel = value;
-        else logWarning("Unknown field '{}' in a ImageLoader dictionary.", key);
+        else logWarning("Unknown property '{}' in a ImageLoader properties.", key);
     }
 
     if (!mImagePath.empty())
@@ -79,17 +79,17 @@ RenderPassReflection ImageLoader::reflect(const CompileData& compileData)
     return reflector;
 }
 
-Dictionary ImageLoader::getScriptingDictionary()
+Properties ImageLoader::getProperties() const
 {
-    Dictionary dict;
-    dict[kOutputSize] = mOutputSizeSelection;
-    if (mOutputFormat != ResourceFormat::Unknown) dict[kOutputFormat] = mOutputFormat;
-    dict[kImage] = stripDataDirectories(mImagePath);
-    dict[kMips] = mGenerateMips;
-    dict[kSrgb] = mLoadSRGB;
-    dict[kArraySlice] = mArraySlice;
-    dict[kMipLevel] = mMipLevel;
-    return dict;
+    Properties props;
+    props[kOutputSize] = mOutputSizeSelection;
+    if (mOutputFormat != ResourceFormat::Unknown) props[kOutputFormat] = mOutputFormat;
+    props[kImage] = stripDataDirectories(mImagePath);
+    props[kMips] = mGenerateMips;
+    props[kSrgb] = mLoadSRGB;
+    props[kArraySlice] = mArraySlice;
+    props[kMipLevel] = mMipLevel;
+    return props;
 }
 
 void ImageLoader::compile(RenderContext* pRenderContext, const CompileData& compileData)
@@ -118,7 +118,7 @@ void ImageLoader::execute(RenderContext* pRenderContext, const RenderData& rende
 void ImageLoader::renderUI(Gui::Widgets& widget)
 {
     // When output size requirements change, we'll trigger a graph recompile to update the render pass I/O sizes.
-    if (widget.dropdown("Output size", RenderPassHelpers::kIOSizeList, (uint32_t&)mOutputSizeSelection)) requestRecompile();
+    if (widget.dropdown("Output size", mOutputSizeSelection)) requestRecompile();
     widget.tooltip("Specifies the pass output size.\n"
         "'Default' means that the output is sized based on requirements of connected passes.\n"
         "'Fixed' means the output is always at the image's native size.\n"

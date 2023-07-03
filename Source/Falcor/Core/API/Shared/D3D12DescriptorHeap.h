@@ -40,6 +40,7 @@ namespace Falcor
 {
 class D3D12DescriptorHeap : public Object
 {
+    FALCOR_OBJECT(D3D12DescriptorHeap)
 public:
     using ApiHandle = ID3D12DescriptorHeapPtr;
     using CpuHandle = D3D12_CPU_DESCRIPTOR_HANDLE;

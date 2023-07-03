@@ -78,10 +78,10 @@ extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registr
     registry.registerClass<RenderPass, SVGFPass>();
 }
 
-SVGFPass::SVGFPass(ref<Device> pDevice, const Dictionary& dict)
+SVGFPass::SVGFPass(ref<Device> pDevice, const Properties& props)
     : RenderPass(pDevice)
 {
-    for (const auto& [key, value] : dict)
+    for (const auto& [key, value] : props)
     {
         if (key == kEnabled) mFilterEnabled = value;
         else if (key == kIterations) mFilterIterations = value;
@@ -91,7 +91,7 @@ SVGFPass::SVGFPass(ref<Device> pDevice, const Dictionary& dict)
         else if (key == kPhiNormal) mPhiNormal = value;
         else if (key == kAlpha) mAlpha = value;
         else if (key == kMomentsAlpha) mMomentsAlpha = value;
-        else logWarning("Unknown field '{}' in SVGFPass dictionary.", key);
+        else logWarning("Unknown property '{}' in SVGFPass properties.", key);
     }
 
     mpPackLinearZAndNormal = FullScreenPass::create(mpDevice, kPackLinearZAndNormalShader);
@@ -102,18 +102,18 @@ SVGFPass::SVGFPass(ref<Device> pDevice, const Dictionary& dict)
     FALCOR_ASSERT(mpPackLinearZAndNormal && mpReprojection && mpAtrous && mpFilterMoments && mpFinalModulate);
 }
 
-Dictionary SVGFPass::getScriptingDictionary()
+Properties SVGFPass::getProperties() const
 {
-    Dictionary dict;
-    dict[kEnabled] = mFilterEnabled;
-    dict[kIterations] = mFilterIterations;
-    dict[kFeedbackTap] = mFeedbackTap;
-    dict[kVarianceEpsilon] = mVarainceEpsilon;
-    dict[kPhiColor] = mPhiColor;
-    dict[kPhiNormal] = mPhiNormal;
-    dict[kAlpha] = mAlpha;
-    dict[kMomentsAlpha] = mMomentsAlpha;
-    return dict;
+    Properties props;
+    props[kEnabled] = mFilterEnabled;
+    props[kIterations] = mFilterIterations;
+    props[kFeedbackTap] = mFeedbackTap;
+    props[kVarianceEpsilon] = mVarainceEpsilon;
+    props[kPhiColor] = mPhiColor;
+    props[kPhiNormal] = mPhiNormal;
+    props[kAlpha] = mAlpha;
+    props[kMomentsAlpha] = mMomentsAlpha;
+    return props;
 }
 
 /*

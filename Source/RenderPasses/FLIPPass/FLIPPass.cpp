@@ -39,13 +39,6 @@ namespace
     const char kErrorMapDisplayOutput[] = "errorMapDisplay"; // Low-precision FLIP error map - use for display / analysis (not computations).
     const char kExposureMapDisplayOutput[] = "exposureMapDisplay"; // Low-precision HDR-FLIP exposure map.
 
-    const Gui::DropdownList kToneMapperList =
-    {
-        { (uint32_t)FLIPToneMapperType::ACES, "ACES" },
-        { (uint32_t)FLIPToneMapperType::Hable, "Hable"},
-        { (uint32_t)FLIPToneMapperType::Reinhard, "Reinhard"},
-    };
-
     const char kEnabled[] = "enabled";
     const char kIsHDR[] = "isHDR";
     const char kToneMapper[] = "toneMapper";
@@ -65,27 +58,18 @@ namespace
 extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registry)
 {
     registry.registerClass<RenderPass, FLIPPass>();
-    ScriptBindings::registerBinding(FLIPPass::registerBindings);
 }
 
-void FLIPPass::registerBindings(pybind11::module& m)
-{
-    pybind11::enum_<FLIPToneMapperType> toneMapper(m, "FLIPToneMapperType");
-    toneMapper.value("ACES", FLIPToneMapperType::ACES);
-    toneMapper.value("Hable", FLIPToneMapperType::Hable);
-    toneMapper.value("Reinhard", FLIPToneMapperType::Reinhard);
-}
-
-FLIPPass::FLIPPass(ref<Device> pDevice, const Dictionary& dict)
+FLIPPass::FLIPPass(ref<Device> pDevice, const Properties& props)
     : RenderPass(pDevice)
 {
-    parseDictionary(dict);
+    parseProperties(props);
 
-    Program::DefineList defines;
+    DefineList defines;
     defines.add("TONE_MAPPER", std::to_string((uint32_t)mToneMapper));
 
     mpFLIPPass = ComputePass::create(mpDevice, kFLIPShaderFile, "main", defines);
-    mpComputeLuminancePass = ComputePass::create(mpDevice, kComputeLuminanceShaderFile, "computeLuminance", Program::DefineList());
+    mpComputeLuminancePass = ComputePass::create(mpDevice, kComputeLuminanceShaderFile, "computeLuminance", DefineList());
 
     // Create parallel reduction helper.
     mpParallelReduction = std::make_unique<ParallelReduction>(mpDevice);
@@ -108,34 +92,34 @@ FLIPPass::FLIPPass(ref<Device> pDevice, const Dictionary& dict)
     }
 }
 
-Dictionary FLIPPass::getScriptingDictionary()
+Properties FLIPPass::getProperties() const
 {
-    Dictionary d;
-    d[kEnabled] = mEnabled;
-    d[kUseMagma] = mUseMagma;
-    d[kClampInput] = mClampInput;
-    d[kIsHDR] = mIsHDR;
-    d[kToneMapper] = mToneMapper;
-    d[kUseCustomExposureParameters] = mUseCustomExposureParameters;
-    d[kStartExposure] = mStartExposure;
-    d[kStopExposure] = mStopExposure;
-    d[kNumExposures] = mNumExposures;
-    d[kMonitorWidthPixels] = mMonitorWidthPixels;
-    d[kMonitorWidthMeters] = mMonitorWidthMeters;
-    d[kMonitorDistance] = mMonitorDistanceMeters;
-    d[kComputePooledFLIPValues] = mComputePooledFLIPValues;
-    d[kUseRealMonitorInfo] = mUseRealMonitorInfo;
-    return d;
+    Properties props;
+    props[kEnabled] = mEnabled;
+    props[kUseMagma] = mUseMagma;
+    props[kClampInput] = mClampInput;
+    props[kIsHDR] = mIsHDR;
+    props[kToneMapper] = mToneMapper;
+    props[kUseCustomExposureParameters] = mUseCustomExposureParameters;
+    props[kStartExposure] = mStartExposure;
+    props[kStopExposure] = mStopExposure;
+    props[kNumExposures] = mNumExposures;
+    props[kMonitorWidthPixels] = mMonitorWidthPixels;
+    props[kMonitorWidthMeters] = mMonitorWidthMeters;
+    props[kMonitorDistance] = mMonitorDistanceMeters;
+    props[kComputePooledFLIPValues] = mComputePooledFLIPValues;
+    props[kUseRealMonitorInfo] = mUseRealMonitorInfo;
+    return props;
 }
 
-void FLIPPass::parseDictionary(const Dictionary& dict)
+void FLIPPass::parseProperties(const Properties& props)
 {
     // Read settings.
-    for (const auto& [key, value] : dict)
+    for (const auto& [key, value] : props)
     {
         if (key == kEnabled) mEnabled = value;
         else if (key == kIsHDR) mIsHDR = value;
-        else if (key == kToneMapper) mToneMapper = FLIPToneMapperType(value);
+        else if (key == kToneMapper) mToneMapper = value;
         else if (key == kUseCustomExposureParameters) mUseCustomExposureParameters = value;
         else if (key == kStartExposure) mStartExposure = value;
         else if (key == kStopExposure) mStopExposure = value;
@@ -147,7 +131,7 @@ void FLIPPass::parseDictionary(const Dictionary& dict)
         else if (key == kMonitorDistance) mMonitorDistanceMeters = value;
         else if (key == kComputePooledFLIPValues) mComputePooledFLIPValues = value;
         else if (key == kUseRealMonitorInfo) mUseRealMonitorInfo = value;
-        else logWarning("Unknown field '{}' in a FLIPPass dictionary.", key);
+        else logWarning("Unknown property '{}' in a FLIPPass properties.", key);
     }
 }
 
@@ -170,7 +154,7 @@ void FLIPPass::updatePrograms()
         return;
     }
 
-    Program::DefineList defines;
+    DefineList defines;
     defines.add("TONE_MAPPER", std::to_string((uint32_t)mToneMapper));
 
     mpFLIPPass->getProgram()->addDefines(defines);
@@ -360,7 +344,7 @@ void FLIPPass::renderUI(Gui::Widgets& widget)
 
     if (mIsHDR)
     {
-        dirty |= widget.dropdown("Tone mapper", kToneMapperList, reinterpret_cast<uint32_t&>(mToneMapper));
+        dirty |= widget.dropdown("Tone mapper", mToneMapper);
         widget.tooltip("The tone mapper assumed by HDR-FLIP.");
         dirty |= widget.checkbox("Use custom exposure parameters", mUseCustomExposureParameters);
         widget.tooltip("Check to manually choose start and stop exposure as well as number of exposures used for HDR-FLIP.");

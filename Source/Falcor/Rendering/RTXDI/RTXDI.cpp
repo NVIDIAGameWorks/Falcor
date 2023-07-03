@@ -31,7 +31,6 @@
 #include "Utils/Logger.h"
 #include "Utils/Math/Common.h"
 #include "Utils/Timing/Profiler.h"
-#include "Utils/Scripting/ScriptBindings.h"
 #include <fstd/bit.h> // TODO C++20: Replace with <bit>
 
 namespace Falcor
@@ -71,22 +70,6 @@ namespace Falcor
 
         const uint32_t kMinMaxHistoryLength = 0;
         const uint32_t kMaxMaxHistoryLength = 50;
-
-        Gui::DropdownList kModeList =
-        {
-            { (uint32_t)RTXDI::Mode::NoResampling, "No resampling" },
-            { (uint32_t)RTXDI::Mode::SpatialResampling, "Spatial resampling only" },
-            { (uint32_t)RTXDI::Mode::TemporalResampling, "Temporal resampling only" },
-            { (uint32_t)RTXDI::Mode::SpatiotemporalResampling, "Spatiotemporal resampling" },
-        };
-
-        Gui::DropdownList kBiasCorrectionList =
-        {
-            { (uint32_t)RTXDI::BiasCorrection::Off, "Off" },
-            { (uint32_t)RTXDI::BiasCorrection::Basic, "Basic" },
-            { (uint32_t)RTXDI::BiasCorrection::Pairwise, "Pairwise" },
-            { (uint32_t)RTXDI::BiasCorrection::RayTraced, "RayTraced" },
-        };
 
         template<typename T>
         void validateRange(T& value, T minValue, T maxValue, const char* name)
@@ -161,9 +144,9 @@ namespace Falcor
         mOptions = newOptions;
     }
 
-    Program::DefineList RTXDI::getDefines() const
+    DefineList RTXDI::getDefines() const
     {
-        Program::DefineList defines;
+        DefineList defines;
 #if FALCOR_HAS_RTXDI
         defines.add("RTXDI_INSTALLED", "1");
 #else
@@ -671,7 +654,7 @@ namespace Falcor
 
         // Helper for creating compute passes.
         auto createComputePass = [&](const std::string& file, const std::string& entryPoint) {
-            Shader::DefineList defines = mpScene->getSceneDefines();
+            DefineList defines = mpScene->getSceneDefines();
             defines.add("RTXDI_INSTALLED", "1");
 
             Program::Desc desc;
@@ -822,7 +805,13 @@ namespace Falcor
         bool useTemporalResampling = (mOptions.mode == Mode::TemporalResampling || mOptions.mode == Mode::SpatiotemporalResampling);
         bool useSpatialResampling = (mOptions.mode == Mode::SpatialResampling || mOptions.mode == Mode::SpatiotemporalResampling);
 
-        changed |= widget.dropdown("Mode", kModeList, reinterpret_cast<uint32_t&>(options.mode));
+        changed |= widget.dropdown("Mode", options.mode);
+        widget.tooltip("Mode.\n\n"
+            "NoResampling: No resampling (Talbot RIS from EGSR 2005 \"Importance Resampling for Global Illumination\").\n"
+            "SpatialResampling: Spatial resampling only.\n"
+            "TemporalResampling: Temporal resampling only.\n"
+            "SpatiotemporalResampling: Spatiotemporal resampling."
+        );
 
         if (auto group = widget.group("Light presampling", false))
         {
@@ -868,10 +857,11 @@ namespace Falcor
         {
             if (auto group = widget.group("Resampling", false))
             {
-                changed |= group.dropdown("Bias correction", kBiasCorrectionList, reinterpret_cast<uint32_t&>(options.biasCorrection));
+                changed |= group.dropdown("Bias correction", options.biasCorrection);
                 group.tooltip("Bias correction mode.\n\n"
                     "Off: Use (1/M) normalization, which is very biased but also very fast.\n"
                     "Basic: Use MIS-like normalization but assume that every sample is visible.\n"
+                    "Pairwise: Use pairwise MIS normalization. Assumes every sample is visibile.\n"
                     "RayTraced: Use MIS-like normalization with visibility rays. Unbiased.\n");
 
                 changed |= group.var("Depth threshold", options.depthThreshold, 0.0f, 1.0f, 0.001f);
@@ -933,53 +923,4 @@ namespace Falcor
 
         return changed;
     }
-
-    FALCOR_SCRIPT_BINDING(RTXDI)
-    {
-        pybind11::enum_<RTXDI::Mode> mode(m, "RTXDIMode");
-        mode.value("NoResampling", RTXDI::Mode::NoResampling);
-        mode.value("SpatialResampling", RTXDI::Mode::SpatialResampling);
-        mode.value("TemporalResampling", RTXDI::Mode::TemporalResampling);
-        mode.value("SpatiotemporalResampling", RTXDI::Mode::SpatiotemporalResampling);
-
-        pybind11::enum_<RTXDI::BiasCorrection> biasCorrection(m, "RTXDIBiasCorrection");
-        biasCorrection.value("Off", RTXDI::BiasCorrection::Off);
-        biasCorrection.value("Basic", RTXDI::BiasCorrection::Basic);
-        biasCorrection.value("Pairwise", RTXDI::BiasCorrection::Pairwise);
-        biasCorrection.value("RayTraced", RTXDI::BiasCorrection::RayTraced);
-
-        ScriptBindings::SerializableStruct<RTXDI::Options> options(m, "RTXDIOptions");
-#define field(f_) field(#f_, &RTXDI::Options::f_)
-        options.field(mode);
-
-        options.field(presampledTileCount);
-        options.field(presampledTileSize);
-        options.field(storeCompactLightInfo);
-
-        options.field(localLightCandidateCount);
-        options.field(infiniteLightCandidateCount);
-        options.field(envLightCandidateCount);
-        options.field(brdfCandidateCount);
-        options.field(brdfCutoff);
-        options.field(testCandidateVisibility);
-
-        options.field(biasCorrection);
-        options.field(depthThreshold);
-        options.field(normalThreshold);
-
-        options.field(samplingRadius);
-        options.field(spatialSampleCount);
-        options.field(spatialIterations);
-
-        options.field(maxHistoryLength);
-        options.field(boilingFilterStrength);
-
-        options.field(rayEpsilon);
-        options.field(useEmissiveTextures);
-
-        options.field(enableVisibilityShortcut);
-        options.field(enablePermutationSampling);
-#undef field
-    }
-
 }

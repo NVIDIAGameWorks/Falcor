@@ -86,14 +86,13 @@ void testAliasTable(GPUUnitTestContext& ctx, uint32_t N, std::vector<float> spec
 
         // Build histogram.
         std::vector<uint32_t> histogram(N, 0);
-        const uint32_t* result = ctx.mapBuffer<const uint32_t>("sampleResult");
+        std::vector<uint32_t> result = ctx.readBuffer<uint32_t>("sampleResult");
         for (uint32_t i = 0; i < resultCount; ++i)
         {
             uint32_t item = result[i];
             EXPECT(item >= 0u && item < N);
             histogram[item]++;
         }
-        ctx.unmapBuffer("sampleResult");
 
         // Verify histogram using a chi-square test.
         std::vector<double> expFrequencies(N);
@@ -131,12 +130,11 @@ void testAliasTable(GPUUnitTestContext& ctx, uint32_t N, std::vector<float> spec
         ctx.runProgram(resultCount);
 
         // Verify weights.
-        const float* weightResult = ctx.mapBuffer<const float>("weightResult");
+        std::vector<float> weightResult = ctx.readBuffer<float>("weightResult");
         for (uint32_t i = 0; i < resultCount; ++i)
         {
             EXPECT_EQ(weightResult[i], weights[i]);
         }
-        ctx.unmapBuffer("weightResult");
     }
 }
 } // namespace

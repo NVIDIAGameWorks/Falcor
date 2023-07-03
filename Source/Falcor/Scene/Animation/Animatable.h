@@ -38,6 +38,7 @@ namespace Falcor
     */
     class FALCOR_API Animatable : public Object
     {
+        FALCOR_OBJECT(Animatable)
     public:
         virtual ~Animatable() {}
 

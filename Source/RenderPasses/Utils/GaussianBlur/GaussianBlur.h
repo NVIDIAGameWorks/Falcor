@@ -37,11 +37,11 @@ class GaussianBlur : public RenderPass
 public:
     FALCOR_PLUGIN_CLASS(GaussianBlur, "GaussianBlur", "Gaussian blur.");
 
-    static ref<GaussianBlur> create(ref<Device> pDevice, const Dictionary& dict) { return make_ref<GaussianBlur>(pDevice, dict); }
+    static ref<GaussianBlur> create(ref<Device> pDevice, const Properties& props) { return make_ref<GaussianBlur>(pDevice, props); }
 
-    GaussianBlur(ref<Device> pDevice, const Dictionary& dict);
+    GaussianBlur(ref<Device> pDevice, const Properties& props);
 
-    virtual Dictionary getScriptingDictionary() override;
+    virtual Properties getProperties() const override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
     virtual void compile(RenderContext* pRenderContext, const CompileData& compileData) override;
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;

@@ -40,7 +40,7 @@ BEGIN_NAMESPACE_FALCOR
 */
 struct RGLMaterialData
 {
-    // MaterialHeader (8B) is stored just before this struct in memory.
+    // MaterialHeader (16B) is stored just before this struct in memory.
     uint phiSize = 0;               ///< Number of angular sampling points.
     uint thetaSize = 0;
     uint2 sigmaSize = uint2(0);     ///< Size of sigma/NDF lookup tables. These are 2D.

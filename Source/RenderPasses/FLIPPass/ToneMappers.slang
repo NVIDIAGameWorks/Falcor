@@ -44,6 +44,13 @@ enum class FLIPToneMapperType : uint32_t
     Reinhard = 2,
 };
 
+FALCOR_ENUM_INFO(FLIPToneMapperType, {
+    { FLIPToneMapperType::ACES, "ACES" },
+    { FLIPToneMapperType::Hable, "Hable" },
+    { FLIPToneMapperType::Reinhard, "Reinhard" },
+});
+FALCOR_ENUM_REGISTER(FLIPToneMapperType);
+
 #ifndef HOST_CODE
 float3 toneMap(float3 col, FLIPToneMapperType toneMapper = FLIPToneMapperType::ACES)
 {

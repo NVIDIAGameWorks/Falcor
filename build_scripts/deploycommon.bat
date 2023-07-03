@@ -38,6 +38,13 @@ robocopy %ExtDir%\cuda\bin\ %OutDir% nvrtc*.dll /r:0 >nul
 robocopy %ExtDir%\cuda\bin\ %OutDir% cublas*.dll /r:0 >nul
 robocopy %ExtDir%\cuda\bin\ %OutDir% curand*.dll /r:0 >nul
 
+rem Copy Aftermath
+set AftermathDir=%ExtDir%\aftermath
+if exist %AftermathDir% (
+    copy /y %AftermathDir%\lib\x64\GFSDK_Aftermath_Lib.x64.dll %OutDir% >nul
+    copy /y %AftermathDir%\lib\x64\llvm_7_0_1.dll %OutDir% >nul
+)
+
 rem Copy NVAPI
 set NvApiDir=%ExtDir%\nvapi
 set NvApiTargetDir=%OutDir%\shaders\nvapi
@@ -106,6 +113,8 @@ rem Copy MDL libs after USD to overwrite older versions included in USD distribu
 set MDLDir=%ExtDir%\mdl-sdk
 if exist %MDLDir% (
     robocopy %MDLDir%\nt-x86-64\lib %OutDir% *.dll /r:0 >nul
+    if not exist %OutDir%\mdl\nvidia mkdir %OutDir%\mdl\nvidia >nul
+    robocopy %MDLDir%\examples\mdl\nvidia %OutDir%\mdl\nvidia core* /r:0 >nul
 )
 
 rem Copy NVTT

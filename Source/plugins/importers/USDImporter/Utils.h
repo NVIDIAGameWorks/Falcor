@@ -149,6 +149,17 @@ namespace Falcor
         return val;
     }
 
+    template <class T>
+    inline T getAttribute(const UsdPrim& prim, const std::string& attribName, const T& def)
+    {
+        T val = def;
+        UsdAttribute attrib = prim.GetAttribute(TfToken(attribName));
+        if (attrib.IsValid())
+        {
+            attrib.Get(&val, UsdTimeCode::EarliestTime());
+        }
+        return val;
+    }
 
     using AttributeFrequency = SceneBuilder::Mesh::AttributeFrequency;
 

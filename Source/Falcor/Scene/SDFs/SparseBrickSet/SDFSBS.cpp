@@ -185,7 +185,7 @@ namespace Falcor
                 // For brick widths smaller than 8 brick validation will be performed using group shared memory.
                 // For larger brick widths, brick validation will be performed using a global atomic.
 
-                Program::DefineList defines;
+                DefineList defines;
                 defines.add("GROUP_BRICK_CREATION", mBrickWidth <= 8u ? "1" : "0");
                 defines.add("GROUP_WIDTH", std::to_string(std::min(mBrickWidth, 8u)));
 
@@ -424,7 +424,7 @@ namespace Falcor
                 Program::Desc desc;
                 desc.addShaderLibrary(kCreateChunksFromPrimitivesShaderName).csEntry("rootEntryPoint");
 
-                Program::DefineList defines;
+                DefineList defines;
                 defines.add("CHUNK_WIDTH", std::to_string(kChunkWidth));
                 defines.add("BRICK_WIDTH", std::to_string(mBrickWidth));
 
@@ -436,7 +436,7 @@ namespace Falcor
                 Program::Desc desc;
                 desc.addShaderLibrary(kCreateChunksFromPrimitivesShaderName).csEntry("subdivideEntryPoint");
 
-                Program::DefineList defines;
+                DefineList defines;
                 defines.add("CHUNK_WIDTH", std::to_string(kChunkWidth));
                 defines.add("BRICK_WIDTH", std::to_string(mBrickWidth));
 
@@ -448,7 +448,7 @@ namespace Falcor
                 Program::Desc desc;
                 desc.addShaderLibrary(kPruneEmptyBricksShaderName).csEntry("coarsePrune");
 
-                Program::DefineList defines;
+                DefineList defines;
                 defines.add("BRICK_WIDTH", std::to_string(mBrickWidth));
 
                 mpCoarselyPruneEmptyBricks = ComputePass::create(mpDevice, desc, defines);
@@ -459,7 +459,7 @@ namespace Falcor
                 Program::Desc desc;
                 desc.addShaderLibrary(kPruneEmptyBricksShaderName).csEntry("finePrune");
 
-                Program::DefineList defines;
+                DefineList defines;
                 defines.add("BRICK_WIDTH", std::to_string(mBrickWidth));
 
                 mpFinelyPruneEmptyBricks = ComputePass::create(mpDevice, desc, defines);
@@ -470,7 +470,7 @@ namespace Falcor
                 Program::Desc desc;
                 desc.addShaderLibrary(kCreateBricksFromChunksShaderName).csEntry("main");
 
-                Program::DefineList defines;
+                DefineList defines;
                 defines.add("CHUNK_WIDTH", std::to_string(kChunkWidth));
                 defines.add("BRICK_WIDTH", std::to_string(mBrickWidth));
                 defines.add("COMPRESS_BRICKS", mCompressed ? "1" : "0");
@@ -845,7 +845,7 @@ namespace Falcor
             Program::Desc desc;
             desc.addShaderLibrary(kExpandSDFieldShaderName).csEntry("main");
 
-            Program::DefineList defines;
+            DefineList defines;
             defines.add("GROUP_WIDTH", "8");
             mpExpandSDFieldPass = ComputePass::create(mpDevice, desc, defines);
         }
@@ -901,7 +901,7 @@ namespace Falcor
             // For brick widths smaller than 8 interval computation will be performed using group shared memory.
             // For larger brick widths, interval computation will be performed by letting each thread (brick) iterate over all its children.
 
-            Program::DefineList defines;
+            DefineList defines;
             defines.add("GROUP_BRICK_CREATION", mBrickWidth <= 8u ? "1" : "0");
             defines.add("GROUP_WIDTH", std::to_string(std::min(mBrickWidth, 8u)));
             defines.add("BRICK_WIDTH", std::to_string(mBrickWidth));
@@ -914,7 +914,7 @@ namespace Falcor
             Program::Desc desc;
             desc.addShaderLibrary(kComputeIntervalSDFieldFromGridShaderName).csEntry("chunkGather");
 
-            Program::DefineList defines;
+            DefineList defines;
             defines.add("GROUP_BRICK_CREATION", "0");
             defines.add("GROUP_WIDTH", std::to_string(8u));
             defines.add("BRICK_WIDTH", std::to_string(mBrickWidth));

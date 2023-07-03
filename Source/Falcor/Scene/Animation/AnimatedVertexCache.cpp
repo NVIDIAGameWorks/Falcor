@@ -477,7 +477,7 @@ namespace Falcor
     {
         FALCOR_ASSERT(!mCachedMeshes.empty());
 
-        Program::DefineList defines;
+        DefineList defines;
         defines.add("MESH_KEYFRAME_COUNT", std::to_string(mMeshKeyframeCount));
         mpMeshVertexUpdatePass = ComputePass::create(mpDevice, "Scene/Animation/UpdateMeshVertices.slang", "main", defines);
 
@@ -495,7 +495,7 @@ namespace Falcor
     {
         FALCOR_ASSERT(mCurveLSSCount > 0);
 
-        Program::DefineList defines;
+        DefineList defines;
         defines.add("CURVE_KEYFRAME_COUNT", std::to_string(mCurveKeyframeTimes.size()));
         mpCurveVertexUpdatePass = ComputePass::create(mpDevice, kUpdateCurveVerticesFilename, "main", defines);
 
@@ -520,7 +520,7 @@ namespace Falcor
     {
         FALCOR_ASSERT(mCurvePolyTubeCount > 0);
 
-        Program::DefineList defines;
+        DefineList defines;
         defines.add("CURVE_KEYFRAME_COUNT", std::to_string(mCurveKeyframeTimes.size()));
         mpCurvePolyTubeVertexUpdatePass = ComputePass::create(mpDevice, kUpdateCurvePolyTubeVerticesFilename, "main", defines);
 

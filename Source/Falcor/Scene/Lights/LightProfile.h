@@ -43,6 +43,7 @@ namespace Falcor
 
     class FALCOR_API LightProfile : public Object
     {
+        FALCOR_OBJECT(LightProfile)
     public:
         static ref<LightProfile> createFromIesProfile(ref<Device> pDevice, const std::filesystem::path& filename, bool normalize);
 

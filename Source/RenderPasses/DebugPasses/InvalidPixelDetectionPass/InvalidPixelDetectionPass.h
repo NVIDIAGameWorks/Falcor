@@ -37,9 +37,9 @@ class InvalidPixelDetectionPass : public RenderPass
 public:
     FALCOR_PLUGIN_CLASS(InvalidPixelDetectionPass, "InvalidPixelDetectionPass", "Pass that marks all NaN pixels red and Inf pixels green in an image.");
 
-    static ref<InvalidPixelDetectionPass> create(ref<Device> pDevice, const Dictionary& dict) { return make_ref<InvalidPixelDetectionPass>(pDevice, dict); }
+    static ref<InvalidPixelDetectionPass> create(ref<Device> pDevice, const Properties& props) { return make_ref<InvalidPixelDetectionPass>(pDevice, props); }
 
-    InvalidPixelDetectionPass(ref<Device> pDevice, const Dictionary& dict);
+    InvalidPixelDetectionPass(ref<Device> pDevice, const Properties& props);
 
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
     virtual void compile(RenderContext* pRenderContext, const CompileData& compileData) override;

@@ -28,6 +28,7 @@
 #pragma once
 #include "LightBVH.h"
 #include "Core/Macros.h"
+#include "Core/Enum.h"
 #include "Utils/Math/AABB.h"
 #include "Utils/Math/Vector.h"
 #include "Utils/UI/Gui.h"
@@ -55,6 +56,12 @@ namespace Falcor
             BinnedSAOH = 2u,    ///< Split the input according to SAOH (Estévez Conty et al, 2018); the input is binned for speeding up the SAOH computation.
         };
 
+        FALCOR_ENUM_INFO(SplitHeuristic, {
+            { SplitHeuristic::Equal, "Equal" },
+            { SplitHeuristic::BinnedSAH, "BinnedSAH" },
+            { SplitHeuristic::BinnedSAOH, "BinnedSAOH" },
+        });
+
         /** Light BVH builder configuration options.
             Note if you change options, please update FALCOR_SCRIPT_BINDING in LightBVHBuilder.cpp
         */
@@ -71,6 +78,22 @@ namespace Falcor
             bool           allowRefitting = true;                                ///< Rather than always rebuilding the BVH from scratch, keep the hierarchy but update the bounds and lighting cones.
             bool           usePreintegration = true;                             ///< Use pre-integration for culling out emissive triangles and use their flux when computing the splits. Only valid when using the BinnedSAOH split heuristic.
             bool           useLightingCones = true;                              ///< Use lighting cones when computing the splits. Only valid when using the BinnedSAOH split heuristic.
+
+            template<typename Archive>
+            void serialize(Archive& ar)
+            {
+                ar("splitHeuristicSelection", splitHeuristicSelection);
+                ar("maxTriangleCountPerLeaf", maxTriangleCountPerLeaf);
+                ar("binCount", binCount);
+                ar("volumeEpsilon", volumeEpsilon);
+                ar("splitAlongLargest", splitAlongLargest);
+                ar("useVolumeOverSA", useVolumeOverSA);
+                ar("useLeafCreationCost", useLeafCreationCost);
+                ar("createLeavesASAP", createLeavesASAP);
+                ar("allowRefitting", allowRefitting);
+                ar("usePreintegration", usePreintegration);
+                ar("useLightingCones", useLightingCones);
+            }
         };
 
         /** Constructor.
@@ -179,4 +202,6 @@ namespace Falcor
         // Configuration
         Options mOptions;
     };
+
+    FALCOR_ENUM_REGISTER(LightBVHBuilder::SplitHeuristic);
 }

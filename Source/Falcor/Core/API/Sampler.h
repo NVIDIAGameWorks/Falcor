@@ -32,6 +32,7 @@
 #include "NativeHandle.h"
 #include "Core/Macros.h"
 #include "Core/Object.h"
+#include "Core/Enum.h"
 #include "Utils/Math/Vector.h"
 
 namespace Falcor
@@ -41,6 +42,7 @@ namespace Falcor
  */
 class FALCOR_API Sampler : public Object
 {
+    FALCOR_OBJECT(Sampler)
 public:
     /**
      * Filter mode
@@ -50,6 +52,14 @@ public:
         Point,
         Linear,
     };
+
+    FALCOR_ENUM_INFO(
+        Filter,
+        {
+            {Filter::Point, "Point"},
+            {Filter::Linear, "Linear"},
+        }
+    );
 
     /**
      * Addressing mode in case the texture coordinates are out of [0, 1] range
@@ -63,6 +73,17 @@ public:
         MirrorOnce ///< Same as Mirror, but mirrors only once around 0
     };
 
+    FALCOR_ENUM_INFO(
+        AddressMode,
+        {
+            {AddressMode::Wrap, "Wrap"},
+            {AddressMode::Mirror, "Mirror"},
+            {AddressMode::Clamp, "Clamp"},
+            {AddressMode::Border, "Border"},
+            {AddressMode::MirrorOnce, "MirrorOnce"},
+        }
+    );
+
     /**
      * Reduction mode
      */
@@ -73,6 +94,16 @@ public:
         Min,
         Max,
     };
+
+    FALCOR_ENUM_INFO(
+        ReductionMode,
+        {
+            {ReductionMode::Standard, "Standard"},
+            {ReductionMode::Comparison, "Comparison"},
+            {ReductionMode::Min, "Min"},
+            {ReductionMode::Max, "Max"},
+        }
+    );
 
     /**
      * Comparison mode for the sampler.
@@ -295,4 +326,9 @@ private:
 
     friend class Device;
 };
+
+FALCOR_ENUM_REGISTER(Sampler::Filter);
+FALCOR_ENUM_REGISTER(Sampler::AddressMode);
+FALCOR_ENUM_REGISTER(Sampler::ReductionMode);
+
 } // namespace Falcor

@@ -29,6 +29,7 @@
 #include "RenderPass.h"
 #include "RenderPassReflection.h"
 #include "Core/Macros.h"
+#include "Core/Enum.h"
 #include "Core/API/Formats.h"
 #include "Core/API/RenderContext.h"
 #include "Core/Program/Program.h"
@@ -54,20 +55,25 @@ struct FALCOR_API RenderPassHelpers
         Double,  ///< Use double window size.
     };
 
-    /**
-     * UI dropdown for the IOSize enum values.
-     */
-    static inline Gui::DropdownList kIOSizeList = {
-        {(uint32_t)IOSize::Default, "Default"},        {(uint32_t)IOSize::Fixed, "Fixed"},
-        {(uint32_t)IOSize::Full, "Full window"},       {(uint32_t)IOSize::Half, "Half window"},
-        {(uint32_t)IOSize::Quarter, "Quarter window"}, {(uint32_t)IOSize::Double, "Double window"},
-    };
+    FALCOR_ENUM_INFO(
+        IOSize,
+        {
+            {IOSize::Default, "Default"},
+            {IOSize::Fixed, "Fixed"},
+            {IOSize::Full, "Full"},
+            {IOSize::Half, "Half"},
+            {IOSize::Quarter, "Quarter"},
+            {IOSize::Double, "Double"},
+        }
+    );
 
     /**
      * Helper for calculating desired I/O size in pixels based on selected mode.
      */
     static uint2 calculateIOSize(const IOSize selection, const uint2 fixedSize, const uint2 windowSize);
 };
+
+FALCOR_ENUM_REGISTER(RenderPassHelpers::IOSize);
 
 // TODO: Move below out of the global scope, e.g. into RenderPassHelpers struct.
 // TODO: Update render passes to use addRenderPass*() helpers.
@@ -98,13 +104,13 @@ using ChannelList = std::vector<ChannelDesc>;
  * @param[in] prefix Prefix used for defines.
  * @return Returns a list of defines to add to the progrem.
  */
-inline Program::DefineList getValidResourceDefines(
+inline DefineList getValidResourceDefines(
     const ChannelList& channels,
     const RenderData& renderData,
     const std::string& prefix = "is_valid_"
 )
 {
-    Program::DefineList defines;
+    DefineList defines;
 
     for (const auto& desc : channels)
     {

@@ -47,13 +47,12 @@ GPU_TEST(MathHelpers_SphericalCoordinates)
     // spherical coordinates and back, and computes the dot product with
     // the original vector.  Here, we'll check that the dot product is
     // pretty close to one.
-    const float* r = ctx.mapBuffer<const float>("result");
+    std::vector<float> r = ctx.readBuffer<float>("result");
     for (int32_t i = 0; i < n; ++i)
     {
         EXPECT_GT(r[i], .999f) << "i = " << i;
         EXPECT_LT(r[i], 1.001f) << "i = " << i;
     }
-    ctx.unmapBuffer("result");
 }
 
 GPU_TEST(MathHelpers_SphericalCoordinatesRad)
@@ -68,13 +67,12 @@ GPU_TEST(MathHelpers_SphericalCoordinatesRad)
     // spherical coordinates and back, and computes the dot product with
     // the original vector.  Here, we'll check that the dot product is
     // pretty close to one.
-    const float* r = ctx.mapBuffer<const float>("result");
+    std::vector<float> r = ctx.readBuffer<float>("result");
     for (int32_t i = 0; i < n; ++i)
     {
         EXPECT_GT(r[i], .999f) << "i = " << i;
         EXPECT_LT(r[i], 1.001f) << "i = " << i;
     }
-    ctx.unmapBuffer("result");
 }
 
 GPU_TEST(MathHelpers_ErrorFunction)
@@ -98,14 +96,13 @@ GPU_TEST(MathHelpers_ErrorFunction)
 
     ctx.runProgram(n);
 
-    const float* r = ctx.mapBuffer<const float>("result");
+    std::vector<float> r = ctx.readBuffer<float>("result");
     float epsilon = 1e-6f;
     for (int32_t i = 0; i < n; ++i)
     {
         EXPECT_GE(r[i], ref[i] - epsilon) << "i = " << i;
         EXPECT_LE(r[i], ref[i] + epsilon) << "i = " << i;
     }
-    ctx.unmapBuffer("result");
 }
 
 GPU_TEST(MathHelpers_InverseErrorFunction)
@@ -126,13 +123,12 @@ GPU_TEST(MathHelpers_InverseErrorFunction)
 
     ctx.runProgram(n);
 
-    const float* r = ctx.mapBuffer<const float>("result");
+    std::vector<float> r = ctx.readBuffer<float>("result");
     float epsilon = 1e-6f;
     for (int32_t i = 0; i < n; ++i)
     {
         EXPECT_GE(std::erf(r[i]), input[i] - epsilon) << "i = " << i;
         EXPECT_LE(std::erf(r[i]), input[i] + epsilon) << "i = " << i;
     }
-    ctx.unmapBuffer("result");
 }
 } // namespace Falcor

@@ -256,7 +256,7 @@ namespace Falcor
 
     void Scene::updateSceneDefines()
     {
-        Shader::DefineList defines;
+        DefineList defines;
 
         // The following defines are currently static and do not change at runtime.
         defines.add("SCENE_GRID_COUNT", std::to_string(mGrids.size()));
@@ -277,14 +277,14 @@ namespace Falcor
         mSceneDefines = defines;
     }
 
-    Shader::DefineList Scene::getSceneDefines() const
+    DefineList Scene::getSceneDefines() const
     {
         return mSceneDefines;
     }
 
-    Shader::DefineList Scene::getSceneSDFGridDefines() const
+    DefineList Scene::getSceneSDFGridDefines() const
     {
-        Shader::DefineList defines;
+        DefineList defines;
 
         // Setup static defines for enum values.
         defines.add("SCENE_SDF_GRID_IMPLEMENTATION_NDSDF", std::to_string((uint32_t)SDFGrid::Type::NormalizedDenseGrid));
@@ -1102,6 +1102,8 @@ namespace Falcor
         for (uint32_t sdfGridID = 0; sdfGridID < mSDFGrids.size(); ++sdfGridID)
         {
             ref<SDFGrid>& pSDFGrid = mSDFGrids[sdfGridID];
+            if (pSDFGrid->mpDevice != mpDevice)
+                throw RuntimeError("SDFGrid '{}' was created with a different device than the Scene", pSDFGrid->getName());
             SDFGrid::UpdateFlags sdfGridUpdateFlags = pSDFGrid->update(pRenderContext);
 
             if (is_set(sdfGridUpdateFlags, SDFGrid::UpdateFlags::AABBsChanged))
@@ -1610,6 +1612,8 @@ namespace Falcor
         // Update animations and get combined updates.
         for (const auto& pGridVolume : mGridVolumes)
         {
+            if (pGridVolume->mpDevice != mpDevice)
+                throw RuntimeError("GridVolume '{}' was created with a different device than the Scene.", pGridVolume->getName());
             updateAnimatable(*pGridVolume, *mpAnimationController, forceUpdate);
             combinedUpdates |= pGridVolume->getUpdates();
         }
@@ -1667,6 +1671,8 @@ namespace Falcor
 
         if (mpEnvMap)
         {
+            if (mpEnvMap->mpDevice != mpDevice)
+                throw RuntimeError("EnvMap was created with a different device than the Scene.");
             auto envMapChanges = mpEnvMap->beginFrame();
             if (envMapChanges != EnvMap::Changes::None || mEnvMapChanged || forceUpdate)
             {
@@ -4099,14 +4105,31 @@ namespace Falcor
         FALCOR_SCRIPT_BINDING_DEPENDENCY(SDFGrid)
 
         // RenderSettings
-        ScriptBindings::SerializableStruct<Scene::RenderSettings> renderSettings(m, "SceneRenderSettings");
-#define field(f_) field(#f_, &Scene::RenderSettings::f_)
-        renderSettings.field(useEnvLight);
-        renderSettings.field(useAnalyticLights);
-        renderSettings.field(useEmissiveLights);
-        renderSettings.field(useGridVolumes);
-        renderSettings.field(diffuseAlbedoMultiplier);
-#undef field
+        pybind11::class_<Scene::RenderSettings> renderSettings(m, "SceneRenderSettings");
+        renderSettings.def_readwrite("useEnvLight", &Scene::RenderSettings::useEnvLight);
+        renderSettings.def_readwrite("useAnalyticLights", &Scene::RenderSettings::useAnalyticLights);
+        renderSettings.def_readwrite("useEmissiveLights", &Scene::RenderSettings::useEmissiveLights);
+        renderSettings.def_readwrite("useGridVolumes", &Scene::RenderSettings::useGridVolumes);
+        renderSettings.def_readwrite("diffuseAlbedoMultiplier", &Scene::RenderSettings::diffuseAlbedoMultiplier);
+        renderSettings.def(pybind11::init<>([](bool useEnvLight, bool useAnalyticLights, bool useEmissiveLights, bool useGridVolumes, float diffuseAlbedoMultiplier) {
+            Scene::RenderSettings settings;
+            settings.useEnvLight = useEnvLight;
+            settings.useAnalyticLights = useAnalyticLights;
+            settings.useEmissiveLights = useEmissiveLights;
+            settings.useGridVolumes = useGridVolumes;
+            settings.diffuseAlbedoMultiplier = diffuseAlbedoMultiplier;
+            return settings;
+        }), "useEnvLight"_a = true, "useAnalyticLights"_a = true, "useEmissiveLights"_a = true, "useGridVolumes"_a = true, "diffuseAlbedoMultiplier"_a = 1.f);
+        renderSettings.def("__repr__", [](const Scene::RenderSettings& self) {
+            return fmt::format(
+                "SceneRenderSettings(useEnvLight={}, useAnalyticLights={}, useEmissiveLights={}, useGridVolumes={}, diffuseAlbedoMultiplier={})",
+                self.useEnvLight ? "True" : "False",
+                self.useAnalyticLights ? "True" : "False",
+                self.useEmissiveLights ? "True" : "False",
+                self.useGridVolumes ? "True" : "False",
+                self.diffuseAlbedoMultiplier
+            );
+        });
 
         // Scene
         pybind11::class_<Scene, ref<Scene>> scene(m, "Scene");

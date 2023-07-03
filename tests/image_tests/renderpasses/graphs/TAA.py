@@ -2,7 +2,7 @@ from falcor import *
 
 def render_graph_TAA():
     testTAA = RenderGraph("TAA")
-    GBufferRaster = createPass("GBufferRaster", {"samplePattern": SamplePattern.Halton})
+    GBufferRaster = createPass("GBufferRaster", {"samplePattern": 'Halton'})
     testTAA.addPass(GBufferRaster, "GBufferRaster")
     TAAPass = createPass("TAA")
     testTAA.addPass(TAAPass, "TAA")

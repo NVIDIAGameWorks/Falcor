@@ -105,6 +105,16 @@ namespace Falcor
         */
         virtual void importScene(const std::filesystem::path& path, SceneBuilder& builder, const pybind11::dict& dict) = 0;
 
+        /** Import a scene from memory.
+            \param[in] buffer Memory buffer.
+            \param[in] byteSize Size in bytes of memory buffer.
+            \param[in] extension File extension for the format the scene is stored in.
+            \param[in] builder Scene builder.
+            \param[in] dict Optional dictionary.
+            Throws an ImporterError if something went wrong.
+        */
+        virtual void importSceneFromMemory(const void* buffer, size_t byteSize, std::string_view extension, SceneBuilder& builder, const pybind11::dict& dict);
+
         // Importer factory
 
         /** Create an importer for a file of an asset with the given file extension.
@@ -112,7 +122,7 @@ namespace Falcor
             \param pm Plugin manager.
             \return Returns an instance of the importer or nullptr if no compatible importer was found.
          */
-        static std::unique_ptr<Importer> create(std::string extension, const PluginManager& pm = PluginManager::instance());
+        static std::unique_ptr<Importer> create(std::string_view extension, const PluginManager& pm = PluginManager::instance());
 
         /** Return a list of supported file extensions by the current set of loaded importer plugins.
         */

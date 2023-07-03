@@ -27,10 +27,12 @@
  **************************************************************************/
 #pragma once
 #include "Core/Macros.h"
+#include "Core/Enum.h"
 #include "Core/API/Texture.h"
 #include "Core/API/FBO.h"
 #include "Utils/Math/Vector.h"
 #include "Utils/Color/SampledSpectrum.h"
+#include <imgui.h>
 #include <filesystem>
 #include <memory>
 #include <string>
@@ -163,6 +165,37 @@ public:
          * @return true if the value changed, otherwise false
          */
         bool dropdown(const char label[], const DropdownList& values, uint32_t& var, bool sameLine = false);
+
+        /**
+         * Adds a dropdown menu for an enum setup with FALCOR_ENUM_INFO.
+         * @param[in] label The name of the dropdown menu.
+         * @param[in] var A reference to a user variable that will be updated directly when a dropdown option changes.
+         * @param[in] sameLine Optional. If set to true, the widget will appear on the same line as the previous widget
+         * @return true if the value changed, otherwise false
+         */
+        template<typename T, std::enable_if_t<has_enum_info_v<T>, bool> = true>
+        bool dropdown(const char label[], T& var, bool sameLine = false)
+        {
+            bool changed = false;
+            if (sameLine)
+                ImGui::SameLine();
+            const std::string& currentValue = enumToString(var);
+            if (ImGui::BeginCombo(label, currentValue.c_str()))
+            {
+                const auto& items = EnumInfo<T>::items();
+                for (const auto& item : items)
+                {
+                    bool selected = var == item.first;
+                    if (ImGui::Selectable(item.second.c_str(), &selected))
+                    {
+                        var = item.first;
+                        changed = true;
+                    }
+                }
+                ImGui::EndCombo();
+            }
+            return changed;
+        }
 
         /**
          * Button. Will return true if the button was pressed

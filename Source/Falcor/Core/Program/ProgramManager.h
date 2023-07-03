@@ -45,8 +45,8 @@ public:
      */
     struct ForcedCompilerFlags
     {
-        Shader::CompilerFlags enabled = Shader::CompilerFlags::None;  ///< Compiler flags forcefully enabled on all shaders
-        Shader::CompilerFlags disabled = Shader::CompilerFlags::None; ///< Compiler flags forcefully enabled on all shaders
+        Program::CompilerFlags enabled = Program::CompilerFlags::None;  ///< Compiler flags forcefully enabled on all shaders
+        Program::CompilerFlags disabled = Program::CompilerFlags::None; ///< Compiler flags forcefully enabled on all shaders
     };
 
     struct CompilationStats
@@ -73,7 +73,7 @@ public:
     ) const;
 
     ref<const EntryPointGroupKernels> createEntryPointGroupKernels(
-        const std::vector<ref<Shader>>& shaders,
+        const std::vector<ref<EntryPointKernel>>& kernels,
         const ref<EntryPointBaseReflection>& pReflector
     ) const;
 
@@ -88,13 +88,13 @@ public:
      * Add a list of defines applied to all programs.
      * @param[in] defineList List of macro definitions.
      */
-    void addGlobalDefines(const Program::DefineList& defineList);
+    void addGlobalDefines(const DefineList& defineList);
 
     /**
      * Remove a list of defines applied to all programs.
      * @param[in] defineList List of macro definitions.
      */
-    void removeGlobalDefines(const Program::DefineList& defineList);
+    void removeGlobalDefines(const DefineList& defineList);
 
     /**
      * Enable/disable global generation of shader debug info.
@@ -133,7 +133,7 @@ private:
     std::vector<Program*> mLoadedPrograms;
     mutable CompilationStats mCompilationStats;
 
-    Program::DefineList mGlobalDefineList;
+    DefineList mGlobalDefineList;
     bool mGenerateDebugInfo = false;
     ForcedCompilerFlags mForcedCompilerFlags;
 

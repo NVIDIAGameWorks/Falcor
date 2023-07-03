@@ -41,9 +41,9 @@ class VBufferRaster : public GBufferBase
 public:
     FALCOR_PLUGIN_CLASS(VBufferRaster, "VBufferRaster", "Rasterized V-buffer generation pass.");
 
-    static ref<VBufferRaster> create(ref<Device> pDevice, const Dictionary& dict) { return make_ref<VBufferRaster>(pDevice, dict); }
+    static ref<VBufferRaster> create(ref<Device> pDevice, const Properties& props) { return make_ref<VBufferRaster>(pDevice, props); }
 
-    VBufferRaster(ref<Device> pDevice, const Dictionary& dict);
+    VBufferRaster(ref<Device> pDevice, const Properties& props);
 
     RenderPassReflection reflect(const CompileData& compileData) override;
     void setScene(RenderContext* pRenderContext, const ref<Scene>& pScene) override;

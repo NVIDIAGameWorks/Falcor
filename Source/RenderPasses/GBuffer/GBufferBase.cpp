@@ -35,23 +35,12 @@
 #include "Utils/SampleGenerators/HaltonSamplePattern.h"
 #include "Utils/SampleGenerators/StratifiedSamplePattern.h"
 
-static void registerBindings(pybind11::module& m)
-{
-    pybind11::enum_<GBufferBase::SamplePattern> samplePattern(m, "SamplePattern");
-    samplePattern.value("Center", GBufferBase::SamplePattern::Center);
-    samplePattern.value("DirectX", GBufferBase::SamplePattern::DirectX);
-    samplePattern.value("Halton", GBufferBase::SamplePattern::Halton);
-    samplePattern.value("Stratified", GBufferBase::SamplePattern::Stratified);
-}
-
 extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registry)
 {
     registry.registerClass<RenderPass, GBufferRaster>();
     registry.registerClass<RenderPass, GBufferRT>();
     registry.registerClass<RenderPass, VBufferRaster>();
     registry.registerClass<RenderPass, VBufferRT>();
-
-    Falcor::ScriptBindings::registerBinding(registerBindings);
 }
 
 namespace
@@ -66,27 +55,11 @@ namespace
     const char kAdjustShadingNormals[] = "adjustShadingNormals";
     const char kForceCullMode[] = "forceCullMode";
     const char kCullMode[] = "cull";
-
-    // UI variables.
-    const Gui::DropdownList kSamplePatternList =
-    {
-        { (uint32_t)GBufferBase::SamplePattern::Center, "Center" },
-        { (uint32_t)GBufferBase::SamplePattern::DirectX, "DirectX" },
-        { (uint32_t)GBufferBase::SamplePattern::Halton, "Halton" },
-        { (uint32_t)GBufferBase::SamplePattern::Stratified, "Stratified" },
-    };
-
-    const Gui::DropdownList kCullModeList =
-    {
-        { (uint32_t)RasterizerState::CullMode::None, "None" },
-        { (uint32_t)RasterizerState::CullMode::Back, "Back" },
-        { (uint32_t)RasterizerState::CullMode::Front, "Front" },
-    };
 }
 
-void GBufferBase::parseDictionary(const Dictionary& dict)
+void GBufferBase::parseProperties(const Properties& props)
 {
-    for (const auto& [key, value] : dict)
+    for (const auto& [key, value] : props)
     {
         if (key == kOutputSize) mOutputSizeSelection = value;
         else if (key == kFixedOutputSize) mFixedOutputSize = value;
@@ -100,35 +73,35 @@ void GBufferBase::parseDictionary(const Dictionary& dict)
     }
 
     // Handle deprecated "disableAlphaTest" value.
-    if (dict.keyExists(kDisableAlphaTest) && !dict.keyExists(kUseAlphaTest)) mUseAlphaTest = !dict[kDisableAlphaTest];
+    if (props.has(kDisableAlphaTest) && !props.has(kUseAlphaTest)) mUseAlphaTest = !props[kDisableAlphaTest];
 }
 
-Dictionary GBufferBase::getScriptingDictionary()
+Properties GBufferBase::getProperties() const
 {
-    Dictionary dict;
-    dict[kOutputSize] = mOutputSizeSelection;
-    if (mOutputSizeSelection == RenderPassHelpers::IOSize::Fixed) dict[kFixedOutputSize] = mFixedOutputSize;
-    dict[kSamplePattern] = mSamplePattern;
-    dict[kSampleCount] = mSampleCount;
-    dict[kUseAlphaTest] = mUseAlphaTest;
-    dict[kAdjustShadingNormals] = mAdjustShadingNormals;
-    dict[kForceCullMode] = mForceCullMode;
-    dict[kCullMode] = mCullMode;
-    return dict;
+    Properties props;
+    props[kOutputSize] = mOutputSizeSelection;
+    if (mOutputSizeSelection == RenderPassHelpers::IOSize::Fixed) props[kFixedOutputSize] = mFixedOutputSize;
+    props[kSamplePattern] = mSamplePattern;
+    props[kSampleCount] = mSampleCount;
+    props[kUseAlphaTest] = mUseAlphaTest;
+    props[kAdjustShadingNormals] = mAdjustShadingNormals;
+    props[kForceCullMode] = mForceCullMode;
+    props[kCullMode] = mCullMode;
+    return props;
 }
 
 void GBufferBase::renderUI(Gui::Widgets& widget)
 {
     // Controls for output size.
     // When output size requirements change, we'll trigger a graph recompile to update the render pass I/O sizes.
-    if (widget.dropdown("Output size", RenderPassHelpers::kIOSizeList, (uint32_t&)mOutputSizeSelection)) requestRecompile();
+    if (widget.dropdown("Output size", mOutputSizeSelection)) requestRecompile();
     if (mOutputSizeSelection == RenderPassHelpers::IOSize::Fixed)
     {
         if (widget.var("Size in pixels", mFixedOutputSize, 32u, 16384u)) requestRecompile();
     }
 
     // Sample pattern controls.
-    bool updatePattern = widget.dropdown("Sample pattern", kSamplePatternList, (uint32_t&)mSamplePattern);
+    bool updatePattern = widget.dropdown("Sample pattern", mSamplePattern);
     widget.tooltip("Selects sample pattern for anti-aliasing over multiple frames.\n\n"
         "The camera jitter is set at the start of each frame based on the chosen pattern. All render passes should see the same jitter.\n"
         "'Center' disables anti-aliasing by always sampling at the center of the pixel.", true);
@@ -157,10 +130,9 @@ void GBufferBase::renderUI(Gui::Widgets& widget)
 
     if (mForceCullMode)
     {
-        uint32_t cullMode = (uint32_t)mCullMode;
-        if (widget.dropdown("Cull mode", kCullModeList, cullMode))
+        if (auto cullMode = mCullMode; widget.dropdown("Cull mode", cullMode))
         {
-            setCullMode((RasterizerState::CullMode)cullMode);
+            setCullMode(cullMode);
             mOptionsChanged = true;
         }
     }

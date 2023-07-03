@@ -55,6 +55,9 @@ struct DisplacedTriangleMeshIntersector
     */
     static bool intersect(const Ray ray, const GeometryInstanceID instanceID, const uint primitiveIndex, out Attribs attribs, out float t)
     {
+        attribs = {};
+        t = {};
+
         const uint materialID = gScene.getMaterialID(instanceID);
         const uint3 indices = gScene.getIndices(instanceID, primitiveIndex);
         const StaticVertexData vertices[3] = { gScene.getVertex(indices[0]), gScene.getVertex(indices[1]), gScene.getVertex(indices[2]) };
@@ -156,6 +159,9 @@ struct SDFGridIntersector
     */
     static bool intersect(const Ray ray, const GeometryInstanceID instanceID, const uint primitiveID, out SDFGridHitData hitData, out float t)
     {
+        hitData ={};
+        t = {};
+
         const GeometryInstanceData instance = gScene.getGeometryInstance(instanceID);
         SDFGrid sdfGrid;
         gScene.getSDFGrid(instanceID, sdfGrid);

@@ -27,7 +27,7 @@
  **************************************************************************/
 #pragma once
 #include "ScriptBindings.h"
-#include "Dictionary.h"
+#include "PythonDictionary.h"
 #include "Core/Platform/OS.h"
 #include <algorithm>
 #include <filesystem>
@@ -101,9 +101,15 @@ std::string ScriptWriter::getArgString(const T& arg)
 }
 
 template<>
-inline std::string ScriptWriter::getArgString(const Dictionary& dictionary)
+inline std::string ScriptWriter::getArgString(const PythonDictionary& dict)
 {
-    return dictionary.toString();
+    return dict.toString();
+}
+
+template<>
+inline std::string ScriptWriter::getArgString(const pybind11::dict& dict)
+{
+    return pybind11::str(static_cast<pybind11::dict>(dict));
 }
 
 template<>

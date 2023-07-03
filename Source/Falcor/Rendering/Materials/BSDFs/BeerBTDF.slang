@@ -49,7 +49,8 @@ struct BeerBTDF : IBSDF
         // Default initialization to avoid divergence at returns.
         wo = {};
         weight = {};
-        pdf = 0.f;
+        pdf = {};
+        lobeType = {};
 
         if (wi.z > kMinCosTheta)
             return false;

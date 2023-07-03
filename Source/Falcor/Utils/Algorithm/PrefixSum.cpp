@@ -42,7 +42,7 @@ const uint32_t kGroupSize = 1024;
 PrefixSum::PrefixSum(ref<Device> pDevice) : mpDevice(pDevice)
 {
     // Create shaders and state.
-    Program::DefineList defines = {{"GROUP_SIZE", std::to_string(kGroupSize)}};
+    DefineList defines = {{"GROUP_SIZE", std::to_string(kGroupSize)}};
     mpPrefixSumGroupProgram = ComputeProgram::createFromFile(mpDevice, kShaderFile, "groupScan", defines);
     mpPrefixSumGroupVars = ComputeVars::create(mpDevice, mpPrefixSumGroupProgram.get());
     mpPrefixSumFinalizeProgram = ComputeProgram::createFromFile(mpDevice, kShaderFile, "finalizeGroups", defines);

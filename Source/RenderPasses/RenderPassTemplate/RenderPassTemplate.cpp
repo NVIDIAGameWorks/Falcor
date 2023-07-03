@@ -32,14 +32,14 @@ extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registr
     registry.registerClass<RenderPass, RenderPassTemplate>();
 }
 
-RenderPassTemplate::RenderPassTemplate(ref<Device> pDevice, const Dictionary& dict)
+RenderPassTemplate::RenderPassTemplate(ref<Device> pDevice, const Properties& props)
     : RenderPass(pDevice)
 {
 }
 
-Dictionary RenderPassTemplate::getScriptingDictionary()
+Properties RenderPassTemplate::getProperties() const
 {
-    return Dictionary();
+    return {};
 }
 
 RenderPassReflection RenderPassTemplate::reflect(const CompileData& compileData)

@@ -42,6 +42,7 @@ namespace Falcor
  */
 class FALCOR_API Vao : public Object
 {
+    FALCOR_OBJECT(Vao)
 public:
     ~Vao() = default;
 
