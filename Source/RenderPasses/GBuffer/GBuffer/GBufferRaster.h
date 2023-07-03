@@ -40,9 +40,9 @@ class GBufferRaster : public GBuffer
 public:
     FALCOR_PLUGIN_CLASS(GBufferRaster, "GBufferRaster", "Rasterized G-buffer generation pass.");
 
-    static ref<GBufferRaster> create(ref<Device> pDevice, const Dictionary& dict) { return make_ref<GBufferRaster>(pDevice, dict); }
+    static ref<GBufferRaster> create(ref<Device> pDevice, const Properties& props) { return make_ref<GBufferRaster>(pDevice, props); }
 
-    GBufferRaster(ref<Device> pDevice, const Dictionary& dict);
+    GBufferRaster(ref<Device> pDevice, const Properties& props);
 
     RenderPassReflection reflect(const CompileData& compileData) override;
     void execute(RenderContext* pRenderContext, const RenderData& renderData) override;

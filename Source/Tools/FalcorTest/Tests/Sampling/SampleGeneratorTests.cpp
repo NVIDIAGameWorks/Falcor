@@ -56,8 +56,8 @@ double correlation(const float* elems, const size_t numElems, const size_t strid
     size_t n = 0;
     for (size_t i = 0; i + stride < numElems; i++)
     {
-        float x = elems[i];
-        float y = elems[i + stride];
+        double x = elems[i];
+        double y = elems[i + stride];
         sum_x += x;
         sum_y += y;
         sum_xx += x * x;
@@ -78,7 +78,7 @@ void testSampleGenerator(GPUUnitTestContext& ctx, uint32_t type, const double me
     // Setup GPU test.
     // We defer the creation of the vars until after shader specialization.
     auto defines = pSampleGenerator->getDefines();
-    ctx.createProgram(kShaderFile, "test", defines, Shader::CompilerFlags::None, "6_2");
+    ctx.createProgram(kShaderFile, "test", defines, Program::CompilerFlags::None, "6_2");
 
     pSampleGenerator->beginFrame(ctx.getRenderContext(), uint2(kDispatchDim.x, kDispatchDim.y));
     pSampleGenerator->setShaderData(ctx.vars().getRootVar());
@@ -92,24 +92,29 @@ void testSampleGenerator(GPUUnitTestContext& ctx, uint32_t type, const double me
     ctx.runProgram(kDispatchDim);
 
     // Readback results.
-    const float* result = ctx.mapBuffer<const float>("result");
+    std::vector<float> result = ctx.readBuffer<float>("result");
 
     // Check that all samples are in the [0,1) range,
     // and that their mean is roughly 0.5.
+    float min = std::numeric_limits<float>::max();
+    float max = std::numeric_limits<float>::lowest();
     double mean = 0.0;
     for (size_t i = 0; i < numSamples; i++)
     {
         float u = result[i];
+        min = std::min(min, u);
+        max = std::max(max, u);
         mean += u;
-        EXPECT(u >= 0.f && u < 1.f) << u;
     }
     mean /= numSamples;
+    EXPECT_GE(min, 0.f);
+    EXPECT_LT(max, 1.f);
     EXPECT_GE(mean, 0.5 - meanError);
     EXPECT_LE(mean, 0.5 + meanError);
 
     // Check correlation between adjacent samples along different dimensions in the sample set.
     // This is not really a robust statistical test, but it should detect if something is fundamentally wrong.
-    auto corr = [&](size_t stride) -> double { return std::abs(correlation(result, numSamples, stride)); };
+    auto corr = [&](size_t stride) -> double { return std::abs(correlation(result.data(), result.size(), stride)); };
 
     // Test nearby dimensions.
     for (size_t i = 1; i <= 8; i++)
@@ -139,8 +144,6 @@ void testSampleGenerator(GPUUnitTestContext& ctx, uint32_t type, const double me
             EXPECT_LE(corr(i * instanceStride), corrThreshold) << "i = " << i;
         }
     }
-
-    ctx.unmapBuffer("result");
 }
 } // namespace
 

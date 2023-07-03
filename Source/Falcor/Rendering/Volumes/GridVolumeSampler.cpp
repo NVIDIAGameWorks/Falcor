@@ -27,25 +27,9 @@
  **************************************************************************/
 #include "GridVolumeSampler.h"
 #include "Core/Assert.h"
-#include "Utils/Scripting/ScriptBindings.h"
 
 namespace Falcor
 {
-    namespace
-    {
-        const Gui::DropdownList kTransmittanceEstimatorList =
-        {
-            { (uint32_t)TransmittanceEstimator::DeltaTracking, "Delta Tracking (Global Majorant)" },
-            { (uint32_t)TransmittanceEstimator::RatioTracking, "Ratio Tracking (Global Majorant)" },
-            { (uint32_t)TransmittanceEstimator::RatioTrackingLocalMajorant, "Ratio Tracking (Local Majorants)" },
-        };
-        const Gui::DropdownList kDistanceSamplerList =
-        {
-            { (uint32_t)DistanceSampler::DeltaTracking, "Delta Tracking (Global Majorant)" },
-            { (uint32_t)DistanceSampler::DeltaTrackingLocalMajorant, "Delta Tracking (Local Majorants)" },
-        };
-    }
-
     GridVolumeSampler::GridVolumeSampler(RenderContext* pRenderContext, ref<Scene> pScene, const Options& options)
         : mpScene(pScene)
         , mOptions(options)
@@ -53,9 +37,9 @@ namespace Falcor
         FALCOR_ASSERT(pScene);
     }
 
-    Program::DefineList GridVolumeSampler::getDefines() const
+    DefineList GridVolumeSampler::getDefines() const
     {
-        Program::DefineList defines;
+        DefineList defines;
         defines.add("GRID_VOLUME_SAMPLER_USE_BRICKEDGRID", std::to_string((uint32_t)mOptions.useBrickedGrid));
         defines.add("GRID_VOLUME_SAMPLER_TRANSMITTANCE_ESTIMATOR", std::to_string((uint32_t)mOptions.transmittanceEstimator));
         defines.add("GRID_VOLUME_SAMPLER_DISTANCE_SAMPLER", std::to_string((uint32_t)mOptions.distanceSampler));
@@ -80,13 +64,13 @@ namespace Falcor
             }
             dirty = true;
         }
-        if (widget.dropdown("Transmittance Estimator", kTransmittanceEstimatorList, reinterpret_cast<uint32_t&>(mOptions.transmittanceEstimator)))
+        if (widget.dropdown("Transmittance Estimator", mOptions.transmittanceEstimator))
         {
             // Enable bricked grid if the chosen mode requires it.
             if (requiresBrickedGrid(mOptions.transmittanceEstimator)) mOptions.useBrickedGrid = true;
             dirty = true;
         }
-        if (widget.dropdown("Distance Sampler", kDistanceSamplerList, reinterpret_cast<uint32_t&>(mOptions.distanceSampler)))
+        if (widget.dropdown("Distance Sampler", mOptions.distanceSampler))
         {
             // Enable bricked grid if the chosen mode requires it.
             if (requiresBrickedGrid(mOptions.distanceSampler)) mOptions.useBrickedGrid = true;
@@ -94,25 +78,5 @@ namespace Falcor
         }
 
         return dirty;
-    }
-
-    FALCOR_SCRIPT_BINDING(GridVolumeSampler)
-    {
-        pybind11::enum_<TransmittanceEstimator> transmittanceEstimator(m, "TransmittanceEstimator");
-        transmittanceEstimator.value("DeltaTracking", TransmittanceEstimator::DeltaTracking);
-        transmittanceEstimator.value("RatioTracking", TransmittanceEstimator::RatioTracking);
-        transmittanceEstimator.value("RatioTrackingLocalMajorant", TransmittanceEstimator::RatioTrackingLocalMajorant);
-
-        pybind11::enum_<DistanceSampler> distanceSampler(m, "DistanceSampler");
-        distanceSampler.value("DeltaTracking", DistanceSampler::DeltaTracking);
-        distanceSampler.value("DeltaTrackingLocalMajorant", DistanceSampler::DeltaTrackingLocalMajorant);
-
-        // TODO use a nested class in the bindings when supported.
-        ScriptBindings::SerializableStruct<GridVolumeSampler::Options> options(m, "GridVolumeSamplerOptions");
-#define field(f_) field(#f_, &GridVolumeSampler::Options::f_)
-        options.field(transmittanceEstimator);
-        options.field(distanceSampler);
-        options.field(useBrickedGrid);
-#undef field
     }
 }

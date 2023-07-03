@@ -46,23 +46,23 @@ namespace Falcor
 
 ref<const EntryPointGroupKernels> EntryPointGroupKernels::create(
     EntryPointGroupKernels::Type type,
-    const EntryPointGroupKernels::Shaders& shaders,
+    const std::vector<ref<EntryPointKernel>>& kernels,
     const std::string& exportName
 )
 {
-    return ref<EntryPointGroupKernels>(new EntryPointGroupKernels(type, shaders, exportName));
+    return ref<EntryPointGroupKernels>(new EntryPointGroupKernels(type, kernels, exportName));
 }
 
-EntryPointGroupKernels::EntryPointGroupKernels(Type type, const Shaders& shaders, const std::string& exportName)
-    : mType(type), mShaders(shaders), mExportName(exportName)
+EntryPointGroupKernels::EntryPointGroupKernels(Type type, const std::vector<ref<EntryPointKernel>>& kernels, const std::string& exportName)
+    : mType(type), mKernels(kernels), mExportName(exportName)
 {}
 
-const Shader* EntryPointGroupKernels::getShader(ShaderType type) const
+const EntryPointKernel* EntryPointGroupKernels::getKernel(ShaderType type) const
 {
-    for (auto& pShader : mShaders)
+    for (auto& pKernel : mKernels)
     {
-        if (pShader->getType() == type)
-            return pShader.get();
+        if (pKernel->getType() == type)
+            return pKernel.get();
     }
     return nullptr;
 }
@@ -152,11 +152,11 @@ ref<ProgramKernels> ProgramKernels::create(
     return pProgram;
 }
 
-const Shader* ProgramKernels::getShader(ShaderType type) const
+const EntryPointKernel* ProgramKernels::getKernel(ShaderType type) const
 {
     for (auto& pEntryPointGroup : mUniqueEntryPointGroups)
     {
-        if (auto pShader = pEntryPointGroup->getShader(type))
+        if (auto pShader = pEntryPointGroup->getKernel(type))
             return pShader;
     }
     return nullptr;

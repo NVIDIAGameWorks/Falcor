@@ -51,6 +51,14 @@ public:
     static std::unique_ptr<Importer> create();
 
     void importScene(const std::filesystem::path& path, SceneBuilder& builder, const pybind11::dict& dict) override;
+
+    void importSceneFromMemory(
+        const void* buffer,
+        size_t byteSize,
+        std::string_view extension,
+        SceneBuilder& builder,
+        const pybind11::dict& dict
+    ) override;
 };
 
 } // namespace Falcor

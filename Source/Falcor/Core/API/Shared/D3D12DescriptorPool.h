@@ -41,6 +41,7 @@ struct DescriptorSetApiData;
 
 class FALCOR_API D3D12DescriptorPool : public Object
 {
+    FALCOR_OBJECT(D3D12DescriptorPool)
 public:
     using ApiHandle = ID3D12DescriptorHeapPtr;
     using CpuHandle = D3D12_CPU_DESCRIPTOR_HANDLE;

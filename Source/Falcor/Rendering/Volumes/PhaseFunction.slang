@@ -197,16 +197,16 @@ struct DualHenyeyGreensteinPhaseFunction : IPhaseFunction
             cosTheta = (1.f + meancosineHero * meancosineHero - sqr * sqr) / (2.f * meancosineHero);
         }
 
-        float selectionweight;
-        float3 weight;
+        float selectionWeight = {};
+        weight = {};
         if (u.z <= avgW0)
         {
-            selectionweight = avgW0;
+            selectionWeight = avgW0;
             weight = w0;
         }
         else
         {
-            selectionweight = (1.0 - avgW0);
+            selectionWeight = (1.0 - avgW0);
             weight = 1.f - w0;
         }
 
@@ -220,7 +220,7 @@ struct DualHenyeyGreensteinPhaseFunction : IPhaseFunction
 
         wo = normalize(w.x * T + w.y * B + w.z * dir);
         pdf = evalHenyeyGreenstein(cosTheta, meancosineHero);
-        weight = (evalHenyeyGreenstein(cosTheta, meancosineSelect) * weight / evalHenyeyGreenstein(dot(wi, wo), meancosineHero)) / selectionweight;
+        weight = (evalHenyeyGreenstein(cosTheta, meancosineSelect) * weight / evalHenyeyGreenstein(dot(wi, wo), meancosineHero)) / selectionWeight;
         return true;
     }
 

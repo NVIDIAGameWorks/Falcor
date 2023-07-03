@@ -426,19 +426,18 @@ ref<const ProgramKernels> ProgramManager::createProgramKernels(
     ref<const ProgramReflection> pReflector;
     doSlangReflection(programVersion, pSpecializedSlangProgram, pLinkedEntryPoints, pReflector, log);
 
-    // Create Shader objects for each entry point and cache them here.
-    std::vector<ref<Shader>> allShaders;
+    // Create kernel objects for each entry point and cache them here.
+    std::vector<ref<EntryPointKernel>> allKernels;
     for (uint32_t i = 0; i < allEntryPointCount; i++)
     {
         auto pLinkedEntryPoint = pLinkedEntryPoints[i];
         auto entryPointDesc = program.mDesc.mEntryPoints[i];
 
-        ref<Shader> shader =
-            Shader::create(pLinkedEntryPoint, entryPointDesc.stage, entryPointDesc.exportName, program.mDesc.getCompilerFlags(), log);
-        if (!shader)
+        ref<EntryPointKernel> kernel = EntryPointKernel::create(pLinkedEntryPoint, entryPointDesc.stage, entryPointDesc.exportName);
+        if (!kernel)
             return nullptr;
 
-        allShaders.push_back(std::move(shader));
+        allKernels.push_back(std::move(kernel));
     }
 
     // In order to construct the `ProgramKernels` we need to extract
@@ -459,13 +458,13 @@ ref<const ProgramKernels> ProgramManager::createProgramKernels(
         // code for its constituent entry points, using the "linked"
         // version of the entry-point group.
         //
-        std::vector<ref<Shader>> shaders;
+        std::vector<ref<EntryPointKernel>> kernels;
         for (auto entryPointIndex : entryPointGroupDesc.entryPoints)
         {
-            shaders.push_back(allShaders[entryPointIndex]);
+            kernels.push_back(allKernels[entryPointIndex]);
         }
         auto pGroupReflector = pReflector->getEntryPointGroup(gg);
-        auto pEntryPointGroupKernels = createEntryPointGroupKernels(shaders, pGroupReflector);
+        auto pEntryPointGroupKernels = createEntryPointGroupKernels(kernels, pGroupReflector);
         entryPointGroups.push_back(pEntryPointGroupKernels);
     }
 
@@ -486,22 +485,22 @@ ref<const ProgramKernels> ProgramManager::createProgramKernels(
 }
 
 ref<const EntryPointGroupKernels> ProgramManager::createEntryPointGroupKernels(
-    const std::vector<ref<Shader>>& shaders,
+    const std::vector<ref<EntryPointKernel>>& kernels,
     const ref<EntryPointBaseReflection>& pReflector
 ) const
 {
-    FALCOR_ASSERT(shaders.size() != 0);
+    FALCOR_ASSERT(kernels.size() != 0);
 
-    switch (shaders[0]->getType())
+    switch (kernels[0]->getType())
     {
     case ShaderType::Vertex:
     case ShaderType::Pixel:
     case ShaderType::Geometry:
     case ShaderType::Hull:
     case ShaderType::Domain:
-        return EntryPointGroupKernels::create(EntryPointGroupKernels::Type::Rasterization, shaders, shaders[0]->getEntryPoint());
+        return EntryPointGroupKernels::create(EntryPointGroupKernels::Type::Rasterization, kernels, kernels[0]->getEntryPointName());
     case ShaderType::Compute:
-        return EntryPointGroupKernels::create(EntryPointGroupKernels::Type::Compute, shaders, shaders[0]->getEntryPoint());
+        return EntryPointGroupKernels::create(EntryPointGroupKernels::Type::Compute, kernels, kernels[0]->getEntryPointName());
     case ShaderType::AnyHit:
     case ShaderType::ClosestHit:
     case ShaderType::Intersection:
@@ -512,12 +511,12 @@ ref<const EntryPointGroupKernels> ProgramManager::createEntryPointGroupKernels(
             throw RuntimeError("Local root signatures are not supported for raytracing entry points.");
         }
         std::string exportName = fmt::format("HitGroup{}", mHitGroupID++);
-        return EntryPointGroupKernels::create(EntryPointGroupKernels::Type::RtHitGroup, shaders, exportName);
+        return EntryPointGroupKernels::create(EntryPointGroupKernels::Type::RtHitGroup, kernels, exportName);
     }
     case ShaderType::RayGeneration:
     case ShaderType::Miss:
     case ShaderType::Callable:
-        return EntryPointGroupKernels::create(EntryPointGroupKernels::Type::RtSingleShader, shaders, shaders[0]->getEntryPoint());
+        return EntryPointGroupKernels::create(EntryPointGroupKernels::Type::RtSingleShader, kernels, kernels[0]->getEntryPointName());
     }
 
     FALCOR_UNREACHABLE();
@@ -551,13 +550,13 @@ bool ProgramManager::reloadAllPrograms(bool forceReload)
     return hasReloaded;
 }
 
-void ProgramManager::addGlobalDefines(const Program::DefineList& defineList)
+void ProgramManager::addGlobalDefines(const DefineList& defineList)
 {
     mGlobalDefineList.add(defineList);
     reloadAllPrograms(true);
 }
 
-void ProgramManager::removeGlobalDefines(const Program::DefineList& defineList)
+void ProgramManager::removeGlobalDefines(const DefineList& defineList)
 {
     mGlobalDefineList.remove(defineList);
     reloadAllPrograms(true);
@@ -612,19 +611,16 @@ SlangCompileRequest* ProgramManager::createSlangCompileRequest(const Program& pr
     targetDesc.profile = pSlangGlobalSession->findProfile(getSlangProfileString(program.mDesc.mShaderModel).c_str());
 
     if (targetDesc.profile == SLANG_PROFILE_UNKNOWN)
-    {
-        reportError("Can't find Slang profile for shader model " + program.mDesc.mShaderModel);
-        return nullptr;
-    }
+        throw RuntimeError("Can't find Slang profile for shader model {}", program.mDesc.mShaderModel);
 
     // Get compiler flags and adjust with forced flags.
-    Shader::CompilerFlags compilerFlags = program.mDesc.getCompilerFlags();
+    Program::CompilerFlags compilerFlags = program.mDesc.getCompilerFlags();
     compilerFlags &= ~mForcedCompilerFlags.disabled;
     compilerFlags |= mForcedCompilerFlags.enabled;
 
     // Set floating point mode. If no shader compiler flags for this were set, we use Slang's default mode.
-    bool flagFast = is_set(compilerFlags, Shader::CompilerFlags::FloatingPointModeFast);
-    bool flagPrecise = is_set(compilerFlags, Shader::CompilerFlags::FloatingPointModePrecise);
+    bool flagFast = is_set(compilerFlags, Program::CompilerFlags::FloatingPointModeFast);
+    bool flagPrecise = is_set(compilerFlags, Program::CompilerFlags::FloatingPointModePrecise);
     if (flagFast && flagPrecise)
     {
         logWarning(
@@ -651,11 +647,11 @@ SlangCompileRequest* ProgramManager::createSlangCompileRequest(const Program& pr
     {
     case Device::Type::D3D12:
         targetDesc.format = SLANG_DXIL;
-        targetMacroName = "FALCOR_D3D";
+        targetMacroName = "FALCOR_D3D12";
         break;
     case Device::Type::Vulkan:
         targetDesc.format = SLANG_SPIRV;
-        targetMacroName = "FALCOR_VK";
+        targetMacroName = "FALCOR_VULKAN";
         break;
     default:
         FALCOR_UNREACHABLE();
@@ -689,7 +685,7 @@ SlangCompileRequest* ProgramManager::createSlangCompileRequest(const Program& pr
     // to allow it to compute correct reflection information. Slang then invokes the downstream compiler.
     // Column major option can be useful when compiling external shader sources that don't depend
     // on anything Falcor.
-    bool useColumnMajor = is_set(compilerFlags, Shader::CompilerFlags::MatrixLayoutColumnMajor);
+    bool useColumnMajor = is_set(compilerFlags, Program::CompilerFlags::MatrixLayoutColumnMajor);
     sessionDesc.defaultMatrixLayoutMode = useColumnMajor ? SLANG_MATRIX_LAYOUT_COLUMN_MAJOR : SLANG_MATRIX_LAYOUT_ROW_MAJOR;
 
     Slang::ComPtr<slang::ISession> pSlangSession;
@@ -706,8 +702,7 @@ SlangCompileRequest* ProgramManager::createSlangCompileRequest(const Program& pr
         }
         else
         {
-            reportError("Language prelude set for unsupported target " + std::string(targetMacroName));
-            return nullptr;
+            throw RuntimeError("Language prelude set for unsupported target {}", targetMacroName);
         }
     }
 
@@ -720,11 +715,11 @@ SlangCompileRequest* ProgramManager::createSlangCompileRequest(const Program& pr
     spOverrideDiagnosticSeverity(pSlangRequest, 30081, SLANG_SEVERITY_DISABLED); // implicit conversion
 
     // Enable/disable intermediates dump
-    bool dumpIR = is_set(program.mDesc.getCompilerFlags(), Shader::CompilerFlags::DumpIntermediates);
+    bool dumpIR = is_set(program.mDesc.getCompilerFlags(), Program::CompilerFlags::DumpIntermediates);
     spSetDumpIntermediates(pSlangRequest, dumpIR);
 
     // Set debug level
-    if (mGenerateDebugInfo || is_set(program.mDesc.getCompilerFlags(), Shader::CompilerFlags::GenerateDebugInfo))
+    if (mGenerateDebugInfo || is_set(program.mDesc.getCompilerFlags(), Program::CompilerFlags::GenerateDebugInfo))
         spSetDebugInfoLevel(pSlangRequest, SLANG_DEBUG_INFO_LEVEL_STANDARD);
 
     // Configure any flags for the Slang compilation step
@@ -785,9 +780,8 @@ SlangCompileRequest* ProgramManager::createSlangCompileRequest(const Program& pr
             std::filesystem::path fullPath;
             if (!findFileInShaderDirectories(path, fullPath))
             {
-                reportError("Can't find file " + path.string());
                 spDestroyCompileRequest(pSlangRequest);
-                return nullptr;
+                throw RuntimeError("Can't find shader file {}", path);
             }
             spAddTranslationUnitSourceFile(pSlangRequest, translationUnitIndex, fullPath.string().c_str());
         }

@@ -25,16 +25,25 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#include "TexLODTypes.slang"
-#include "Utils/Scripting/ScriptBindings.h"
 
-namespace Falcor
+struct VSIn
 {
-    FALCOR_SCRIPT_BINDING(TexLODTypes)
-    {
-        pybind11::enum_<TexLODMode> texLODMode(m, "TexLODMode");
-        texLODMode.value("Mip0", TexLODMode::Mip0);
-        texLODMode.value("RayCones", TexLODMode::RayCones);
-        texLODMode.value("RayDiffs", TexLODMode::RayDiffs);
-    }
+    float2 pos : POSITION;
+};
+
+struct VSOut
+{
+    float4 pos : SV_POSITION;
+};
+
+VSOut vsMain(VSIn vIn)
+{
+    VSOut vOut;
+    vOut.pos = float4(vIn.pos, 0.f, 1.f);
+    return vOut;
+}
+
+float4 psMain(VSOut vsOut, uint triangleIndex: SV_PrimitiveID) : SV_TARGET
+{
+    return float4(0.5f);
 }

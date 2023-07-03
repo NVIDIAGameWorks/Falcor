@@ -45,13 +45,6 @@ namespace
     // Scripting options
     const std::string kLODMode = "texLOD";
 
-    const Falcor::Gui::DropdownList kLODModeList =
-    {
-        { (uint32_t)TexLODMode::Mip0, "Mip0" },
-        { (uint32_t)TexLODMode::RayDiffs, "Ray Diffs" },
-        { (uint32_t)TexLODMode::RayCones, "Ray Cones" },
-    };
-
     // Additional output channels.
     const std::string kVBufferName = "vbuffer";
     const ChannelList kGBufferExtraChannels =
@@ -72,7 +65,7 @@ namespace
     };
 };
 
-GBufferRT::GBufferRT(ref<Device> pDevice, const Dictionary& dict)
+GBufferRT::GBufferRT(ref<Device> pDevice, const Properties& props)
     : GBuffer(pDevice)
 {
     if (!mpDevice->isFeatureSupported(Device::SupportedFeatures::RaytracingTier1_1))
@@ -80,7 +73,7 @@ GBufferRT::GBufferRT(ref<Device> pDevice, const Dictionary& dict)
         throw RuntimeError("GBufferRT: Raytracing Tier 1.1 is not supported by the current device");
     }
 
-    parseDictionary(dict);
+    parseProperties(props);
 
     // Create random engine
     mpSampleGenerator = SampleGenerator::create(mpDevice, SAMPLE_GENERATOR_DEFAULT);
@@ -161,7 +154,7 @@ void GBufferRT::renderUI(Gui::Widgets& widget)
     GBuffer::renderUI(widget);
 
     // Ray tracing specific options.
-    if (widget.dropdown("LOD Mode", kLODModeList, reinterpret_cast<uint32_t&>(mLODMode)))
+    if (widget.dropdown("LOD Mode", mLODMode))
     {
         mOptionsChanged = true;
     }
@@ -179,13 +172,13 @@ void GBufferRT::renderUI(Gui::Widgets& widget)
     widget.tooltip("This option enables stochastic depth-of-field when the camera's aperture radius is nonzero. Disable it to force the use of a pinhole camera.", true);
 }
 
-Dictionary GBufferRT::getScriptingDictionary()
+Properties GBufferRT::getProperties() const
 {
-    Dictionary dict = GBuffer::getScriptingDictionary();
-    dict[kLODMode] = mLODMode;
-    dict[kUseTraceRayInline] = mUseTraceRayInline;
-    dict[kUseDOF] = mUseDOF;
-    return dict;
+    Properties props = GBuffer::getProperties();
+    props[kLODMode] = mLODMode;
+    props[kUseTraceRayInline] = mUseTraceRayInline;
+    props[kUseDOF] = mUseDOF;
+    return props;
 }
 
 void GBufferRT::setScene(RenderContext* pRenderContext, const ref<Scene>& pScene)
@@ -195,11 +188,11 @@ void GBufferRT::setScene(RenderContext* pRenderContext, const ref<Scene>& pScene
     recreatePrograms();
 }
 
-void GBufferRT::parseDictionary(const Dictionary& dict)
+void GBufferRT::parseProperties(const Properties& props)
 {
-    GBuffer::parseDictionary(dict);
+    GBuffer::parseProperties(props);
 
-    for (const auto& [key, value] : dict)
+    for (const auto& [key, value] : props)
     {
         if (key == kLODMode) mLODMode = value;
         else if (key == kUseTraceRayInline) mUseTraceRayInline = value;
@@ -219,7 +212,7 @@ void GBufferRT::executeRaytrace(RenderContext* pRenderContext, const RenderData&
 {
     if (!mRaytrace.pProgram || !mRaytrace.pVars)
     {
-        Program::DefineList defines;
+        DefineList defines;
         defines.add(mpScene->getSceneDefines());
         defines.add(mpSampleGenerator->getDefines());
         defines.add(getShaderDefines(renderData));
@@ -285,7 +278,7 @@ void GBufferRT::executeCompute(RenderContext* pRenderContext, const RenderData& 
         desc.addShaderLibrary(kProgramComputeFile).csEntry("main").setShaderModel("6_5");
         desc.addTypeConformances(mpScene->getTypeConformances());
 
-        Program::DefineList defines;
+        DefineList defines;
         defines.add(mpScene->getSceneDefines());
         defines.add(mpSampleGenerator->getDefines());
         defines.add(getShaderDefines(renderData));
@@ -306,9 +299,9 @@ void GBufferRT::executeCompute(RenderContext* pRenderContext, const RenderData& 
     mpComputePass->execute(pRenderContext, uint3(mFrameDim, 1));
 }
 
-Program::DefineList GBufferRT::getShaderDefines(const RenderData& renderData) const
+DefineList GBufferRT::getShaderDefines(const RenderData& renderData) const
 {
-    Program::DefineList defines;
+    DefineList defines;
     defines.add("COMPUTE_DEPTH_OF_FIELD", mComputeDOF ? "1" : "0");
     defines.add("USE_ALPHA_TEST", mUseAlphaTest ? "1" : "0");
     defines.add("LOD_MODE", std::to_string((uint32_t)mLODMode));

@@ -60,7 +60,7 @@ GPU_TEST(NestedStructs)
 
     ctx.runProgram();
 
-    const uint32_t* result = ctx.mapBuffer<const uint32_t>("result");
+    std::vector<uint32_t> result = ctx.readBuffer<uint32_t>("result");
 
     EXPECT_EQ(result[0], asuint(1.1f));
     EXPECT_EQ(result[1], 17);
@@ -89,7 +89,5 @@ GPU_TEST(NestedStructs)
     EXPECT_EQ(result[24], asuint(1.65f));
     EXPECT_EQ(result[25], 7);
     EXPECT_EQ(result[26], 3);
-
-    ctx.unmapBuffer("result");
 }
 } // namespace Falcor

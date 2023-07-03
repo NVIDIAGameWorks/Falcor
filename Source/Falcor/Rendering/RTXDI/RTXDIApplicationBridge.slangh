@@ -357,6 +357,8 @@ float3 tangentToWorld(RAB_Surface surface, float3 h)
 */
 bool RAB_GetSurfaceBrdfSample(RAB_Surface surface, inout RAB_RandomSamplerState rng, out float3 dir)
 {
+    dir = {};
+
     float3 rand;
     rand.x = RAB_GetNextRandom(rng);
     rand.y = RAB_GetNextRandom(rng);

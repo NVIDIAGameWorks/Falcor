@@ -1,9 +1,8 @@
 @echo off
 
-set pwd=%~dp0
-set project_dir=%pwd%..\
-set python=%project_dir%tools\.packman\python\python.exe
+if "%CONDA_PYTHON_EXE%"=="" (
+    echo Python tests require conda environment to run.
+    exit /b 1
+)
 
-if not exist %python% call %project_dir%setup.bat
-
-call %python% %pwd%testing/run_python_tests.py %*
+python %~dp0testing/run_python_tests.py %*

@@ -38,6 +38,12 @@ if [ -d ${CUDA_DIR} ]; then
     cp -fp ${CUDA_DIR}/lib64/libcurand.so* ${OUT_DIR}
 fi
 
+# Copy Aftermath
+AFTERMATH_DIR=${EXT_DIR}/aftermath
+if [ -d ${AFTERMATH_DIR} ]; then
+    cp -fp ${AFTERMATH_DIR}/lib/x64/libGFSDK_Aftermath_Lib.x64.so ${OUT_DIR}
+fi
+
 # Copy RTXDI SDK shaders
 RTXDI_DIR=${EXT_DIR}/rtxdi/rtxdi-sdk/include/rtxdi
 RTXDI_TARGET_DIR=${OUT_DIR}/shaders/rtxdi
@@ -66,6 +72,14 @@ if [ "${IS_DEBUG}" = false ]; then
 else
     cp -fp ${EXT_DIR}/nv-usd-debug/lib/libusd_ms.so ${OUT_DIR}
     cp -frp ${EXT_DIR}/nv-usd-debug/lib/usd ${OUT_DIR}/usd
+fi
+
+# Copy MDL
+MDL_DIR=${EXT_DIR}/mdl-sdk
+if [ -d ${MDL_DIR} ]; then
+    cp -fp ${MDL_DIR}/linux-x86-64/lib/*.so* ${OUT_DIR}
+    mkdir -p ${OUT_DIR}/mdl/nvidia
+    cp -frp ${MDL_DIR}/examples/mdl/nvidia/core* ${OUT_DIR}/mdl/nvidia
 fi
 
 # Copy NVTT

@@ -50,7 +50,9 @@ GpuTimer::GpuTimer(ref<Device> pDevice) : mpDevice(pDevice)
     FALCOR_ASSERT(mpDevice);
 
     mpResolveBuffer = Buffer::create(mpDevice, sizeof(uint64_t) * 2, Buffer::BindFlags::None, Buffer::CpuAccess::None, nullptr);
+    mpResolveBuffer->breakStrongReferenceToDevice();
     mpResolveStagingBuffer = Buffer::create(mpDevice, sizeof(uint64_t) * 2, Buffer::BindFlags::None, Buffer::CpuAccess::Read, nullptr);
+    mpResolveStagingBuffer->breakStrongReferenceToDevice();
 
     // Create timestamp query heap upon first use.
     mStart = mpDevice->getTimestampQueryHeap()->allocate();

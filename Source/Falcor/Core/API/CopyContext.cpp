@@ -32,6 +32,7 @@
 #include "GpuFence.h"
 #include "GFXHelpers.h"
 #include "NativeHandleTraits.h"
+#include "Aftermath.h"
 #if FALCOR_HAS_D3D12
 #include "Shared/D3D12DescriptorPool.h"
 #include "Shared/D3D12DescriptorData.h"
@@ -532,4 +533,13 @@ void CopyContext::copySubresourceRegion(
     );
     mCommandsPending = true;
 }
+
+void CopyContext::addAftermathMarker(std::string_view name)
+{
+#if FALCOR_HAS_AFTERMATH
+    if (AftermathContext* pAftermathContext = mpDevice->getAftermathContext())
+        pAftermathContext->addMarker(mpLowLevelData.get(), name);
+#endif
+};
+
 } // namespace Falcor

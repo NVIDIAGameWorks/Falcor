@@ -28,7 +28,7 @@
 #pragma once
 #include "EmissiveLightSamplerType.slangh"
 #include "Core/Macros.h"
-#include "Core/Program/Program.h"
+#include "Core/Program/DefineList.h"
 #include "Scene/Scene.h"
 
 namespace Falcor
@@ -55,7 +55,7 @@ namespace Falcor
         /** Return a list of shader defines to use this light sampler.
         *   \return Returns a list of shader defines.
         */
-        virtual Program::DefineList getDefines() const;
+        virtual DefineList getDefines() const;
 
         /** Bind the light sampler data to a given shader var
         */

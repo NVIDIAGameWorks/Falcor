@@ -45,7 +45,7 @@ void testRayFlags(GPUUnitTestContext& ctx, bool useDXR_1_1)
         (uint32_t)RayFlags::CullNonOpaque,
     };
 
-    Program::DefineList defines;
+    DefineList defines;
     std::string shaderModel = "6_3";
 
     if (useDXR_1_1)
@@ -56,16 +56,15 @@ void testRayFlags(GPUUnitTestContext& ctx, bool useDXR_1_1)
         shaderModel = "6_5";
     }
 
-    ctx.createProgram("Tests/Slang/TraceRayFlags.cs.slang", "testRayFlags", defines, Shader::CompilerFlags::None, shaderModel);
+    ctx.createProgram("Tests/Slang/TraceRayFlags.cs.slang", "testRayFlags", defines, Program::CompilerFlags::None, shaderModel);
     ctx.allocateStructuredBuffer("result", (uint32_t)expected.size());
     ctx.runProgram(1, 1, 1);
 
-    const uint32_t* result = ctx.mapBuffer<const uint32_t>("result");
+    std::vector<uint32_t> result = ctx.readBuffer<uint32_t>("result");
     for (size_t i = 0; i < expected.size(); ++i)
     {
         EXPECT_EQ(result[i], expected[i]);
     }
-    ctx.unmapBuffer("result");
 }
 } // namespace
 

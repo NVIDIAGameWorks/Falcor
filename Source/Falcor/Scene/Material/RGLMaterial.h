@@ -41,6 +41,7 @@ namespace Falcor
     */
     class FALCOR_API RGLMaterial : public Material
     {
+        FALCOR_OBJECT(RGLMaterial)
     public:
         static ref<RGLMaterial> create(ref<Device> pDevice, const std::string& name, const std::filesystem::path& path) { return make_ref<RGLMaterial>(pDevice, name, path); }
 
@@ -53,7 +54,7 @@ namespace Falcor
         Program::ShaderModuleList getShaderModules() const override;
         Program::TypeConformanceList getTypeConformances() const override;
 
-        virtual int getBufferCount() const override { return 12; }
+        virtual size_t getMaxBufferCount() const override { return 12; }
 
         bool loadBRDF(const std::filesystem::path& path);
 

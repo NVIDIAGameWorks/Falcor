@@ -187,6 +187,11 @@ public:
      */
     void unbindCustomGPUDescriptorPool();
 
+    /**
+     * Add an aftermath marker to the command list.
+     */
+    void addAftermathMarker(std::string_view name);
+
 protected:
     bool textureBarrier(const Texture* pTexture, Resource::State newState);
     bool bufferBarrier(const Buffer* pBuffer, Resource::State newState);

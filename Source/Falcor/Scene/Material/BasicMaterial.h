@@ -43,6 +43,7 @@ namespace Falcor
     */
     class FALCOR_API BasicMaterial : public Material
     {
+        FALCOR_OBJECT(BasicMaterial)
     public:
         /** Render the UI.
             \return True if the material was modified.
@@ -235,14 +236,6 @@ namespace Falcor
         /** Get the normal map type.
         */
         NormalMapType getNormalMapType() const { return mData.getNormalMapType(); }
-
-        /** Set the index of refraction.
-        */
-        void setIndexOfRefraction(float IoR);
-
-        /** Get the index of refraction.
-        */
-        float getIndexOfRefraction() const { return (float)mData.IoR; }
 
         /** Returns the material data struct.
         */

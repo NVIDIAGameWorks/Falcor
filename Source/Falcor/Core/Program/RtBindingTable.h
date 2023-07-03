@@ -47,6 +47,7 @@ namespace Falcor
  */
 class FALCOR_API RtBindingTable : public Object
 {
+    FALCOR_OBJECT(RtBindingTable)
 public:
     using ShaderID = RtProgram::ShaderID;
 

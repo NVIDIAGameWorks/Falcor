@@ -25,29 +25,35 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
-#include "Falcor.h"
-#include "Core/SampleApp.h"
 #include "Testing/UnitTest.h"
 
-using namespace Falcor;
-
-class FalcorTest : public SampleApp
+namespace Falcor
 {
-public:
-    struct Options
-    {
-        UnitTestCategoryFlags categoryFlags = UnitTestCategoryFlags::All;
-        std::string filter;
-        std::filesystem::path xmlReportPath;
-        uint32_t repeat = 1;
-    };
+#if FALCOR_HAS_AFTERMATH
+GPU_TEST(AftermathCatchTDR)
+{
+    ref<Device> pDevice = ctx.getDevice();
 
-    FalcorTest(const SampleAppConfig& config, const Options& options);
-    ~FalcorTest();
+    if (!pDevice->getAftermathContext())
+        ctx.skip("Aftermath is not enabled");
 
-    void onFrameRender(RenderContext* pRenderContext, const ref<Fbo>& pTargetFbo) override;
+    ctx.createProgram("Tests/Core/AftermathTests.cs.slang", "main");
 
-private:
-    Options mOptions;
-};
+    std::vector<uint32_t> data(1024, 1);
+    ctx.allocateStructuredBuffer("result", 1024, data.data());
+
+    ctx.getRenderContext()->addAftermathMarker("before");
+
+    // This should force a TDR (timeout detection & recovery).
+    ctx.runProgram(32 * 1024, 1024);
+
+    ctx.getRenderContext()->addAftermathMarker("after");
+
+    pDevice->flushAndSync();
+
+    // At this point we have lost the device, so submitting another dispatch should terminate the application.
+    ctx.runProgram(1024, 1024);
+}
+#endif
+
+} // namespace Falcor

@@ -111,33 +111,6 @@ namespace
         { kOutputNRDResidualRadianceHitDist,                "",     "Output residual color (linear) and hit distance", true /* optional */, ResourceFormat::RGBA32Float },
     };
 
-    // UI variables.
-    const Gui::DropdownList kColorFormatList =
-    {
-        { (uint32_t)ColorFormat::RGBA32F, "RGBA32F (128bpp)" },
-        { (uint32_t)ColorFormat::LogLuvHDR, "LogLuvHDR (32bpp)" },
-    };
-
-    const Gui::DropdownList kMISHeuristicList =
-    {
-        { (uint32_t)MISHeuristic::Balance, "Balance heuristic" },
-        { (uint32_t)MISHeuristic::PowerTwo, "Power heuristic (exp=2)" },
-        { (uint32_t)MISHeuristic::PowerExp, "Power heuristic" },
-    };
-
-    const Gui::DropdownList kEmissiveSamplerList =
-    {
-        { (uint32_t)EmissiveLightSamplerType::Uniform, "Uniform" },
-        { (uint32_t)EmissiveLightSamplerType::LightBVH, "LightBVH" },
-        { (uint32_t)EmissiveLightSamplerType::Power, "Power" },
-    };
-
-    const Gui::DropdownList kLODModeList =
-    {
-        { (uint32_t)TexLODMode::Mip0, "Mip0" },
-        { (uint32_t)TexLODMode::RayDiffs, "Ray Diffs" }
-    };
-
     // Scripting options.
     const std::string kSamplesPerPixel = "samplesPerPixel";
     const std::string kMaxSurfaceBounces = "maxSurfaceBounces";
@@ -182,15 +155,6 @@ extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registr
 
 void PathTracer::registerBindings(pybind11::module& m)
 {
-    pybind11::enum_<ColorFormat> colorFormat(m, "ColorFormat");
-    colorFormat.value("RGBA32F", ColorFormat::RGBA32F);
-    colorFormat.value("LogLuvHDR", ColorFormat::LogLuvHDR);
-
-    pybind11::enum_<MISHeuristic> misHeuristic(m, "MISHeuristic");
-    misHeuristic.value("Balance", MISHeuristic::Balance);
-    misHeuristic.value("PowerTwo", MISHeuristic::PowerTwo);
-    misHeuristic.value("PowerExp", MISHeuristic::PowerExp);
-
     pybind11::class_<PathTracer, RenderPass, ref<PathTracer>> pass(m, "PathTracer");
     pass.def_property_readonly("pixelStats", &PathTracer::getPixelStats);
 
@@ -204,7 +168,7 @@ void PathTracer::registerBindings(pybind11::module& m)
     );
 }
 
-PathTracer::PathTracer(ref<Device> pDevice, const Dictionary& dict)
+PathTracer::PathTracer(ref<Device> pDevice, const Properties& props)
     : RenderPass(pDevice)
 {
     if (!mpDevice->isShaderModelSupported(Device::ShaderModel::SM6_5))
@@ -216,7 +180,7 @@ PathTracer::PathTracer(ref<Device> pDevice, const Dictionary& dict)
         throw RuntimeError("PathTracer: Raytracing Tier 1.1 is not supported by the current device");
     }
 
-    parseDictionary(dict);
+    parseProperties(props);
     validateOptions();
 
     // Create sample generator.
@@ -232,9 +196,9 @@ PathTracer::PathTracer(ref<Device> pDevice, const Dictionary& dict)
     mpPixelDebug = std::make_unique<PixelDebug>(mpDevice);
 }
 
-void PathTracer::parseDictionary(const Dictionary& dict)
+void PathTracer::parseProperties(const Properties& props)
 {
-    for (const auto& [key, value] : dict)
+    for (const auto& [key, value] : props)
     {
         // Rendering parameters
         if (key == kSamplesPerPixel) mStaticParams.samplesPerPixel = value;
@@ -275,15 +239,15 @@ void PathTracer::parseDictionary(const Dictionary& dict)
         else if (key == kFixedOutputSize) mFixedOutputSize = value;
         else if (key == kColorFormat) mStaticParams.colorFormat = value;
 
-        else logWarning("Unknown field '{}' in PathTracer dictionary.", key);
+        else logWarning("Unknown property '{}' in PathTracer properties.", key);
     }
 
-    if (dict.keyExists(kMaxSurfaceBounces))
+    if (props.has(kMaxSurfaceBounces))
     {
         // Initialize bounce counts to 'maxSurfaceBounces' if they weren't explicitly set.
-        if (!dict.keyExists(kMaxDiffuseBounces)) mStaticParams.maxDiffuseBounces = mStaticParams.maxSurfaceBounces;
-        if (!dict.keyExists(kMaxSpecularBounces)) mStaticParams.maxSpecularBounces = mStaticParams.maxSurfaceBounces;
-        if (!dict.keyExists(kMaxTransmissionBounces)) mStaticParams.maxTransmissionBounces = mStaticParams.maxSurfaceBounces;
+        if (!props.has(kMaxDiffuseBounces)) mStaticParams.maxDiffuseBounces = mStaticParams.maxSurfaceBounces;
+        if (!props.has(kMaxSpecularBounces)) mStaticParams.maxSpecularBounces = mStaticParams.maxSurfaceBounces;
+        if (!props.has(kMaxTransmissionBounces)) mStaticParams.maxTransmissionBounces = mStaticParams.maxSurfaceBounces;
     }
     else
     {
@@ -297,7 +261,7 @@ void PathTracer::parseDictionary(const Dictionary& dict)
         mStaticParams.maxSurfaceBounces < mStaticParams.maxTransmissionBounces;
 
     // Show a warning if maxSurfaceBounces will be adjusted in validateOptions().
-    if (dict.keyExists(kMaxSurfaceBounces) && maxSurfaceBouncesNeedsAdjustment)
+    if (props.has(kMaxSurfaceBounces) && maxSurfaceBouncesNeedsAdjustment)
     {
         logWarning("'{}' is set lower than '{}', '{}' or '{}' and will be increased.", kMaxSurfaceBounces, kMaxDiffuseBounces, kMaxSpecularBounces, kMaxTransmissionBounces);
     }
@@ -343,55 +307,55 @@ void PathTracer::validateOptions()
     }
 }
 
-Dictionary PathTracer::getScriptingDictionary()
+Properties PathTracer::getProperties() const
 {
     if (auto lightBVHSampler = dynamic_cast<LightBVHSampler*>(mpEmissiveSampler.get()))
     {
         mLightBVHOptions = lightBVHSampler->getOptions();
     }
 
-    Dictionary d;
+    Properties props;
 
     // Rendering parameters
-    d[kSamplesPerPixel] = mStaticParams.samplesPerPixel;
-    d[kMaxSurfaceBounces] = mStaticParams.maxSurfaceBounces;
-    d[kMaxDiffuseBounces] = mStaticParams.maxDiffuseBounces;
-    d[kMaxSpecularBounces] = mStaticParams.maxSpecularBounces;
-    d[kMaxTransmissionBounces] = mStaticParams.maxTransmissionBounces;
+    props[kSamplesPerPixel] = mStaticParams.samplesPerPixel;
+    props[kMaxSurfaceBounces] = mStaticParams.maxSurfaceBounces;
+    props[kMaxDiffuseBounces] = mStaticParams.maxDiffuseBounces;
+    props[kMaxSpecularBounces] = mStaticParams.maxSpecularBounces;
+    props[kMaxTransmissionBounces] = mStaticParams.maxTransmissionBounces;
 
     // Sampling parameters
-    d[kSampleGenerator] = mStaticParams.sampleGenerator;
-    if (mParams.useFixedSeed) d[kFixedSeed] = mParams.fixedSeed;
-    d[kUseBSDFSampling] = mStaticParams.useBSDFSampling;
-    d[kUseRussianRoulette] = mStaticParams.useRussianRoulette;
-    d[kUseNEE] = mStaticParams.useNEE;
-    d[kUseMIS] = mStaticParams.useMIS;
-    d[kMISHeuristic] = mStaticParams.misHeuristic;
-    d[kMISPowerExponent] = mStaticParams.misPowerExponent;
-    d[kEmissiveSampler] = mStaticParams.emissiveSampler;
-    if (mStaticParams.emissiveSampler == EmissiveLightSamplerType::LightBVH) d[kLightBVHOptions] = mLightBVHOptions;
-    d[kUseRTXDI] = mStaticParams.useRTXDI;
-    d[kRTXDIOptions] = mRTXDIOptions;
+    props[kSampleGenerator] = mStaticParams.sampleGenerator;
+    if (mParams.useFixedSeed) props[kFixedSeed] = mParams.fixedSeed;
+    props[kUseBSDFSampling] = mStaticParams.useBSDFSampling;
+    props[kUseRussianRoulette] = mStaticParams.useRussianRoulette;
+    props[kUseNEE] = mStaticParams.useNEE;
+    props[kUseMIS] = mStaticParams.useMIS;
+    props[kMISHeuristic] = mStaticParams.misHeuristic;
+    props[kMISPowerExponent] = mStaticParams.misPowerExponent;
+    props[kEmissiveSampler] = mStaticParams.emissiveSampler;
+    if (mStaticParams.emissiveSampler == EmissiveLightSamplerType::LightBVH) props[kLightBVHOptions] = mLightBVHOptions;
+    props[kUseRTXDI] = mStaticParams.useRTXDI;
+    props[kRTXDIOptions] = mRTXDIOptions;
 
     // Material parameters
-    d[kUseAlphaTest] = mStaticParams.useAlphaTest;
-    d[kAdjustShadingNormals] = mStaticParams.adjustShadingNormals;
-    d[kMaxNestedMaterials] = mStaticParams.maxNestedMaterials;
-    d[kUseLightsInDielectricVolumes] = mStaticParams.useLightsInDielectricVolumes;
-    d[kDisableCaustics] = mStaticParams.disableCaustics;
-    d[kSpecularRoughnessThreshold] = mParams.specularRoughnessThreshold;
-    d[kPrimaryLodMode] = mStaticParams.primaryLodMode;
-    d[kLODBias] = mParams.lodBias;
+    props[kUseAlphaTest] = mStaticParams.useAlphaTest;
+    props[kAdjustShadingNormals] = mStaticParams.adjustShadingNormals;
+    props[kMaxNestedMaterials] = mStaticParams.maxNestedMaterials;
+    props[kUseLightsInDielectricVolumes] = mStaticParams.useLightsInDielectricVolumes;
+    props[kDisableCaustics] = mStaticParams.disableCaustics;
+    props[kSpecularRoughnessThreshold] = mParams.specularRoughnessThreshold;
+    props[kPrimaryLodMode] = mStaticParams.primaryLodMode;
+    props[kLODBias] = mParams.lodBias;
 
     // Denoising parameters
-    d[kUseNRDDemodulation] = mStaticParams.useNRDDemodulation;
+    props[kUseNRDDemodulation] = mStaticParams.useNRDDemodulation;
 
     // Output parameters
-    d[kOutputSize] = mOutputSizeSelection;
-    if (mOutputSizeSelection == RenderPassHelpers::IOSize::Fixed) d[kFixedOutputSize] = mFixedOutputSize;
-    d[kColorFormat] = mStaticParams.colorFormat;
+    props[kOutputSize] = mOutputSizeSelection;
+    if (mOutputSizeSelection == RenderPassHelpers::IOSize::Fixed) props[kFixedOutputSize] = mFixedOutputSize;
+    props[kColorFormat] = mStaticParams.colorFormat;
 
-    return d;
+    return props;
 }
 
 RenderPassReflection PathTracer::reflect(const CompileData& compileData)
@@ -577,7 +541,7 @@ bool PathTracer::renderRenderingUI(Gui::Widgets& widget)
 
         if (mStaticParams.useMIS)
         {
-            dirty |= widget.dropdown("MIS heuristic", kMISHeuristicList, reinterpret_cast<uint32_t&>(mStaticParams.misHeuristic));
+            dirty |= widget.dropdown("MIS heuristic", mStaticParams.misHeuristic);
 
             if (mStaticParams.misHeuristic == MISHeuristic::PowerExp)
             {
@@ -589,7 +553,7 @@ bool PathTracer::renderRenderingUI(Gui::Widgets& widget)
         {
             if (auto group = widget.group("Emissive sampler"))
             {
-                if (widget.dropdown("Emissive sampler", kEmissiveSamplerList, (uint32_t&)mStaticParams.emissiveSampler))
+                if (widget.dropdown("Emissive sampler", mStaticParams.emissiveSampler))
                 {
                     resetLighting();
                     dirty = true;
@@ -631,7 +595,7 @@ bool PathTracer::renderRenderingUI(Gui::Widgets& widget)
         runtimeDirty |= widget.var("Specular roughness threshold", mParams.specularRoughnessThreshold, 0.f, 1.f);
         widget.tooltip("Specular reflection events are only classified as specular if the material's roughness value is equal or smaller than this threshold. Otherwise they are classified diffuse.");
 
-        dirty |= widget.dropdown("Primary LOD Mode", kLODModeList, reinterpret_cast<uint32_t&>(mStaticParams.primaryLodMode));
+        dirty |= widget.dropdown("Primary LOD Mode", mStaticParams.primaryLodMode);
         widget.tooltip("Texture LOD mode at primary hit");
 
         runtimeDirty |= widget.var("TexLOD bias", mParams.lodBias, -16.f, 16.f, 0.01f);
@@ -650,13 +614,13 @@ bool PathTracer::renderRenderingUI(Gui::Widgets& widget)
 
         // Controls for output size.
         // When output size requirements change, we'll trigger a graph recompile to update the render pass I/O sizes.
-        if (widget.dropdown("Output size", RenderPassHelpers::kIOSizeList, (uint32_t&)mOutputSizeSelection)) requestRecompile();
+        if (widget.dropdown("Output size", mOutputSizeSelection)) requestRecompile();
         if (mOutputSizeSelection == RenderPassHelpers::IOSize::Fixed)
         {
             if (widget.var("Size in pixels", mFixedOutputSize, 32u, 16384u)) requestRecompile();
         }
 
-        dirty |= widget.dropdown("Color format", kColorFormatList, (uint32_t&)mStaticParams.colorFormat);
+        dirty |= widget.dropdown("Color format", mStaticParams.colorFormat);
         widget.tooltip("Selects the color format used for internal per-sample color and denoiser buffers");
     }
 
@@ -698,7 +662,7 @@ bool PathTracer::onMouseEvent(const MouseEvent& mouseEvent)
     return mpPixelDebug->onMouseEvent(mouseEvent);
 }
 
-PathTracer::TracePass::TracePass(ref<Device> pDevice, const std::string& name, const std::string& passDefine, const ref<Scene>& pScene, const Program::DefineList& defines, const Program::TypeConformanceList& globalTypeConformances)
+PathTracer::TracePass::TracePass(ref<Device> pDevice, const std::string& name, const std::string& passDefine, const ref<Scene>& pScene, const DefineList& defines, const Program::TypeConformanceList& globalTypeConformances)
     : name(name)
     , passDefine(passDefine)
 {
@@ -764,7 +728,7 @@ PathTracer::TracePass::TracePass(ref<Device> pDevice, const std::string& name, c
     pProgram = RtProgram::create(pDevice, desc, defines);
 }
 
-void PathTracer::TracePass::prepareProgram(ref<Device> pDevice, const Program::DefineList& defines)
+void PathTracer::TracePass::prepareProgram(ref<Device> pDevice, const DefineList& defines)
 {
     FALCOR_ASSERT(pProgram != nullptr && pBindingTable != nullptr);
     pProgram->setDefines(defines);
@@ -1371,9 +1335,9 @@ void PathTracer::resolvePass(RenderContext* pRenderContext, const RenderData& re
     mpResolvePass->execute(pRenderContext, { mParams.frameDim, 1u });
 }
 
-Program::DefineList PathTracer::StaticParams::getDefines(const PathTracer& owner) const
+DefineList PathTracer::StaticParams::getDefines(const PathTracer& owner) const
 {
-    Program::DefineList defines;
+    DefineList defines;
 
     // Path tracer configuration.
     defines.add("SAMPLES_PER_PIXEL", (owner.mFixedSampleCount ? std::to_string(samplesPerPixel) : "0")); // 0 indicates a variable sample count

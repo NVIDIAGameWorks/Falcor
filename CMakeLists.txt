@@ -27,6 +27,9 @@ set(FALCOR_USE_SYSTEM_PYTHON OFF CACHE BOOL "Use system Python distribution")
 set(FALCOR_ENABLE_USD ON CACHE BOOL "Enable USD")
 
 
+# Enable/disable Address Sanitizer.
+set(FALCOR_ENABLE_ASAN OFF CACHE BOOL "Enable Address Sanitizer")
+
 # Header validation.
 # If enabled, additional targets are generated to validate that headers are self sufficient.
 set(FALCOR_VALIDATE_HEADERS OFF CACHE BOOL "Enable header validation")
@@ -200,6 +203,7 @@ add_subdirectory(external)
 message(STATUS "Feature flags:")
 message(STATUS "FALCOR_HAS_D3D12: ${FALCOR_HAS_D3D12}")
 message(STATUS "FALCOR_HAS_VULKAN: ${FALCOR_HAS_VULKAN}")
+message(STATUS "FALCOR_HAS_AFTERMATH: ${FALCOR_HAS_AFTERMATH}")
 message(STATUS "FALCOR_HAS_NVAPI: ${FALCOR_HAS_NVAPI}")
 message(STATUS "FALCOR_HAS_PIX: ${FALCOR_HAS_PIX}")
 message(STATUS "FALCOR_HAS_CUDA: ${FALCOR_HAS_CUDA}")
@@ -451,7 +455,7 @@ if(plugin_targets)
 endif()
 
 # Generate settings.toml file.
-file(GENERATE OUTPUT ${FALCOR_OUTPUT_DIRECTORY}/settings.json CONTENT "{ \"standardsearchpath\" : { \"media\" : \"\${FALCOR_MEDIA_FOLDERS}\"}}")
+file(GENERATE OUTPUT ${FALCOR_OUTPUT_DIRECTORY}/settings.json CONTENT "{ \"standardsearchpath\" : { \"media\" : \"\${FALCOR_MEDIA_FOLDERS}\", \"mdl\" : \"\${FALCOR_MDL_PATHS}\" }}")
 
 # Make Mogwai and FalcorPython depend on all plugins.
 if(plugin_targets)

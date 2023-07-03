@@ -42,23 +42,23 @@ class VBufferRT : public GBufferBase
 public:
     FALCOR_PLUGIN_CLASS(VBufferRT, "VBufferRT", "Ray traced V-buffer generation pass.");
 
-    static ref<VBufferRT> create(ref<Device> pDevice, const Dictionary& dict) { return make_ref<VBufferRT>(pDevice, dict); }
+    static ref<VBufferRT> create(ref<Device> pDevice, const Properties& props) { return make_ref<VBufferRT>(pDevice, props); }
 
-    VBufferRT(ref<Device> pDevice, const Dictionary& dict);
+    VBufferRT(ref<Device> pDevice, const Properties& props);
 
     RenderPassReflection reflect(const CompileData& compileData) override;
     void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
     void renderUI(Gui::Widgets& widget) override;
-    Dictionary getScriptingDictionary() override;
+    Properties getProperties() const override;
     void setScene(RenderContext* pRenderContext, const ref<Scene>& pScene) override;
 
 private:
-    void parseDictionary(const Dictionary& dict) override;
+    void parseProperties(const Properties& props) override;
 
     void executeRaytrace(RenderContext* pRenderContext, const RenderData& renderData);
     void executeCompute(RenderContext* pRenderContext, const RenderData& renderData);
 
-    Program::DefineList getShaderDefines(const RenderData& renderData) const;
+    DefineList getShaderDefines(const RenderData& renderData) const;
     void setShaderData(const ShaderVar& var, const RenderData& renderData);
     void recreatePrograms();
 

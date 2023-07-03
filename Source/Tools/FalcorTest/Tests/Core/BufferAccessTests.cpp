@@ -53,17 +53,16 @@ void testBufferReadback(GPUUnitTestContext& ctx, Buffer::CpuAccess cpuAccess)
     auto pBuf = createTestBuffer(ctx.getDevice(), cpuAccess);
 
     // Run program that copies the buffer elements into result buffer.
-    ctx.createProgram("Tests/Core/BufferAccessTests.cs.slang", "readback", Program::DefineList(), Shader::CompilerFlags::None);
+    ctx.createProgram("Tests/Core/BufferAccessTests.cs.slang", "readback");
     ctx.allocateStructuredBuffer("result", elems);
     ctx["buffer"] = pBuf;
     ctx.runProgram(elems, 1, 1);
 
-    const uint32_t* result = ctx.mapBuffer<const uint32_t>("result");
+    std::vector<uint32_t> result = ctx.readBuffer<uint32_t>("result");
     for (uint32_t i = 0; i < elems; i++)
     {
         EXPECT_EQ(result[i], i) << "i = " << i;
     }
-    ctx.unmapBuffer("result");
 }
 } // namespace
 
@@ -110,17 +109,16 @@ GPU_TEST(SetBlobBufferCpuAccessWrite, "Disabled due to issue with SRV/UAVs for r
     pBuf->setBlob(initData.data(), 0, elems * sizeof(uint32_t));
 
     // Run program that copies the buffer elements into result buffer.
-    ctx.createProgram("Tests/Core/BufferAccessTests.cs.slang", "readback", Program::DefineList(), Shader::CompilerFlags::None);
+    ctx.createProgram("Tests/Core/BufferAccessTests.cs.slang", "readback");
     ctx.allocateStructuredBuffer("result", elems);
     ctx["buffer"] = pBuf;
     ctx.runProgram(elems, 1, 1);
 
-    const uint32_t* result = ctx.mapBuffer<const uint32_t>("result");
+    std::vector<uint32_t> result = ctx.readBuffer<uint32_t>("result");
     for (uint32_t i = 0; i < elems; i++)
     {
         EXPECT_EQ(result[i], i) << "i = " << i;
     }
-    ctx.unmapBuffer("result");
 }
 
 /** Test that GPU reads from buffer created without CPU access works.

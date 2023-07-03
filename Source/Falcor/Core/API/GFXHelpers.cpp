@@ -64,6 +64,8 @@ gfx::Format getGFXFormat(ResourceFormat format)
         return gfx::Format::BC7_UNORM;
     case ResourceFormat::BC7UnormSrgb:
         return gfx::Format::BC7_UNORM_SRGB;
+    case ResourceFormat::BGRA4Unorm:
+        return gfx::Format::B4G4R4A4_UNORM;
     case ResourceFormat::BGRA8Unorm:
         return gfx::Format::B8G8R8A8_UNORM;
     case ResourceFormat::BGRA8UnormSrgb:
@@ -76,6 +78,8 @@ gfx::Format getGFXFormat(ResourceFormat format)
         return gfx::Format::D16_UNORM;
     case ResourceFormat::D32Float:
         return gfx::Format::D32_FLOAT;
+    case ResourceFormat::D32FloatS8Uint:
+        return gfx::Format::D32_FLOAT_S8_UINT;
     case ResourceFormat::R11G11B10Float:
         return gfx::Format::R11G11B10_FLOAT;
     case ResourceFormat::R16Float:
@@ -150,6 +154,8 @@ gfx::Format getGFXFormat(ResourceFormat format)
         return gfx::Format::R16G16B16A16_UINT;
     case ResourceFormat::RGBA16Unorm:
         return gfx::Format::R16G16B16A16_UNORM;
+    case ResourceFormat::RGBA16Snorm:
+        return gfx::Format::R16G16B16A16_SNORM;
     case ResourceFormat::RGBA32Float:
         return gfx::Format::R32G32B32A32_FLOAT;
     case ResourceFormat::RGBA32Int:

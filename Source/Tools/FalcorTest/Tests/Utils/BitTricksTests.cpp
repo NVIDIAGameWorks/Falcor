@@ -73,7 +73,7 @@ GPU_TEST(BitInterleave)
     ctx.runProgram(n);
 
     // Verify results.
-    const uint32_t* result = ctx.mapBuffer<const uint32_t>("result");
+    std::vector<uint32_t> result = ctx.readBuffer<uint32_t>("result");
     for (uint32_t i = 0; i < n; i++)
     {
         const uint32_t bits = testData[i];
@@ -88,6 +88,5 @@ GPU_TEST(BitInterleave)
         EXPECT_EQ(result[tests * i + 3], (bits & 0x000f000f));
         EXPECT_EQ(result[tests * i + 4], (bits & 0x0f0f0f0f));
     }
-    ctx.unmapBuffer("result");
 }
 } // namespace Falcor

@@ -42,12 +42,12 @@ public:
 
     using PyTorchTensor = pybind11::ndarray<pybind11::pytorch, float>;
 
-    static ref<TestPyTorchPass> create(ref<Device> pDevice, const Dictionary& dict) { return make_ref<TestPyTorchPass>(pDevice, dict); }
+    static ref<TestPyTorchPass> create(ref<Device> pDevice, const Properties& props) { return make_ref<TestPyTorchPass>(pDevice, props); }
 
-    TestPyTorchPass(ref<Device> pDevice, const Dictionary& dict);
+    TestPyTorchPass(ref<Device> pDevice, const Properties& props);
     virtual ~TestPyTorchPass();
 
-    virtual Dictionary getScriptingDictionary() override;
+    virtual Properties getProperties() const override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
     virtual void compile(RenderContext* pRenderContext, const CompileData& compileData) override {}
     virtual void setScene(RenderContext* pRenderContext, const ref<Scene>& pScene) override {}

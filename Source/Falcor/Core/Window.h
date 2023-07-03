@@ -45,6 +45,7 @@ struct GamepadState;
 
 class FALCOR_API Window : public Object
 {
+    FALCOR_OBJECT(Window)
 public:
     using ApiHandle = WindowHandle;
 

@@ -61,34 +61,34 @@ namespace
     const char kUseImportanceSampling[] = "useImportanceSampling";
 }
 
-MinimalPathTracer::MinimalPathTracer(ref<Device> pDevice, const Dictionary& dict)
+MinimalPathTracer::MinimalPathTracer(ref<Device> pDevice, const Properties& props)
     : RenderPass(pDevice)
 {
-    parseDictionary(dict);
+    parseProperties(props);
 
     // Create a sample generator.
     mpSampleGenerator = SampleGenerator::create(mpDevice, SAMPLE_GENERATOR_UNIFORM);
     FALCOR_ASSERT(mpSampleGenerator);
 }
 
-void MinimalPathTracer::parseDictionary(const Dictionary& dict)
+void MinimalPathTracer::parseProperties(const Properties& props)
 {
-    for (const auto& [key, value] : dict)
+    for (const auto& [key, value] : props)
     {
         if (key == kMaxBounces) mMaxBounces = value;
         else if (key == kComputeDirect) mComputeDirect = value;
         else if (key == kUseImportanceSampling) mUseImportanceSampling = value;
-        else logWarning("Unknown field '{}' in MinimalPathTracer dictionary.", key);
+        else logWarning("Unknown property '{}' in MinimalPathTracer properties.", key);
     }
 }
 
-Dictionary MinimalPathTracer::getScriptingDictionary()
+Properties MinimalPathTracer::getProperties() const
 {
-    Dictionary d;
-    d[kMaxBounces] = mMaxBounces;
-    d[kComputeDirect] = mComputeDirect;
-    d[kUseImportanceSampling] = mUseImportanceSampling;
-    return d;
+    Properties props;
+    props[kMaxBounces] = mMaxBounces;
+    props[kComputeDirect] = mComputeDirect;
+    props[kUseImportanceSampling] = mUseImportanceSampling;
+    return props;
 }
 
 RenderPassReflection MinimalPathTracer::reflect(const CompileData& compileData)

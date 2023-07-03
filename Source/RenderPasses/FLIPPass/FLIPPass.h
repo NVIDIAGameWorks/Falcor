@@ -46,21 +46,19 @@ public:
         "to the errorMapDisplay. The transform is only added before display, however, and will NOT affect the output when it is saved to disk."
     });
 
-    static ref<FLIPPass> create(ref<Device> pDevice, const Dictionary& dict) { return make_ref<FLIPPass>(pDevice, dict); }
+    static ref<FLIPPass> create(ref<Device> pDevice, const Properties& props) { return make_ref<FLIPPass>(pDevice, props); }
 
-    FLIPPass(ref<Device> pDevice, const Dictionary& dict);
+    FLIPPass(ref<Device> pDevice, const Properties& props);
 
-    virtual Dictionary getScriptingDictionary() override;
+    virtual Properties getProperties() const override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
     virtual void renderUI(Gui::Widgets& widget) override;
 
-    static void registerBindings(pybind11::module& m);
-
 protected:
     void updatePrograms();
     void computeExposureParameters(const float Ymedian, const float Ymax);
-    void parseDictionary(const Dictionary& dict);
+    void parseProperties(const Properties& props);
 
 private:
     bool                                mEnabled = true;                        ///< Enables FLIP calculation.

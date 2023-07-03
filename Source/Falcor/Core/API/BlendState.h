@@ -39,6 +39,7 @@ namespace Falcor
  */
 class FALCOR_API BlendState : public Object
 {
+    FALCOR_OBJECT(BlendState)
 public:
     /**
      * Defines how to combine the blend inputs

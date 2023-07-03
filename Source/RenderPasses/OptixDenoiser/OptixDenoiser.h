@@ -64,6 +64,7 @@
 #pragma once
 
 #include "Falcor.h"
+#include "Core/Enum.h"
 #include "Core/Pass/FullScreenPass.h"
 #include "RenderGraph/RenderPass.h"
 
@@ -78,11 +79,11 @@ class OptixDenoiser_ : public RenderPass
 public:
     FALCOR_PLUGIN_CLASS(OptixDenoiser_, "OptixDenoiser", "Apply the OptiX AI Denoiser.");
 
-    static ref<OptixDenoiser_> create(ref<Device> pDevice, const Dictionary& dict) { return make_ref<OptixDenoiser_>(pDevice, dict); }
+    static ref<OptixDenoiser_> create(ref<Device> pDevice, const Properties& props) { return make_ref<OptixDenoiser_>(pDevice, props); }
 
-    OptixDenoiser_(ref<Device> pDevice, const Dictionary& dict);
+    OptixDenoiser_(ref<Device> pDevice, const Properties& props);
 
-    virtual Dictionary getScriptingDictionary() override;
+    virtual Properties getProperties() const override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
     virtual void compile(RenderContext* pRenderContext, const CompileData& compileData) override;
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;

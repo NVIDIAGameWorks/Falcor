@@ -36,11 +36,11 @@ __exported import MaterialTypes;
 
 BEGIN_NAMESPACE_FALCOR
 
-/** This is a host/device structure for material header data for all material types (8B).
+/** This is a host/device structure for material header data for all material types (16B).
 */
 struct MaterialHeader
 {
-    uint2 packedData = {};
+    uint4 packedData = {};
 
     static constexpr uint kMaterialTypeBits = 16;
     static constexpr uint kNestedPriorityBits = 4;
@@ -48,6 +48,7 @@ struct MaterialHeader
     static constexpr uint kSamplerIDBits = 8;
     static constexpr uint kAlphaModeBits = 1;
     static constexpr uint kAlphaThresholdBits = 16; // Using float16_t format
+    static constexpr uint kIoRBits = 16; // Using float16_t format
 
     // packedData.x bit layout
     static constexpr uint kMaterialTypeOffset = 0;
@@ -69,6 +70,13 @@ struct MaterialHeader
 
     static constexpr uint kTotalHeaderBitsY = kDeltaSpecularFlagOffset + 1;
 
+    // packedData.z bit layout
+    static constexpr uint kIoROffset = 0;
+
+    static constexpr uint kTotalHeaderBitsZ = kIoROffset + kIoRBits;
+
+    // packedData.w bit layout
+    static constexpr uint kTotalHeaderBitsW = 0;
 
     /** Set material type.
     */
@@ -169,18 +177,24 @@ struct MaterialHeader
     */
     bool isDeltaSpecular() CONST_FUNCTION { return packedData.y & (1u << kDeltaSpecularFlagOffset); }
 
+    /// Set index of refraction.
+    SETTER_DECL void setIoR(float16_t ior) { packedData.z = PACK_BITS_UNSAFE(kIoRBits, kIoROffset, packedData.z, (uint)asuint16(ior)); }
+
+    /// Get index of refraction.
+    float16_t getIoR() CONST_FUNCTION { return asfloat16((uint16_t)EXTRACT_BITS(kIoRBits, kIoROffset, packedData.z)); }
+
 #ifdef HOST_CODE
     friend bool operator==(const MaterialHeader& lhs, const MaterialHeader& rhs);
     friend bool operator!=(const MaterialHeader& lhs, const MaterialHeader& rhs) { return !(lhs == rhs); }
 #endif
 };
 
-/** This is a host/device structure for material payload data (120B).
+/** This is a host/device structure for material payload data (112B).
     The format of the data depends on the material type.
 */
 struct MaterialPayload
 {
-    uint data[30];
+    uint data[28];
 };
 
 /** This is a host/device structure representing a blob of material data (128B).
@@ -191,8 +205,8 @@ struct MaterialPayload
 */
 struct MaterialDataBlob
 {
-    MaterialHeader header; // 8B
-    MaterialPayload payload; // 120B
+    MaterialHeader header; // 16B
+    MaterialPayload payload; // 112B
 };
 
 END_NAMESPACE_FALCOR

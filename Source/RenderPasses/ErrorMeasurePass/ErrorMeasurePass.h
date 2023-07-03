@@ -46,19 +46,23 @@ public:
         Count
     };
 
-    static ref<ErrorMeasurePass> create(ref<Device> pDevice, const Dictionary& dict) { return make_ref<ErrorMeasurePass>(pDevice, dict); }
+    FALCOR_ENUM_INFO(OutputId, {
+        { OutputId::Source, "Source" },
+        { OutputId::Reference, "Reference" },
+        { OutputId::Difference, "Difference" },
+    });
 
-    ErrorMeasurePass(ref<Device> pDevice, const Dictionary& dict);
+    static ref<ErrorMeasurePass> create(ref<Device> pDevice, const Properties& props) { return make_ref<ErrorMeasurePass>(pDevice, props); }
 
-    virtual Dictionary getScriptingDictionary() override;
+    ErrorMeasurePass(ref<Device> pDevice, const Properties& props);
+
+    virtual Properties getProperties() const override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
     virtual void renderUI(Gui::Widgets& widget) override;
     virtual bool onKeyEvent(const KeyboardEvent& keyEvent) override;
 
 private:
-    bool init(RenderContext* pRenderContext, const Dictionary& dict);
-
     void loadReference();
     ref<Texture> getReference(const RenderData& renderData) const;
     void openMeasurementsFile();
@@ -102,3 +106,5 @@ private:
     static const Gui::RadioButtonGroup sOutputSelectionButtons;
     static const Gui::RadioButtonGroup sOutputSelectionButtonsSourceOnly;
 };
+
+FALCOR_ENUM_REGISTER(ErrorMeasurePass::OutputId);

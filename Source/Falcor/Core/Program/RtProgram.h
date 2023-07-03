@@ -269,24 +269,6 @@ public:
         }
 
         /**
-         * Enable/disable treat-warnings-as-error compilation flag.
-         */
-        Desc& warningsAsErrors(bool enable)
-        {
-            mBaseDesc.warningsAsErrors(enable);
-            return *this;
-        }
-
-        /**
-         * Enable/disable pre-processed shader dump.
-         */
-        Desc& dumpIntermediates(bool enable)
-        {
-            mBaseDesc.dumpIntermediates(enable);
-            return *this;
-        }
-
-        /**
          * Set the shader model. The default is SM 6.5 for DXR Tier 1.1 support.
          */
         Desc& setShaderModel(const std::string& sm)
@@ -298,12 +280,12 @@ public:
         /**
          * Get the compiler flags.
          */
-        Shader::CompilerFlags getCompilerFlags() const { return mBaseDesc.getCompilerFlags(); }
+        CompilerFlags getCompilerFlags() const { return mBaseDesc.getCompilerFlags(); }
 
         /**
          * Set the compiler flags. Replaces any previously set flags.
          */
-        Desc& setCompilerFlags(Shader::CompilerFlags flags)
+        Desc& setCompilerFlags(CompilerFlags flags)
         {
             mBaseDesc.setCompilerFlags(flags);
             return *this;

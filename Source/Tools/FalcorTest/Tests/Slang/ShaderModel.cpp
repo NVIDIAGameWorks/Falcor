@@ -35,16 +35,15 @@ const uint32_t kNumElems = 256;
 
 void test(GPUUnitTestContext& ctx, const std::string& shaderModel)
 {
-    ctx.createProgram("Tests/Slang/ShaderModel.cs.slang", "main", Program::DefineList(), Shader::CompilerFlags::None, shaderModel);
+    ctx.createProgram("Tests/Slang/ShaderModel.cs.slang", "main", DefineList(), Program::CompilerFlags::None, shaderModel);
     ctx.allocateStructuredBuffer("result", kNumElems);
     ctx.runProgram(kNumElems, 1, 1);
 
-    const uint32_t* result = ctx.mapBuffer<const uint32_t>("result");
+    std::vector<uint32_t> result = ctx.readBuffer<uint32_t>("result");
     for (uint32_t i = 0; i < kNumElems; i++)
     {
         EXPECT_EQ(result[i], 3 * i);
     }
-    ctx.unmapBuffer("result");
 }
 } // namespace
 
@@ -79,7 +78,7 @@ GPU_TEST(ShaderModel6_5)
 }
 
 #if FALCOR_HAS_D3D12_AGILITY_SDK
-GPU_TEST_D3D12(ShaderModel6_6)
+GPU_TEST(ShaderModel6_6, Device::Type::D3D12)
 {
     test(ctx, "6_6");
 }

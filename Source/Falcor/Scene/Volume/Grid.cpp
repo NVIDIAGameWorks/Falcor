@@ -36,6 +36,7 @@
 #include "Utils/Math/Vector.h"
 #include "Utils/Math/Matrix.h"
 #include "GlobalState.h"
+#include "Utils/PathResolving.h"
 
 #ifdef _MSC_VER
 #pragma warning(push)

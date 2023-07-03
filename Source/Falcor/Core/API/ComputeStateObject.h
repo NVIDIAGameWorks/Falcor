@@ -42,6 +42,7 @@ class D3D12RootSignature;
 
 class FALCOR_API ComputeStateObject : public Object
 {
+    FALCOR_OBJECT(ComputeStateObject)
 public:
     class FALCOR_API Desc
     {

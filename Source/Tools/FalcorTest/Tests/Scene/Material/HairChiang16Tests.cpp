@@ -56,7 +56,7 @@ void testWhiteFurnace(GPUUnitTestContext& ctx, const std::string& funcName, cons
 
     // Setup GPU test.
     auto defines = pSampleGenerator->getDefines();
-    ctx.createProgram(kShaderFile, funcName, defines, Shader::CompilerFlags::None, "6_2");
+    ctx.createProgram(kShaderFile, funcName, defines, Program::CompilerFlags::None, "6_2");
 
     pSampleGenerator->setShaderData(ctx.vars().getRootVar());
 
@@ -67,12 +67,11 @@ void testWhiteFurnace(GPUUnitTestContext& ctx, const std::string& funcName, cons
 
     ctx.runProgram(testCount);
 
-    const float* result = ctx.mapBuffer<const float>("result");
+    std::vector<float> result = ctx.readBuffer<float>("result");
     for (uint32_t i = 0; i < testCount; i++)
     {
         EXPECT_LE(std::abs(result[i] - 1.f), threshold) << "WhiteFurnaceTestCase" << i << ", expected " << 1 << ", got " << result[i];
     }
-    ctx.unmapBuffer("result");
 }
 } // namespace
 
@@ -85,10 +84,7 @@ GPU_TEST(HairChiang16_PbrtReference)
 
     std::filesystem::path path = getRuntimeDirectory() / "data/tests/pbrt_hair_bsdf.dat";
     fin.open(path, std::ios::in | std::ios::binary);
-    if (!fin.is_open())
-    {
-        throw ErrorRunningTestException("Cannot find reference data file 'pbrt_hair_bsdf.dat'.");
-    }
+    ASSERT(fin.is_open());
 
     std::vector<float> buf(testCount * 17);
     fin.read((char*)buf.data(), buf.size() * sizeof(float));
@@ -111,7 +107,7 @@ GPU_TEST(HairChiang16_PbrtReference)
 
     // Setup GPU test.
     auto defines = pSampleGenerator->getDefines();
-    ctx.createProgram(kShaderFile, "testPbrtReference", defines, Shader::CompilerFlags::None, "6_2");
+    ctx.createProgram(kShaderFile, "testPbrtReference", defines, Program::CompilerFlags::None, "6_2");
 
     ctx.allocateStructuredBuffer("gBetaM", testCount, buf.data());
     ctx.allocateStructuredBuffer("gBetaN", testCount, buf.data() + testCount);
@@ -126,7 +122,7 @@ GPU_TEST(HairChiang16_PbrtReference)
 
     ctx.runProgram(testCount);
 
-    const float3* result = ctx.mapBuffer<const float3>("gResultOurs");
+    std::vector<float3> result = ctx.readBuffer<float3>("gResultOurs");
     for (uint32_t i = 0; i < testCount; i++)
     {
         for (uint32_t c = 0; c < 3; c++)
@@ -136,7 +132,6 @@ GPU_TEST(HairChiang16_PbrtReference)
                                           << result[i][c];
         }
     }
-    ctx.unmapBuffer("gResultOurs");
 }
 
 GPU_TEST(HairChiang16_WhiteFurnaceUniform)
@@ -169,7 +164,7 @@ GPU_TEST(HairChiang16_ImportanceSamplingWeights)
 
     // Setup GPU test.
     auto defines = pSampleGenerator->getDefines();
-    ctx.createProgram(kShaderFile, "testImportanceSamplingWeights", defines, Shader::CompilerFlags::None, "6_2");
+    ctx.createProgram(kShaderFile, "testImportanceSamplingWeights", defines, Program::CompilerFlags::None, "6_2");
 
     pSampleGenerator->setShaderData(ctx.vars().getRootVar());
 
@@ -180,7 +175,7 @@ GPU_TEST(HairChiang16_ImportanceSamplingWeights)
 
     ctx.runProgram(testCount, sampleCount);
 
-    const float* result = ctx.mapBuffer<const float>("result");
+    std::vector<float> result = ctx.readBuffer<float>("result");
     for (uint32_t i = 0; i < testCount; i++)
     {
         for (uint32_t j = 0; j < sampleCount; j++)
@@ -196,7 +191,6 @@ GPU_TEST(HairChiang16_ImportanceSamplingWeights)
                 << "ImportanceSamplingWeightsTestCase(" << i << ", " << j << "), expected " << 1 << ", got " << result[idx];
         }
     }
-    ctx.unmapBuffer("result");
 }
 
 GPU_TEST(HairChiang16_SamplingConsistency)
@@ -219,7 +213,7 @@ GPU_TEST(HairChiang16_SamplingConsistency)
 
     // Setup GPU test.
     auto defines = pSampleGenerator->getDefines();
-    ctx.createProgram(kShaderFile, "testSamplingConsistency", defines, Shader::CompilerFlags::None, "6_2");
+    ctx.createProgram(kShaderFile, "testSamplingConsistency", defines, Program::CompilerFlags::None, "6_2");
 
     pSampleGenerator->setShaderData(ctx.vars().getRootVar());
 
@@ -230,12 +224,11 @@ GPU_TEST(HairChiang16_SamplingConsistency)
 
     ctx.runProgram(testCount);
 
-    const float* result = ctx.mapBuffer<const float>("result");
+    std::vector<float> result = ctx.readBuffer<float>("result");
     for (uint32_t i = 0; i < testCount; i++)
     {
         EXPECT_LE(result[i], 0.05f) << "SamplingConsistencyTestCase" << i << ", expected " << 0 << ", got " << result[i];
     }
-    ctx.unmapBuffer("result");
 }
 
 } // namespace Falcor

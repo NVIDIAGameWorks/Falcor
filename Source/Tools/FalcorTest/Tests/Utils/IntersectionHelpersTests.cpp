@@ -130,7 +130,7 @@ float3 getRayDir(bool hasIntersection, float3 origin, float3 hit, bool normalize
 }
 } // namespace
 
-GPU_TEST_D3D12(RaySphereIntersection)
+GPU_TEST(RaySphereIntersection, Device::Type::D3D12)
 {
     std::mt19937 rng;
     auto dist = std::uniform_real_distribution<float>(-10.f, 10.f);
@@ -193,8 +193,8 @@ GPU_TEST_D3D12(RaySphereIntersection)
 
     ctx.runProgram();
 
-    const uint32_t* result = ctx.mapBuffer<const uint32_t>("isectResult");
-    const float3* isectLoc = ctx.mapBuffer<const float3>("isectLoc");
+    std::vector<uint32_t> result = ctx.readBuffer<uint32_t>("isectResult");
+    std::vector<float3> isectLoc = ctx.readBuffer<float3>("isectLoc");
     for (int32_t i = 0; i < 12; i++)
     {
         switch (i)
@@ -219,8 +219,6 @@ GPU_TEST_D3D12(RaySphereIntersection)
         // << "RaySphereTestCase" << i << ", expected (" << refIsects[i].x << ", " << refIsects[i].y << ", " << refIsects[i].z << "), got ("
         // << isectLoc[i].x << ", " << isectLoc[i].y << ", " << isectLoc[i].z << ")";
     }
-    ctx.unmapBuffer("isectResult");
-    ctx.unmapBuffer("isectLoc");
 }
 
 } // namespace Falcor

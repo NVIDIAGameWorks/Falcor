@@ -40,6 +40,7 @@ namespace Falcor
 {
 class FALCOR_API GraphicsStateObject : public Object
 {
+    FALCOR_OBJECT(GraphicsStateObject)
 public:
     static constexpr uint32_t kSampleMaskAll = -1;
 

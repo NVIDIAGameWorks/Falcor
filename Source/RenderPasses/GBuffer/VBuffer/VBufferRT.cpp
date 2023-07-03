@@ -57,7 +57,7 @@ namespace
     };
 };
 
-VBufferRT::VBufferRT(ref<Device> pDevice, const Dictionary& dict)
+VBufferRT::VBufferRT(ref<Device> pDevice, const Properties& props)
     : GBufferBase(pDevice)
 {
     if (!mpDevice->isFeatureSupported(Device::SupportedFeatures::RaytracingTier1_1))
@@ -65,7 +65,7 @@ VBufferRT::VBufferRT(ref<Device> pDevice, const Dictionary& dict)
         throw RuntimeError("VBufferRT: Raytracing Tier 1.1 is not supported by the current device");
     }
 
-    parseDictionary(dict);
+    parseProperties(props);
 
     // Create sample generator
     mpSampleGenerator = SampleGenerator::create(mpDevice, SAMPLE_GENERATOR_DEFAULT);
@@ -138,13 +138,13 @@ void VBufferRT::renderUI(Gui::Widgets& widget)
     widget.tooltip("This option enables stochastic depth-of-field when the camera's aperture radius is nonzero. Disable it to force the use of a pinhole camera.", true);
 }
 
-Dictionary VBufferRT::getScriptingDictionary()
+Properties VBufferRT::getProperties() const
 {
-    Dictionary dict = GBufferBase::getScriptingDictionary();
-    dict[kUseTraceRayInline] = mUseTraceRayInline;
-    dict[kUseDOF] = mUseDOF;
+    Properties props = GBufferBase::getProperties();
+    props[kUseTraceRayInline] = mUseTraceRayInline;
+    props[kUseDOF] = mUseDOF;
 
-    return dict;
+    return props;
 }
 
 void VBufferRT::setScene(RenderContext* pRenderContext, const ref<Scene>& pScene)
@@ -154,11 +154,11 @@ void VBufferRT::setScene(RenderContext* pRenderContext, const ref<Scene>& pScene
     recreatePrograms();
 }
 
-void VBufferRT::parseDictionary(const Dictionary& dict)
+void VBufferRT::parseProperties(const Properties& props)
 {
-    GBufferBase::parseDictionary(dict);
+    GBufferBase::parseProperties(props);
 
-    for (const auto& [key, value] : dict)
+    for (const auto& [key, value] : props)
     {
         if (key == kUseTraceRayInline) mUseTraceRayInline = value;
         else if (key == kUseDOF) mUseDOF = value;
@@ -177,7 +177,7 @@ void VBufferRT::executeRaytrace(RenderContext* pRenderContext, const RenderData&
 {
     if (!mRaytrace.pProgram || !mRaytrace.pVars)
     {
-        Program::DefineList defines;
+        DefineList defines;
         defines.add(mpScene->getSceneDefines());
         defines.add(mpSampleGenerator->getDefines());
         defines.add(getShaderDefines(renderData));
@@ -241,7 +241,7 @@ void VBufferRT::executeCompute(RenderContext* pRenderContext, const RenderData& 
     	desc.addShaderLibrary(kProgramComputeFile).csEntry("main").setShaderModel("6_5");
         desc.addTypeConformances(mpScene->getTypeConformances());
 
-        Program::DefineList defines;
+        DefineList defines;
         defines.add(mpScene->getSceneDefines());
         defines.add(mpSampleGenerator->getDefines());
         defines.add(getShaderDefines(renderData));
@@ -262,9 +262,9 @@ void VBufferRT::executeCompute(RenderContext* pRenderContext, const RenderData& 
     mpComputePass->execute(pRenderContext, uint3(mFrameDim, 1));
 }
 
-Program::DefineList VBufferRT::getShaderDefines(const RenderData& renderData) const
+DefineList VBufferRT::getShaderDefines(const RenderData& renderData) const
 {
-    Program::DefineList defines;
+    DefineList defines;
     defines.add("COMPUTE_DEPTH_OF_FIELD", mComputeDOF ? "1" : "0");
     defines.add("USE_ALPHA_TEST", mUseAlphaTest ? "1" : "0");
 

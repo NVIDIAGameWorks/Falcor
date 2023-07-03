@@ -37,6 +37,7 @@ namespace Falcor
 {
 class FALCOR_API Swapchain : public Object
 {
+    FALCOR_OBJECT(Swapchain)
 public:
     struct Desc
     {

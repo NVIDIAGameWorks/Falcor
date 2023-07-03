@@ -46,6 +46,7 @@ struct ResourceViewInfo;
 
 class FALCOR_API Resource : public Object
 {
+    FALCOR_OBJECT(Resource)
 public:
     using BindFlags = ResourceBindFlags;
 

@@ -54,7 +54,7 @@ namespace
     const char kOutputChannel[] = "gPixelDataBuffer";
 }
 
-PixelInspectorPass::PixelInspectorPass(ref<Device> pDevice, const Dictionary& dict)
+PixelInspectorPass::PixelInspectorPass(ref<Device> pDevice, const Properties& props)
     : RenderPass(pDevice)
 {
     for (auto it : kInputChannels)
@@ -356,7 +356,7 @@ void PixelInspectorPass::setScene(RenderContext* pRenderContext, const ref<Scene
         desc.addShaderModules(mpScene->getShaderModules());
         desc.addShaderLibrary(kShaderFile).csEntry("main");
         desc.addTypeConformances(mpScene->getTypeConformances());
-        desc.setCompilerFlags(Shader::CompilerFlags::TreatWarningsAsErrors);
+        desc.setCompilerFlags(Program::CompilerFlags::TreatWarningsAsErrors);
 
         mpProgram = ComputeProgram::create(mpDevice, desc, mpScene->getSceneDefines());
         mpState->setProgram(mpProgram);

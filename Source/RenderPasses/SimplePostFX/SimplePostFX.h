@@ -37,11 +37,11 @@ class SimplePostFX : public RenderPass
 public:
     FALCOR_PLUGIN_CLASS(SimplePostFX, "SimplePostFX", "Simple set of post effects.");
 
-    static ref<SimplePostFX> create(ref<Device> pDevice, const Dictionary& dict) { return make_ref<SimplePostFX>(pDevice, dict); }
+    static ref<SimplePostFX> create(ref<Device> pDevice, const Properties& props) { return make_ref<SimplePostFX>(pDevice, props); }
 
-    SimplePostFX(ref<Device> pDevice, const Dictionary& dict);
+    SimplePostFX(ref<Device> pDevice, const Properties& props);
 
-    virtual Dictionary getScriptingDictionary() override;
+    virtual Properties getProperties() const override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
     virtual void compile(RenderContext* pRenderContext, const CompileData& compileData) override {}
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;

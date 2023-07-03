@@ -34,7 +34,6 @@ extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registr
     registry.registerClass<RenderPass, CrossFade>();
 
     registry.registerClass<RenderPass, Composite>();
-    ScriptBindings::registerBinding(Composite::registerBindings);
 
     registry.registerClass<RenderPass, GaussianBlur>();
     ScriptBindings::registerBinding(GaussianBlur::registerBindings);

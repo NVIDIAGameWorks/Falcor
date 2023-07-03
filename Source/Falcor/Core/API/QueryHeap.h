@@ -37,6 +37,7 @@ namespace Falcor
 {
 class FALCOR_API QueryHeap : public Object
 {
+    FALCOR_OBJECT(QueryHeap)
 public:
     enum class Type
     {

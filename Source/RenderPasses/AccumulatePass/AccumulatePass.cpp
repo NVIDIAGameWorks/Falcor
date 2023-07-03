@@ -33,16 +33,6 @@ static void regAccumulatePass(pybind11::module& m)
     pybind11::class_<AccumulatePass, RenderPass, ref<AccumulatePass>> pass(m, "AccumulatePass");
     pass.def_property("enabled", &AccumulatePass::isEnabled, &AccumulatePass::setEnabled);
     pass.def("reset", &AccumulatePass::reset);
-
-    pybind11::enum_<AccumulatePass::Precision> precision(m, "AccumulatePrecision");
-    precision.value("Double", AccumulatePass::Precision::Double);
-    precision.value("Single", AccumulatePass::Precision::Single);
-    precision.value("SingleCompensated", AccumulatePass::Precision::SingleCompensated);
-
-    pybind11::enum_<AccumulatePass::OverflowMode> overflowMode(m, "AccumulateOverflowMode");
-    overflowMode.value("Stop", AccumulatePass::OverflowMode::Stop);
-    overflowMode.value("Reset", AccumulatePass::OverflowMode::Reset);
-    overflowMode.value("EMA", AccumulatePass::OverflowMode::EMA);
 }
 
 extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registry)
@@ -67,27 +57,13 @@ namespace
     const char kPrecisionMode[] = "precisionMode";
     const char kMaxFrameCount[] = "maxFrameCount";
     const char kOverflowMode[] = "overflowMode";
-
-    const Gui::DropdownList kModeSelectorList =
-    {
-        { (uint32_t)AccumulatePass::Precision::Double, "Double precision" },
-        { (uint32_t)AccumulatePass::Precision::Single, "Single precision" },
-        { (uint32_t)AccumulatePass::Precision::SingleCompensated, "Single precision (compensated)" },
-    };
-
-    const Gui::DropdownList kOverflowModeList =
-    {
-        { (uint32_t)AccumulatePass::OverflowMode::Stop, "Stop" },
-        { (uint32_t)AccumulatePass::OverflowMode::Reset, "Reset" },
-        { (uint32_t)AccumulatePass::OverflowMode::EMA, "EMA" },
-    };
 }
 
-AccumulatePass::AccumulatePass(ref<Device> pDevice, const Dictionary& dict)
+AccumulatePass::AccumulatePass(ref<Device> pDevice, const Properties& props)
     : RenderPass(pDevice)
 {
     // Deserialize pass from dictionary.
-    for (const auto& [key, value] : dict)
+    for (const auto& [key, value] : props)
     {
         if (key == kEnabled) mEnabled = value;
         else if (key == kOutputFormat) mOutputFormat = value;
@@ -97,30 +73,30 @@ AccumulatePass::AccumulatePass(ref<Device> pDevice, const Dictionary& dict)
         else if (key == kPrecisionMode) mPrecisionMode = value;
         else if (key == kMaxFrameCount) mMaxFrameCount = value;
         else if (key == kOverflowMode) mOverflowMode = value;
-        else logWarning("Unknown field '{}' in AccumulatePass dictionary.", key);
+        else logWarning("Unknown property '{}' in AccumulatePass properties.", key);
     }
 
-    if (dict.keyExists("enableAccumulation"))
+    if (props.has("enableAccumulation"))
     {
         logWarning("'enableAccumulation' is deprecated. Use 'enabled' instead.");
-        if (!dict.keyExists(kEnabled)) mEnabled = dict["enableAccumulation"];
+        if (!props.has(kEnabled)) mEnabled = props["enableAccumulation"];
     }
 
     mpState = ComputeState::create(mpDevice);
 }
 
-Dictionary AccumulatePass::getScriptingDictionary()
+Properties AccumulatePass::getProperties() const
 {
-    Dictionary dict;
-    dict[kEnabled] = mEnabled;
-    if (mOutputFormat != ResourceFormat::Unknown) dict[kOutputFormat] = mOutputFormat;
-    dict[kOutputSize] = mOutputSizeSelection;
-    if (mOutputSizeSelection == RenderPassHelpers::IOSize::Fixed) dict[kFixedOutputSize] = mFixedOutputSize;
-    dict[kAutoReset] = mAutoReset;
-    dict[kPrecisionMode] = mPrecisionMode;
-    dict[kMaxFrameCount] = mMaxFrameCount;
-    dict[kOverflowMode] = mOverflowMode;
-    return dict;
+    Properties props;
+    props[kEnabled] = mEnabled;
+    if (mOutputFormat != ResourceFormat::Unknown) props[kOutputFormat] = mOutputFormat;
+    props[kOutputSize] = mOutputSizeSelection;
+    if (mOutputSizeSelection == RenderPassHelpers::IOSize::Fixed) props[kFixedOutputSize] = mFixedOutputSize;
+    props[kAutoReset] = mAutoReset;
+    props[kPrecisionMode] = mPrecisionMode;
+    props[kMaxFrameCount] = mMaxFrameCount;
+    props[kOverflowMode] = mOverflowMode;
+    return props;
 }
 
 RenderPassReflection AccumulatePass::reflect(const CompileData& compileData)
@@ -238,7 +214,7 @@ void AccumulatePass::accumulate(RenderContext* pRenderContext, const ref<Texture
     // If for the first time, or if the input format type has changed, (re)compile the programs.
     if (mpProgram.empty() || srcType != mSrcType)
     {
-        Program::DefineList defines;
+        DefineList defines;
         switch (srcType)
         {
             case FormatType::Uint:
@@ -253,9 +229,9 @@ void AccumulatePass::accumulate(RenderContext* pRenderContext, const ref<Texture
         }
         // Create accumulation programs.
         // Note only compensated summation needs precise floating-point mode.
-        mpProgram[Precision::Double] = ComputeProgram::createFromFile(mpDevice, kShaderFile, "accumulateDouble", defines, Shader::CompilerFlags::TreatWarningsAsErrors);
-        mpProgram[Precision::Single] = ComputeProgram::createFromFile(mpDevice, kShaderFile, "accumulateSingle", defines, Shader::CompilerFlags::TreatWarningsAsErrors);
-        mpProgram[Precision::SingleCompensated] = ComputeProgram::createFromFile(mpDevice, kShaderFile, "accumulateSingleCompensated", defines, Shader::CompilerFlags::FloatingPointModePrecise | Shader::CompilerFlags::TreatWarningsAsErrors);
+        mpProgram[Precision::Double] = ComputeProgram::createFromFile(mpDevice, kShaderFile, "accumulateDouble", defines, Program::CompilerFlags::TreatWarningsAsErrors);
+        mpProgram[Precision::Single] = ComputeProgram::createFromFile(mpDevice, kShaderFile, "accumulateSingle", defines, Program::CompilerFlags::TreatWarningsAsErrors);
+        mpProgram[Precision::SingleCompensated] = ComputeProgram::createFromFile(mpDevice, kShaderFile, "accumulateSingleCompensated", defines, Program::CompilerFlags::FloatingPointModePrecise | Program::CompilerFlags::TreatWarningsAsErrors);
         mpVars = ComputeVars::create(mpDevice, mpProgram[mPrecisionMode]->getReflector());
 
         mSrcType = srcType;
@@ -298,7 +274,7 @@ void AccumulatePass::renderUI(Gui::Widgets& widget)
 {
     // Controls for output size.
     // When output size requirements change, we'll trigger a graph recompile to update the render pass I/O sizes.
-    if (widget.dropdown("Output size", RenderPassHelpers::kIOSizeList, (uint32_t&)mOutputSizeSelection)) requestRecompile();
+    if (widget.dropdown("Output size", mOutputSizeSelection)) requestRecompile();
     if (mOutputSizeSelection == RenderPassHelpers::IOSize::Fixed)
     {
         if (widget.var("Size in pixels", mFixedOutputSize, 32u, 16384u)) requestRecompile();
@@ -313,7 +289,7 @@ void AccumulatePass::renderUI(Gui::Widgets& widget)
         widget.checkbox("Auto Reset", mAutoReset);
         widget.tooltip("Reset accumulation automatically upon scene changes and refresh flags.");
 
-        if (widget.dropdown("Mode", kModeSelectorList, (uint32_t&)mPrecisionMode))
+        if (widget.dropdown("Mode", mPrecisionMode))
         {
             // Reset accumulation when mode changes.
             reset();
@@ -330,7 +306,7 @@ void AccumulatePass::renderUI(Gui::Widgets& widget)
             }
             widget.tooltip("Maximum number of frames to accumulate before triggering overflow. 0 means infinite accumulation.");
 
-            if (widget.dropdown("Overflow Mode", kOverflowModeList, reinterpret_cast<uint32_t&>(mOverflowMode)))
+            if (widget.dropdown("Overflow Mode", mOverflowMode))
             {
                 reset();
             }

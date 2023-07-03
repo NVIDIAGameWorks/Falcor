@@ -328,6 +328,10 @@ void initModule(pybind11::module& m)
         "loadPlugin", [](const std::string& name) { PluginManager::instance().loadPluginByName(name); }, "name"_a
     ); // PYTHONDEPRECATED
 
+#if FALCOR_ENABLE_OBJECT_TRACKING
+    m.def("dump_alive_objects", []() { Object::dumpAliveObjects(); });
+#endif
+
     // Bind all deferred bindings.
     for (auto& binding : getDeferredBindings())
         binding.bind(m);

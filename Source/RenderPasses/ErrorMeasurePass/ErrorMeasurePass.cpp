@@ -53,18 +53,9 @@ namespace
     const std::string kSelectedOutputId = "SelectedOutputId";
 }
 
-static void regErrorMeasurePass(pybind11::module& m)
-{
-    pybind11::enum_<ErrorMeasurePass::OutputId> op(m, "OutputId");
-    op.value("Source", ErrorMeasurePass::OutputId::Source);
-    op.value("Reference", ErrorMeasurePass::OutputId::Reference);
-    op.value("Difference", ErrorMeasurePass::OutputId::Difference);
-}
-
 extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registry)
 {
     registry.registerClass<RenderPass, ErrorMeasurePass>();
-    ScriptBindings::registerBinding(regErrorMeasurePass);
 }
 
 const Gui::RadioButtonGroup ErrorMeasurePass::sOutputSelectionButtons =
@@ -79,10 +70,10 @@ const Gui::RadioButtonGroup ErrorMeasurePass::sOutputSelectionButtonsSourceOnly 
     { (uint32_t)OutputId::Source, "Source", true }
 };
 
-ErrorMeasurePass::ErrorMeasurePass(ref<Device> pDevice, const Dictionary& dict)
+ErrorMeasurePass::ErrorMeasurePass(ref<Device> pDevice, const Properties& props)
     : RenderPass(pDevice)
 {
-    for (const auto& [key, value] : dict)
+    for (const auto& [key, value] : props)
     {
         if (key == kReferenceImagePath) mReferenceImagePath = value.operator std::filesystem::path();
         else if (key == kMeasurementsFilePath) mMeasurementsFilePath = value.operator std::filesystem::path();
@@ -95,7 +86,7 @@ ErrorMeasurePass::ErrorMeasurePass(ref<Device> pDevice, const Dictionary& dict)
         else if (key == kSelectedOutputId) mSelectedOutputId = value;
         else
         {
-            logWarning("Unknown field '{}' in ErrorMeasurePass dictionary.", key);
+            logWarning("Unknown property '{}' in ErrorMeasurePass properties.", key);
         }
     }
 
@@ -107,19 +98,19 @@ ErrorMeasurePass::ErrorMeasurePass(ref<Device> pDevice, const Dictionary& dict)
     mpErrorMeasurerPass = ComputePass::create(mpDevice, kErrorComputationShaderFile);
 }
 
-Dictionary ErrorMeasurePass::getScriptingDictionary()
+Properties ErrorMeasurePass::getProperties() const
 {
-    Dictionary dict;
-    dict[kReferenceImagePath] = mReferenceImagePath;
-    dict[kMeasurementsFilePath] = mMeasurementsFilePath;
-    dict[kIgnoreBackground] = mIgnoreBackground;
-    dict[kComputeSquaredDifference] = mComputeSquaredDifference;
-    dict[kComputeAverage] = mComputeAverage;
-    dict[kUseLoadedReference] = mUseLoadedReference;
-    dict[kReportRunningError] = mReportRunningError;
-    dict[kRunningErrorSigma] = mRunningErrorSigma;
-    dict[kSelectedOutputId] = mSelectedOutputId;
-    return dict;
+    Properties props;
+    props[kReferenceImagePath] = mReferenceImagePath;
+    props[kMeasurementsFilePath] = mMeasurementsFilePath;
+    props[kIgnoreBackground] = mIgnoreBackground;
+    props[kComputeSquaredDifference] = mComputeSquaredDifference;
+    props[kComputeAverage] = mComputeAverage;
+    props[kUseLoadedReference] = mUseLoadedReference;
+    props[kReportRunningError] = mReportRunningError;
+    props[kRunningErrorSigma] = mRunningErrorSigma;
+    props[kSelectedOutputId] = mSelectedOutputId;
+    return props;
 }
 
 RenderPassReflection ErrorMeasurePass::reflect(const CompileData& compileData)

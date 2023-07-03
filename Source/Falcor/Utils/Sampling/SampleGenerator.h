@@ -29,7 +29,7 @@
 #include "SampleGeneratorType.slangh"
 #include "Core/Macros.h"
 #include "Core/Object.h"
-#include "Core/API/Shader.h"
+#include "Core/Program/DefineList.h"
 #include "Core/Program/ShaderVar.h"
 #include "Utils/UI/Gui.h"
 #include <functional>
@@ -48,6 +48,7 @@ class RenderContext;
  */
 class FALCOR_API SampleGenerator : public Object
 {
+    FALCOR_OBJECT(SampleGenerator)
 public:
     virtual ~SampleGenerator() = default;
 
@@ -63,7 +64,7 @@ public:
      * Get macro definitions for this sample generator.
      * @return Macro definitions that must be set on the shader program that uses this sampler.
      */
-    virtual Shader::DefineList getDefines() const;
+    virtual DefineList getDefines() const;
 
     /**
      * Binds the data to a program vars object.

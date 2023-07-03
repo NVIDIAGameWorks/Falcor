@@ -28,6 +28,7 @@
 #pragma once
 #include "Falcor.h"
 #include "ToneMapperParams.slang"
+#include "Core/Enum.h"
 #include "RenderGraph/RenderPass.h"
 #include "RenderGraph/RenderPassHelpers.h"
 #include "Core/Pass/FullScreenPass.h"
@@ -49,11 +50,16 @@ public:
         ShutterPriority,        // Keep shutter constant when modifying EV
     };
 
-    static ref<ToneMapper> create(ref<Device> pDevice, const Dictionary& dict) { return make_ref<ToneMapper>(pDevice, dict); }
+    FALCOR_ENUM_INFO(ExposureMode, {
+        { ExposureMode::AperturePriority, "AperturePriority" },
+        { ExposureMode::ShutterPriority, "ShutterPriority" },
+    });
 
-    ToneMapper(ref<Device> pDevice, const Dictionary& dict);
+    static ref<ToneMapper> create(ref<Device> pDevice, const Properties& props) { return make_ref<ToneMapper>(pDevice, props); }
 
-    virtual Dictionary getScriptingDictionary() override;
+    ToneMapper(ref<Device> pDevice, const Properties& props);
+
+    virtual Properties getProperties() const override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
     virtual void renderUI(Gui::Widgets& widget) override;
@@ -89,7 +95,7 @@ public:
     ExposureMode getExposureMode() const { return mExposureMode; }
 
 private:
-    void parseDictionary(const Dictionary& dict);
+    void parseProperties(const Properties& props);
 
     void createToneMapPass();
     void createLuminancePass();
@@ -138,3 +144,5 @@ private:
 
     ExposureMode mExposureMode = ExposureMode::AperturePriority;
 };
+
+FALCOR_ENUM_REGISTER(ToneMapper::ExposureMode);

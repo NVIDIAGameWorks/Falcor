@@ -44,6 +44,7 @@ namespace Falcor
     */
     class FALCOR_API TriangleMesh : public Object
     {
+        FALCOR_OBJECT(TriangleMesh)
     public:
         struct Vertex
         {

@@ -52,7 +52,7 @@ public:
     static ref<FullScreenPass> create(
         ref<Device> pDevice,
         const std::filesystem::path& path,
-        const Program::DefineList& defines = Program::DefineList(),
+        const DefineList& defines = DefineList(),
         uint32_t viewportMask = 0
     );
 
@@ -67,7 +67,7 @@ public:
     static ref<FullScreenPass> create(
         ref<Device> pDevice,
         const Program::Desc& desc,
-        const Program::DefineList& defines = Program::DefineList(),
+        const DefineList& defines = DefineList(),
         uint32_t viewportMask = 0
     );
 
@@ -81,7 +81,7 @@ public:
     virtual void execute(RenderContext* pRenderContext, const ref<Fbo>& pFbo, bool autoSetVpSc = true) const;
 
 protected:
-    FullScreenPass(ref<Device> pDevice, const Program::Desc& progDesc, const Program::DefineList& programDefines);
+    FullScreenPass(ref<Device> pDevice, const Program::Desc& progDesc, const DefineList& programDefines);
 
 private:
     std::shared_ptr<SharedData> mpSharedData;

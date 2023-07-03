@@ -31,10 +31,8 @@
 #include <optional>
 #include <string>
 
-namespace fmt
-{
 template<>
-struct formatter<std::filesystem::path> : formatter<std::string>
+struct fmt::formatter<std::filesystem::path> : formatter<std::string>
 {
     template<typename FormatContext>
     auto format(const std::filesystem::path& p, FormatContext& ctx)
@@ -44,18 +42,16 @@ struct formatter<std::filesystem::path> : formatter<std::string>
 };
 
 template<typename T>
-struct formatter<std::optional<T>> : fmt::formatter<T>
+struct fmt::formatter<std::optional<T>> : formatter<T>
 {
     template<typename FormatContext>
     auto format(const std::optional<T>& opt, FormatContext& ctx)
     {
         if (opt)
         {
-            fmt::formatter<T>::format(*opt, ctx);
+            formatter<T>::format(*opt, ctx);
             return ctx.out();
         }
         return fmt::format_to(ctx.out(), "nullopt");
     }
 };
-
-} // namespace fmt

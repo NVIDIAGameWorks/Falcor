@@ -53,6 +53,7 @@ namespace Falcor
         : Material(pDevice, name, type)
     {
         mHeader.setIsBasicMaterial(true);
+        mHeader.setIoR(1.5h);
 
         // Setup common texture slots.
         mTextureSlotInfo[(uint32_t)TextureSlot::Displacement] = { "displacement", TextureChannelFlags::RGB, false };
@@ -256,15 +257,6 @@ namespace Falcor
             mHeader.setAlphaThreshold((float16_t)alphaThreshold);
             markUpdates(UpdateFlags::DataChanged);
             updateAlphaMode();
-        }
-    }
-
-    void BasicMaterial::setIndexOfRefraction(float IoR)
-    {
-        if (mData.IoR != (float16_t)IoR)
-        {
-            mData.IoR = (float16_t)IoR;
-            markUpdates(UpdateFlags::DataChanged);
         }
     }
 
@@ -599,7 +591,6 @@ namespace Falcor
         compare_vec_field(specular);
         compare_vec_field(emissive);
         compare_field(emissiveFactor);
-        compare_field(IoR);
         compare_field(diffuseTransmission);
         compare_field(specularTransmission);
         compare_vec_field(transmission);

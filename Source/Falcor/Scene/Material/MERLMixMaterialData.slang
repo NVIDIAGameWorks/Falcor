@@ -44,7 +44,7 @@ BEGIN_NAMESPACE_FALCOR
 */
 struct MERLMixMaterialData
 {
-    // MaterialHeader (8B) is stored just before this struct in memory.
+    // MaterialHeader (16B) is stored just before this struct in memory.
     uint flags = 0;                 ///< Material flags and packed sampler IDs. See accessors below.
     uint brdfCount = 0;             ///< Number of loaded BRDFs.
     uint byteStride = 0;            ///< Stride in bytes between each BRDF in the data buffer.

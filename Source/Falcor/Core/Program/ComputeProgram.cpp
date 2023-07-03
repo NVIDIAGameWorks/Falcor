@@ -39,7 +39,7 @@ ref<ComputeProgram> ComputeProgram::createFromFile(
     const std::filesystem::path& path,
     const std::string& csEntry,
     const DefineList& programDefines,
-    Shader::CompilerFlags flags,
+    CompilerFlags flags,
     const std::string& shaderModel
 )
 {

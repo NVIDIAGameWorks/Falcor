@@ -48,7 +48,7 @@ CPU_TEST(LockFile_Closed)
 
 CPU_TEST(LockFile_OpenClose)
 {
-    const std::filesystem::path path = "test_lock_file";
+    const std::filesystem::path path = "test_lock_file_1";
 
     {
         LockFile file;
@@ -74,7 +74,7 @@ CPU_TEST(LockFile_OpenClose)
 
 CPU_TEST(LockFile_ExclusiveLock)
 {
-    static const std::filesystem::path path = "test_lock_file";
+    static const std::filesystem::path path = "test_lock_file_2";
     static std::atomic<uint32_t> lockCounter;
     static std::atomic<uint32_t> unlockCounter;
 
@@ -130,7 +130,7 @@ CPU_TEST(LockFile_ExclusiveLock)
 
     // Make sure none of the threads were able to acquire the lock yet.
     std::this_thread::sleep_for(std::chrono::milliseconds(5));
-    EXPECT_EQ(lockCounter, 0);
+    EXPECT_EQ(lockCounter.load(), 0);
 
     // Release the lock from the main thread. This will allow all the other
     // threads to acquire the lock, one after the other.
@@ -158,8 +158,8 @@ CPU_TEST(LockFile_ExclusiveLock)
     }
 
     // Ensure all threads did manage to acquire the lock.
-    EXPECT_EQ(lockCounter, tasks.size());
-    EXPECT_EQ(unlockCounter, tasks.size());
+    EXPECT_EQ(lockCounter.load(), tasks.size());
+    EXPECT_EQ(unlockCounter.load(), tasks.size());
 
     // Check that we can now acquire the lock in non-blocking mode.
     EXPECT_TRUE(lockFile2.tryLock(LockFile::LockType::Exclusive));

@@ -52,7 +52,7 @@ GPU_TEST(AABB)
     ctx.runProgram();
 
     // Verify results.
-    const float3* result = ctx.mapBuffer<const float3>("result");
+    std::vector<float3> result = ctx.readBuffer<float3>("result");
     size_t i = 0;
 
     // Test 0
@@ -211,6 +211,5 @@ GPU_TEST(AABB)
     ++i;
 
     FALCOR_ASSERT(i <= resultSize);
-    ctx.unmapBuffer("result");
 }
 } // namespace Falcor

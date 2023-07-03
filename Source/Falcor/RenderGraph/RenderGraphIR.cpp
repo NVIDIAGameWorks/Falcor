@@ -38,7 +38,9 @@ RenderGraphIR::RenderGraphIR(const std::string& name, bool newGraph) : mName(nam
 {
     if (newGraph)
     {
-        mIR += "from falcor import *\n\n";
+        mIR += "from pathlib import WindowsPath, PosixPath\n";
+        mIR += "from falcor import *\n";
+        mIR += "\n";
         mIR += "def " + getFuncName(mName) + "():\n";
         mIndentation = "    ";
         mGraphPrefix += mIndentation;
@@ -47,14 +49,14 @@ RenderGraphIR::RenderGraphIR(const std::string& name, bool newGraph) : mName(nam
     mGraphPrefix += "g.";
 }
 
-void RenderGraphIR::createPass(const std::string& passClass, const std::string& passName, const Dictionary& dictionary)
+void RenderGraphIR::createPass(const std::string& passClass, const std::string& passName, const Properties& props)
 {
-    mIR += mGraphPrefix + ScriptWriter::makeFunc("create_pass", passName, passClass, dictionary);
+    mIR += mGraphPrefix + ScriptWriter::makeFunc("create_pass", passName, passClass, props.toPython());
 }
 
-void RenderGraphIR::updatePass(const std::string& passName, const Dictionary& dictionary)
+void RenderGraphIR::updatePass(const std::string& passName, const Properties& props)
 {
-    mIR += mGraphPrefix + ScriptWriter::makeFunc("update_pass", passName, dictionary);
+    mIR += mGraphPrefix + ScriptWriter::makeFunc("update_pass", passName, props.toPython());
 }
 
 void RenderGraphIR::removePass(const std::string& passName)
@@ -92,7 +94,9 @@ void RenderGraphIR::unmarkOutput(const std::string& name)
 
 std::string RenderGraphIR::getFuncName(const std::string& graphName)
 {
-    return "render_graph_" + graphName;
+    std::string name = "render_graph_" + graphName;
+    name = replaceCharacters(name, " /\\", '_');
+    return name;
 }
 
 } // namespace Falcor

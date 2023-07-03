@@ -51,6 +51,7 @@ namespace Falcor
     */
     class FALCOR_API PBRTDiffuseTransmissionMaterial : public BasicMaterial
     {
+        FALCOR_OBJECT(PBRTDiffuseTransmissionMaterial)
     public:
         static ref<PBRTDiffuseTransmissionMaterial> create(ref<Device> pDevice, const std::string& name) { return make_ref<PBRTDiffuseTransmissionMaterial>(pDevice, name); }
 

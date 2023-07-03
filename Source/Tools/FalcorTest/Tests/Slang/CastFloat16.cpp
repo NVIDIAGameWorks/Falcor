@@ -42,7 +42,7 @@ GPU_TEST(CastFloat16)
 {
     ref<Device> pDevice = ctx.getDevice();
 
-    ctx.createProgram("Tests/Slang/CastFloat16.cs.slang", "testCastFloat16", Program::DefineList(), Shader::CompilerFlags::None, "6_5");
+    ctx.createProgram("Tests/Slang/CastFloat16.cs.slang", "testCastFloat16", DefineList(), Program::CompilerFlags::None, "6_5");
     ctx.allocateStructuredBuffer("result", kNumElems);
 
     std::vector<uint16_t> elems(kNumElems * 2);
@@ -56,7 +56,7 @@ GPU_TEST(CastFloat16)
     ctx.runProgram(kNumElems, 1, 1);
 
     // Verify results.
-    const uint32_t* result = ctx.mapBuffer<const uint32_t>("result");
+    std::vector<uint32_t> result = ctx.readBuffer<uint32_t>("result");
     for (uint32_t i = 0; i < kNumElems; i++)
     {
         uint16_t ix = elems[2 * i];
@@ -64,6 +64,5 @@ GPU_TEST(CastFloat16)
         uint32_t expected = (uint32_t(iy) << 16) | ix;
         EXPECT_EQ(result[i], expected) << "i = " << i;
     }
-    ctx.unmapBuffer("result");
 }
 } // namespace Falcor

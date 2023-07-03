@@ -25,6 +25,7 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
+#include "Core/Plugin.h"
 #include "Testing/UnitTest.h"
 #include "RenderGraph/RenderGraph.h"
 
@@ -32,6 +33,8 @@ namespace Falcor
 {
 GPU_TEST(InvalidPixelDetectionPass)
 {
+    PluginManager::instance().loadPluginByName("DebugPasses");
+
     ref<Device> pDevice = ctx.getDevice();
 
     float pInitData[8] = {
@@ -46,7 +49,7 @@ GPU_TEST(InvalidPixelDetectionPass)
     };
 
     RenderContext* pRenderContext = ctx.getRenderContext();
-    Fbo* pTargetFbo = ctx.getTargetFbo();
+    ref<Fbo> pTargetFbo = Fbo::create2D(pDevice, 2, 4, ResourceFormat::BGRA8UnormSrgb);
     ref<Texture> pInput = Texture::create2D(pDevice, 2, 4, ResourceFormat::R32Float, 1, Resource::kMaxPossible, pInitData);
     ref<RenderGraph> pGraph = RenderGraph::create(ctx.getDevice(), "Invalid Pixel Detection");
     ref<RenderPass> pPass = RenderPass::create("InvalidPixelDetectionPass", ctx.getDevice());
@@ -55,7 +58,7 @@ GPU_TEST(InvalidPixelDetectionPass)
     pGraph->addPass(pPass, "InvalidPixelDetectionPass");
     pGraph->setInput("InvalidPixelDetectionPass.src", pInput);
     pGraph->markOutput("InvalidPixelDetectionPass.dst");
-    pGraph->onResize(pTargetFbo);
+    pGraph->onResize(pTargetFbo.get());
     pGraph->execute(pRenderContext);
     ref<Resource> pOutput = pGraph->getOutput("InvalidPixelDetectionPass.dst");
     std::vector<uint8_t> color = pRenderContext->readTextureSubresource(pOutput->asTexture().get(), 0);

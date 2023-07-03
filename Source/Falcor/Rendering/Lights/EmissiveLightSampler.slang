@@ -65,6 +65,8 @@ __exported import Utils.Sampling.SampleGeneratorInterface;
     {
         bool sampleLight<S : ISampleGenerator>(const float3 posW, const float3 normalW, const bool upperHemisphere, inout S sg, out TriangleLightSample ls)
         {
+            ls = {};
+
             return false;
         }
 

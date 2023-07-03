@@ -29,23 +29,32 @@
 
 #include "Core/Macros.h"
 
-#include <fmt/ostream.h>
+#include <fmt/core.h>
 
 #include <atomic>
 #include <utility>
-#include <ostream>
 #include <cstdint>
 
 /**
+ * Enable/disable object lifetime tracking.
+ * When enabled, each object that derives from Object will have its
+ * lifetime tracked. This is useful for debugging memory leaks.
+ */
+#define FALCOR_ENABLE_OBJECT_TRACKING 0
+
+/**
  * Enable/disable reference tracking.
- * When enabled, the reference count of each object that has tracking
- * enabled using setEnableRefTracking() is tracked. Each time the reference
+ * When enabled, all references to object that have reference tracking
+ * enabled using setEnableRefTracking() are tracked. Each time the reference
  * count is increased, the current stack trace is stored. This helps identify
  * owners of objects that are not properly releasing their references.
  */
 #define FALCOR_ENABLE_REF_TRACKING 0
 
 #if FALCOR_ENABLE_REF_TRACKING
+#if !FALCOR_ENABLE_OBJECT_TRACKING
+#error "FALCOR_ENABLE_REF_TRACKING requires FALCOR_ENABLE_OBJECT_TRACKING"
+#endif
 #include <map>
 #include <mutex>
 #endif
@@ -103,6 +112,10 @@ public:
     /// Destructor.
     virtual ~Object() = default;
 
+    /// Return the name of the class.
+    /// Note: This reports the actual class name if FALCOR_OBJECT() is used.
+    virtual const char* getClassName() const { return "Object"; }
+
     /// Return the current reference count.
     int refCount() const { return mRefCount; };
 
@@ -112,18 +125,20 @@ public:
     /// Decrease the reference count of the object and possibly deallocate it.
     void decRef(bool dealloc = true) const noexcept;
 
+#if FALCOR_ENABLE_OBJECT_TRACKING
+    /// Dump all objects that are currently alive.
+    static void dumpAliveObjects();
+
+    /// Dump references of this object.
+    void dumpRefs() const;
+#endif
+
 #if FALCOR_ENABLE_REF_TRACKING
     void incRef(uint64_t refId) const;
     void decRef(uint64_t refId, bool dealloc = true) const noexcept;
 
     /// Enable/disable reference tracking of this object.
     void setEnableRefTracking(bool enable);
-
-    /// Dump references of this object.
-    void dumpRefs() const;
-
-    /// Dump references of all objects that have reference tracking enabled.
-    static void dumpAllRefs();
 #endif
 
 private:
@@ -149,6 +164,14 @@ static uint64_t nextRefId()
     return sNextId.fetch_add(1);
 }
 #endif
+
+/// Macro to declare the object class name.
+#define FALCOR_OBJECT(class_)                 \
+public:                                       \
+    const char* getClassName() const override \
+    {                                         \
+        return #class_;                       \
+    }
 
 /**
  * @brief Reference counting helper.
@@ -395,8 +418,6 @@ public:
 #endif
     }
 
-    friend std::ostream& operator<<(std::ostream& os, const ref& r) { return os << r.mPtr; }
-
 private:
     inline void incRef(const Object* object)
     {
@@ -481,14 +502,32 @@ public:
 
     void breakStrongReference() { mStrongRef.reset(); }
 
-    friend std::ostream& operator<<(std::ostream& os, const BreakableReference& r) { return os << r.get(); }
-
 private:
     ref<T> mStrongRef;
     T* mWeakRef = nullptr;
 };
 
 } // namespace Falcor
+
+template<typename T>
+struct fmt::formatter<Falcor::ref<T>> : formatter<const void*>
+{
+    template<typename FormatContext>
+    auto format(const Falcor::ref<T>& ref, FormatContext& ctx) const
+    {
+        return formatter<const void*>::format(ref.get(), ctx);
+    }
+};
+
+template<typename T>
+struct fmt::formatter<Falcor::BreakableReference<T>> : formatter<const void*>
+{
+    template<typename FormatContext>
+    auto format(const Falcor::BreakableReference<T>& ref, FormatContext& ctx) const
+    {
+        return formatter<const void*>::format(ref.get(), ctx);
+    }
+};
 
 namespace std
 {

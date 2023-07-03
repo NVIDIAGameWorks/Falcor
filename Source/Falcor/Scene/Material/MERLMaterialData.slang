@@ -42,7 +42,7 @@ BEGIN_NAMESPACE_FALCOR
 */
 struct MERLMaterialData
 {
-    // MaterialHeader (8B) is stored just before this struct in memory.
+    // MaterialHeader (16B) is stored just before this struct in memory.
     uint bufferID = 0;                  ///< Buffer ID in material system where BRDF data is stored.
     uint samplerID = 0;                 ///< Texture sampler ID for LUT sampler.
     DiffuseSpecularData extraData = {}; ///< Parameters for a best fit BRDF approximation.

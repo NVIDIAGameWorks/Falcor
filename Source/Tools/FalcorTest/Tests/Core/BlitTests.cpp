@@ -97,14 +97,14 @@ void testBlit(GPUUnitTestContext& ctx, const uint2 srcDim, const uint32_t scale)
     ctx.getRenderContext()->blit(pSrc->getSRV(), pDst->getRTV());
 
     // Run program to copy resulting texels into readback buffer.
-    Program::DefineList defines = {{"FLOAT_FORMAT", std::is_same_v<T, float> ? "1" : "0"}};
-    ctx.createProgram("Tests/Core/BlitTests.cs.slang", "readback", defines, Shader::CompilerFlags::None);
+    DefineList defines = {{"FLOAT_FORMAT", std::is_same_v<T, float> ? "1" : "0"}};
+    ctx.createProgram("Tests/Core/BlitTests.cs.slang", "readback", defines);
     ctx.allocateStructuredBuffer("result", dstElemes);
     ctx["tex"] = pDst;
     ctx["CB"]["sz"] = dstDim;
     ctx.runProgram(dstDim.x, dstDim.y, 1);
 
-    const T* result = ctx.mapBuffer<const T>("result");
+    std::vector<T> result = ctx.readBuffer<T>("result");
     for (uint32_t i = 0; i < dstElemes; i++)
     {
         if constexpr (std::is_same_v<T, float>)
@@ -116,7 +116,6 @@ void testBlit(GPUUnitTestContext& ctx, const uint2 srcDim, const uint32_t scale)
             EXPECT_EQ(result[i], dstData[i]) << "i = " << i;
         }
     }
-    ctx.unmapBuffer("result");
 }
 } // namespace
 

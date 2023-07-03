@@ -57,6 +57,7 @@ namespace Falcor
     */
     class FALCOR_API PBRTCoatedConductorMaterial : public BasicMaterial
     {
+        FALCOR_OBJECT(PBRTCoatedConductorMaterial)
     public:
         static ref<PBRTCoatedConductorMaterial> create(ref<Device> pDevice, const std::string& name) { return make_ref<PBRTCoatedConductorMaterial>(pDevice, name); }
 

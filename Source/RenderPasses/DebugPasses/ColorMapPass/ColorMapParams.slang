@@ -39,6 +39,16 @@ enum class ColorMap : uint32_t
     Inferno,
 };
 
+FALCOR_ENUM_INFO(ColorMap, {
+    { ColorMap::Grey, "Grey" },
+    { ColorMap::Jet, "Jet" },
+    { ColorMap::Viridis, "Viridis" },
+    { ColorMap::Plasma, "Plasma" },
+    { ColorMap::Magma, "Magma" },
+    { ColorMap::Inferno, "Inferno" },
+});
+FALCOR_ENUM_REGISTER(ColorMap);
+
 struct ColorMapParams
 {
     float minValue = 0.f;

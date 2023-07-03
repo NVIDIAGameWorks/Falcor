@@ -27,6 +27,14 @@
  **************************************************************************/
 #include "OptixDenoiser.h"
 
+FALCOR_ENUM_INFO(OptixDenoiserModelKind, {
+    { OptixDenoiserModelKind::OPTIX_DENOISER_MODEL_KIND_LDR, "LDR" },
+    { OptixDenoiserModelKind::OPTIX_DENOISER_MODEL_KIND_HDR, "HDR" },
+    { OptixDenoiserModelKind::OPTIX_DENOISER_MODEL_KIND_AOV, "AOV" },
+    { OptixDenoiserModelKind::OPTIX_DENOISER_MODEL_KIND_TEMPORAL, "Temporal" },
+});
+FALCOR_ENUM_REGISTER(OptixDenoiserModelKind);
+
 namespace
 {
     // Names for pass input and output textures
@@ -53,12 +61,6 @@ static void regOptixDenoiser(pybind11::module& m)
 {
     pybind11::class_<OptixDenoiser_, RenderPass, ref<OptixDenoiser_>> pass(m, "OptixDenoiser");
     pass.def_property(kEnabled, &OptixDenoiser_::getEnabled, &OptixDenoiser_::setEnabled);
-
-    pybind11::enum_<OptixDenoiserModelKind> model(m, "OptixDenoiserModel");
-    model.value("LDR", OptixDenoiserModelKind::OPTIX_DENOISER_MODEL_KIND_LDR);
-    model.value("HDR", OptixDenoiserModelKind::OPTIX_DENOISER_MODEL_KIND_HDR);
-    model.value("AOV", OptixDenoiserModelKind::OPTIX_DENOISER_MODEL_KIND_AOV);
-    model.value("Temporal", OptixDenoiserModelKind::OPTIX_DENOISER_MODEL_KIND_TEMPORAL);
 }
 
 extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registry)
@@ -67,10 +69,10 @@ extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registr
     ScriptBindings::registerBinding(regOptixDenoiser);
 }
 
-OptixDenoiser_::OptixDenoiser_(ref<Device> pDevice, const Dictionary& dict)
+OptixDenoiser_::OptixDenoiser_(ref<Device> pDevice, const Properties& props)
     : RenderPass(pDevice)
 {
-    for (const auto& [key, value] : dict)
+    for (const auto& [key, value] : props)
     {
         if (key == kEnabled) mEnabled = value;
         else if (key == kModel)
@@ -80,7 +82,7 @@ OptixDenoiser_::OptixDenoiser_(ref<Device> pDevice, const Dictionary& dict)
         }
         else if (key == kBlend) mDenoiser.params.blendFactor = value;
         else if (key == kDenoiseAlpha) mDenoiser.params.denoiseAlpha = (value ? 1u : 0u);
-        else logWarning("Unknown field '{}' in a OptixDenoiser dictionary.", key);
+        else logWarning("Unknown property '{}' in a OptixDenoiser properties.", key);
     }
 
     mpConvertTexToBuf = ComputePass::create(mpDevice, kConvertTexToBufFile, "main");
@@ -90,16 +92,16 @@ OptixDenoiser_::OptixDenoiser_(ref<Device> pDevice, const Dictionary& dict)
     mpFbo = Fbo::create(mpDevice);
 }
 
-Dictionary OptixDenoiser_::getScriptingDictionary()
+Properties OptixDenoiser_::getProperties() const
 {
-    Dictionary d;
+    Properties props;
 
-    d[kEnabled] = mEnabled;
-    d[kBlend] = mDenoiser.params.blendFactor;
-    d[kModel] = mDenoiser.modelKind;
-    d[kDenoiseAlpha] = bool(mDenoiser.params.denoiseAlpha > 0);
+    props[kEnabled] = mEnabled;
+    props[kBlend] = mDenoiser.params.blendFactor;
+    props[kModel] = mDenoiser.modelKind;
+    props[kDenoiseAlpha] = bool(mDenoiser.params.denoiseAlpha > 0);
 
-    return d;
+    return props;
 }
 
 RenderPassReflection OptixDenoiser_::reflect(const CompileData& compileData)

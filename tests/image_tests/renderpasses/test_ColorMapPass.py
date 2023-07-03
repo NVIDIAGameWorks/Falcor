@@ -14,9 +14,10 @@ m.addGraph(g)
 render_frames(m, 'default')
 
 # colorMap
-for colorMap in [ColorMap.Grey, ColorMap.Jet, ColorMap.Viridis, ColorMap.Plasma, ColorMap.Magma, ColorMap.Inferno]:
+for colorMap in ['Grey', 'Jet', 'Viridis', 'Plasma', 'Magma', 'Inferno']:
     g.updatePass('ColorMap', {'colorMap': colorMap})
-    render_frames(m, 'colorMap.' + str(colorMap))
+    # TODO: Remove "ColorMap." from name.
+    render_frames(m, 'colorMap.ColorMap.' + colorMap)
 
 # channel
 for channel in [0, 1, 2, 3]:
@@ -25,7 +26,7 @@ for channel in [0, 1, 2, 3]:
 
 # minValue, maxValue
 for (minValue, maxValue) in [(0, 1), (1, 0), (0.25, 0.75)]:
-    g.updatePass('ColorMap', {'colorMap': ColorMap.Jet, 'minValue': minValue, 'maxValue': maxValue})
+    g.updatePass('ColorMap', {'colorMap': 'Jet', 'minValue': minValue, 'maxValue': maxValue})
     render_frames(m, 'minValue.' + str(minValue) + '.maxValue.' + str(maxValue))
 
 # autoRange

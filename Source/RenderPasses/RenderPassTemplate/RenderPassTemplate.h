@@ -36,11 +36,11 @@ class RenderPassTemplate : public RenderPass
 public:
     FALCOR_PLUGIN_CLASS(RenderPassTemplate, "RenderPassTemplate", "Insert pass description here.");
 
-    static ref<RenderPassTemplate> create(ref<Device> pDevice, const Dictionary& dict) { return make_ref<RenderPassTemplate>(pDevice, dict); }
+    static ref<RenderPassTemplate> create(ref<Device> pDevice, const Properties& props) { return make_ref<RenderPassTemplate>(pDevice, props); }
 
-    RenderPassTemplate(ref<Device> pDevice, const Dictionary& dict);
+    RenderPassTemplate(ref<Device> pDevice, const Properties& props);
 
-    virtual Dictionary getScriptingDictionary() override;
+    virtual Properties getProperties() const override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
     virtual void compile(RenderContext* pRenderContext, const CompileData& compileData) override {}
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;

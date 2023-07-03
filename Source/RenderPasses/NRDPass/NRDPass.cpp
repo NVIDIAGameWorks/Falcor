@@ -106,18 +106,18 @@ namespace
     };
 }
 
-NRDPass::NRDPass(ref<Device> pDevice, const Dictionary& dict)
+NRDPass::NRDPass(ref<Device> pDevice, const Properties& props)
     : RenderPass(pDevice)
 {
     mpDevice->requireD3D12();
 
-    Program::DefineList definesRelax;
+    DefineList definesRelax;
     definesRelax.add("NRD_USE_OCT_NORMAL_ENCODING", "1");
     definesRelax.add("NRD_USE_MATERIAL_ID", "0");
     definesRelax.add("NRD_METHOD", "0"); // NRD_METHOD_RELAX_DIFFUSE_SPECULAR
     mpPackRadiancePassRelax = ComputePass::create(mpDevice, kShaderPackRadiance, "main", definesRelax);
 
-    Program::DefineList definesReblur;
+    DefineList definesReblur;
     definesReblur.add("NRD_USE_OCT_NORMAL_ENCODING", "1");
     definesReblur.add("NRD_USE_MATERIAL_ID", "0");
     definesReblur.add("NRD_METHOD", "1"); // NRD_METHOD_REBLUR_DIFFUSE_SPECULAR
@@ -149,7 +149,7 @@ NRDPass::NRDPass(ref<Device> pDevice, const Dictionary& dict)
     mRelaxDiffuseSettings.depthThreshold = 0.02f;
 
     // Deserialize pass from dictionary.
-    for (const auto& [key, value] : dict)
+    for (const auto& [key, value] : props)
     {
         if (key == kEnabled) mEnabled = value;
         else if (key == kMethod) mDenoisingMethod = value;
@@ -198,7 +198,7 @@ NRDPass::NRDPass(ref<Device> pDevice, const Dictionary& dict)
             else if (key == kEnableMaterialTestForSpecular) mRelaxDiffuseSpecularSettings.enableMaterialTestForSpecular = value;
             else
             {
-                logWarning("Unknown field '{}' in NRD dictionary.", key);
+                logWarning("Unknown property '{}' in NRD properties.", key);
             }
         }
         else if (mDenoisingMethod == DenoisingMethod::RelaxDiffuse)
@@ -222,88 +222,88 @@ NRDPass::NRDPass(ref<Device> pDevice, const Dictionary& dict)
             else if (key == kEnableMaterialTestForDiffuse) mRelaxDiffuseSettings.enableMaterialTest = value;
             else
             {
-                logWarning("Unknown field '{}' in NRD dictionary.", key);
+                logWarning("Unknown property '{}' in NRD properties.", key);
             }
         }
         else
         {
-            logWarning("Unknown field '{}' in NRD dictionary.", key);
+            logWarning("Unknown property '{}' in NRD properties.", key);
         }
     }
 }
 
-Dictionary NRDPass::getScriptingDictionary()
+Properties NRDPass::getProperties() const
 {
-    Dictionary dict;
+    Properties props;
 
-    dict[kEnabled] = mEnabled;
-    dict[kMethod] = mDenoisingMethod;
-    dict[kOutputSize] = mOutputSizeSelection;
+    props[kEnabled] = mEnabled;
+    props[kMethod] = mDenoisingMethod;
+    props[kOutputSize] = mOutputSizeSelection;
 
     // Common settings.
-    dict[kWorldSpaceMotion] = mWorldSpaceMotion;
-    dict[kDisocclusionThreshold] = mDisocclusionThreshold;
+    props[kWorldSpaceMotion] = mWorldSpaceMotion;
+    props[kDisocclusionThreshold] = mDisocclusionThreshold;
 
     // Pack radiance settings.
-    dict[kMaxIntensity] = mMaxIntensity;
+    props[kMaxIntensity] = mMaxIntensity;
 
     // ReLAX diffuse/specular settings.
     if (mDenoisingMethod == DenoisingMethod::RelaxDiffuseSpecular || mDenoisingMethod == DenoisingMethod::ReblurDiffuseSpecular)
     {
-        dict[kDiffusePrepassBlurRadius] = mRelaxDiffuseSpecularSettings.diffusePrepassBlurRadius;
-        dict[kSpecularPrepassBlurRadius] = mRelaxDiffuseSpecularSettings.specularPrepassBlurRadius;
-        dict[kDiffuseMaxAccumulatedFrameNum] = mRelaxDiffuseSpecularSettings.diffuseMaxAccumulatedFrameNum;
-        dict[kSpecularMaxAccumulatedFrameNum] = mRelaxDiffuseSpecularSettings.specularMaxAccumulatedFrameNum;
-        dict[kDiffuseMaxFastAccumulatedFrameNum] = mRelaxDiffuseSpecularSettings.diffuseMaxFastAccumulatedFrameNum;
-        dict[kSpecularMaxFastAccumulatedFrameNum] = mRelaxDiffuseSpecularSettings.specularMaxFastAccumulatedFrameNum;
-        dict[kDiffusePhiLuminance] = mRelaxDiffuseSpecularSettings.diffusePhiLuminance;
-        dict[kSpecularPhiLuminance] = mRelaxDiffuseSpecularSettings.specularPhiLuminance;
-        dict[kDiffuseLobeAngleFraction] = mRelaxDiffuseSpecularSettings.diffuseLobeAngleFraction;
-        dict[kSpecularLobeAngleFraction] = mRelaxDiffuseSpecularSettings.specularLobeAngleFraction;
-        dict[kRoughnessFraction] = mRelaxDiffuseSpecularSettings.roughnessFraction;
-        dict[kDiffuseHistoryRejectionNormalThreshold] = mRelaxDiffuseSpecularSettings.diffuseHistoryRejectionNormalThreshold;
-        dict[kSpecularVarianceBoost] = mRelaxDiffuseSpecularSettings.specularVarianceBoost;
-        dict[kSpecularLobeAngleSlack] = mRelaxDiffuseSpecularSettings.specularLobeAngleSlack;
-        dict[kDisocclusionFixEdgeStoppingNormalPower] = mRelaxDiffuseSpecularSettings.disocclusionFixEdgeStoppingNormalPower;
-        dict[kDisocclusionFixMaxRadius] = mRelaxDiffuseSpecularSettings.disocclusionFixMaxRadius;
-        dict[kDisocclusionFixNumFramesToFix] = mRelaxDiffuseSpecularSettings.disocclusionFixNumFramesToFix;
-        dict[kHistoryClampingColorBoxSigmaScale] = mRelaxDiffuseSpecularSettings.historyClampingColorBoxSigmaScale;
-        dict[kSpatialVarianceEstimationHistoryThreshold] = mRelaxDiffuseSpecularSettings.spatialVarianceEstimationHistoryThreshold;
-        dict[kAtrousIterationNum] = mRelaxDiffuseSpecularSettings.atrousIterationNum;
-        dict[kMinLuminanceWeight] = mRelaxDiffuseSpecularSettings.minLuminanceWeight;
-        dict[kDepthThreshold] = mRelaxDiffuseSpecularSettings.depthThreshold;
-        dict[kLuminanceEdgeStoppingRelaxation] = mRelaxDiffuseSpecularSettings.luminanceEdgeStoppingRelaxation;
-        dict[kNormalEdgeStoppingRelaxation] = mRelaxDiffuseSpecularSettings.normalEdgeStoppingRelaxation;
-        dict[kRoughnessEdgeStoppingRelaxation] = mRelaxDiffuseSpecularSettings.roughnessEdgeStoppingRelaxation;
-        dict[kEnableAntiFirefly] = mRelaxDiffuseSpecularSettings.enableAntiFirefly;
-        dict[kEnableReprojectionTestSkippingWithoutMotion] = mRelaxDiffuseSpecularSettings.enableReprojectionTestSkippingWithoutMotion;
-        dict[kEnableSpecularVirtualHistoryClamping] = mRelaxDiffuseSpecularSettings.enableSpecularVirtualHistoryClamping;
-        dict[kEnableRoughnessEdgeStopping] = mRelaxDiffuseSpecularSettings.enableRoughnessEdgeStopping;
-        dict[kEnableMaterialTestForDiffuse] = mRelaxDiffuseSpecularSettings.enableMaterialTestForDiffuse;
-        dict[kEnableMaterialTestForSpecular] = mRelaxDiffuseSpecularSettings.enableMaterialTestForSpecular;
+        props[kDiffusePrepassBlurRadius] = mRelaxDiffuseSpecularSettings.diffusePrepassBlurRadius;
+        props[kSpecularPrepassBlurRadius] = mRelaxDiffuseSpecularSettings.specularPrepassBlurRadius;
+        props[kDiffuseMaxAccumulatedFrameNum] = mRelaxDiffuseSpecularSettings.diffuseMaxAccumulatedFrameNum;
+        props[kSpecularMaxAccumulatedFrameNum] = mRelaxDiffuseSpecularSettings.specularMaxAccumulatedFrameNum;
+        props[kDiffuseMaxFastAccumulatedFrameNum] = mRelaxDiffuseSpecularSettings.diffuseMaxFastAccumulatedFrameNum;
+        props[kSpecularMaxFastAccumulatedFrameNum] = mRelaxDiffuseSpecularSettings.specularMaxFastAccumulatedFrameNum;
+        props[kDiffusePhiLuminance] = mRelaxDiffuseSpecularSettings.diffusePhiLuminance;
+        props[kSpecularPhiLuminance] = mRelaxDiffuseSpecularSettings.specularPhiLuminance;
+        props[kDiffuseLobeAngleFraction] = mRelaxDiffuseSpecularSettings.diffuseLobeAngleFraction;
+        props[kSpecularLobeAngleFraction] = mRelaxDiffuseSpecularSettings.specularLobeAngleFraction;
+        props[kRoughnessFraction] = mRelaxDiffuseSpecularSettings.roughnessFraction;
+        props[kDiffuseHistoryRejectionNormalThreshold] = mRelaxDiffuseSpecularSettings.diffuseHistoryRejectionNormalThreshold;
+        props[kSpecularVarianceBoost] = mRelaxDiffuseSpecularSettings.specularVarianceBoost;
+        props[kSpecularLobeAngleSlack] = mRelaxDiffuseSpecularSettings.specularLobeAngleSlack;
+        props[kDisocclusionFixEdgeStoppingNormalPower] = mRelaxDiffuseSpecularSettings.disocclusionFixEdgeStoppingNormalPower;
+        props[kDisocclusionFixMaxRadius] = mRelaxDiffuseSpecularSettings.disocclusionFixMaxRadius;
+        props[kDisocclusionFixNumFramesToFix] = mRelaxDiffuseSpecularSettings.disocclusionFixNumFramesToFix;
+        props[kHistoryClampingColorBoxSigmaScale] = mRelaxDiffuseSpecularSettings.historyClampingColorBoxSigmaScale;
+        props[kSpatialVarianceEstimationHistoryThreshold] = mRelaxDiffuseSpecularSettings.spatialVarianceEstimationHistoryThreshold;
+        props[kAtrousIterationNum] = mRelaxDiffuseSpecularSettings.atrousIterationNum;
+        props[kMinLuminanceWeight] = mRelaxDiffuseSpecularSettings.minLuminanceWeight;
+        props[kDepthThreshold] = mRelaxDiffuseSpecularSettings.depthThreshold;
+        props[kLuminanceEdgeStoppingRelaxation] = mRelaxDiffuseSpecularSettings.luminanceEdgeStoppingRelaxation;
+        props[kNormalEdgeStoppingRelaxation] = mRelaxDiffuseSpecularSettings.normalEdgeStoppingRelaxation;
+        props[kRoughnessEdgeStoppingRelaxation] = mRelaxDiffuseSpecularSettings.roughnessEdgeStoppingRelaxation;
+        props[kEnableAntiFirefly] = mRelaxDiffuseSpecularSettings.enableAntiFirefly;
+        props[kEnableReprojectionTestSkippingWithoutMotion] = mRelaxDiffuseSpecularSettings.enableReprojectionTestSkippingWithoutMotion;
+        props[kEnableSpecularVirtualHistoryClamping] = mRelaxDiffuseSpecularSettings.enableSpecularVirtualHistoryClamping;
+        props[kEnableRoughnessEdgeStopping] = mRelaxDiffuseSpecularSettings.enableRoughnessEdgeStopping;
+        props[kEnableMaterialTestForDiffuse] = mRelaxDiffuseSpecularSettings.enableMaterialTestForDiffuse;
+        props[kEnableMaterialTestForSpecular] = mRelaxDiffuseSpecularSettings.enableMaterialTestForSpecular;
     }
     else if (mDenoisingMethod == DenoisingMethod::RelaxDiffuse)
     {
-        dict[kDiffusePrepassBlurRadius] = mRelaxDiffuseSettings.prepassBlurRadius;
-        dict[kDiffuseMaxAccumulatedFrameNum] = mRelaxDiffuseSettings.diffuseMaxAccumulatedFrameNum;
-        dict[kDiffuseMaxFastAccumulatedFrameNum] = mRelaxDiffuseSettings.diffuseMaxFastAccumulatedFrameNum;
-        dict[kDiffusePhiLuminance] = mRelaxDiffuseSettings.diffusePhiLuminance;
-        dict[kDiffuseLobeAngleFraction] = mRelaxDiffuseSettings.diffuseLobeAngleFraction;
-        dict[kDiffuseHistoryRejectionNormalThreshold] = mRelaxDiffuseSettings.diffuseHistoryRejectionNormalThreshold;
-        dict[kDisocclusionFixEdgeStoppingNormalPower] = mRelaxDiffuseSettings.disocclusionFixEdgeStoppingNormalPower;
-        dict[kDisocclusionFixMaxRadius] = mRelaxDiffuseSettings.disocclusionFixMaxRadius;
-        dict[kDisocclusionFixNumFramesToFix] = mRelaxDiffuseSettings.disocclusionFixNumFramesToFix;
-        dict[kHistoryClampingColorBoxSigmaScale] = mRelaxDiffuseSettings.historyClampingColorBoxSigmaScale;
-        dict[kSpatialVarianceEstimationHistoryThreshold] = mRelaxDiffuseSettings.spatialVarianceEstimationHistoryThreshold;
-        dict[kAtrousIterationNum] = mRelaxDiffuseSettings.atrousIterationNum;
-        dict[kMinLuminanceWeight] = mRelaxDiffuseSettings.minLuminanceWeight;
-        dict[kDepthThreshold] = mRelaxDiffuseSettings.depthThreshold;
-        dict[kEnableAntiFirefly] = mRelaxDiffuseSettings.enableAntiFirefly;
-        dict[kEnableReprojectionTestSkippingWithoutMotion] = mRelaxDiffuseSettings.enableReprojectionTestSkippingWithoutMotion;
-        dict[kEnableMaterialTestForDiffuse] = mRelaxDiffuseSettings.enableMaterialTest;
+        props[kDiffusePrepassBlurRadius] = mRelaxDiffuseSettings.prepassBlurRadius;
+        props[kDiffuseMaxAccumulatedFrameNum] = mRelaxDiffuseSettings.diffuseMaxAccumulatedFrameNum;
+        props[kDiffuseMaxFastAccumulatedFrameNum] = mRelaxDiffuseSettings.diffuseMaxFastAccumulatedFrameNum;
+        props[kDiffusePhiLuminance] = mRelaxDiffuseSettings.diffusePhiLuminance;
+        props[kDiffuseLobeAngleFraction] = mRelaxDiffuseSettings.diffuseLobeAngleFraction;
+        props[kDiffuseHistoryRejectionNormalThreshold] = mRelaxDiffuseSettings.diffuseHistoryRejectionNormalThreshold;
+        props[kDisocclusionFixEdgeStoppingNormalPower] = mRelaxDiffuseSettings.disocclusionFixEdgeStoppingNormalPower;
+        props[kDisocclusionFixMaxRadius] = mRelaxDiffuseSettings.disocclusionFixMaxRadius;
+        props[kDisocclusionFixNumFramesToFix] = mRelaxDiffuseSettings.disocclusionFixNumFramesToFix;
+        props[kHistoryClampingColorBoxSigmaScale] = mRelaxDiffuseSettings.historyClampingColorBoxSigmaScale;
+        props[kSpatialVarianceEstimationHistoryThreshold] = mRelaxDiffuseSettings.spatialVarianceEstimationHistoryThreshold;
+        props[kAtrousIterationNum] = mRelaxDiffuseSettings.atrousIterationNum;
+        props[kMinLuminanceWeight] = mRelaxDiffuseSettings.minLuminanceWeight;
+        props[kDepthThreshold] = mRelaxDiffuseSettings.depthThreshold;
+        props[kEnableAntiFirefly] = mRelaxDiffuseSettings.enableAntiFirefly;
+        props[kEnableReprojectionTestSkippingWithoutMotion] = mRelaxDiffuseSettings.enableReprojectionTestSkippingWithoutMotion;
+        props[kEnableMaterialTestForDiffuse] = mRelaxDiffuseSettings.enableMaterialTest;
     }
 
-    return dict;
+    return props;
 }
 
 RenderPassReflection NRDPass::reflect(const CompileData& compileData)
@@ -668,8 +668,8 @@ static nrd::Method getNrdMethod(NRDPass::DenoisingMethod denoisingMethod)
     case NRDPass::DenoisingMethod::RelaxDiffuseSpecular:    return nrd::Method::RELAX_DIFFUSE_SPECULAR;
     case NRDPass::DenoisingMethod::RelaxDiffuse:            return nrd::Method::RELAX_DIFFUSE;
     case NRDPass::DenoisingMethod::ReblurDiffuseSpecular:   return nrd::Method::REBLUR_DIFFUSE_SPECULAR;
-    case NRDPass::DenoisingMethod::SpecularReflectionMv:        return nrd::Method::SPECULAR_REFLECTION_MV;
-    case NRDPass::DenoisingMethod::SpecularDeltaMv:     return nrd::Method::SPECULAR_DELTA_MV;
+    case NRDPass::DenoisingMethod::SpecularReflectionMv:    return nrd::Method::SPECULAR_REFLECTION_MV;
+    case NRDPass::DenoisingMethod::SpecularDeltaMv:         return nrd::Method::SPECULAR_DELTA_MV;
     default:
         FALCOR_UNREACHABLE();
         return nrd::Method::RELAX_DIFFUSE_SPECULAR;
@@ -780,8 +780,8 @@ void NRDPass::createPipelines()
 
             Program::Desc programDesc;
             programDesc.addShaderLibrary(shaderFileName).csEntry(nrdPipelineDesc.shaderEntryPointName);
-            programDesc.setCompilerFlags(Shader::CompilerFlags::MatrixLayoutColumnMajor);
-            Program::DefineList defines;
+            programDesc.setCompilerFlags(Program::CompilerFlags::MatrixLayoutColumnMajor);
+            DefineList defines;
             defines.add("NRD_COMPILER_DXC");
             defines.add("NRD_USE_OCT_NORMAL_ENCODING", "1");
             defines.add("NRD_USE_MATERIAL_ID", "0");
@@ -1130,18 +1130,7 @@ void NRDPass::dispatch(RenderContext* pRenderContext, const RenderData& renderDa
     pCommandList->Dispatch(dispatchDesc.gridWidth, dispatchDesc.gridHeight, 1);
 }
 
-static void registerNRDPass(pybind11::module& m)
-{
-    pybind11::enum_<NRDPass::DenoisingMethod> profile(m, "NRDMethod");
-    profile.value("RelaxDiffuseSpecular", NRDPass::DenoisingMethod::RelaxDiffuseSpecular);
-    profile.value("RelaxDiffuse", NRDPass::DenoisingMethod::RelaxDiffuse);
-    profile.value("ReblurDiffuseSpecular", NRDPass::DenoisingMethod::ReblurDiffuseSpecular);
-    profile.value("SpecularReflectionMv", NRDPass::DenoisingMethod::SpecularReflectionMv);
-    profile.value("SpecularDeltaMv", NRDPass::DenoisingMethod::SpecularDeltaMv);
-}
-
 extern "C" FALCOR_API_EXPORT void registerPlugin(PluginRegistry& registry)
 {
     registry.registerClass<RenderPass, NRDPass>();
-    ScriptBindings::registerBinding(registerNRDPass);
 }

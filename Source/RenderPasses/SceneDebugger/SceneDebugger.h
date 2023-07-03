@@ -42,11 +42,11 @@ class SceneDebugger : public RenderPass
 public:
     FALCOR_PLUGIN_CLASS(SceneDebugger, "SceneDebugger", "Scene debugger for identifying asset issues.");
 
-    static ref<SceneDebugger> create(ref<Device> pDevice, const Dictionary& dict) { return make_ref<SceneDebugger>(pDevice, dict); }
+    static ref<SceneDebugger> create(ref<Device> pDevice, const Properties& props) { return make_ref<SceneDebugger>(pDevice, props); }
 
-    SceneDebugger(ref<Device> pDevice, const Dictionary& dict);
+    SceneDebugger(ref<Device> pDevice, const Properties& props);
 
-    Dictionary getScriptingDictionary() override;
+    Properties getProperties() const override;
     RenderPassReflection reflect(const CompileData& compileData) override;
     void compile(RenderContext* pRenderContext, const CompileData& compileData) override;
     void setScene(RenderContext* pRenderContext, const ref<Scene>& pScene) override;

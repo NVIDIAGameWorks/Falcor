@@ -27,10 +27,11 @@
  **************************************************************************/
 #pragma once
 #include "ProgramVersion.h"
+#include "DefineList.h"
 #include "Core/Macros.h"
 #include "Core/Object.h"
 #include "Core/API/fwd.h"
-#include "Core/API/Shader.h"
+#include "Core/API/ShaderType.h"
 #include <filesystem>
 #include <memory>
 #include <string_view>
@@ -48,10 +49,105 @@ namespace Falcor
  */
 class FALCOR_API Program : public Object
 {
+    FALCOR_OBJECT(Program)
 public:
-    using DefineList = Shader::DefineList;
     using ArgumentList = std::vector<std::string>;
-    using TypeConformanceList = Shader::TypeConformanceList;
+
+    enum class CompilerFlags
+    {
+        None = 0x0,
+        TreatWarningsAsErrors = 0x1,
+        DumpIntermediates = 0x2,
+        FloatingPointModeFast = 0x4,
+        FloatingPointModePrecise = 0x8,
+        GenerateDebugInfo = 0x10,
+        MatrixLayoutColumnMajor = 0x20, // Falcor is using row-major, use this only to compile stand-alone external shaders.
+    };
+
+    /**
+     * Representing a shader implementation of an interface.
+     * When linked into a `ProgramVersion`, the specialized shader will contain
+     * the implementation of the specified type in a dynamic dispatch function.
+     */
+    struct TypeConformance
+    {
+        std::string mTypeName;
+        std::string mInterfaceName;
+        TypeConformance() = default;
+        TypeConformance(const std::string& typeName, const std::string& interfaceName) : mTypeName(typeName), mInterfaceName(interfaceName)
+        {}
+        bool operator<(const TypeConformance& other) const
+        {
+            return mTypeName < other.mTypeName || (mTypeName == other.mTypeName && mInterfaceName < other.mInterfaceName);
+        }
+        bool operator==(const TypeConformance& other) const
+        {
+            return mTypeName == other.mTypeName && mInterfaceName == other.mInterfaceName;
+        }
+        struct HashFunction
+        {
+            size_t operator()(const TypeConformance& conformance) const
+            {
+                size_t hash = std::hash<std::string>()(conformance.mTypeName);
+                hash = hash ^ std::hash<std::string>()(conformance.mInterfaceName);
+                return hash;
+            }
+        };
+    };
+
+    class TypeConformanceList : public std::map<TypeConformance, uint32_t>
+    {
+    public:
+        /**
+         * Adds a type conformance. If the type conformance exists, it will be replaced.
+         * @param[in] typeName The name of the implementation type.
+         * @param[in] interfaceName The name of the interface type.
+         * @param[in] id Optional. The id representing the implementation type for this interface. If it is -1, Slang will automatically
+         * assign a unique Id for the type.
+         * @return The updated list of type conformances.
+         */
+        TypeConformanceList& add(const std::string& typeName, const std::string& interfaceName, uint32_t id = -1)
+        {
+            (*this)[TypeConformance(typeName, interfaceName)] = id;
+            return *this;
+        }
+
+        /**
+         * Removes a type conformance. If the type conformance doesn't exist, the call will be silently ignored.
+         * @param[in] typeName The name of the implementation type.
+         * @param[in] interfaceName The name of the interface type.
+         * @return The updated list of type conformances.
+         */
+        TypeConformanceList& remove(const std::string& typeName, const std::string& interfaceName)
+        {
+            (*this).erase(TypeConformance(typeName, interfaceName));
+            return *this;
+        }
+
+        /**
+         * Add a type conformance list to the current list
+         */
+        TypeConformanceList& add(const TypeConformanceList& cl)
+        {
+            for (const auto& p : cl)
+                add(p.first.mTypeName, p.first.mInterfaceName, p.second);
+            return *this;
+        }
+
+        /**
+         * Remove a type conformance list from the current list
+         */
+        TypeConformanceList& remove(const TypeConformanceList& cl)
+        {
+            for (const auto& p : cl)
+                remove(p.first.mTypeName, p.first.mInterfaceName);
+            return *this;
+        }
+
+        TypeConformanceList() = default;
+        TypeConformanceList(std::initializer_list<std::pair<const TypeConformance, uint32_t>> il) : std::map<TypeConformance, uint32_t>(il)
+        {}
+    };
 
     /**
      * Shader module stored as a string or file.
@@ -183,25 +279,6 @@ public:
         }
 
         /**
-         * Enable/disable treat-warnings-as-error compilation flag.
-         */
-        Desc& warningsAsErrors(bool enable)
-        {
-            enable ? mShaderFlags |= Shader::CompilerFlags::TreatWarningsAsErrors
-                   : mShaderFlags &= ~(Shader::CompilerFlags::TreatWarningsAsErrors);
-            return *this;
-        }
-
-        /**
-         * Enable/disable pre-processed shader dump.
-         */
-        Desc& dumpIntermediates(bool enable)
-        {
-            enable ? mShaderFlags |= Shader::CompilerFlags::DumpIntermediates : mShaderFlags &= ~(Shader::CompilerFlags::DumpIntermediates);
-            return *this;
-        }
-
-        /**
          * Set the shader model string.
          * This should be `6_0`, `6_1`, `6_2`, `6_3`, `6_4`, or `6_5`. The default is `6_3`.
          */
@@ -210,12 +287,12 @@ public:
         /**
          * Get the compiler flags.
          */
-        Shader::CompilerFlags getCompilerFlags() const { return mShaderFlags; }
+        CompilerFlags getCompilerFlags() const { return mShaderFlags; }
 
         /**
          * Set the compiler flags. Replaces any previously set flags.
          */
-        Desc& setCompilerFlags(Shader::CompilerFlags flags)
+        Desc& setCompilerFlags(CompilerFlags flags)
         {
             mShaderFlags = flags;
             return *this;
@@ -285,7 +362,7 @@ public:
 
         int32_t mActiveSource = -1; ///< Current source index.
         int32_t mActiveGroup = -1;  ///< Current entry point index.
-        Shader::CompilerFlags mShaderFlags = Shader::CompilerFlags::None;
+        CompilerFlags mShaderFlags = CompilerFlags::None;
         ArgumentList mCompilerArguments;
         std::string mShaderModel = "6_3";
         std::string mLanguagePrelude;
@@ -433,5 +510,7 @@ protected:
     bool checkIfFilesChanged();
     void reset();
 };
+
+FALCOR_ENUM_CLASS_OPERATORS(Program::CompilerFlags);
 
 } // namespace Falcor

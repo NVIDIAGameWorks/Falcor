@@ -521,13 +521,13 @@ struct std::hash<::Falcor::math::quat<T>>
 
 /// Quaternion string formatter.
 template<typename T>
-struct fmt::formatter<::Falcor::math::quat<T>> : formatter<T>
+struct fmt::formatter<Falcor::math::quat<T>> : formatter<T>
 {
     template<typename FormatContext>
-    auto format(const ::Falcor::math::quat<T>& v, FormatContext& ctx) const
+    auto format(const Falcor::math::quat<T>& v, FormatContext& ctx) const
     {
         auto out = ctx.out();
-        out = ::fmt::format_to(out, "{{{}, {}, {}, {}}}", v.x, v.y, v.z, v.w);
+        out = fmt::format_to(out, "{{{}, {}, {}, {}}}", v.x, v.y, v.z, v.w);
         return out;
     }
 };

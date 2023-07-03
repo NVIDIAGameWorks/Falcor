@@ -42,6 +42,8 @@ import Utils.Math.MathHelpers;
  */
 bool intersectRaySphere(const float3 rayOrigin, const float3 rayDir, const float3 sphereCenter, const float sphereRadius, out float t)
 {
+    t = {};
+
     // Implementation is taken from Chapter 7 of Ray-Tracing Gems
     float3 f = rayOrigin - sphereCenter;
     float a = dot(rayDir, rayDir);
@@ -106,6 +108,9 @@ bool intersectRayAABB(const float3 rayOrigin, const float3 rayDir, const float3 
  */
 bool intersectRayTriangle(const float3 rayOrigin, const float3 rayDir, const float3 vertices[3], out float3 barycentrics, out float t)
 {
+    barycentrics = {};
+    t = {};
+
     const float3 absDir = abs(rayDir);
     uint axis = 0;
     if (absDir.y > absDir.x && absDir.y > absDir.z)

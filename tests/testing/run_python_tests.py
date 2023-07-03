@@ -16,7 +16,7 @@ def run_python_tests(env: Environment, xml_report, args):
     """
     Run python tests.
     """
-    cmd_args = [str(env.python_exe)]
+    cmd_args = ["python"]
     if xml_report:
         cmd_args += ["-m", "xmlrunner", "--output-file", str(xml_report)]
     else:
@@ -93,7 +93,7 @@ def main():
         parser.print_help()
         if env:
             print(f"\nAdditional arguments consumed by Python's unit test runner:\n")
-            subprocess.call([str(env.python_exe), "-m", "unittest", "-h"])
+            subprocess.call(["python", "-m", "unittest", "-h"])
         else:
             print(f"\nFailed to load environment: {env_error}")
         sys.exit(0)

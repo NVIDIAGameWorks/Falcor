@@ -33,7 +33,7 @@ namespace Falcor
 {
 GPU_TEST(MERLFile)
 {
-    const std::filesystem::path path = "TestScenes/Materials/Data/gray-lambert.binary";
+    const std::filesystem::path path = "test_scenes/materials/data/gray-lambert.binary";
 
     std::filesystem::path fullPath;
     ASSERT(findFileInDataDirectories(path, fullPath));

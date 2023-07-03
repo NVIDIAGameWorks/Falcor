@@ -2,7 +2,7 @@ from falcor import *
 
 def render_graph_MVecRaster():
     g = RenderGraph("MVecRaster")
-    g.addPass(createPass("GBufferRaster", {'samplePattern': SamplePattern.Stratified, 'sampleCount': 16}), "GBufferRaster")
+    g.addPass(createPass("GBufferRaster", {'samplePattern': 'Stratified', 'sampleCount': 16}), "GBufferRaster")
 
     g.markOutput("GBufferRaster.mvec")
 

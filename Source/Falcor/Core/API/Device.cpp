@@ -30,6 +30,7 @@
 #include "GFXHelpers.h"
 #include "GFXAPI.h"
 #include "NativeHandleTraits.h"
+#include "Aftermath.h"
 #include "Core/Macros.h"
 #include "Core/Assert.h"
 #include "Core/Errors.h"
@@ -381,6 +382,17 @@ inline Device::ShaderModel querySupportedShaderModel(gfx::IDevice* pDevice)
 
 Device::Device(const Desc& desc) : mDesc(desc)
 {
+    if (mDesc.enableAftermath)
+    {
+#if FALCOR_HAS_AFTERMATH
+        // Aftermath is incompatible with debug layers, so lets disable them.
+        mDesc.enableDebugLayer = false;
+        enableAftermath();
+#else
+        logWarning("Falcor was compiled without Aftermath support. Aftermath is disabled");
+#endif
+    }
+
     // Create a global slang session passed to GFX and used for compiling programs in ProgramManager.
     slang::createGlobalSession(mSlangGlobalSession.writeRef());
 
@@ -472,10 +484,19 @@ Device::Device(const Desc& desc) : mDesc(desc)
     }
 
     const auto& deviceInfo = mGfxDevice->getDeviceInfo();
-    logInfo("Created GPU device '{}' using '{}' API.", deviceInfo.adapterName, deviceInfo.apiName);
-
+    mInfo.adapterName = deviceInfo.adapterName;
+    mInfo.apiName = deviceInfo.apiName;
+    logInfo("Created GPU device '{}' using '{}' API.", mInfo.adapterName, mInfo.apiName);
     mLimits = queryLimits(mGfxDevice);
     mSupportedFeatures = querySupportedFeatures(mGfxDevice);
+
+#if FALCOR_HAS_AFTERMATH
+    if (mDesc.enableAftermath)
+    {
+        mpAftermathContext = std::make_unique<AftermathContext>(this);
+        mpAftermathContext->initialize();
+    }
+#endif
 
 #if FALCOR_NVAPI_AVAILABLE
     // Explicitly check for SER support via NVAPI.
@@ -499,6 +520,11 @@ Device::Device(const Desc& desc) : mDesc(desc)
             mSupportedFeatures |= SupportedFeatures::RaytracingReordering;
     }
 #endif
+    if (getType() == Type::Vulkan)
+    {
+        // Vulkan always supports SER.
+        mSupportedFeatures |= SupportedFeatures::ShaderExecutionReorderingAPI;
+    }
 
     mSupportedShaderModel = querySupportedShaderModel(mGfxDevice);
     mGpuTimestampFrequency = 1000.0 / (double)mGfxDevice->getDeviceInfo().timestampFrequency;
@@ -826,6 +852,7 @@ void Device::endFrame()
         mpFrameFence->syncCpu(mpFrameFence->getCpuValue() - kInFlightFrameCount);
 
     // Switch to next transient resource heap.
+    getCurrentTransientResourceHeap()->finish();
     mCurrentTransientResourceHeapIndex = (mCurrentTransientResourceHeapIndex + 1) % kInFlightFrameCount;
     mpRenderContext->getLowLevelData()->closeCommandBuffer();
     getCurrentTransientResourceHeap()->synchronizeAndReset();
@@ -881,22 +908,27 @@ FALCOR_SCRIPT_BINDING(Device)
     deviceType.value("D3D12", Device::Type::D3D12);
     deviceType.value("Vulkan", Device::Type::Vulkan);
 
+    pybind11::class_<Device::Info> info(device, "Info");
+    info.def_readonly("adapter_name", &Device::Info::adapterName);
+    info.def_readonly("api_name", &Device::Info::apiName);
+
     pybind11::class_<Device::Limits> limits(device, "Limits");
     limits.def_readonly("max_compute_dispatch_thread_groups", &Device::Limits::maxComputeDispatchThreadGroups);
     limits.def_readonly("max_shader_visible_samplers", &Device::Limits::maxShaderVisibleSamplers);
 
     device.def(
         pybind11::init(
-            [](Device::Type type, uint32_t gpu, bool enable_debug_layer)
+            [](Device::Type type, uint32_t gpu, bool enable_debug_layer, bool enable_aftermath)
             {
                 Device::Desc desc;
                 desc.type = type;
                 desc.gpu = gpu;
                 desc.enableDebugLayer = enable_debug_layer;
+                desc.enableAftermath = enable_aftermath;
                 return make_ref<Device>(desc);
             }
         ),
-        "type"_a = Device::Type::Default, "gpu"_a = 0, "enable_debug_layer"_a = false
+        "type"_a = Device::Type::Default, "gpu"_a = 0, "enable_debug_layer"_a = false, "enable_aftermath"_a = false
     );
     device.def(
         "create_buffer",
@@ -921,6 +953,8 @@ FALCOR_SCRIPT_BINDING(Device)
     );
 
     device.def_property_readonly("profiler", &Device::getProfiler);
+    device.def_property_readonly("type", &Device::getType);
+    device.def_property_readonly("info", &Device::getInfo);
     device.def_property_readonly("limits", &Device::getLimits);
     device.def_property_readonly("render_context", &Device::getRenderContext);
 }

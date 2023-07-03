@@ -20,8 +20,9 @@ for isHDR in [False, True]:
     render_frames(m, 'isHDR.' + str(isHDR))
 
 # toneMapper
-for toneMapper in [FLIPToneMapperType.ACES, FLIPToneMapperType.Hable, FLIPToneMapperType.Reinhard]:
+for toneMapper in ['ACES', 'Hable', 'Reinhard']:
     g.updatePass('FLIP', {'isHDR': True, 'toneMapper': toneMapper})
-    render_frames(m, 'toneMapper.' + str(toneMapper))
+    # TODO: Remove "FLIPToneMapperType." from name.
+    render_frames(m, 'toneMapper.FLIPToneMapperType.' + toneMapper)
 
 exit()

@@ -56,6 +56,7 @@ class CopyContext;
  */
 class FALCOR_API ParameterBlock : public Object
 {
+    FALCOR_OBJECT(ParameterBlock)
 public:
     ~ParameterBlock();
 

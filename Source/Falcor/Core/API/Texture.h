@@ -46,6 +46,7 @@ class RenderContext;
  */
 class FALCOR_API Texture : public Resource
 {
+    FALCOR_OBJECT(Texture)
 public:
     ~Texture();
 

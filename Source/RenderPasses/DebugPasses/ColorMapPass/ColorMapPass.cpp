@@ -31,16 +31,6 @@ namespace
 {
     const std::string kShaderFile = "RenderPasses/DebugPasses/ColorMapPass/ColorMapPass.ps.slang";
 
-    const Gui::DropdownList kColorMapList =
-    {
-        { (uint32_t)ColorMap::Grey, "Grey" },
-        { (uint32_t)ColorMap::Jet, "Jet" },
-        { (uint32_t)ColorMap::Viridis, "Viridis" },
-        { (uint32_t)ColorMap::Plasma, "Plasma" },
-        { (uint32_t)ColorMap::Magma, "Magma" },
-        { (uint32_t)ColorMap::Inferno, "Inferno" },
-    };
-
     const std::string kInput = "input";
     const std::string kOutput = "output";
 
@@ -51,42 +41,31 @@ namespace
     const std::string kMaxValue = "maxValue";
 }
 
-void ColorMapPass::registerScriptBindings(pybind11::module& m)
-{
-    pybind11::enum_<ColorMap> colorMap(m, "ColorMap");
-    colorMap.value("Grey", ColorMap::Grey);
-    colorMap.value("Jet", ColorMap::Jet);
-    colorMap.value("Viridis", ColorMap::Viridis);
-    colorMap.value("Plasma", ColorMap::Plasma);
-    colorMap.value("Magma", ColorMap::Magma);
-    colorMap.value("Inferno", ColorMap::Inferno);
-}
-
-ColorMapPass::ColorMapPass(ref<Device> pDevice, const Dictionary& dict)
+ColorMapPass::ColorMapPass(ref<Device> pDevice, const Properties& props)
     : RenderPass(pDevice)
 {
-    for (const auto& [key, value] : dict)
+    for (const auto& [key, value] : props)
     {
         if (key == kColorMap) mColorMap = value;
         else if (key == kChannel) mChannel = value;
         else if (key == kAutoRange) mAutoRange = value;
         else if (key == kMinValue) mMinValue = value;
         else if (key == kMaxValue) mMaxValue = value;
-        else logWarning("Unknown field '{}' in a ColorMapPass dictionary.", key);
+        else logWarning("Unknown property '{}' in a ColorMapPass properties.", key);
     }
 
     mpFbo = Fbo::create(mpDevice);
 }
 
-Dictionary ColorMapPass::getScriptingDictionary()
+Properties ColorMapPass::getProperties() const
 {
-    Dictionary d;
-    d[kColorMap] = mColorMap;
-    d[kChannel] = mChannel;
-    d[kAutoRange] = mAutoRange;
-    d[kMinValue] = mMinValue;
-    d[kMaxValue] = mMaxValue;
-    return d;
+    Properties props;
+    props[kColorMap] = mColorMap;
+    props[kChannel] = mChannel;
+    props[kAutoRange] = mAutoRange;
+    props[kMinValue] = mMinValue;
+    props[kMaxValue] = mMaxValue;
+    return props;
 }
 
 RenderPassReflection ColorMapPass::reflect(const CompileData& compileData)
@@ -135,7 +114,7 @@ void ColorMapPass::execute(RenderContext* pRenderContext, const RenderData& rend
         mpAutoRanging.reset();
     }
 
-    Program::DefineList defines;
+    DefineList defines;
     defines.add("_COLOR_MAP", std::to_string((uint32_t)mColorMap));
     defines.add("_CHANNEL", std::to_string(mChannel));
 
@@ -172,7 +151,7 @@ void ColorMapPass::execute(RenderContext* pRenderContext, const RenderData& rend
 
 void ColorMapPass::renderUI(Gui::Widgets& widget)
 {
-    mRecompile |= widget.dropdown("Color Map", kColorMapList, *reinterpret_cast<uint32_t*>(&mColorMap));
+    mRecompile |= widget.dropdown("Color Map", mColorMap);
     mRecompile |= widget.var("Channel", mChannel, 0u, 3u);
     widget.checkbox("Auto Range", mAutoRange);
     widget.var("Min Value", mMinValue);

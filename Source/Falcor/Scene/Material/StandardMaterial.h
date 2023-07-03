@@ -67,6 +67,7 @@ namespace Falcor
     */
     class FALCOR_API StandardMaterial : public BasicMaterial
     {
+        FALCOR_OBJECT(StandardMaterial)
     public:
         static ref<StandardMaterial> create(ref<Device> pDevice, const std::string& name = "", ShadingModel shadingModel = ShadingModel::MetalRough)
         {

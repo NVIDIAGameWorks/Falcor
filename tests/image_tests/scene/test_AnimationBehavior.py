@@ -5,7 +5,7 @@ from graphs.SceneDebugger import SceneDebugger as g
 from falcor import *
 
 m.addGraph(g)
-m.loadScene("TestScenes/AnimatedCubes/AnimatedCubes.pyscene")
+m.loadScene("test_scenes/animated_cubes/animated_cubes.pyscene")
 
 # preInfinityBehavior (behavior before first keyframe)
 render_frames(m, "preInfinity", frames=[1,90,180,270,350])

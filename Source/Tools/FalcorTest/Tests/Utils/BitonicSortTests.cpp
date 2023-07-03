@@ -78,9 +78,9 @@ void testGpuSort(GPUUnitTestContext& ctx, BitonicSort& bitonicSort, const uint32
 } // namespace
 
 #if FALCOR_NVAPI_AVAILABLE
-GPU_TEST_D3D12(BitonicSort)
+GPU_TEST(BitonicSort, Device::Type::D3D12)
 #else
-GPU_TEST_D3D12(BitonicSort, "Requires NVAPI")
+GPU_TEST(BitonicSort, Device::Type::D3D12, "Requires NVAPI")
 #endif
 {
     // Create utility class for sorting.

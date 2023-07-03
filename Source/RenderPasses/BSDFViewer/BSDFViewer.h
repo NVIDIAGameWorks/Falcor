@@ -40,11 +40,11 @@ class BSDFViewer : public RenderPass
 public:
     FALCOR_PLUGIN_CLASS(BSDFViewer, "BSDFViewer", "BSDF inspection utility.");
 
-    static ref<BSDFViewer> create(ref<Device> pDevice, const Dictionary& dict) { return make_ref<BSDFViewer>(pDevice, dict); }
+    static ref<BSDFViewer> create(ref<Device> pDevice, const Properties& props) { return make_ref<BSDFViewer>(pDevice, props); }
 
-    BSDFViewer(ref<Device> pDevice, const Dictionary& dict);
+    BSDFViewer(ref<Device> pDevice, const Properties& props);
 
-    virtual Dictionary getScriptingDictionary() override;
+    virtual Properties getProperties() const override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
     virtual void compile(RenderContext* pRenderContext, const CompileData& compileData) override;
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
@@ -53,10 +53,8 @@ public:
     virtual bool onMouseEvent(const MouseEvent& mouseEvent) override;
     virtual bool onKeyEvent(const KeyboardEvent& keyEvent) override;
 
-    static void registerBindings(pybind11::module& m);
-
 private:
-    void parseDictionary(const Dictionary& dict);
+    void parseProperties(const Properties& props);
     bool loadEnvMap(const std::filesystem::path& path);
     void readPixelData();
 

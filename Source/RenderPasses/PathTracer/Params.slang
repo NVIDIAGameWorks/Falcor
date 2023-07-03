@@ -38,12 +38,25 @@ enum class ColorFormat : uint32_t
     LogLuvHDR       = 1,
 };
 
+FALCOR_ENUM_INFO(ColorFormat, {
+    { ColorFormat::RGBA32F, "RGBA32F" },
+    { ColorFormat::LogLuvHDR, "LogLuvHDR" },
+});
+FALCOR_ENUM_REGISTER(ColorFormat);
+
 enum class MISHeuristic : uint32_t
 {
     Balance     = 0,    ///< Balance heuristic.
     PowerTwo    = 1,    ///< Power heuristic (exponent = 2.0).
     PowerExp    = 2,    ///< Power heuristic (variable exponent).
 };
+
+FALCOR_ENUM_INFO(MISHeuristic, {
+    { MISHeuristic::Balance, "Balance" },
+    { MISHeuristic::PowerTwo, "PowerTwo" },
+    { MISHeuristic::PowerExp, "PowerExp" },
+});
+FALCOR_ENUM_REGISTER(MISHeuristic);
 
 // Define tile sizes in pixels.
 // The frame is divided into tiles stored in scanline order, with pixels in tiles enumerated in Morton order.

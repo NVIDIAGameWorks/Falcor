@@ -53,11 +53,11 @@ class RTXDIPass : public RenderPass
 public:
     FALCOR_PLUGIN_CLASS(RTXDIPass, "RTXDIPass", {"Standalone pass for direct lighting using RTXDI."})
 
-    static ref<RTXDIPass> create(ref<Device> pDevice, const Dictionary& dict) { return make_ref<RTXDIPass>(pDevice, dict); }
+    static ref<RTXDIPass> create(ref<Device> pDevice, const Properties& props) { return make_ref<RTXDIPass>(pDevice, props); }
 
-    RTXDIPass(ref<Device> pDevice, const Dictionary& dict);
+    RTXDIPass(ref<Device> pDevice, const Properties& props);
 
-    virtual Dictionary getScriptingDictionary() override;
+    virtual Properties getProperties() const override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
     virtual void compile(RenderContext* pRenderContext, const CompileData& compileData) override;
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
@@ -67,7 +67,7 @@ public:
     virtual bool onMouseEvent(const MouseEvent& mouseEvent) override;
 
 private:
-    void parseDictionary(const Dictionary& dict);
+    void parseProperties(const Properties& props);
 
     void prepareSurfaceData(RenderContext* pRenderContext, const ref<Texture>& pVBuffer);
     void finalShading(RenderContext* pRenderContext, const ref<Texture>& pVBuffer, const RenderData& renderData);

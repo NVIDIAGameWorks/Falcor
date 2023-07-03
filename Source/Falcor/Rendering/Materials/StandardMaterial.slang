@@ -53,7 +53,8 @@ struct StandardMaterial : MaterialBase, IMaterial
 
         StandardBSDFData d = {};
 
-        d.eta = sd.frontFacing ? (sd.IoR / data.IoR) : (data.IoR / sd.IoR);
+        float16_t IoR = header.getIoR();
+        d.eta = sd.frontFacing ? (sd.IoR / IoR) : (IoR / sd.IoR);
         d.diffuseTransmission = data.diffuseTransmission;
         d.specularTransmission = data.specularTransmission;
         if (d.diffuseTransmission > 0.f || d.specularTransmission > 0.f)
@@ -63,7 +64,7 @@ struct StandardMaterial : MaterialBase, IMaterial
 
         // Calculate the specular reflectance for dielectrics from the IoR, as in the Disney BSDF [Burley 2015].
         // UE4 uses 0.08 multiplied by a default specular value of 0.5, hence F0=0.04 as default. The default IoR=1.5 gives the same result.
-        float f = (data.IoR - 1.f) / (data.IoR + 1.f);
+        float f = (IoR - 1.f) / (IoR + 1.f);
         float F0 = f * f;
 
         // Sample base color.

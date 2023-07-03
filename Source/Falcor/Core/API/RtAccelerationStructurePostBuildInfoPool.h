@@ -42,6 +42,7 @@ enum class RtAccelerationStructurePostBuildInfoQueryType
 
 class FALCOR_API RtAccelerationStructurePostBuildInfoPool : public Object
 {
+    FALCOR_OBJECT(RtAccelerationStructurePostBuildInfoPool)
 public:
     struct Desc
     {

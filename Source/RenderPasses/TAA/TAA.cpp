@@ -54,7 +54,7 @@ extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registr
     ScriptBindings::registerBinding(regTAA);
 }
 
-TAA::TAA(ref<Device> pDevice, const Dictionary& dict)
+TAA::TAA(ref<Device> pDevice, const Properties& props)
     : RenderPass(pDevice)
 {
     mpPass = FullScreenPass::create(mpDevice, kShaderFilename);
@@ -63,22 +63,22 @@ TAA::TAA(ref<Device> pDevice, const Dictionary& dict)
     samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
     mpLinearSampler = Sampler::create(mpDevice, samplerDesc);
 
-    for (const auto& [key, value] : dict)
+    for (const auto& [key, value] : props)
     {
         if (key == kAlpha) mControls.alpha = value;
         else if (key == kColorBoxSigma) mControls.colorBoxSigma = value;
         else if (key == kAntiFlicker) mControls.antiFlicker = value;
-        else logWarning("Unknown field '{}' in a TemporalAA dictionary.", key);
+        else logWarning("Unknown property '{}' in a TemporalAA properties.", key);
     }
 }
 
-Dictionary TAA::getScriptingDictionary()
+Properties TAA::getProperties() const
 {
-    Dictionary dict;
-    dict[kAlpha] = mControls.alpha;
-    dict[kColorBoxSigma] = mControls.colorBoxSigma;
-    dict[kAntiFlicker] = mControls.antiFlicker;
-    return dict;
+    Properties props;
+    props[kAlpha] = mControls.alpha;
+    props[kColorBoxSigma] = mControls.colorBoxSigma;
+    props[kAntiFlicker] = mControls.antiFlicker;
+    return props;
 }
 
 RenderPassReflection TAA::reflect(const CompileData& compileData)

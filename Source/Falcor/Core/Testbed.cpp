@@ -50,17 +50,6 @@ Testbed::~Testbed()
     internalShutdown();
 }
 
-/// Keep a list of all created testbed instances.
-/// This is a workaround to make sure they are destroyed after Python has shutdown.
-static std::vector<ref<Testbed>> spTestbeds; // TODO: REMOVEGLOBAL
-
-ref<Testbed> Testbed::create(const Options& options)
-{
-    ref<Testbed> pTestbed = make_ref<Testbed>(options);
-    spTestbeds.push_back(pTestbed);
-    return pTestbed;
-}
-
 void Testbed::run()
 {
     mShouldInterrupt = false;
@@ -154,9 +143,17 @@ void Testbed::resizeFrameBuffer(uint32_t width, uint32_t height)
     }
 }
 
-void Testbed::loadScene(const std::filesystem::path& path)
+void Testbed::loadScene(const std::filesystem::path& path, SceneBuilder::Flags buildFlags)
 {
-    mpScene = Scene::create(mpDevice, path);
+    mpScene = SceneBuilder(mpDevice, path, Settings(), buildFlags).getScene();
+
+    if (mpRenderGraph)
+        mpRenderGraph->setScene(mpScene);
+}
+
+void Testbed::loadSceneFromString(const std::string& scene, const std::string extension, SceneBuilder::Flags buildFlags)
+{
+    mpScene = SceneBuilder(mpDevice, scene.data(), scene.length(), extension, Settings(), buildFlags).getScene();
 
     if (mpRenderGraph)
         mpRenderGraph->setScene(mpScene);
@@ -268,6 +265,11 @@ void Testbed::internalInit(const Options& options)
     OSServices::start();
     Threading::start();
 
+    // Populate the data search paths from the config file, only adding those that aren't in already
+    auto searchDirectories = Settings::getGlobalSettings().getSearchDirectories("media");
+    for (auto& it : searchDirectories.get())
+        addDataDirectory(it);
+
     // Create the device.
     mpDevice = make_ref<Device>(options.deviceDesc);
 
@@ -291,7 +293,7 @@ void Testbed::internalInit(const Options& options)
     mpTargetFBO = Fbo::create2D(mpDevice, fboSize.x, fboSize.y, options.colorFormat, options.depthFormat);
 
     // Set global shader defines.
-    Program::DefineList globalDefines = {
+    DefineList globalDefines = {
         {"FALCOR_NVAPI_AVAILABLE", (FALCOR_NVAPI_AVAILABLE && mpDevice->getType() == Device::Type::D3D12) ? "1" : "0"},
 #if FALCOR_NVAPI_AVAILABLE
         {"NV_SHADER_EXTN_SLOT", "u999"},
@@ -434,7 +436,7 @@ void Testbed::renderUI()
     mpGui->render(pRenderContext, mpTargetFBO, (float)mFrameRate.getLastFrameTime());
 }
 
-void Testbed::captureOutput(std::string filename, uint32_t outputIndex)
+void Testbed::captureOutput(const std::filesystem::path& path, uint32_t outputIndex)
 {
     if (!mpImageProcessing)
         mpImageProcessing = std::make_unique<ImageProcessing>(mpDevice);
@@ -565,7 +567,7 @@ void Testbed::captureOutput(std::string filename, uint32_t outputIndex)
         if (mask == TextureChannelFlags::RGBA)
             flags |= Bitmap::ExportFlags::ExportAlpha;
 
-        pTex->captureToFile(0, 0, filename, fileformat, flags, false /* async */);
+        pTex->captureToFile(0, 0, path, fileformat, flags, false /* async */);
     }
 }
 
@@ -576,6 +578,7 @@ FALCOR_SCRIPT_BINDING(Testbed)
     FALCOR_SCRIPT_BINDING_DEPENDENCY(Clock)
     FALCOR_SCRIPT_BINDING_DEPENDENCY(Profiler)
     FALCOR_SCRIPT_BINDING_DEPENDENCY(Scene)
+    FALCOR_SCRIPT_BINDING_DEPENDENCY(SceneBuilder)
 
     using namespace pybind11::literals;
 
@@ -583,7 +586,8 @@ FALCOR_SCRIPT_BINDING(Testbed)
 
     testbed.def(
         pybind11::init(
-            [](uint32_t width, uint32_t height, bool create_window, Device::Type device_type, uint32_t gpu)
+            [](uint32_t width, uint32_t height, bool create_window, Device::Type device_type, uint32_t gpu, bool enable_debug_layers,
+               bool enable_aftermath)
             {
                 Testbed::Options options;
                 options.windowDesc.width = width;
@@ -591,15 +595,22 @@ FALCOR_SCRIPT_BINDING(Testbed)
                 options.createWindow = create_window;
                 options.deviceDesc.type = device_type;
                 options.deviceDesc.gpu = gpu;
+                options.deviceDesc.enableDebugLayer = enable_debug_layers;
+                options.deviceDesc.enableAftermath = enable_aftermath;
                 return Testbed::create(options);
             }
         ),
-        "width"_a = 1920, "height"_a = 1080, "create_window"_a = false, "device_type"_a = Device::Type::Default, "gpu"_a = 0
+        "width"_a = 1920, "height"_a = 1080, "create_window"_a = false, "device_type"_a = Device::Type::Default, "gpu"_a = 0,
+        "enable_debug_layers"_a = false, "enable_aftermath"_a = false
     );
     testbed.def("run", &Testbed::run);
     testbed.def("frame", &Testbed::frame);
     testbed.def("resize_frame_buffer", &Testbed::resizeFrameBuffer, "width"_a, "height"_a);
-    testbed.def("load_scene", &Testbed::loadScene, "path"_a);
+    testbed.def("load_scene", &Testbed::loadScene, "path"_a, "build_flags"_a = SceneBuilder::Flags::Default);
+    testbed.def(
+        "load_scene_from_string", &Testbed::loadSceneFromString, "scene"_a, "extension"_a = "pyscene",
+        "build_flags"_a = SceneBuilder::Flags::Default
+    );
     testbed.def("create_render_graph", &Testbed::createRenderGraph, "name"_a = "");
     testbed.def("load_render_graph", &Testbed::loadRenderGraph, "path"_a);
     testbed.def("capture_output", &Testbed::captureOutput, "path"_a, "output_index"_a = uint32_t(0)); // PYTHONDEPRECATED
@@ -609,6 +620,7 @@ FALCOR_SCRIPT_BINDING(Testbed)
     testbed.def_property_readonly("scene", &Testbed::getScene);
     testbed.def_property_readonly("clock", &Testbed::getClock); // PYTHONDEPRECATED
     testbed.def_property("render_graph", &Testbed::getRenderGraph, &Testbed::setRenderGraph);
+    testbed.def_property("show_ui", &Testbed::getShowUI, &Testbed::setShowUI);
 
     // PYTHONDEPRECATED BEGIN
     testbed.def(
@@ -627,7 +639,7 @@ FALCOR_SCRIPT_BINDING(Testbed)
         "width"_a = 1920, "height"_a = 1080, "createWindow"_a = false, "deviceType"_a = Device::Type::Default, "gpu"_a = 0
     );
     testbed.def("resizeFrameBuffer", &Testbed::resizeFrameBuffer, "width"_a, "height"_a);
-    testbed.def("loadScene", &Testbed::loadScene, "path"_a);
+    testbed.def("loadScene", &Testbed::loadScene, "path"_a, "build_flags"_a = SceneBuilder::Flags::Default);
     testbed.def("createRenderGraph", &Testbed::createRenderGraph, "name"_a = "");
     testbed.def("loadRenderGraph", &Testbed::loadRenderGraph, "path"_a);
     testbed.def("captureOutput", &Testbed::captureOutput, "filename"_a, "outputIndex"_a = uint32_t(0)); // PYTHONDEPRECATED

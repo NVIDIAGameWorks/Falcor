@@ -74,6 +74,7 @@ namespace Falcor
             pred.TraverseInstanceProxies(true);
         }
 
+
         UsdPrimRange range = UsdPrimRange::PreAndPostVisit(rootPrim, pred);
 
         for (auto it = range.begin(); it != range.end(); ++it)
@@ -331,6 +332,7 @@ namespace Falcor
 
         timeReport.measure("Open stage");
 
+        Falcor::addDataDirectory(path.parent_path());
         ImporterContext ctx(path, pStage, builder, dict, timeReport);
 
         // Falcor uses meter scene unit; scale if necessary. Note that Omniverse uses cm by default.

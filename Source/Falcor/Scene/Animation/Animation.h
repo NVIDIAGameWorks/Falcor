@@ -43,6 +43,7 @@ namespace Falcor
 
     class FALCOR_API Animation : public Object
     {
+        FALCOR_OBJECT(Animation)
     public:
         enum class InterpolationMode
         {

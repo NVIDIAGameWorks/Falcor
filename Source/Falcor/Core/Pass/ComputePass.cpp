@@ -31,8 +31,7 @@
 
 namespace Falcor
 {
-ComputePass::ComputePass(ref<Device> pDevice, const Program::Desc& desc, const Program::DefineList& defines, bool createVars)
-    : mpDevice(pDevice)
+ComputePass::ComputePass(ref<Device> pDevice, const Program::Desc& desc, const DefineList& defines, bool createVars) : mpDevice(pDevice)
 {
     auto pProg = ComputeProgram::create(mpDevice, desc, defines);
     mpState = ComputeState::create(mpDevice);
@@ -46,7 +45,7 @@ ref<ComputePass> ComputePass::create(
     ref<Device> pDevice,
     const std::filesystem::path& path,
     const std::string& csEntry,
-    const Program::DefineList& defines,
+    const DefineList& defines,
     bool createVars
 )
 {
@@ -55,7 +54,7 @@ ref<ComputePass> ComputePass::create(
     return create(pDevice, desc, defines, createVars);
 }
 
-ref<ComputePass> ComputePass::create(ref<Device> pDevice, const Program::Desc& desc, const Program::DefineList& defines, bool createVars)
+ref<ComputePass> ComputePass::create(ref<Device> pDevice, const Program::Desc& desc, const DefineList& defines, bool createVars)
 {
     return ref<ComputePass>(new ComputePass(pDevice, desc, defines, createVars));
 }

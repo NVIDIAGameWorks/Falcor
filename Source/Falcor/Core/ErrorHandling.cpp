@@ -28,6 +28,7 @@
 #include "ErrorHandling.h"
 #include "Platform/OS.h"
 #include "Utils/Logger.h"
+#include "API/Aftermath.h"
 #include <atomic>
 
 namespace Falcor
@@ -125,6 +126,11 @@ void reportErrorAndAllowRetry(const std::string& msg)
     std::string extendedMsg = msg;
     if (showStackTrace)
         extendedMsg += "\n\nStacktrace:\n" + getStackTrace(3);
+
+#if FALCOR_HAS_AFTERMATH
+    if (!waitForAftermathDumps())
+        extendedMsg += "\n\nAftermath GPU crash dump generation failed.\n\n";
+#endif
 
     logFatal(extendedMsg);
 

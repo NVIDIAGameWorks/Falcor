@@ -54,6 +54,30 @@ enum class SceneDebuggerMode : uint32_t
     FlatShaded,
 };
 
+FALCOR_ENUM_INFO(SceneDebuggerMode, {
+    // Geometry
+    { SceneDebuggerMode::HitType, "HitType" },
+    { SceneDebuggerMode::InstanceID, "InstanceID" },
+    { SceneDebuggerMode::MaterialID, "MaterialID" },
+    { SceneDebuggerMode::GeometryID, "GeometryID" },
+    { SceneDebuggerMode::BlasID, "BlasID" },
+    { SceneDebuggerMode::InstancedGeometry, "InstancedGeometry" },
+    { SceneDebuggerMode::PrimitiveID, "PrimitiveID" },
+    // Shading data
+    { SceneDebuggerMode::FaceNormal, "FaceNormal" },
+    { SceneDebuggerMode::ShadingNormal, "ShadingNormal" },
+    { SceneDebuggerMode::ShadingTangent, "ShadingTangent" },
+    { SceneDebuggerMode::ShadingBitangent, "ShadingBitangent" },
+    { SceneDebuggerMode::FrontFacingFlag, "FrontFacingFlag" },
+    { SceneDebuggerMode::BackfacingShadingNormal, "BackfacingShadingNormal" },
+    { SceneDebuggerMode::TexCoords, "TexCoords" },
+    // Material properties
+    { SceneDebuggerMode::GuideNormal, "GuideNormal" },
+    { SceneDebuggerMode::Roughness, "Roughness" },
+    { SceneDebuggerMode::FlatShaded, "FlatShaded" },
+});
+FALCOR_ENUM_REGISTER(SceneDebuggerMode);
+
 struct SceneDebuggerParams
 {
     uint mode = (uint)SceneDebuggerMode::FaceNormal; ///< Current visualization mode. See SceneDebuggerMode.

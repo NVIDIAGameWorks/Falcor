@@ -43,33 +43,33 @@ namespace
     const std::string kFadeFactor = "fadeFactor";
 }
 
-CrossFade::CrossFade(ref<Device> pDevice, const Dictionary& dict)
+CrossFade::CrossFade(ref<Device> pDevice, const Properties& props)
     : RenderPass(pDevice)
 {
     // Parse dictionary.
-    for (const auto& [key, value] : dict)
+    for (const auto& [key, value] : props)
     {
         if (key == kOutputFormat) mOutputFormat = value;
         else if (key == kEnableAutoFade) mEnableAutoFade = value;
         else if (key == kWaitFrameCount) mWaitFrameCount = value;
         else if (key == kFadeFrameCount) mFadeFrameCount = value;
         else if (key == kFadeFactor) mFadeFactor = value;
-        else logWarning("Unknown field '{}' in CrossFade pass dictionary.", key);
+        else logWarning("Unknown property '{}' in CrossFade pass properties.", key);
     }
 
     // Create resources.
     mpFadePass = ComputePass::create(mpDevice, kShaderFile, "main");
 }
 
-Dictionary CrossFade::getScriptingDictionary()
+Properties CrossFade::getProperties() const
 {
-    Dictionary dict;
-    if (mOutputFormat != ResourceFormat::Unknown) dict[kOutputFormat] = mOutputFormat;
-    dict[kEnableAutoFade] = mEnableAutoFade;
-    dict[kWaitFrameCount] = mWaitFrameCount;
-    dict[kFadeFrameCount] = mFadeFrameCount;
-    dict[kFadeFactor] = mFadeFactor;
-    return dict;
+    Properties props;
+    if (mOutputFormat != ResourceFormat::Unknown) props[kOutputFormat] = mOutputFormat;
+    props[kEnableAutoFade] = mEnableAutoFade;
+    props[kWaitFrameCount] = mWaitFrameCount;
+    props[kFadeFrameCount] = mFadeFrameCount;
+    props[kFadeFactor] = mFadeFactor;
+    return props;
 }
 
 RenderPassReflection CrossFade::reflect(const CompileData& compileData)

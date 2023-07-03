@@ -9,6 +9,7 @@ target_sources(Falcor PRIVATE
     GlobalState.h
 
     Core/Assert.h
+    Core/Enum.h
     Core/ErrorHandling.cpp
     Core/ErrorHandling.h
     Core/Errors.cpp
@@ -31,6 +32,8 @@ target_sources(Falcor PRIVATE
     Core/Window.cpp
     Core/Window.h
 
+    Core/API/Aftermath.h
+    Core/API/Aftermath.cpp
     Core/API/BlendState.cpp
     Core/API/BlendState.h
     Core/API/BlitContext.cpp
@@ -38,7 +41,6 @@ target_sources(Falcor PRIVATE
     Core/API/BlitReduction.3d.slang
     Core/API/Buffer.cpp
     Core/API/Buffer.h
-    Core/API/Common.cpp
     Core/API/Common.h
     Core/API/ComputeContext.cpp
     Core/API/ComputeContext.h
@@ -94,10 +96,9 @@ target_sources(Falcor PRIVATE
     Core/API/RtStateObject.h
     Core/API/Sampler.cpp
     Core/API/Sampler.h
-    Core/API/Shader.cpp
-    Core/API/Shader.h
     Core/API/ShaderResourceType.h
     Core/API/ShaderTable.h
+    Core/API/ShaderType.h
     Core/API/Swapchain.cpp
     Core/API/Swapchain.h
     Core/API/Texture.cpp
@@ -133,6 +134,7 @@ target_sources(Falcor PRIVATE
 
     Core/Program/ComputeProgram.cpp
     Core/Program/ComputeProgram.h
+    Core/Program/DefineList.h
     Core/Program/GraphicsProgram.cpp
     Core/Program/GraphicsProgram.h
     Core/Program/Program.cpp
@@ -247,7 +249,6 @@ target_sources(Falcor PRIVATE
     Rendering/Materials/StandardMaterialInstance.slang
     Rendering/Materials/StandardMaterial.slang
     Rendering/Materials/TexLODHelpers.slang
-    Rendering/Materials/TexLODTypes.cpp
     Rendering/Materials/TexLODTypes.slang
 
     Rendering/Materials/PBRT/PBRTDiffuseMaterial.slang
@@ -534,6 +535,8 @@ target_sources(Falcor PRIVATE
     Utils/ObjectIDPython.h
     Utils/PathResolving.cpp
     Utils/PathResolving.h
+    Utils/Properties.cpp
+    Utils/Properties.h
     Utils/Settings.cpp
     Utils/Settings.h
     Utils/SharedCache.h
@@ -666,9 +669,9 @@ target_sources(Falcor PRIVATE
 
     Utils/Scripting/Console.cpp
     Utils/Scripting/Console.h
-    Utils/Scripting/Dictionary.h
     Utils/Scripting/ndarray.cpp
     Utils/Scripting/ndarray.h
+    Utils/Scripting/PythonDictionary.h
     Utils/Scripting/ScriptBindings.cpp
     Utils/Scripting/ScriptBindings.h
     Utils/Scripting/Scripting.cpp
@@ -830,16 +833,43 @@ target_compile_options(Falcor
             -Wno-literal-suffix
             -Wno-class-memaccess
             -Wno-strict-aliasing
+            -Wno-maybe-uninitialized
+            -Wno-stringop-truncation
         >
     PRIVATE
         $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/bigobj>  # big object files
     )
 
+if(FALCOR_ENABLE_ASAN)
+    target_compile_options(Falcor
+        PUBLIC
+            $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:
+                /fsanitize=address
+            >
+            $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:GNU>>:
+                -fsanitize=address
+            >
+    )
+    target_link_options(Falcor
+        PUBLIC
+            $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:GNU>>:
+                -fsanitize=address
+            >
+    )
+    target_compile_definitions(Falcor
+        PUBLIC
+            $<$<COMPILE_LANG_AND_ID:CXX,MSVC>:
+                _DISABLE_VECTOR_ANNOTATION
+                _DISABLE_STRING_ANNOTATION
+            >
+    )
+endif()
+
 if(FALCOR_PRECOMPILED_HEADERS)
-target_precompile_headers(Falcor
-    PRIVATE
-        Falcor.h
-)
+    target_precompile_headers(Falcor
+        PRIVATE
+            Falcor.h
+    )
 endif()
 
 target_link_options(Falcor
@@ -865,6 +895,7 @@ target_compile_definitions(Falcor
         # Falcor feature flags.
         FALCOR_HAS_D3D12=$<BOOL:${FALCOR_HAS_D3D12}>
         FALCOR_HAS_VULKAN=$<BOOL:${FALCOR_HAS_VULKAN}>
+        FALCOR_HAS_AFTERMATH=$<BOOL:${FALCOR_HAS_AFTERMATH}>
         FALCOR_HAS_NVAPI=$<BOOL:${FALCOR_HAS_NVAPI}>
         FALCOR_HAS_CUDA=$<BOOL:${FALCOR_HAS_CUDA}>
         FALCOR_HAS_D3D12_AGILITY_SDK=$<BOOL:${FALCOR_HAS_D3D12_AGILITY_SDK}>
@@ -902,6 +933,7 @@ target_link_libraries(Falcor
         glfw mikktspace nvtt
         $<$<BOOL:${FALCOR_HAS_D3D12}>:d3d12>
         $<$<BOOL:${FALCOR_HAS_D3D12_AGILITY_SDK}>:agility-sdk>
+        $<$<BOOL:${FALCOR_HAS_AFTERMATH}>:aftermath>
         $<$<BOOL:${FALCOR_HAS_NVAPI}>:nvapi>
         # Windows system libraries.
         $<$<PLATFORM_ID:Windows>:shcore.lib>

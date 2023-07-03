@@ -41,7 +41,8 @@ struct PBRTDielectricMaterial : MaterialBase, IMaterial
         SamplerState s = ms.getTextureSampler(header.getDefaultTextureSamplerID());
 
         const float2 roughness = ms.sampleTexture(data.texSpecular, s, sd.uv, data.specular, lod).rg;
-        float eta = !sd.frontFacing ? 1.0f / data.IoR : data.IoR;
+        float16_t IoR = header.getIoR();
+        float eta = !sd.frontFacing ? 1.0f / IoR : IoR;
 
         // Compute final shading frame.
         // Do not flip the shading normal for backfacing hits. The BSDF handles transmission from both sides.

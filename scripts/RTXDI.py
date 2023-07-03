@@ -6,7 +6,7 @@ def render_graph_RTXDI():
     g.addPass(VBufferRT, "VBufferRT")
     RTXDIPass = createPass("RTXDIPass")
     g.addPass(RTXDIPass, "RTXDIPass")
-    AccumulatePass = createPass("AccumulatePass", {'enabled': False, 'precisionMode': AccumulatePrecision.Single})
+    AccumulatePass = createPass("AccumulatePass", {'enabled': False, 'precisionMode': 'Single'})
     g.addPass(AccumulatePass, "AccumulatePass")
     ToneMapper = createPass("ToneMapper", {'autoExposure': False, 'exposureCompensation': 0.0})
     g.addPass(ToneMapper, "ToneMapper")

@@ -48,14 +48,14 @@ RtStateObject::RtStateObject(ref<Device> pDevice, const Desc& desc) : mpDevice(p
     {
         if (pEntryPointGroup->getType() == EntryPointGroupKernels::Type::RtHitGroup)
         {
-            const Shader* pIntersection = pEntryPointGroup->getShader(ShaderType::Intersection);
-            const Shader* pAhs = pEntryPointGroup->getShader(ShaderType::AnyHit);
-            const Shader* pChs = pEntryPointGroup->getShader(ShaderType::ClosestHit);
+            const EntryPointKernel* pIntersection = pEntryPointGroup->getKernel(ShaderType::Intersection);
+            const EntryPointKernel* pAhs = pEntryPointGroup->getKernel(ShaderType::AnyHit);
+            const EntryPointKernel* pChs = pEntryPointGroup->getKernel(ShaderType::ClosestHit);
 
             gfx::HitGroupDesc hitgroupDesc = {};
-            hitgroupDesc.anyHitEntryPoint = pAhs ? pAhs->getEntryPoint().c_str() : nullptr;
-            hitgroupDesc.closestHitEntryPoint = pChs ? pChs->getEntryPoint().c_str() : nullptr;
-            hitgroupDesc.intersectionEntryPoint = pIntersection ? pIntersection->getEntryPoint().c_str() : nullptr;
+            hitgroupDesc.anyHitEntryPoint = pAhs ? pAhs->getEntryPointName().c_str() : nullptr;
+            hitgroupDesc.closestHitEntryPoint = pChs ? pChs->getEntryPointName().c_str() : nullptr;
+            hitgroupDesc.intersectionEntryPoint = pIntersection ? pIntersection->getEntryPointName().c_str() : nullptr;
             hitgroupDesc.hitGroupName = pEntryPointGroup->getExportName().c_str();
             hitGroups.push_back(hitgroupDesc);
         }

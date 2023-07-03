@@ -62,9 +62,11 @@ class D3D12DescriptorPool;
 class PipelineCreationAPIDispatcher;
 class ProgramManager;
 class Profiler;
+class AftermathContext;
 
 class FALCOR_API Device : public Object
 {
+    FALCOR_OBJECT(Device)
 public:
     /**
      * Maximum number of in-flight frames.
@@ -93,6 +95,9 @@ public:
         /// Enable the debug layer. The default for release build is false, for debug build it's true.
         bool enableDebugLayer = FALCOR_DEFAULT_ENABLE_DEBUG_LAYER;
 
+        /// Enable NVIDIA NSight Aftermath GPU crash dump.
+        bool enableAftermath = false;
+
         /// The maximum number of entries allowable in the shader cache. A value of 0 indicates no limit.
         uint32_t maxShaderCacheEntryCount = 1000;
 
@@ -103,6 +108,12 @@ public:
         /// GUID list for experimental features
         std::vector<GUID> experimentalFeatures;
 #endif
+    };
+
+    struct Info
+    {
+        std::string adapterName;
+        std::string apiName;
     };
 
     struct Limits
@@ -125,7 +136,7 @@ public:
         ConservativeRasterizationTier3 = 0x80,          ///< On D3D12, conservative rasterization tier 3 is supported.
         RasterizerOrderedViews = 0x100,                 ///< On D3D12, rasterizer ordered views (ROVs) are supported.
         WaveOperations = 0x200,
-        ShaderExecutionReorderingAPI = 0x400,           ///< On D3D12, this means SER API is available (in the future this will be part of the shader model).
+        ShaderExecutionReorderingAPI = 0x400,           ///< On D3D12 and Vulkan, this means SER API is available (in the future this will be part of the shader model).
         RaytracingReordering = 0x800,                   ///< On D3D12, this means SER is supported on the hardware.
 
         // clang-format on
@@ -215,6 +226,10 @@ public:
      */
     const ref<Sampler>& getDefaultSampler() const { return mpDefaultSampler; }
 
+#if FALCOR_HAS_AFTERMATH
+    AftermathContext* getAftermathContext() const { return mpAftermathContext.get(); }
+#endif
+
 #if FALCOR_HAS_D3D12
     const ref<D3D12DescriptorPool>& getD3D12CpuDescriptorPool() const
     {
@@ -233,6 +248,8 @@ public:
     void releaseResource(ISlangUnknown* pResource);
 
     double getGpuTimestampFrequency() const { return mGpuTimestampFrequency; } // ms/tick
+
+    const Info& getInfo() const { return mInfo; }
 
     /**
      * Get the device limits.
@@ -323,9 +340,14 @@ private:
     std::unique_ptr<RenderContext> mpRenderContext;
     double mGpuTimestampFrequency;
 
+    Info mInfo;
     Limits mLimits;
     SupportedFeatures mSupportedFeatures = SupportedFeatures::None;
     ShaderModel mSupportedShaderModel = ShaderModel::Unknown;
+
+#if FALCOR_HAS_AFTERMATH
+    std::unique_ptr<AftermathContext> mpAftermathContext;
+#endif
 
 #if FALCOR_NVAPI_AVAILABLE
     std::unique_ptr<PipelineCreationAPIDispatcher> mpAPIDispatcher;

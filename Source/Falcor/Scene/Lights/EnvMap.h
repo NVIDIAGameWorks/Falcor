@@ -45,6 +45,7 @@ namespace Falcor
     */
     class FALCOR_API EnvMap : public Object
     {
+        FALCOR_OBJECT(EnvMap)
     public:
         virtual ~EnvMap() = default;
 
@@ -138,6 +139,7 @@ namespace Falcor
 
         Changes                 mChanges = Changes::None;
 
+        friend class Scene;
         friend class SceneCache;
     };
 

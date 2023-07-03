@@ -45,14 +45,21 @@ public:
         Stratified,
     };
 
+    FALCOR_ENUM_INFO(SamplePattern, {
+        { SamplePattern::Center, "Center" },
+        { SamplePattern::DirectX, "DirectX" },
+        { SamplePattern::Halton, "Halton" },
+        { SamplePattern::Stratified, "Stratified" },
+    });
+
     virtual void renderUI(Gui::Widgets& widget) override;
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
-    virtual Dictionary getScriptingDictionary() override;
+    virtual Properties getProperties() const override;
     virtual void setScene(RenderContext* pRenderContext, const ref<Scene>& pScene) override;
 
 protected:
     GBufferBase(ref<Device> pDevice) : RenderPass(pDevice) {}
-    virtual void parseDictionary(const Dictionary& dict);
+    virtual void parseProperties(const Properties& props);
     virtual void setCullMode(RasterizerState::CullMode mode) { mCullMode = mode; }
     void updateFrameDim(const uint2 frameDim);
     void updateSamplePattern();
@@ -79,3 +86,5 @@ protected:
 
     bool                            mOptionsChanged = false;                        ///< Indicates whether any options that affect the output have changed since last frame.
 };
+
+FALCOR_ENUM_REGISTER(GBufferBase::SamplePattern);

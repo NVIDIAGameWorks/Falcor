@@ -750,7 +750,7 @@ void Texture::apiInit(const void* pData, bool autoGenMips)
     FALCOR_ASSERT(desc.numMipLevels > 0 && desc.size.depth > 0 && desc.arraySize > 0 && desc.sampleDesc.numSamples > 0);
 
     // create resource
-    mGfxTextureResource = mpDevice->getGfxDevice()->createTextureResource(desc, nullptr);
+    FALCOR_GFX_CALL(mpDevice->getGfxDevice()->createTextureResource(desc, nullptr, mGfxTextureResource.writeRef()));
     FALCOR_ASSERT(mGfxTextureResource);
 
     // upload init data through texture class

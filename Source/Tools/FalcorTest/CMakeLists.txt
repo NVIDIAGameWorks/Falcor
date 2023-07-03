@@ -2,16 +2,19 @@ add_falcor_executable(FalcorTest)
 
 target_sources(FalcorTest PRIVATE
     FalcorTest.cpp
-    FalcorTest.h
 
+    Tests/Core/AftermathTests.cpp
+    Tests/Core/AftermathTests.cs.slang
     Tests/Core/BufferAccessTests.cpp
     Tests/Core/BufferAccessTests.cs.slang
     Tests/Core/BufferTests.cpp
     Tests/Core/BufferTests.cs.slang
     Tests/Core/ConstantBufferTests.cpp
     Tests/Core/ConstantBufferTests.cs.slang
+    Tests/Core/CoreTests.cpp
     Tests/Core/DDSReadTests.cpp
     Tests/Core/DDSReadTests.cs.slang
+    Tests/Core/EnumTests.cpp
     Tests/Core/LargeBuffer.cpp
     Tests/Core/LargeBuffer.cs.slang
     Tests/Core/ObjectTests.cpp
@@ -146,6 +149,7 @@ target_sources(FalcorTest PRIVATE
     Tests/Utils/ParallelReductionTests.cpp
     Tests/Utils/PathResolvingTests.cpp
     Tests/Utils/PrefixSumTests.cpp
+    Tests/Utils/PropertiesTests.cpp
     Tests/Utils/QuaternionTests.cpp
     Tests/Utils/RectangleTests.cpp
     Tests/Utils/SettingsTests.cpp

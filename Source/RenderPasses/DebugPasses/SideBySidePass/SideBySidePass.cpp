@@ -35,17 +35,17 @@ namespace
     const std::string kSplitShader = "RenderPasses/DebugPasses/SideBySidePass/SideBySide.ps.slang";
 }
 
-SideBySidePass::SideBySidePass(ref<Device> pDevice, const Dictionary& dict)
+SideBySidePass::SideBySidePass(ref<Device> pDevice, const Properties& props)
     : ComparisonPass(pDevice)
 {
     createProgram();
 
-    for (const auto& [key, value] : dict)
+    for (const auto& [key, value] : props)
     {
         if (key == kImageLeftBound) mImageLeftBound = value;
         else if (!parseKeyValuePair(key, value))
         {
-            logWarning("Unknown field '{}' in a SideBySidePass dictionary.", key);
+            logWarning("Unknown property '{}' in a SideBySidePass properties.", key);
         }
     }
 }

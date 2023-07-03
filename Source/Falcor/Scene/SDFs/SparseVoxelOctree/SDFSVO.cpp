@@ -178,7 +178,7 @@ namespace Falcor
         {
             Program::Desc desc;
             desc.addShaderLibrary(kSDFSVOBuildLevelFromTextureShaderName).csEntry("main").setShaderModel("6_5");
-            mpBuildFinestLevelFromDistanceTexturePass = ComputePass::create(mpDevice, desc, Program::DefineList({ {"FINEST_LEVEL_PASS", "1"} }));
+            mpBuildFinestLevelFromDistanceTexturePass = ComputePass::create(mpDevice, desc, DefineList({ {"FINEST_LEVEL_PASS", "1"} }));
         }
 
         // Create voxels for the bottom level.
@@ -201,7 +201,7 @@ namespace Falcor
         {
             Program::Desc desc;
             desc.addShaderLibrary(kSDFSVOBuildLevelFromTextureShaderName).csEntry("main").setShaderModel("6_5");
-            mpBuildLevelFromDistanceTexturePass = ComputePass::create(mpDevice, desc, Program::DefineList({ {"FINEST_LEVEL_PASS", "0"} }));
+            mpBuildLevelFromDistanceTexturePass = ComputePass::create(mpDevice, desc, DefineList({ {"FINEST_LEVEL_PASS", "0"} }));
         }
 
         // Allocate a buffer that will hold the voxel count for each level except the bottom level (as we already obtained that previously).
@@ -252,7 +252,7 @@ namespace Falcor
 
             if (!mpSortLocationCodesPass)
             {
-                Program::DefineList definesList;
+                DefineList definesList;
                 definesList.add("GROUP_SIZE", std::to_string(groupSize));
                 definesList.add("BUFFER_SIZE", std::to_string(hashTableCapacity));
                 definesList.add("LOCAL_BMS", std::to_string(kSDFSVOLocationCodeLocalBMS));

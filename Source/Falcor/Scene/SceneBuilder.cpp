@@ -210,8 +210,8 @@ namespace Falcor
         mSceneData.pMaterials = std::make_unique<MaterialSystem>(mpDevice);
     }
 
-    SceneBuilder::SceneBuilder(ref<Device> pDevice, const std::filesystem::path& path, const Settings& settings, Flags buildFlags)
-        : SceneBuilder(pDevice, settings, buildFlags)
+    SceneBuilder::SceneBuilder(ref<Device> pDevice, const std::filesystem::path& path, const Settings& settings, Flags flags)
+        : SceneBuilder(pDevice, settings, flags)
     {
         std::filesystem::path fullPath;
         if (!findFileInDataDirectories(path, fullPath))
@@ -220,11 +220,11 @@ namespace Falcor
         }
 
         // Compute scene cache key based on absolute scene path and build flags.
-        mSceneCacheKey = computeSceneCacheKey(fullPath, buildFlags);
+        mSceneCacheKey = computeSceneCacheKey(fullPath, flags);
 
         // Determine if scene cache should be written after import.
-        bool useCache = is_set(buildFlags, Flags::UseCache);
-        bool rebuildCache = is_set(buildFlags, Flags::RebuildCache);
+        bool useCache = is_set(flags, Flags::UseCache);
+        bool rebuildCache = is_set(flags, Flags::RebuildCache);
         mWriteSceneCache = useCache || rebuildCache;
 
         // Try to load scene cache if supported, available and requested.
@@ -242,6 +242,12 @@ namespace Falcor
         }
 
         import(path);
+    }
+
+    SceneBuilder::SceneBuilder(ref<Device> pDevice, const void* buffer, size_t byteSize, std::string_view extension, const Settings& settings, Flags flags)
+        : SceneBuilder(pDevice, settings, flags)
+    {
+        importFromMemory(buffer, byteSize, extension);
     }
 
     SceneBuilder::~SceneBuilder() {}
@@ -263,6 +269,21 @@ namespace Falcor
         else
         {
             throw ImporterError(fullPath, "Unknown file extension.");
+        }
+    }
+
+    void SceneBuilder::importFromMemory(const void* buffer, size_t byteSize, std::string_view extension, const pybind11::dict& dict)
+    {
+        logInfo("Importing scene from memory");
+
+        mSceneData.path = "";
+        if (auto importer = Importer::create(extension))
+        {
+            importer->importSceneFromMemory(buffer, byteSize, extension, *this, dict);
+        }
+        else
+        {
+            throw ImporterError("", "Unknown file extension.");
         }
     }
 

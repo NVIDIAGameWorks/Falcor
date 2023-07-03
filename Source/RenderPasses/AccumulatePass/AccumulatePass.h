@@ -46,12 +46,12 @@ class AccumulatePass : public RenderPass
 public:
     FALCOR_PLUGIN_CLASS(AccumulatePass, "AccumulatePass", "Temporal accumulation.");
 
-    static ref<AccumulatePass> create(ref<Device> pDevice, const Dictionary& dict) { return make_ref<AccumulatePass>(pDevice, dict); }
+    static ref<AccumulatePass> create(ref<Device> pDevice, const Properties& props) { return make_ref<AccumulatePass>(pDevice, props); }
 
-    AccumulatePass(ref<Device> pDevice, const Dictionary& dict);
+    AccumulatePass(ref<Device> pDevice, const Properties& props);
     virtual ~AccumulatePass() = default;
 
-    virtual Dictionary getScriptingDictionary() override;
+    virtual Properties getProperties() const override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
     virtual void renderUI(Gui::Widgets& widget) override;
@@ -73,12 +73,24 @@ public:
         SingleCompensated,      ///< Compensated summation (Kahan summation) in single precision.
     };
 
+    FALCOR_ENUM_INFO(Precision, {
+        { Precision::Double, "Double" },
+        { Precision::Single, "Single" },
+        { Precision::SingleCompensated, "SingleCompensated" },
+    });
+
     enum class OverflowMode : uint32_t
     {
         Stop,   ///< Stop accumulation and retain accumulated image.
         Reset,  ///< Reset accumulation.
         EMA,    ///< Switch to exponential moving average accumulation.
     };
+
+    FALCOR_ENUM_INFO(OverflowMode, {
+        { OverflowMode::Stop, "Stop" },
+        { OverflowMode::Reset, "Reset" },
+        { OverflowMode::EMA, "EMA" },
+    });
 
 protected:
     void prepareAccumulation(RenderContext* pRenderContext, uint32_t width, uint32_t height);
@@ -109,3 +121,6 @@ protected:
     RenderPassHelpers::IOSize   mOutputSizeSelection = RenderPassHelpers::IOSize::Default;  ///< Selected output size.
     uint2                       mFixedOutputSize = { 512, 512 };                            ///< Output size in pixels when 'Fixed' size is selected.
 };
+
+FALCOR_ENUM_REGISTER(AccumulatePass::Precision);
+FALCOR_ENUM_REGISTER(AccumulatePass::OverflowMode);

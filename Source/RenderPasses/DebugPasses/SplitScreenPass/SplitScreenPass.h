@@ -37,9 +37,9 @@ class SplitScreenPass : public ComparisonPass
 public:
     FALCOR_PLUGIN_CLASS(SplitScreenPass, "SplitScreenPass", "Allows the user to split the screen between two inputs.");
 
-    static ref<SplitScreenPass> create(ref<Device> pDevice, const Dictionary& dict) { return make_ref<SplitScreenPass>(pDevice, dict); }
+    static ref<SplitScreenPass> create(ref<Device> pDevice, const Properties& props) { return make_ref<SplitScreenPass>(pDevice, props); }
 
-    SplitScreenPass(ref<Device> pDevice, const Dictionary& dict);
+    SplitScreenPass(ref<Device> pDevice, const Properties& props);
 
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
     virtual bool onMouseEvent(const MouseEvent& mouseEvent) override;

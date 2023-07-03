@@ -29,17 +29,6 @@
 
 namespace
 {
-const Gui::DropdownList kProfileChoices = {
-    {(uint32_t)DLSSPass::Profile::MaxPerf, "Max Performance"},
-    {(uint32_t)DLSSPass::Profile::Balanced, "Balanced"},
-    {(uint32_t)DLSSPass::Profile::MaxQuality, "Max Quality"},
-};
-
-const Gui::DropdownList kMotionVectorScaleChoices = {
-    {(uint32_t)DLSSPass::MotionVectorScale::Absolute, "Absolute"},
-    {(uint32_t)DLSSPass::MotionVectorScale::Relative, "Relative"},
-};
-
 const char kColorInput[] = "color";
 const char kDepthInput[] = "depth";
 const char kMotionVectorsInput[] = "mvec";
@@ -58,15 +47,6 @@ const char kExposure[] = "exposure";
 static void registerDLSSPass(pybind11::module& m)
 {
     pybind11::class_<DLSSPass, RenderPass, ref<DLSSPass>> pass(m, "DLSSPass");
-
-    pybind11::enum_<DLSSPass::Profile> profile(m, "DLSSProfile");
-    profile.value("MaxPerf", DLSSPass::Profile::MaxPerf);
-    profile.value("Balanced", DLSSPass::Profile::Balanced);
-    profile.value("MaxQuality", DLSSPass::Profile::MaxQuality);
-
-    pybind11::enum_<DLSSPass::MotionVectorScale> motionVectorScale(m, "DLSSMotionVectorScale");
-    motionVectorScale.value("Absolute", DLSSPass::MotionVectorScale::Absolute);
-    motionVectorScale.value("Relative", DLSSPass::MotionVectorScale::Relative);
 }
 
 extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registry)
@@ -75,9 +55,9 @@ extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registr
     ScriptBindings::registerBinding(registerDLSSPass);
 }
 
-DLSSPass::DLSSPass(ref<Device> pDevice, const Dictionary& dict) : RenderPass(pDevice)
+DLSSPass::DLSSPass(ref<Device> pDevice, const Properties& props) : RenderPass(pDevice)
 {
-    for (const auto& [key, value] : dict)
+    for (const auto& [key, value] : props)
     {
         if (key == kEnabled)
             mEnabled = value;
@@ -97,23 +77,23 @@ DLSSPass::DLSSPass(ref<Device> pDevice, const Dictionary& dict) : RenderPass(pDe
             mExposureUpdated = true;
         }
         else
-            logWarning("Unknown field '{}' in a DLSSPass dictionary.", key);
+            logWarning("Unknown property '{}' in a DLSSPass properties.", key);
     }
 
     mpExposure = Texture::create2D(mpDevice, 1, 1, ResourceFormat::R32Float, 1, 1);
 }
 
-Dictionary DLSSPass::getScriptingDictionary()
+Properties DLSSPass::getProperties() const
 {
-    Dictionary d;
-    d[kEnabled] = mEnabled;
-    d[kOutputSize] = mOutputSizeSelection;
-    d[kProfile] = mProfile;
-    d[kMotionVectorScale] = mMotionVectorScale;
-    d[kIsHDR] = mIsHDR;
-    d[kSharpness] = mSharpness;
-    d[kExposure] = mExposure;
-    return d;
+    Properties props;
+    props[kEnabled] = mEnabled;
+    props[kOutputSize] = mOutputSizeSelection;
+    props[kProfile] = mProfile;
+    props[kMotionVectorScale] = mMotionVectorScale;
+    props[kIsHDR] = mIsHDR;
+    props[kSharpness] = mSharpness;
+    props[kExposure] = mExposure;
+    return props;
 }
 
 RenderPassReflection DLSSPass::reflect(const CompileData& compileData)
@@ -150,7 +130,7 @@ void DLSSPass::renderUI(Gui::Widgets& widget)
 
     // Controls for output size.
     // When output size requirements change, we'll trigger a graph recompile to update the render pass I/O sizes.
-    if (widget.dropdown("Output size", RenderPassHelpers::kIOSizeList, (uint32_t&)mOutputSizeSelection))
+    if (widget.dropdown("Output size", mOutputSizeSelection))
         requestRecompile();
     widget.tooltip(
         "Specifies the pass output size.\n"
@@ -162,9 +142,9 @@ void DLSSPass::renderUI(Gui::Widgets& widget)
 
     if (mEnabled)
     {
-        mRecreate |= widget.dropdown("Profile", kProfileChoices, reinterpret_cast<uint32_t&>(mProfile));
+        mRecreate |= widget.dropdown("Profile", mProfile);
 
-        widget.dropdown("Motion vector scale", kMotionVectorScaleChoices, reinterpret_cast<uint32_t&>(mMotionVectorScale));
+        widget.dropdown("Motion vector scale", mMotionVectorScale);
         widget.tooltip(
             "Absolute: Motion vectors are provided in absolute screen space length (pixels)\n"
             "Relative: Motion vectors are provided in relative screen space length (pixels divided by screen width/height)."

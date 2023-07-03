@@ -54,7 +54,7 @@ struct ClothMaterial : MaterialBase, IMaterial
 
         // Calculate the specular reflectance for dielectrics from the IoR, as in the Disney BSDF [Burley 2015].
         // UE4 uses 0.08 multiplied by a default specular value of 0.5, hence F0=0.04 as default. The default IoR=1.5 gives the same result.
-        float f = (data.IoR - 1.f) / (data.IoR + 1.f);
+        float f = (header.getIoR() - 1.f) / (header.getIoR() + 1.f);
         float F0 = f * f;
 
         brdf.diffuseColor = baseColor;

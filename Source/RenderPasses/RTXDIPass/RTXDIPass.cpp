@@ -69,18 +69,18 @@ extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registr
     registry.registerClass<RenderPass, RTXDIPass>();
 }
 
-RTXDIPass::RTXDIPass(ref<Device> pDevice, const Dictionary& dict)
+RTXDIPass::RTXDIPass(ref<Device> pDevice, const Properties& props)
     : RenderPass(pDevice)
 {
-    parseDictionary(dict);
+    parseProperties(props);
 }
 
-void RTXDIPass::parseDictionary(const Dictionary& dict)
+void RTXDIPass::parseProperties(const Properties& props)
 {
-    for (const auto& [key, value] : dict)
+    for (const auto& [key, value] : props)
     {
         if (key == kOptions) mOptions = value;
-        else logWarning("Unknown field '{}' in RTXDIPass dictionary.", key);
+        else logWarning("Unknown property '{}' in RTXDIPass properties.", key);
     }
 }
 
@@ -156,11 +156,11 @@ bool RTXDIPass::onMouseEvent(const MouseEvent& mouseEvent)
     return mpRTXDI ? mpRTXDI->getPixelDebug().onMouseEvent(mouseEvent) : false;
 }
 
-Dictionary RTXDIPass::getScriptingDictionary()
+Properties RTXDIPass::getProperties() const
 {
-    Dictionary d;
-    d[kOptions] = mOptions;
-    return d;
+    Properties props;
+    props[kOptions] = mOptions;
+    return props;
 }
 
 void RTXDIPass::compile(RenderContext* pRenderContext, const CompileData& compileData)

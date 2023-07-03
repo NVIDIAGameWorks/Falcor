@@ -169,13 +169,13 @@ public:
     /**
      * Get the Settings object for Options and Attributes.
      */
-    const Settings& getSettings() const { return *mpSettings; }
+    const Settings& getSettings() const;
 
     /**
      * Get the Settings object for Options and Attributes, accessible for writing.
      * Should only be done by input-parsers, whatever they might be.
      */
-    Settings& getSettings() { return *mpSettings; }
+    Settings& getSettings();
 
     /**
      * Get the GPU device for this application.
@@ -331,8 +331,6 @@ private:
     Console mConsole;
     FrameRate mFrameRate;
     Clock mClock;
-
-    std::unique_ptr<Settings> mpSettings;
 
     bool mShouldTerminate = false; ///< True if application should terminate.
     bool mRendererPaused = false;  ///< True if rendering is paused.

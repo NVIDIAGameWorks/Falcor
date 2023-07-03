@@ -13,7 +13,7 @@ m.loadScene('Arcade/Arcade.pyscene')
 render_frames(m, 'arcade', frames=[64])
 
 # materials
-m.loadScene('TestScenes/MaterialTest.pyscene')
+m.loadScene('test_scenes/material_test.pyscene')
 render_frames(m, 'materials', frames=[64])
 
 exit()

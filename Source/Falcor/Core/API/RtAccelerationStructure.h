@@ -180,6 +180,7 @@ struct RtAccelerationStructureBuildInputs
  */
 class FALCOR_API RtAccelerationStructure : public Object
 {
+    FALCOR_OBJECT(RtAccelerationStructure)
 public:
     class FALCOR_API Desc
     {

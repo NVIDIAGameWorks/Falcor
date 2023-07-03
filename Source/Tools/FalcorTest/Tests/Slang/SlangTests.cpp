@@ -41,12 +41,12 @@ namespace
 {
 void testEnum(GPUUnitTestContext& ctx, const std::string& shaderModel)
 {
-    ctx.createProgram("Tests/Slang/SlangTests.cs.slang", "testEnum", Program::DefineList(), Shader::CompilerFlags::None, shaderModel);
+    ctx.createProgram("Tests/Slang/SlangTests.cs.slang", "testEnum", DefineList(), Program::CompilerFlags::None, shaderModel);
     ctx.allocateStructuredBuffer("result", 12);
     ctx.runProgram(1, 1, 1);
 
     // Verify results.
-    const uint32_t* result = ctx.mapBuffer<const uint32_t>("result");
+    std::vector<uint32_t> result = ctx.readBuffer<uint32_t>("result");
 
     EXPECT_EQ(result[0], (uint32_t)Type1::A);
     EXPECT_EQ(result[1], (uint32_t)Type1::B);
@@ -62,8 +62,6 @@ void testEnum(GPUUnitTestContext& ctx, const std::string& shaderModel)
     EXPECT_EQ(result[9], (uint32_t)Type3::B);
     EXPECT_EQ(result[10], (uint32_t)Type3::C);
     EXPECT_EQ(result[11], (uint32_t)Type3::D);
-
-    ctx.unmapBuffer("result");
 }
 
 uint64_t asuint64(double a)
@@ -95,12 +93,12 @@ GPU_TEST(SlangScalarTypes)
 {
     const uint32_t maxTests = 100;
 
-    ctx.createProgram("Tests/Slang/SlangTests.cs.slang", "testScalarTypes", Program::DefineList(), Shader::CompilerFlags::None, "6_2");
+    ctx.createProgram("Tests/Slang/SlangTests.cs.slang", "testScalarTypes", DefineList(), Program::CompilerFlags::None, "6_2");
     ctx.allocateStructuredBuffer("result", maxTests);
     ctx.runProgram(1, 1, 1);
 
     // Verify results.
-    const uint32_t* result = ctx.mapBuffer<const uint32_t>("result");
+    std::vector<uint32_t> result = ctx.readBuffer<uint32_t>("result");
 
     int i = 0;
 
@@ -155,7 +153,6 @@ GPU_TEST(SlangScalarTypes)
     EXPECT_EQ(result[i], 0x12345678);
     i++;
 
-    ctx.unmapBuffer("result");
     FALCOR_ASSERT(i < maxTests);
 }
 
@@ -169,13 +166,13 @@ GPU_TEST(SlangDefaultInitializers)
     auto test = [&](const std::string& shaderModel)
     {
         ctx.createProgram(
-            "Tests/Slang/SlangTests.cs.slang", "testDefaultInitializers", Program::DefineList(), Shader::CompilerFlags::None, shaderModel
+            "Tests/Slang/SlangTests.cs.slang", "testDefaultInitializers", DefineList(), Program::CompilerFlags::None, shaderModel
         );
         ctx.allocateStructuredBuffer("result", maxTests, initData.data(), initData.size() * sizeof(initData[0]));
         ctx.runProgram(1, 1, 1);
 
         // Verify results.
-        const uint32_t* result = ctx.mapBuffer<const uint32_t>("result");
+        std::vector<uint32_t> result = ctx.readBuffer<uint32_t>("result");
         for (uint32_t i = 0; i < maxTests; i++)
         {
             uint32_t expected = i < usedTests ? 0 : -1;
@@ -184,7 +181,6 @@ GPU_TEST(SlangDefaultInitializers)
 
             EXPECT_EQ(result[i], expected) << "i = " << i << " (sm" << shaderModel << ")";
         }
-        ctx.unmapBuffer("result");
     };
 
     // Test the default shader model, followed by specific models.
@@ -213,13 +209,11 @@ GPU_TEST(SlangHashedStrings)
     EXPECT_EQ(hashedStrings[2].string, "Test String 2");
     EXPECT_EQ(hashedStrings[3].string, "Test String 3");
 
-    const uint32_t* result = ctx.mapBuffer<const uint32_t>("result");
+    std::vector<uint32_t> result = ctx.readBuffer<uint32_t>("result");
 
     for (size_t i = 0; i < 4; ++i)
     {
         EXPECT_EQ(result[i], hashedStrings[i].hash);
     }
-
-    ctx.unmapBuffer("result");
 }
 } // namespace Falcor

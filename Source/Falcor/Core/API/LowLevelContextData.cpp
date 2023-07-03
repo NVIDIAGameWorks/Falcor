@@ -91,7 +91,7 @@ void LowLevelContextData::closeCommandBuffer()
 void LowLevelContextData::openCommandBuffer()
 {
     mIsCommandBufferOpen = true;
-    mGfxCommandBuffer = mpDevice->getCurrentTransientResourceHeap()->createCommandBuffer();
+    FALCOR_GFX_CALL(mpDevice->getCurrentTransientResourceHeap()->createCommandBuffer(mGfxCommandBuffer.writeRef()));
     mpCommandBuffer = mGfxCommandBuffer.get();
 }
 

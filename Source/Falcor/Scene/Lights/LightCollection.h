@@ -56,6 +56,7 @@ namespace Falcor
     */
     class FALCOR_API LightCollection : public Object
     {
+        FALCOR_OBJECT(LightCollection)
     public:
         enum class UpdateFlags : uint32_t
         {

@@ -44,6 +44,7 @@ namespace Falcor
  */
 class FALCOR_API Fbo : public Object
 {
+    FALCOR_OBJECT(Fbo)
 public:
     class FALCOR_API Desc
     {

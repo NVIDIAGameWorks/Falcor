@@ -2,9 +2,9 @@ from falcor import *
 
 def render_graph_DLSS():
     g = RenderGraph("DLSS")
-    GBufferRaster = createPass("GBufferRaster", {'samplePattern': SamplePattern.Halton})
+    GBufferRaster = createPass("GBufferRaster", {'samplePattern': 'Halton'})
     g.addPass(GBufferRaster, "GBufferRaster")
-    DLSSPass = createPass("DLSSPass", {'motionVectorScale': DLSSMotionVectorScale.Relative})
+    DLSSPass = createPass("DLSSPass", {'motionVectorScale': 'Relative'})
     g.addPass(DLSSPass, "DLSSPass")
     g.addEdge("GBufferRaster.mvec", "DLSSPass.mvec")
     g.addEdge("GBufferRaster.depth", "DLSSPass.depth")

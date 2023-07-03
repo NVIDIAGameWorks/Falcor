@@ -37,4 +37,11 @@ enum class SolidAngleBoundMethod : uint32_t
     Sphere,
 };
 
+FALCOR_ENUM_INFO(SolidAngleBoundMethod, {
+    { SolidAngleBoundMethod::BoxToCenter, "BoxToCenter" },
+    { SolidAngleBoundMethod::BoxToAverage, "BoxToAverage" },
+    { SolidAngleBoundMethod::Sphere, "Sphere" },
+});
+FALCOR_ENUM_REGISTER(SolidAngleBoundMethod);
+
 END_NAMESPACE_FALCOR

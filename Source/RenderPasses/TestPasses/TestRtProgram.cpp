@@ -51,22 +51,22 @@ void TestRtProgram::registerScriptBindings(pybind11::module& m)
     pass.def("moveCustomPrimitive", &TestRtProgram::moveCustomPrimitive);
 }
 
-TestRtProgram::TestRtProgram(ref<Device> pDevice, const Dictionary& dict)
+TestRtProgram::TestRtProgram(ref<Device> pDevice, const Properties& props)
     : RenderPass(pDevice)
 {
-    for (const auto& [key, value] : dict)
+    for (const auto& [key, value] : props)
     {
         if (key == kMode) mMode = value;
-        else logWarning("Unknown field '{}' in TestRtProgram dictionary.", key);
+        else logWarning("Unknown property '{}' in TestRtProgram properties.", key);
     }
     if (mMode > 1) throw RuntimeError("mode has to be 0 or 1");
 }
 
-Dictionary TestRtProgram::getScriptingDictionary()
+Properties TestRtProgram::getProperties() const
 {
-    Dictionary dict;
-    dict[kMode] = mMode;
-    return dict;
+    Properties props;
+    props[kMode] = mMode;
+    return props;
 }
 
 RenderPassReflection TestRtProgram::reflect(const CompileData& compileData)
@@ -205,7 +205,7 @@ void TestRtProgram::sceneChanged()
     sbt->setMiss(0, desc.addMiss("miss0"));
     sbt->setMiss(1, desc.addMiss("miss1"));
 
-    Program::DefineList defines = mpScene->getSceneDefines();
+    DefineList defines = mpScene->getSceneDefines();
     defines.add("MODE", std::to_string(mMode));
 
     // Create program and vars.

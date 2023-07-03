@@ -53,7 +53,7 @@ GPU_TEST(RWTexture3D)
     ctx.runProgram(16, 16, 16);
 
     // Verify result.
-    const uint32_t* result = ctx.mapBuffer<const uint32_t>("result");
+    std::vector<uint32_t> result = ctx.readBuffer<uint32_t>("result");
     size_t i = 0;
     for (uint32_t z = 0; z < 16; z++)
     {
@@ -66,7 +66,6 @@ GPU_TEST(RWTexture3D)
             }
         }
     }
-    ctx.unmapBuffer("result");
 }
 
 /** GPU test for creating a min/max MIP pyramid.
@@ -207,7 +206,7 @@ GPU_TEST(Texture_Load8Bit)
     ctx["texUint"] = texUint;
     ctx.runProgram(256);
 
-    const uint4* result = ctx.mapBuffer<const uint4>("result");
+    std::vector<uint4> result = ctx.readBuffer<uint4>("result");
 
     for (uint32_t i = 0; i < 256; i++)
     {
@@ -220,8 +219,6 @@ GPU_TEST(Texture_Load8Bit)
         EXPECT_EQ(result[i].z, i);
         EXPECT_EQ(result[i].w, i);
     }
-
-    ctx.unmapBuffer("result");
 }
 
 GPU_TEST(Texture2D_LoadMips)
@@ -244,7 +241,7 @@ GPU_TEST(Texture2D_LoadMips)
     ctx["texUnorm"] = tex;
     ctx.runProgram(1, 1, 1);
 
-    const uint4* result = ctx.mapBuffer<const uint4>("result");
+    std::vector<uint4> result = ctx.readBuffer<uint4>("result");
 
     EXPECT_EQ(result[0].x, 255);
     EXPECT_EQ(result[0].y, 0);
@@ -260,7 +257,5 @@ GPU_TEST(Texture2D_LoadMips)
     EXPECT_EQ(result[2].y, 0);
     EXPECT_EQ(result[2].z, 255);
     EXPECT_EQ(result[2].w, 255);
-
-    ctx.unmapBuffer("result");
 }
 } // namespace Falcor

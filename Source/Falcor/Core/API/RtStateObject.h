@@ -39,6 +39,7 @@ namespace Falcor
 {
 class FALCOR_API RtStateObject : public Object
 {
+    FALCOR_OBJECT(RtStateObject)
 public:
     struct Desc
     {

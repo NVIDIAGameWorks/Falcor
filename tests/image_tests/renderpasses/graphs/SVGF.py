@@ -4,7 +4,7 @@ def render_graph_SVGF():
     g = RenderGraph("SVGF")
     SVGFPass = createPass("SVGFPass", {'Enabled': True, 'Iterations': 4, 'FeedbackTap': 1, 'VarianceEpsilon': 9.999999747378752e-05, 'PhiColor': 10.0, 'PhiNormal': 128.0, 'Alpha': 0.05000000074505806, 'MomentsAlpha': 0.20000000298023224})
     g.addPass(SVGFPass, "SVGFPass")
-    GBufferRaster = createPass("GBufferRaster", {'cull': CullMode.CullBack})
+    GBufferRaster = createPass("GBufferRaster", {'cull': 'Back'})
     g.addPass(GBufferRaster, "GBufferRaster")
     PathTracer = createPass("PathTracer")
     g.addPass(PathTracer, "PathTracer")

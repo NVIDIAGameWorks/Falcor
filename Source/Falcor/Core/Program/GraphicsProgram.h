@@ -51,7 +51,7 @@ public:
      * stages.
      * @return A new object, or an exception is thrown if creation failed.
      */
-    static ref<GraphicsProgram> create(ref<Device> pDevice, const Desc& desc, const Program::DefineList& programDefines = DefineList());
+    static ref<GraphicsProgram> create(ref<Device> pDevice, const Desc& desc, const DefineList& programDefines = DefineList());
 
     /**
      * Create a new graphics program from file.
@@ -73,6 +73,6 @@ public:
     );
 
 private:
-    GraphicsProgram(ref<Device> pDevice, const Desc& desc, const Program::DefineList& programDefines);
+    GraphicsProgram(ref<Device> pDevice, const Desc& desc, const DefineList& programDefines);
 };
 } // namespace Falcor

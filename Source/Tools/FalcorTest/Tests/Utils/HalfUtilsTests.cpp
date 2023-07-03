@@ -214,13 +214,12 @@ GPU_TEST(FP32ToFP16Conversion, "Disabled due to lacking fp16 library (#391)")
     ctx.runProgram((uint32_t)testData.size(), 1, 1);
 
     // Verify results.
-    const uint32_t* result = ctx.mapBuffer<const uint32_t>("resultUint");
+    std::vector<uint32_t> result = ctx.readBuffer<uint32_t>("resultUint");
     for (size_t i = 0; i < testData.size(); i++)
     {
         const float v = testData[i];
         EXPECT_EQ(result[i], (uint32_t)f32tof16(v)) << "v = " << v << " (i = " << i << ")";
     }
-    ctx.unmapBuffer("resultUint");
 }
 
 GPU_TEST(FP16ToFP32Conversion)
@@ -236,13 +235,12 @@ GPU_TEST(FP16ToFP32Conversion)
     ctx.runProgram((uint32_t)testData.size(), 1, 1);
 
     // Verify results.
-    const float* result = ctx.mapBuffer<const float>("resultFloat");
+    std::vector<float> result = ctx.readBuffer<float>("resultFloat");
     for (size_t i = 1000; i < testData.size(); i++)
     {
         const uint32_t v = testData[i];
         EXPECT_EQ(result[i], f16tof32(v)) << "v = " << v << " (i = " << i << ")";
     }
-    ctx.unmapBuffer("resultFloat");
 }
 
 /** Test our CPU-side functions for f32tof16 conversion with conservative rounding.
@@ -280,7 +278,7 @@ CPU_TEST(FP32ToFP16ConservativeRoundingCPU)
     back to fp32 on the CPU, to avoid shader compiler optimizations for interfering with the results.
 */
 // TODO: This test is currently disabled on Vulkan due to incorrect compiler optimization.
-GPU_TEST_D3D12(FP32ToFP16ConservativeRoundingGPU)
+GPU_TEST(FP32ToFP16ConservativeRoundingGPU, Device::Type::D3D12)
 {
     std::vector<float> testData = generateFP16TestData(ctx);
 
@@ -293,7 +291,7 @@ GPU_TEST_D3D12(FP32ToFP16ConservativeRoundingGPU)
     ctx.runProgram((uint32_t)testData.size(), 1, 1);
 
     // Verify results.
-    const uint32_t* result = ctx.mapBuffer<const uint32_t>("resultUint");
+    std::vector<uint32_t> result = ctx.readBuffer<uint32_t>("resultUint");
 
     for (size_t i = 0; i < testData.size(); i++)
     {
@@ -311,8 +309,6 @@ GPU_TEST_D3D12(FP32ToFP16ConservativeRoundingGPU)
             EXPECT_LE(f16tof32(result[2 * i + 1]), v) << "i = " << i;
         }
     }
-
-    ctx.unmapBuffer("resultUint");
 }
 
 // TODO: Currently disabled until we figure out the rounding modes and have a matching CPU library. See #391.
@@ -326,8 +322,7 @@ GPU_TEST(FP16RoundingModeGPU, "Disabled due to lacking fp16 library (#391)")
     // The computation of the quantized value using 'y = f16tof32(f32tof16(x))' gets optimized to 'y = x' in the shader, despite the global
     // precise flag.
     ctx.createProgram(
-        "Tests/Utils/HalfUtilsTests.cs.slang", "testFP16RoundingMode", Program::DefineList(),
-        Shader::CompilerFlags::FloatingPointModePrecise, "6_2"
+        "Tests/Utils/HalfUtilsTests.cs.slang", "testFP16RoundingMode", DefineList(), Program::CompilerFlags::FloatingPointModePrecise, "6_2"
     );
     ctx.allocateStructuredBuffer("inputFloat", (uint32_t)input.size(), input.data(), input.size() * sizeof(decltype(input)::value_type));
     ctx.allocateStructuredBuffer("resultFloat", (uint32_t)expected.size());
@@ -335,14 +330,12 @@ GPU_TEST(FP16RoundingModeGPU, "Disabled due to lacking fp16 library (#391)")
     ctx.runProgram((uint32_t)input.size(), 1, 1);
 
     // Verify results.
-    const float* result = ctx.mapBuffer<const float>("resultFloat");
+    std::vector<float> result = ctx.readBuffer<float>("resultFloat");
 
     for (size_t i = 0; i < expected.size(); i++)
     {
         float v = result[i];
         EXPECT_EQ(result[i], expected[i]) << "i = " << i;
     }
-
-    ctx.unmapBuffer("resultFloat");
 }
 } // namespace Falcor

@@ -69,6 +69,7 @@ namespace Falcor
     */
     class FALCOR_API SDFGrid : public Object
     {
+        FALCOR_OBJECT(SDFGrid)
     public:
         enum class Type
         {
@@ -259,6 +260,8 @@ namespace Falcor
 
         ref<Texture>            mpSDFGridTexture;                   ///< A texture on the GPU holding the value representation.
         ref<ComputePass>        mpEvaluatePrimitivesPass;
+
+        friend class Scene;
     };
 
     FALCOR_ENUM_CLASS_OPERATORS(SDFGrid::UpdateFlags);

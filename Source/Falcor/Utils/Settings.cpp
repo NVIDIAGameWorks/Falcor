@@ -65,6 +65,21 @@ std::vector<std::string> toStrings(const nlohmann::json& value)
 
 } // namespace
 
+Settings& Settings::getGlobalSettings()
+{
+    static Settings globalSettings = []()
+    {
+        Settings settings;
+        // Load settings from runtime directory first.
+        settings.addOptions(getRuntimeDirectory() / "settings.json");
+        // Override with user settings.
+        if (!getHomeDirectory().empty())
+            settings.addOptions(getHomeDirectory() / ".falcor" / "settings.json");
+        return settings;
+    }();
+    return globalSettings;
+}
+
 void Settings::addOptions(const pybind11::dict& options)
 {
     auto json = pyjson::to_json(options);

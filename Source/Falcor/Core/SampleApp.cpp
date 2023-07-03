@@ -54,8 +54,6 @@ SampleApp::SampleApp(const SampleAppConfig& config)
     OSServices::start();
     Threading::start();
 
-    mpSettings.reset(new Settings);
-
     mShowUI = config.showUI;
     mVsyncOn = config.windowDesc.enableVSync;
     mClock.setTimeScale(config.timeScale);
@@ -96,17 +94,13 @@ SampleApp::SampleApp(const SampleAppConfig& config)
     uint2 fboSize = mpWindow ? mpWindow->getClientAreaSize() : uint2(config.windowDesc.width, config.windowDesc.height);
     mpTargetFBO = Fbo::create2D(mpDevice, fboSize.x, fboSize.y, config.colorFormat, config.depthFormat);
 
-    // Load settings.toml files
-    getSettings().addOptions(getRuntimeDirectory() / "settings.json");
-    if (!getHomeDirectory().empty())
-        getSettings().addOptions(getHomeDirectory() / ".falcor" / "settings.json");
     // Populate the data search paths from the config file, only adding those that aren't in already
     auto searchDirectories = getSettings().getSearchDirectories("media");
     for (auto& it : searchDirectories.get())
         addDataDirectory(it);
 
     // Set global shader defines
-    Program::DefineList globalDefines = {
+    DefineList globalDefines = {
         {"FALCOR_NVAPI_AVAILABLE", (FALCOR_NVAPI_AVAILABLE && mpDevice->getType() == Device::Type::D3D12) ? "1" : "0"},
 #if FALCOR_NVAPI_AVAILABLE
         {"NV_SHADER_EXTN_SLOT", "u999"},
@@ -118,7 +112,7 @@ SampleApp::SampleApp(const SampleAppConfig& config)
     if (config.shaderPreciseFloat)
     {
         mpDevice->getProgramManager()->setForcedCompilerFlags(
-            {Shader::CompilerFlags::FloatingPointModePrecise, Shader::CompilerFlags::FloatingPointModeFast}
+            {Program::CompilerFlags::FloatingPointModePrecise, Program::CompilerFlags::FloatingPointModeFast}
         );
     }
 
@@ -136,9 +130,6 @@ SampleApp::~SampleApp()
 
     mpDevice->flushAndSync();
 
-    // contains Python dictionaries, needs to be terminated before Scripting::shutdown()
-    mpSettings.reset();
-
     Threading::shutdown();
     Scripting::shutdown();
     PluginManager::instance().releaseAllPlugins();
@@ -149,8 +140,8 @@ SampleApp::~SampleApp()
 
     mpSwapchain.reset();
     mpWindow.reset();
-#if FALCOR_ENABLE_REF_TRACKING
-    Object::dumpAllRefs();
+#if FALCOR_ENABLE_OBJECT_TRACKING
+    Object::dumpAliveObjects();
 #endif
     mpDevice.reset();
 #ifdef _DEBUG
@@ -159,6 +150,16 @@ SampleApp::~SampleApp()
 
     OSServices::stop();
     Logger::shutdown();
+}
+
+const Settings& SampleApp::getSettings() const
+{
+    return Settings::getGlobalSettings();
+}
+
+Settings& SampleApp::getSettings()
+{
+    return Settings::getGlobalSettings();
 }
 
 int SampleApp::run()

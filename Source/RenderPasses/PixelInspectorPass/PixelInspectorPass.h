@@ -41,9 +41,9 @@ public:
         "Left-mouse click on a pixel to select it.\n"
     });
 
-    static ref<PixelInspectorPass> create(ref<Device> pDevice, const Dictionary& dict) { return make_ref<PixelInspectorPass>(pDevice, dict); }
+    static ref<PixelInspectorPass> create(ref<Device> pDevice, const Properties& props) { return make_ref<PixelInspectorPass>(pDevice, props); }
 
-    PixelInspectorPass(ref<Device> pDevice, const Dictionary& dict);
+    PixelInspectorPass(ref<Device> pDevice, const Properties& props);
 
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;

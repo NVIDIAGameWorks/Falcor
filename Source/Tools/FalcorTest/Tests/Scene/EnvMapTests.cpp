@@ -34,7 +34,7 @@ namespace Falcor
 namespace
 {
 // This file is located in the media/ directory fetched by packman.
-const char kEnvMapFile[] = "LightProbes/20050806-03_hd.hdr";
+const char kEnvMapFile[] = "test_scenes/envmaps/20050806-03_hd.hdr";
 } // namespace
 
 GPU_TEST(EnvMap)

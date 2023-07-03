@@ -1,7 +1,7 @@
 # Create volumes
 
 smokeVolume = GridVolume('smoke')
-smokeVolume.loadGrid(GridVolume.GridSlot.Density, 'TestScenes/smoke.vdb', 'density')
+smokeVolume.loadGrid(GridVolume.GridSlot.Density, 'test_scenes/volumes/smoke.vdb', 'density')
 smokeVolume.densityScale = 0.5
 smokeVolume.albedo = float3(0.5, 0.5, 0.5)
 sceneBuilder.addGridVolume(smokeVolume)

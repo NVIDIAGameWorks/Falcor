@@ -14,13 +14,14 @@ m.addGraph(g)
 render_frames(m, 'default')
 
 # modes
-for mode in [CompositeMode.Add, CompositeMode.Multiply]:
+for mode in ['Add', 'Multiply']:
     g.updatePass('Composite', {'mode': mode})
-    render_frames(m, 'mode.' + str(mode))
+    # TODO: Remove "CompositeMode." from name.
+    render_frames(m, 'mode.CompositeMode.' + mode)
 
 # scaleA, scaleB
 for scaleA, scaleB in [(0.5, 1.5), (1.0, 1.0), (1.5, 0.5)]:
-    g.updatePass('Composite', {'mode': CompositeMode.Add, 'scaleA': scaleA, 'scaleB': scaleB})
+    g.updatePass('Composite', {'mode': 'Add', 'scaleA': scaleA, 'scaleB': scaleB})
     render_frames(m, 'scaleA.' + str(scaleA) + '.scaleB.' + str(scaleB))
 
 exit()

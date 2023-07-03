@@ -1451,6 +1451,7 @@ namespace Falcor
         builder.setEnvMap(pEnvMap);
     }
 
+
     void ImporterContext::addLight(const UsdPrim& lightPrim, ref<Light> pLight, NodeID parentId)
     {
         NodeID nodeId = builder.addNode(makeNode(lightPrim.GetName(), parentId));

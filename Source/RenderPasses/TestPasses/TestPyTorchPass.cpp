@@ -40,7 +40,7 @@ void TestPyTorchPass::registerScriptBindings(pybind11::module& m)
     pass.def("verifyData", &TestPyTorchPass::verifyData);
 }
 
-TestPyTorchPass::TestPyTorchPass(ref<Device> pDevice, const Dictionary& dict)
+TestPyTorchPass::TestPyTorchPass(ref<Device> pDevice, const Properties& props)
     : RenderPass(pDevice)
 {
     {
@@ -74,10 +74,9 @@ TestPyTorchPass::~TestPyTorchPass()
 #endif
 }
 
-Dictionary TestPyTorchPass::getScriptingDictionary()
+Properties TestPyTorchPass::getProperties() const
 {
-    Dictionary dict;
-    return dict;
+    return {};
 }
 
 RenderPassReflection TestPyTorchPass::reflect(const CompileData& compileData)

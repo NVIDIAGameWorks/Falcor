@@ -111,6 +111,9 @@ struct BSDFViewer
     */
     bool calculateSphereGeometry(float2 uv, out VertexData v, out float3 rayDir)
     {
+        v = {};
+        rayDir = {};
+
         const float2 ndc = float2(2.f * uv.x - 1.f, -2.f * uv.y + 1.f);
 
         if (params.orthographicCamera)

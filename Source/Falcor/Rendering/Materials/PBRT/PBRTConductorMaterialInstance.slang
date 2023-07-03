@@ -48,6 +48,11 @@ struct PBRTConductorBSDF : IBSDF
 
     bool sample<S : ISampleGenerator>(float3 wiLocal, out float3 wo, out float pdf, out float3 weight, out uint lobeType, inout S sg)
     {
+        wo = {};
+        pdf = {};
+        weight = {};
+        lobeType = {};
+
         if (wiLocal.z < 0.0f) return false;
 
         if (D.isSingular())

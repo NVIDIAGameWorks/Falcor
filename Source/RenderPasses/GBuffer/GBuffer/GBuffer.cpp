@@ -30,7 +30,8 @@
 namespace Falcor
 {
     // Update 'mtlData' channel format if size changes.
-    static_assert(sizeof(MaterialHeader) == 8);
+    // Note: Currently, we only store the first 8 bytes of the material header.
+    static_assert(sizeof(MaterialHeader) == 16);
 }
 
 // List of primary GBuffer channels. These correspond to the render targets
@@ -45,7 +46,7 @@ const ChannelList GBuffer::kGBufferChannels =
     { "texC",           "gTexC",            "Texture coordinate",                                true /* optional */, ResourceFormat::RG32Float   },
     { "texGrads",       "gTexGrads",        "Texture gradients (ddx, ddy)",                      true /* optional */, ResourceFormat::RGBA16Float },
     { "mvec",           "gMotionVector",    "Motion vector",                                     true /* optional */, ResourceFormat::RG32Float   },
-    { "mtlData",        "gMaterialData",    "Material data (ID, header)",                        true /* optional */, ResourceFormat::RGBA32Uint  },
+    { "mtlData",        "gMaterialData",    "Material data (ID, header.x, header.y, lobes)",     true /* optional */, ResourceFormat::RGBA32Uint  },
 };
 
 GBuffer::GBuffer(ref<Device> pDevice)

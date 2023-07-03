@@ -39,11 +39,24 @@ enum class TransmittanceEstimator
     RatioTrackingLocalMajorant,  // BrickedGrid only.
 };
 
+FALCOR_ENUM_INFO(TransmittanceEstimator, {
+    { TransmittanceEstimator::DeltaTracking, "DeltaTracking" },
+    { TransmittanceEstimator::RatioTracking, "RatioTracking" },
+    { TransmittanceEstimator::RatioTrackingLocalMajorant, "RatioTrackingLocalMajorant" },
+});
+FALCOR_ENUM_REGISTER(TransmittanceEstimator);
+
 enum class DistanceSampler
 {
     DeltaTracking,
     DeltaTrackingLocalMajorant,  // BrickedGrid only.
 };
+
+FALCOR_ENUM_INFO(DistanceSampler, {
+    { DistanceSampler::DeltaTracking, "DeltaTracking" },
+    { DistanceSampler::DeltaTrackingLocalMajorant, "DeltaTrackingLocalMajorant" },
+});
+FALCOR_ENUM_REGISTER(DistanceSampler);
 
 #ifdef HOST_CODE
 inline bool requiresBrickedGrid(DistanceSampler d) { return d == DistanceSampler::DeltaTrackingLocalMajorant; }

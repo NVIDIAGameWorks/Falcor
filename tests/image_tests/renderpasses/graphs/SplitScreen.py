@@ -1,8 +1,8 @@
 from falcor import *
 
 def test_SplitScreen():
-    imageLoaderA = createPass("ImageLoader", {'filename': 'Cubemaps/Sorsele3/posz.jpg', 'mips': False, 'srgb': False})
-    imageLoaderB = createPass("ImageLoader", {'filename': 'Cubemaps/Sorsele3/posz.jpg', 'mips': False, 'srgb': True})
+    imageLoaderA = createPass("ImageLoader", {'filename': 'test_images/cubemap/sorsele3/posz.jpg', 'mips': False, 'srgb': False})
+    imageLoaderB = createPass("ImageLoader", {'filename': 'test_images/cubemap/sorsele3/posz.jpg', 'mips': False, 'srgb': True})
     splitScreen = createPass("SplitScreenPass")
 
     graph = RenderGraph("Split Screen Graph")

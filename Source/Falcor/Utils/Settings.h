@@ -46,7 +46,6 @@ class dict;
 
 namespace Falcor
 {
-class Dictionary;
 class Settings;
 class SettingsProperties
 {
@@ -298,6 +297,9 @@ private:
 class FALCOR_API Settings
 {
 public:
+    /// Get the global settings instance.
+    static Settings& getGlobalSettings();
+
     Settings() : mData(1) {}
 
     SettingsProperties getOptions() const { return SettingsProperties(&getActive().mOptions); }

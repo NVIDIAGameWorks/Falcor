@@ -28,7 +28,9 @@
 #pragma once
 #include "Core/Assert.h"
 #include "Core/Macros.h"
+#include "Core/Enum.h"
 #include <string>
+#include <vector>
 #include <cstdint>
 
 namespace Falcor
@@ -98,6 +100,7 @@ enum class ResourceFormat : uint32_t
     RGB10A2Unorm,
     RGB10A2Uint,
     RGBA16Unorm,
+    RGBA16Snorm,
     RGBA8UnormSrgb,
     R16Float,
     RG16Float,
@@ -129,6 +132,7 @@ enum class ResourceFormat : uint32_t
     RGBA32Int,
     RGBA32Uint,
 
+    BGRA4Unorm,
     BGRA8Unorm,
     BGRA8UnormSrgb,
 
@@ -138,6 +142,7 @@ enum class ResourceFormat : uint32_t
 
     // Depth-stencil
     D32Float,
+    D32FloatS8Uint,
     D16Unorm,
 
     // Compressed formats
@@ -487,6 +492,25 @@ inline const std::string to_string(ResourceBindFlags flags)
 
     return s;
 }
+
+// Manually define the struct that FALCOR_ENUM_INFO(ResourceFormat) would generate so we
+// can use the existing table of resource formats.
+struct ResourceFormat_info
+{
+    static fstd::span<std::pair<ResourceFormat, std::string>> items()
+    {
+        auto createItems = []()
+        {
+            std::vector<std::pair<ResourceFormat, std::string>> items((size_t)ResourceFormat::Count);
+            for (size_t i = 0; i < (size_t)ResourceFormat::Count; ++i)
+                items[i] = std::make_pair(ResourceFormat(i), to_string(ResourceFormat(i)));
+            return items;
+        };
+        static std::vector<std::pair<ResourceFormat, std::string>> items = createItems();
+        return items;
+    }
+};
+FALCOR_ENUM_REGISTER(ResourceFormat);
 
 /*! @} */
 } // namespace Falcor

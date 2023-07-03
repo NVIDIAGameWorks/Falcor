@@ -33,7 +33,7 @@
 
 namespace Falcor
 {
-ref<GraphicsProgram> GraphicsProgram::create(ref<Device> pDevice, const Desc& desc, const Program::DefineList& programDefines)
+ref<GraphicsProgram> GraphicsProgram::create(ref<Device> pDevice, const Desc& desc, const DefineList& programDefines)
 {
     return ref<GraphicsProgram>(new GraphicsProgram(pDevice, desc, programDefines));
 }
@@ -51,7 +51,7 @@ ref<GraphicsProgram> GraphicsProgram::createFromFile(
     return create(pDevice, d, programDefines);
 }
 
-GraphicsProgram::GraphicsProgram(ref<Device> pDevice, const Desc& desc, const Program::DefineList& programDefines)
+GraphicsProgram::GraphicsProgram(ref<Device> pDevice, const Desc& desc, const DefineList& programDefines)
     : Program(pDevice, desc, programDefines)
 {}
 

@@ -45,6 +45,7 @@ namespace Falcor
     */
     class FALCOR_API Camera : public Animatable
     {
+        FALCOR_OBJECT(Camera)
     public:
         // Default dimensions of full frame cameras and 35mm film
         static constexpr float kDefaultFrameHeight = 24.f;

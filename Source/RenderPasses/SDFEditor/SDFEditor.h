@@ -40,11 +40,11 @@ class SDFEditor : public RenderPass
 public:
     FALCOR_PLUGIN_CLASS(SDFEditor, "SDFEditor", "Signed distance function (SDF) editor");
 
-    static ref<SDFEditor> create(ref<Device> pDevice, const Dictionary& dict) { return make_ref<SDFEditor>(pDevice, dict); }
+    static ref<SDFEditor> create(ref<Device> pDevice, const Properties& props) { return make_ref<SDFEditor>(pDevice, props); }
 
-    SDFEditor(ref<Device> pDevice, const Dictionary& dict);
+    SDFEditor(ref<Device> pDevice, const Properties& props);
 
-    virtual Dictionary getScriptingDictionary() override;
+    virtual Properties getProperties() const override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
     virtual void compile(RenderContext* pRenderContext, const CompileData& compileData) override {}
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;

@@ -48,7 +48,7 @@ namespace
     const std::string kDepthName = "depth";
 }
 
-VBufferRaster::VBufferRaster(ref<Device> pDevice, const Dictionary& dict)
+VBufferRaster::VBufferRaster(ref<Device> pDevice, const Properties& props)
     : GBufferBase(pDevice)
 {
     // Check for required features.
@@ -61,7 +61,7 @@ VBufferRaster::VBufferRaster(ref<Device> pDevice, const Dictionary& dict)
         throw RuntimeError("VBufferRaster: Rasterizer ordered views (ROVs) are not supported by the current device");
     }
 
-    parseDictionary(dict);
+    parseProperties(props);
 
     // Initialize graphics state
     mRaster.pState = GraphicsState::create(mpDevice);

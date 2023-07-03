@@ -41,6 +41,7 @@
 #include <filesystem>
 #include <functional>
 #include <map>
+#include <set>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -54,11 +55,10 @@
 
 namespace Falcor
 {
-
 class RenderContext;
 
-class CPUUnitTestContext;
-class GPUUnitTestContext;
+namespace unittest
+{
 
 static constexpr int kMaxTestFailures = 25;
 
@@ -85,53 +85,57 @@ public:
     SkippingTestException(const std::string& what) : std::runtime_error(what.c_str()) {}
 };
 
+struct RunOptions
+{
+    Device::Desc deviceDesc;
+    std::string testSuiteFilter;
+    std::string testCaseFilter;
+    std::string tagFilter;
+    std::filesystem::path xmlReportPath;
+    uint32_t parallel = 1;
+    uint32_t repeat = 1;
+};
+
+FALCOR_API int32_t runTests(const RunOptions& options);
+
+class CPUUnitTestContext;
+class GPUUnitTestContext;
+
 using CPUTestFunc = std::function<void(CPUUnitTestContext& ctx)>;
 using GPUTestFunc = std::function<void(GPUUnitTestContext& ctx)>;
 
-enum class UnitTestCategoryFlags
+struct Test
 {
-    None = 0x0,
-    CPU = 0x1,
-    GPU = 0x2,
-    All = CPU | GPU,
+    std::string suiteName;
+    std::string name;
+    std::set<std::string> tags;
+    std::string skipMessage;
+    Device::Type deviceType;
+
+    CPUTestFunc cpuFunc;
+    GPUTestFunc gpuFunc;
 };
 
-FALCOR_ENUM_CLASS_OPERATORS(UnitTestCategoryFlags);
+/// Enumerate all tests.
+FALCOR_API std::vector<Test> enumerateTests();
 
-enum class UnitTestDeviceFlags
-{
-    D3D12 = 0x1,
-    Vulkan = 0x2,
-    All = D3D12 | Vulkan,
-};
-
-FALCOR_ENUM_CLASS_OPERATORS(UnitTestDeviceFlags);
-
-FALCOR_API void registerCPUTest(
-    const std::filesystem::path& path,
-    const std::string& name,
-    const std::string& skipMessage,
-    CPUTestFunc func
-);
-FALCOR_API void registerGPUTest(
-    const std::filesystem::path& path,
-    const std::string& name,
-    const std::string& skipMessage,
-    GPUTestFunc func,
-    UnitTestDeviceFlags supportedDevices
-);
-FALCOR_API int32_t runTests(
-    ref<Device> pDevice,
-    Fbo* pTargetFbo,
-    UnitTestCategoryFlags categoryFlags,
-    const std::string& testFilterRegexp,
-    const std::filesystem::path& xmlReportPath,
-    uint32_t repeatCount = 1
+/// Filter tests by suite and case name.
+FALCOR_API std::vector<Test> filterTests(
+    std::vector<Test> tests,
+    std::string testSuiteFilter,
+    std::string testCaseFilter,
+    std::string tagFilter,
+    Device::Type deviceType
 );
 
 class FALCOR_API UnitTestContext
 {
 public:
+    /**
+     * Skip the current test at runtime.
+     */
+    void skip(const char* message) { throw SkippingTestException(message); }
+
     /**
      * reportFailure is called with an error message to report a failing
      * test.  Normally it's only used by the EXPECT_EQ (etc.) macros,
@@ -153,7 +157,7 @@ class FALCOR_API CPUUnitTestContext : public UnitTestContext
 class FALCOR_API GPUUnitTestContext : public UnitTestContext
 {
 public:
-    GPUUnitTestContext(ref<Device> pDevice, Fbo* pTargetFbo) : mpDevice(pDevice), mpTargetFbo(pTargetFbo) {}
+    GPUUnitTestContext(ref<Device> pDevice) : mpDevice(pDevice) {}
 
     /**
      * createProgram creates a compute program from the source code at the
@@ -164,8 +168,8 @@ public:
     void createProgram(
         const std::filesystem::path& path,
         const std::string& csEntry = "main",
-        const Program::DefineList& programDefines = Program::DefineList(),
-        Shader::CompilerFlags flags = Shader::CompilerFlags::None,
+        const DefineList& programDefines = DefineList(),
+        Program::CompilerFlags flags = Program::CompilerFlags::None,
         const std::string& shaderModel = "",
         bool createShaderVars = true
     );
@@ -173,11 +177,7 @@ public:
     /**
      * Create compute program based on program desc and defines.
      */
-    void createProgram(
-        const Program::Desc& desc,
-        const Program::DefineList& programDefines = Program::DefineList(),
-        bool createShaderVars = true
-    );
+    void createProgram(const Program::Desc& desc, const DefineList& programDefines = DefineList(), bool createShaderVars = true);
 
     /**
      * (Re-)create the shader variables. Call this if vars were not
@@ -220,6 +220,24 @@ public:
     void allocateStructuredBuffer(const std::string& name, uint32_t nElements, const void* pInitData = nullptr, size_t initDataSize = 0);
 
     /**
+     * Read the contents of a structured buffer into a vector.
+     */
+    template<typename T>
+    std::vector<T> readBuffer(const char* bufferName)
+    {
+        FALCOR_ASSERT(mStructuredBuffers.find(bufferName) != mStructuredBuffers.end());
+        auto it = mStructuredBuffers.find(bufferName);
+        if (it == mStructuredBuffers.end())
+            throw ErrorRunningTestException(std::string(bufferName) + ": couldn't find buffer to map");
+        ref<Buffer> buffer = it->second;
+        const T* data = reinterpret_cast<const T*>(buffer->map(Buffer::MapType::Read));
+        size_t size = buffer->getSize() / sizeof(T);
+        std::vector result(data, data + size);
+        buffer->unmap();
+        return result;
+    }
+
+    /**
      * runProgram runs the compute program that was specified in
      * |createProgram|, where the total number of threads that runs is
      * given by the product of the three provided dimensions.
@@ -235,23 +253,6 @@ public:
     void runProgram(uint32_t width = 1, uint32_t height = 1, uint32_t depth = 1) { runProgram(uint3(width, height, depth)); }
 
     /**
-     * mapBuffer returns a pointer to the named structured buffer.
-     * Returns nullptr if no such buffer exists.  SFINAE is used to
-     * require that a the requested pointer is const.
-     */
-    template<typename T>
-    T* mapBuffer(const char* bufferName, typename std::enable_if<std::is_const<T>::value>::type* = 0)
-    {
-        return reinterpret_cast<T*>(mapRawRead(bufferName));
-    }
-
-    /**
-     * unmapBuffer unmaps a buffer after it's been used after a call to
-     * |mapBuffer()|.
-     */
-    void unmapBuffer(const char* bufferName);
-
-    /**
      * Returns the current Falcor render device.
      */
     const ref<Device>& getDevice() const { return mpDevice; }
@@ -262,36 +263,94 @@ public:
     RenderContext* getRenderContext() const { return mpDevice->getRenderContext(); }
 
     /**
-     * Returns the current FBO.
-     */
-    Fbo* getTargetFbo() const { return mpTargetFbo; }
-
-    /**
      * Returns the program.
      */
     ComputeProgram* getProgram() const { return mpProgram.get(); }
 
 private:
-    const void* mapRawRead(const char* bufferName);
-
     // Internal state
     ref<Device> mpDevice;
-    Fbo* mpTargetFbo;
     ref<ComputeState> mpState;
     ref<ComputeProgram> mpProgram;
     ref<ComputeVars> mpVars;
     uint3 mThreadGroupSize = {0, 0, 0};
 
-    struct ParameterBuffer
-    {
-        ref<Buffer> pBuffer;
-        bool mapped = false;
-    };
-    std::map<std::string, ParameterBuffer> mStructuredBuffers;
+    std::map<std::string, ref<Buffer>> mStructuredBuffers;
 };
 
-namespace unittest
+struct Tags
 {
+    Tags(std::string tag) { tags.push_back(std::move(tag)); }
+    Tags(std::initializer_list<const char*> tags_)
+    {
+        for (const char* tag : tags_)
+            tags.push_back(tag);
+    }
+
+    std::vector<std::string> tags;
+};
+
+struct Skip
+{
+    Skip(std::string msg_) : msg(std::move(msg_)) {}
+
+    std::string msg;
+};
+
+struct DeviceTypes
+{
+    DeviceTypes(Device::Type deviceType) { deviceTypes.insert(deviceType); }
+    DeviceTypes(std::initializer_list<Device::Type> deviceTypes_)
+    {
+        for (Device::Type type : deviceTypes_)
+            deviceTypes.insert(type);
+    }
+
+    std::set<Device::Type> deviceTypes;
+};
+
+struct Options
+{
+    std::set<std::string> tags;
+    std::string skipMessage;
+    std::set<Device::Type> deviceTypes;
+};
+
+inline void applyArg(Options& options, Tags&& arg)
+{
+    options.tags.insert(arg.tags.begin(), arg.tags.end());
+}
+
+inline void applyArg(Options& options, Skip&& arg)
+{
+    options.skipMessage = std::move(arg.msg);
+}
+
+inline void applyArg(Options& options, DeviceTypes&& arg)
+{
+    options.deviceTypes.insert(arg.deviceTypes.begin(), arg.deviceTypes.end());
+}
+
+inline void applyArg(Options& options, Device::Type deviceType)
+{
+    options.deviceTypes.insert(deviceType);
+}
+
+template<size_t N>
+inline void applyArg(Options& options, const char (&skipMsg)[N])
+{
+    options.skipMessage = std::string(skipMsg, N - 1);
+}
+
+template<typename... Args>
+void applyArgs(Options& options, Args&&... args)
+{
+    (applyArg(options, std::forward<Args>(args)), ...);
+}
+
+FALCOR_API void registerCPUTest(std::filesystem::path path, std::string name, unittest::Options options, CPUTestFunc func);
+FALCOR_API void registerGPUTest(std::filesystem::path path, std::string name, unittest::Options options, GPUTestFunc func);
+
 /**
  * StreamSink is a utility class used by the testing framework that either
  * captures values printed via C++'s operator<< (as with regular
@@ -462,57 +521,95 @@ inline std::optional<std::string> createBinaryMessage(std::string_view lhsStr, s
  * Start of user-facing API
  */
 
+using UnitTestContext = unittest::UnitTestContext;
+using CPUUnitTestContext = unittest::CPUUnitTestContext;
+using GPUUnitTestContext = unittest::GPUUnitTestContext;
+
 /**
- * Macro to define a CPU unit test. The optional skip message will
- * disable the test from running without leading to a failure.
- * The macro defines an instance of the |CPUUnitTestRegisterer| class,
- * which in turn registers the test with the test framework when its
- * constructor executes at program startup time. Next, it starts the
- * definition of the testing function, up to the point at which
- * the user should supply an open brace and start writing code.
+ * Macro to define a CPU unit test. The optional arguments include:
+ *
+ * - SKIP(msg): Skip the test with the given message (expands to unittest::Skip).
+ * - TAGS(...): A list of tags to associate with the test (expands to unittest::Tags).
+ *
+ * Some examples:
+ *
+ * CPU_TEST(Test1) {} // Test is always run
+ * CPU_TEST(Test2, SKIP("Not implemented")) {} // Test is skipped
+ * CPU_TEST(Test3, TAGS("tag1", "tag2")) {} // Test is run and tagged with "tag1" and "tag2"
+ *
+ * For convenience, and for backwards compatibility, a string can be used as an
+ * optional argument to skip the test:
+ *
+ * CPU_TEST(Test4, "Not implemented") {} // Test is skipped (same as above)
+ *
+ * Note: All CPU tests are implicitly tagged with "cpu".
  */
-#define CPU_TEST(name, ...)                                               \
-    static void CPUUnitTest##name(CPUUnitTestContext& ctx);               \
-    struct CPUUnitTestRegisterer##name                                    \
-    {                                                                     \
-        CPUUnitTestRegisterer##name()                                     \
-        {                                                                 \
-            std::filesystem::path path = __FILE__;                        \
-            const char* skipMessage = "" __VA_ARGS__;                     \
-            registerCPUTest(path, #name, skipMessage, CPUUnitTest##name); \
-        }                                                                 \
-    } RegisterCPUTest##name;                                              \
+#define CPU_TEST(name, ...)                                                     \
+    static void CPUUnitTest##name(CPUUnitTestContext& ctx);                     \
+    struct CPUUnitTestRegisterer##name                                          \
+    {                                                                           \
+        CPUUnitTestRegisterer##name()                                           \
+        {                                                                       \
+            std::filesystem::path path = __FILE__;                              \
+            unittest::Options options;                                          \
+            applyArgs(options, ##__VA_ARGS__);                                  \
+            options.tags.insert("cpu");                                         \
+            unittest::registerCPUTest(path, #name, options, CPUUnitTest##name); \
+        }                                                                       \
+    } RegisterCPUTest##name;                                                    \
     static void CPUUnitTest##name(CPUUnitTestContext& ctx) /* over to the user for the braces */
 
 /**
- * Macro to define a GPU unit test. The optional skip message will
- * disable the test from running without leading to a failure.
- * The macro works in the same ways as CPU_TEST().
+ * Macro to define a GPU unit test. The optional arguments include:
+ *
+ * - SKIP(msg): Skip the test with the given message (expands to unittest::Skip).
+ * - TAGS(...): A list of tags to associate with the test (expands to unittest::Tags).
+ * - DEVICE_TYPES(...): A list of device types to run the test on (expands to unittest::DeviceTypes).
+ *
+ * Some examples:
+ *
+ * GPU_TEST(Test1) {} // Test is always run
+ * GPU_TEST(Test2, SKIP("Not implemented")) {} // Test is skipped
+ * GPU_TEST(Test3, TAGS("tag1", "tag2")) {} // Test is run and tagged with "tag1" and "tag2"
+ * GPU_TEST(Test4, DEVICE_TYPES(Device::Type::D3D12)) {} // Test is only run on D3D12
+ *
+ * For convenience, and for backwards compatibility, a string can be used as an
+ * optional argument to skip the test:
+ *
+ * GPU_TEST(Test5, "Not implemented") {} // Test is skipped (same as above)
+ *
+ * Also, Device::Type values can be used as optional arguments to specify a
+ * device type to run the test on:
+ *
+ * GPU_TEST(Test6, Device::Type::D3D12) {} // Test is only run on D3D12 (same as above)
+ *
+ * Note: All GPU tests are implicitly tagged with "gpu".
  */
-#define GPU_TEST_INTERNAL(name, flags, ...)                                      \
-    static void GPUUnitTest##name(GPUUnitTestContext& ctx);                      \
-    struct GPUUnitTestRegisterer##name                                           \
-    {                                                                            \
-        GPUUnitTestRegisterer##name()                                            \
-        {                                                                        \
-            std::filesystem::path path = __FILE__;                               \
-            const char* skipMessage = "" __VA_ARGS__;                            \
-            registerGPUTest(path, #name, skipMessage, GPUUnitTest##name, flags); \
-        }                                                                        \
-    } RegisterGPUTest##name;                                                     \
+#define GPU_TEST(name, ...)                                                     \
+    static void GPUUnitTest##name(GPUUnitTestContext& ctx);                     \
+    struct GPUUnitTestRegisterer##name                                          \
+    {                                                                           \
+        GPUUnitTestRegisterer##name()                                           \
+        {                                                                       \
+            std::filesystem::path path = __FILE__;                              \
+            unittest::Options options;                                          \
+            applyArgs(options, ##__VA_ARGS__);                                  \
+            options.tags.insert("gpu");                                         \
+            unittest::registerGPUTest(path, #name, options, GPUUnitTest##name); \
+        }                                                                       \
+    } RegisterGPUTest##name;                                                    \
     static void GPUUnitTest##name(GPUUnitTestContext& ctx) /* over to the user for the braces */
 
-#define GPU_TEST(name, ...) GPU_TEST_INTERNAL(name, UnitTestDeviceFlags::All, __VA_ARGS__)
+// clang-format off
 
-/**
- * Define GPU_TEST_D3D12 macro that defines a GPU unit test only supported on D3D12.
- */
-#define GPU_TEST_D3D12(name, ...) GPU_TEST_INTERNAL(name, UnitTestDeviceFlags::D3D12, __VA_ARGS__)
+/// Used as an argument of CPU_TEST/GPU_TEST to tag a test with a set of strings.
+#define TAGS(...) ::Falcor::unittest::Tags{__VA_ARGS__}
+/// Used as an argument of CPU_TEST/GPU_TEST to mark a test to be skipped.
+#define SKIP(msg) ::Falcor::unittest::Skip{msg}
+/// Used as an argument of GPU_TEST to mark a test to only run for certain devices.
+#define DEVICE_TYPES(...) ::Falcor::unittest::DeviceTypes{__VA_ARGS__}
 
-/**
- * Define GPU_TEST_VULKAN macro that defines a GPU unit test only supported on Vulkan.
- */
-#define GPU_TEST_VULKAN(name, ...) GPU_TEST_INTERNAL(name, UnitTestDeviceFlags::Vulkan, __VA_ARGS__)
+// clang-format on
 
 /**
  * Macro definitions for the GPU unit testing framework. Note that they

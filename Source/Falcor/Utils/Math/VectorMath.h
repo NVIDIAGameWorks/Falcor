@@ -1800,10 +1800,10 @@ struct std::hash<::Falcor::math::vector<T, N>>
 
 /// Vector string formatter.
 template<typename T, int N>
-struct fmt::formatter<::Falcor::math::vector<T, N>> : formatter<T>
+struct fmt::formatter<Falcor::math::vector<T, N>> : formatter<T>
 {
     template<typename FormatContext>
-    auto format(const ::Falcor::math::vector<T, N>& v, FormatContext& ctx) const
+    auto format(const Falcor::math::vector<T, N>& v, FormatContext& ctx) const
     {
         auto out = ctx.out();
         for (int i = 0; i < N; ++i)

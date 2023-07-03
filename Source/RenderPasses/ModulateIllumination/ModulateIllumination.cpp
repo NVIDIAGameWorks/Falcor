@@ -71,13 +71,13 @@ extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registr
     registry.registerClass<RenderPass, ModulateIllumination>();
 }
 
-ModulateIllumination::ModulateIllumination(ref<Device> pDevice, const Dictionary& dict)
+ModulateIllumination::ModulateIllumination(ref<Device> pDevice, const Properties& props)
     : RenderPass(pDevice)
 {
-    mpModulateIlluminationPass = ComputePass::create(mpDevice, kShaderFile, "main", Program::DefineList(), false);
+    mpModulateIlluminationPass = ComputePass::create(mpDevice, kShaderFile, "main", DefineList(), false);
 
     // Deserialize pass from dictionary.
-    for (const auto& [key, value] : dict)
+    for (const auto& [key, value] : props)
     {
         if (key == kUseEmission) mUseEmission = value;
         else if (key == kUseDiffuseReflectance) mUseDiffuseReflectance = value;
@@ -94,28 +94,28 @@ ModulateIllumination::ModulateIllumination(ref<Device> pDevice, const Dictionary
         else if (key == kOutputSize) mOutputSizeSelection = value;
         else
         {
-            logWarning("Unknown field '{}' in ModulateIllumination dictionary.", key);
+            logWarning("Unknown property '{}' in ModulateIllumination properties.", key);
         }
     }
 }
 
-Falcor::Dictionary ModulateIllumination::getScriptingDictionary()
+Falcor::Properties ModulateIllumination::getProperties() const
 {
-    Dictionary dict;
-    dict[kUseEmission] = mUseEmission;
-    dict[kUseDiffuseReflectance] = mUseDiffuseReflectance;
-    dict[kUseDiffuseRadiance] = mUseDiffuseRadiance;
-    dict[kUseSpecularReflectance] = mUseSpecularReflectance;
-    dict[kUseSpecularRadiance] = mUseSpecularRadiance;
-    dict[kUseDeltaReflectionEmission] = mUseDeltaReflectionEmission;
-    dict[kUseDeltaReflectionReflectance] = mUseDeltaReflectionReflectance;
-    dict[kUseDeltaReflectionRadiance] = mUseDeltaReflectionRadiance;
-    dict[kUseDeltaTransmissionEmission] = mUseDeltaTransmissionEmission;
-    dict[kUseDeltaTransmissionReflectance] = mUseDeltaTransmissionReflectance;
-    dict[kUseDeltaTransmissionRadiance] = mUseDeltaTransmissionRadiance;
-    dict[kUseResidualRadiance] = mUseResidualRadiance;
-    dict[kOutputSize] = mOutputSizeSelection;
-    return dict;
+    Properties props;
+    props[kUseEmission] = mUseEmission;
+    props[kUseDiffuseReflectance] = mUseDiffuseReflectance;
+    props[kUseDiffuseRadiance] = mUseDiffuseRadiance;
+    props[kUseSpecularReflectance] = mUseSpecularReflectance;
+    props[kUseSpecularRadiance] = mUseSpecularRadiance;
+    props[kUseDeltaReflectionEmission] = mUseDeltaReflectionEmission;
+    props[kUseDeltaReflectionReflectance] = mUseDeltaReflectionReflectance;
+    props[kUseDeltaReflectionRadiance] = mUseDeltaReflectionRadiance;
+    props[kUseDeltaTransmissionEmission] = mUseDeltaTransmissionEmission;
+    props[kUseDeltaTransmissionReflectance] = mUseDeltaTransmissionReflectance;
+    props[kUseDeltaTransmissionRadiance] = mUseDeltaTransmissionRadiance;
+    props[kUseResidualRadiance] = mUseResidualRadiance;
+    props[kOutputSize] = mOutputSizeSelection;
+    return props;
 }
 
 RenderPassReflection ModulateIllumination::reflect(const CompileData& compileData)
@@ -141,7 +141,7 @@ void ModulateIllumination::execute(RenderContext* pRenderContext, const RenderDa
 
     // For optional I/O resources, set 'is_valid_<name>' defines to inform the program of which ones it can access.
     // TODO: This should be moved to a more general mechanism using Slang.
-    Program::DefineList defineList = getValidResourceDefines(kInputChannels, renderData);
+    DefineList defineList = getValidResourceDefines(kInputChannels, renderData);
 
     // Override defines.
     if (!mUseEmission) defineList["is_valid_gEmission"] = "0";

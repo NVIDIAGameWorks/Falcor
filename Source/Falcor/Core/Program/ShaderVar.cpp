@@ -114,9 +114,14 @@ ShaderVar ShaderVar::operator[](const std::string& name) const
     auto result = findMember(name);
     if (!result.isValid() && isValid())
     {
-        reportError("No member named '" + name + "' found.\n");
+        throw ArgumentError("No member named '{}' found.", name);
     }
     return result;
+}
+
+ShaderVar ShaderVar::operator[](std::string_view name) const
+{
+    return (*this)[std::string(name)];
 }
 
 ShaderVar ShaderVar::operator[](const char* name) const
@@ -191,8 +196,7 @@ ShaderVar ShaderVar::operator[](size_t index) const
         }
     }
 
-    reportError("No element or member found at index " + std::to_string(index));
-    return ShaderVar();
+    throw ArgumentError("No element or member found at index {}", index);
 }
 
 ShaderVar ShaderVar::operator[](const TypedShaderVarOffset& offset) const
@@ -287,8 +291,7 @@ ShaderVar ShaderVar::operator[](const UniformShaderVarOffset& loc) const
         }
     }
 
-    reportError("no member at offset");
-    return ShaderVar();
+    throw ArgumentError("No element or member found at offset {}", byteOffset);
 }
 
 bool ShaderVar::isValid() const

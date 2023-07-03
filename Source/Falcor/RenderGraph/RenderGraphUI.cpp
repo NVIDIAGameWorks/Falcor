@@ -1013,7 +1013,7 @@ void RenderGraphUI::renderUI(RenderContext* pRenderContext, Gui* pGui)
             // TODO -- only call this with data change
             if (ImGui::IsWindowFocused())
             {
-                mpIr->updatePass(renderUIName, pPass->getScriptingDictionary());
+                mpIr->updatePass(renderUIName, pPass->getProperties());
             }
             mShouldUpdate = true;
         }

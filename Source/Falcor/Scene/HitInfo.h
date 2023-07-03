@@ -28,7 +28,7 @@
 #pragma once
 #include "Core/Macros.h"
 #include "Core/API/Formats.h"
-#include "Core/API/Shader.h"
+#include "Core/Program/DefineList.h"
 
 namespace Falcor
 {
@@ -56,7 +56,7 @@ namespace Falcor
 
         /** Returns defines needed packing/unpacking a HitInfo struct.
         */
-        Shader::DefineList getDefines() const;
+        DefineList getDefines() const;
 
         /** Returns the resource format required for encoding packed hit information.
         */

@@ -38,6 +38,7 @@ namespace Falcor
 {
 class FALCOR_API GpuMemoryHeap : public Object
 {
+    FALCOR_OBJECT(GpuMemoryHeap)
 public:
     enum class Type
     {

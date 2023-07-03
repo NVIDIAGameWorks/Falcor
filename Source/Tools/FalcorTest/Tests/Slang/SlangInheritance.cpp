@@ -32,7 +32,7 @@ namespace Falcor
 {
 GPU_TEST(SlangStructInheritanceReflection, "Not working yet")
 {
-    ctx.createProgram("Tests/Slang/SlangInheritance.cs.slang", "main", Program::DefineList(), Shader::CompilerFlags::None, "6_5");
+    ctx.createProgram("Tests/Slang/SlangInheritance.cs.slang", "main", DefineList(), Program::CompilerFlags::None, "6_5");
 
     // Reflection of struct A.
     auto typeA = ctx.getProgram()->getReflector()->findType("A");
@@ -80,7 +80,7 @@ GPU_TEST(SlangStructInheritanceLayout)
 {
     ref<Device> pDevice = ctx.getDevice();
 
-    ctx.createProgram("Tests/Slang/SlangInheritance.cs.slang", "main", Program::DefineList(), Shader::CompilerFlags::None, "6_5");
+    ctx.createProgram("Tests/Slang/SlangInheritance.cs.slang", "main", DefineList(), Program::CompilerFlags::None, "6_5");
     ShaderVar var = ctx.vars().getRootVar();
 
     // TODO: Use built-in buffer when reflection of struct inheritance works (see #1306).
@@ -110,7 +110,7 @@ GPU_TEST(SlangStructInheritanceLayout)
     EXPECT_EQ(offsetof(B, scalar), 0);
     EXPECT_EQ(offsetof(B, vector), 4);
 
-    // const uint32_t* result = ctx.mapBuffer<const uint32_t>("result");
+    // std::vector<uint32_t> result = ctx.readBuffer<uint32_t>("result");
     const uint32_t* result = (const uint32_t*)pResult->map(Buffer::MapType::Read);
 
     // Check struct fields read back from the GPU.
@@ -119,8 +119,5 @@ GPU_TEST(SlangStructInheritanceLayout)
     EXPECT_EQ(result[1], initData[1]);
     EXPECT_EQ(result[2], initData[2]);
     EXPECT_EQ(result[3], initData[3]);
-
-    // ctx.unmapBuffer("result");
-    pResult->unmap();
 }
 } // namespace Falcor

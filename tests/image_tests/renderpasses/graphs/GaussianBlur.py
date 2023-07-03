@@ -2,7 +2,7 @@ from falcor import *
 
 def render_graph_GaussianBlur():
     testGaussianBlur = RenderGraph("Gaussian Blur")
-    imageLoader = createPass("ImageLoader", {'filename' : "LightProbes/hallstatt4_hd.hdr", 'mips': False, 'srgb': False, 'outputFormat': ResourceFormat.RGBA32Float})
+    imageLoader = createPass("ImageLoader", {'filename' : "test_scenes/envmaps/hallstatt4_hd.hdr", 'mips': False, 'srgb': False, 'outputFormat': 'RGBA32Float'})
     testGaussianBlur.addPass(imageLoader, "ImageLoader")
     GaussianBlurPass = createPass("GaussianBlur")
     testGaussianBlur.addPass(GaussianBlurPass, "GaussianBlur")

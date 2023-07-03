@@ -1,8 +1,8 @@
 from falcor import *
 
 def test_FLIPPass():
-    imageLoaderA = createPass("ImageLoader", {'filename': 'Cubemaps/Sorsele3/posz.jpg', 'mips': False, 'srgb': False})
-    imageLoaderB = createPass("ImageLoader", {'filename': 'Cubemaps/Sorsele3/posz.jpg', 'mips': False, 'srgb': True})
+    imageLoaderA = createPass("ImageLoader", {'filename': 'test_images/cubemap/sorsele3/posz.jpg', 'mips': False, 'srgb': False})
+    imageLoaderB = createPass("ImageLoader", {'filename': 'test_images/cubemap/sorsele3/posz.jpg', 'mips': False, 'srgb': True})
     flip = createPass("FLIPPass")
 
     graph = RenderGraph("FLIP")

@@ -40,9 +40,9 @@ ParallelReduction::ParallelReduction(ref<Device> pDevice) : mpDevice(pDevice)
 {
     // Create the programs.
     // Set defines to avoid compiler warnings about undefined macros. Proper values will be assigned at runtime.
-    Program::DefineList defines = {{"REDUCTION_TYPE", "1"}, {"FORMAT_CHANNELS", "1"}, {"FORMAT_TYPE", "1"}};
-    mpInitialProgram = ComputeProgram::createFromFile(mpDevice, kShaderFile, "initialPass", defines, Shader::CompilerFlags::None);
-    mpFinalProgram = ComputeProgram::createFromFile(mpDevice, kShaderFile, "finalPass", defines, Shader::CompilerFlags::None);
+    DefineList defines = {{"REDUCTION_TYPE", "1"}, {"FORMAT_CHANNELS", "1"}, {"FORMAT_TYPE", "1"}};
+    mpInitialProgram = ComputeProgram::createFromFile(mpDevice, kShaderFile, "initialPass", defines);
+    mpFinalProgram = ComputeProgram::createFromFile(mpDevice, kShaderFile, "finalPass", defines);
     mpVars = ComputeVars::create(mpDevice, mpInitialProgram.get());
 
     // Check assumptions on thread group sizes. The initial pass is a 2D dispatch, the final pass a 1D.
@@ -150,7 +150,7 @@ void ParallelReduction::execute(
     const uint32_t channelCount = getFormatChannelCount(pInput->getFormat());
     FALCOR_ASSERT(channelCount >= 1 && channelCount <= 4);
 
-    Program::DefineList defines;
+    DefineList defines;
     defines.add("REDUCTION_TYPE", std::to_string(reductionType));
     defines.add("FORMAT_CHANNELS", std::to_string(channelCount));
     defines.add("FORMAT_TYPE", std::to_string(formatType));

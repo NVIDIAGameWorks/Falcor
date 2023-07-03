@@ -107,7 +107,7 @@ void SDFEditor::registerBindings(pybind11::module& m)
     // None at the moment.
 }
 
-SDFEditor::SDFEditor(ref<Device> pDevice, const Dictionary& dict)
+SDFEditor::SDFEditor(ref<Device> pDevice, const Properties& props)
     : RenderPass(pDevice)
 {
     mpFbo = Fbo::create(mpDevice);
@@ -180,9 +180,9 @@ void SDFEditor::fetchPreviousVBufferAndZBuffer(RenderContext* pRenderContext, re
     pRenderContext->copySubresourceRegion(mpEditingLinearZBuffer.get(), 0, pDepth.get(), pDepth->getSubresourceIndex(0, 0));
 }
 
-Dictionary SDFEditor::getScriptingDictionary()
+Properties SDFEditor::getProperties() const
 {
-    return Dictionary();
+    return {};
 }
 
 void SDFEditor::setScene(RenderContext* pRenderContext, const ref<Scene>& pScene)

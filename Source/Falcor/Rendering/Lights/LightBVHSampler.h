@@ -31,6 +31,7 @@
 #include "LightBVHBuilder.h"
 #include "LightBVHSamplerSharedDefinitions.slang"
 #include "Core/Macros.h"
+#include "Utils/Properties.h"
 #include "Utils/Math/AABB.h"
 #include "Scene/Lights/LightCollection.h"
 #include <memory>
@@ -69,6 +70,17 @@ namespace Falcor
 
             // Note: Empty constructor needed for clang due to the use of the nested struct constructor in the parent constructor.
             Options() {}
+
+            template<typename Archive>
+            void serialize(Archive& ar)
+            {
+                ar("buildOptions", buildOptions);
+                ar("useBoundingCone", useBoundingCone);
+                ar("useLightingCone", useLightingCone);
+                ar("disableNodeFlux", disableNodeFlux);
+                ar("useUniformTriangleSampling", useUniformTriangleSampling);
+                ar("solidAngleBoundMethod", solidAngleBoundMethod);
+            }
         };
 
         /** Creates a LightBVHSampler for a given scene.
@@ -88,7 +100,7 @@ namespace Falcor
         /** Return a list of shader defines to use this light sampler.
         *   \return Returns a list of shader defines.
         */
-        virtual Program::DefineList getDefines() const override;
+        virtual DefineList getDefines() const override;
 
         /** Bind the light sampler data to a given shader variable.
             \param[in] var Shader variable.

@@ -57,6 +57,13 @@ public:
             mGlobals["__builtins__"] = pybind11::globals()["__builtins__"];
         }
 
+        ~Context()
+        {
+            // We need to manually cleanup the globals dictionary to avoid keeping references to objects.
+            for (const auto& it : mGlobals)
+                mGlobals[it.first] = nullptr;
+        }
+
         template<typename T>
         struct ObjectDesc
         {

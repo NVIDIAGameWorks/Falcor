@@ -27,6 +27,8 @@
  **************************************************************************/
 #pragma once
 #include "Core/Macros.h"
+#include "Core/Enum.h"
+#include "Utils/Properties.h"
 #include "Utils/Debug/PixelDebug.h"
 #include "Scene/Scene.h"
 #include <memory>
@@ -94,15 +96,29 @@ namespace Falcor
             SpatiotemporalResampling    = 4, ///< Spatiotemporal resampling.
         };
 
+        FALCOR_ENUM_INFO(Mode, {
+            { Mode::NoResampling, "NoResampling" },
+            { Mode::SpatialResampling, "SpatialResampling" },
+            { Mode::TemporalResampling, "TemporalResampling" },
+            { Mode::SpatiotemporalResampling, "SpatiotemporalResampling" },
+        });
+
         /** Bias correction modes.
         */
         enum class BiasCorrection
         {
             Off         = 0, ///< Use (1/M) normalization, which is very biased but also very fast.
             Basic       = 1, ///< Use MIS-like normalization but assume that every sample is visible.
-            Pairwise    = 2, ///< Use pairwise MIS normalization.  Assumes every sample is visible.
+            Pairwise    = 2, ///< Use pairwise MIS normalization. Assumes every sample is visible.
             RayTraced   = 3, ///< Use MIS-like normalization with visibility rays. Unbiased.
         };
+
+        FALCOR_ENUM_INFO(BiasCorrection, {
+            { BiasCorrection::Off, "Off" },
+            { BiasCorrection::Basic, "Basic" },
+            { BiasCorrection::Pairwise, "Pairwise" },
+            { BiasCorrection::RayTraced, "RayTraced" },
+        });
 
         /** Configuration options, with generally reasonable defaults.
         */
@@ -155,6 +171,41 @@ namespace Falcor
 
             // Note: Empty constructor needed for clang due to the use of the nested struct constructor in the parent constructor.
             Options() {}
+
+            template<typename Archive>
+            void serialize(Archive& ar)
+            {
+                ar("mode", mode);
+
+                ar("presampledTileCount", presampledTileCount);
+                ar("presampledTileSize", presampledTileSize);
+                ar("storeCompactLightInfo", storeCompactLightInfo);
+
+                ar("localLightCandidateCount", localLightCandidateCount);
+                ar("infiniteLightCandidateCount", infiniteLightCandidateCount);
+                ar("envLightCandidateCount", envLightCandidateCount);
+                ar("brdfCandidateCount", brdfCandidateCount);
+                ar("brdfCutoff", brdfCutoff);
+                ar("testCandidateVisibility", testCandidateVisibility);
+
+                ar("biasCorrection", biasCorrection);
+                ar("depthThreshold", depthThreshold);
+                ar("normalThreshold", normalThreshold);
+
+                ar("samplingRadius", samplingRadius);
+                ar("spatialSampleCount", spatialSampleCount);
+                ar("spatialIterations", spatialIterations);
+
+                ar("maxHistoryLength", maxHistoryLength);
+                ar("boilingFilterStrength", boilingFilterStrength);
+
+                ar("rayEpsilon", rayEpsilon);
+
+                ar("useEmissiveTextures", useEmissiveTextures);
+
+                ar("enableVisibilityShortcut", enableVisibilityShortcut);
+                ar("enablePermutationSampling", enablePermutationSampling);
+            }
         };
 
         static_assert(std::is_trivially_copyable<Options>() , "Options needs to be trivially copyable");
@@ -188,7 +239,7 @@ namespace Falcor
         /** Get a list of shader defines for using the RTXDI sampler.
             \return List of shader defines.
         */
-        Program::DefineList getDefines() const;
+        DefineList getDefines() const;
 
         /** Bind the RTXDI sampler to a given shader var.
             Note: RTXDI is always bound to the global "gRTXDI" variable, so we expect a root shader variable here.
@@ -342,4 +393,7 @@ namespace Falcor
 
 #endif // FALCOR_HAS_RTXDI
     };
+
+    FALCOR_ENUM_REGISTER(RTXDI::Mode);
+    FALCOR_ENUM_REGISTER(RTXDI::BiasCorrection);
 }

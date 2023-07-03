@@ -46,7 +46,7 @@ void GaussianBlur::registerBindings(pybind11::module& m)
     pass.def_property(kSigma, &GaussianBlur::getSigma, &GaussianBlur::setSigma);
 }
 
-GaussianBlur::GaussianBlur(ref<Device> pDevice, const Dictionary& dict)
+GaussianBlur::GaussianBlur(ref<Device> pDevice, const Properties& props)
     : RenderPass(pDevice)
 {
     mpFbo = Fbo::create(mpDevice);
@@ -54,20 +54,20 @@ GaussianBlur::GaussianBlur(ref<Device> pDevice, const Dictionary& dict)
     samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Point).setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
     mpSampler = Sampler::create(mpDevice, samplerDesc);
 
-    for (const auto& [key, value] : dict)
+    for (const auto& [key, value] : props)
     {
         if (key == kKernelWidth) mKernelWidth = value;
         else if (key == kSigma) mSigma = value;
-        else logWarning("Unknown field '{}' in a GaussianBlur dictionary.", key);
+        else logWarning("Unknown property '{}' in a GaussianBlur properties.", key);
     }
 }
 
-Dictionary GaussianBlur::getScriptingDictionary()
+Properties GaussianBlur::getProperties() const
 {
-    Dictionary dict;
-    dict[kKernelWidth] = mKernelWidth;
-    dict[kSigma] = mSigma;
-    return dict;
+    Properties props;
+    props[kKernelWidth] = mKernelWidth;
+    props[kSigma] = mSigma;
+    return props;
 }
 
 RenderPassReflection GaussianBlur::reflect(const CompileData& compileData)
@@ -107,7 +107,7 @@ void GaussianBlur::compile(RenderContext* pRenderContext, const CompileData& com
     if (!mReady) throw RuntimeError("GaussianBlur: Missing incoming reflection information");
 
     uint32_t arraySize = compileData.connectedResources.getField(kSrc)->getArraySize();
-    Program::DefineList defines;
+    DefineList defines;
     defines.add("_KERNEL_WIDTH", std::to_string(mKernelWidth));
     if (arraySize > 1) defines.add("_USE_TEX2D_ARRAY");
 
