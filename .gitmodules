@@ -1,18 +1,18 @@
 [submodule "external/pybind11"]
 	path = external/pybind11
-	url = https://github.com/skallweitNV/pybind11.git
+	url = git@github.com:skallweitNV/pybind11.git
 [submodule "external/glfw"]
 	path = external/glfw
-	url = https://github.com/glfw/glfw.git
+	url = git@github.com:glfw/glfw.git
 [submodule "external/args"]
 	path = external/args
-	url = https://github.com/Taywee/args.git
+	url = git@github.com:Taywee/args.git
 [submodule "external/fmt"]
 	path = external/fmt
-	url = https://github.com/fmtlib/fmt.git
+	url = git@github.com:fmtlib/fmt.git
 [submodule "external/imgui"]
 	path = external/imgui
-	url = https://github.com/ocornut/imgui.git
+	url = git@github.com:ocornut/imgui.git
 [submodule "external/vulkan-headers"]
 	path = external/vulkan-headers
-	url = https://github.com/KhronosGroup/Vulkan-Headers
+	url = git@github.com:KhronosGroup/Vulkan-Headers
