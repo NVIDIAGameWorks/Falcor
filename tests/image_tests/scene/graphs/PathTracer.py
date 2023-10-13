@@ -1,7 +1,7 @@
 from falcor import *
 
-def render_graph_PathTracer():
-    g = RenderGraph("PathTracer")
+def render_graph_DefaultRenderGraph():
+    g = RenderGraph("DefaultRenderGraph")
     PathTracer = createPass("PathTracer", {'samplesPerPixel': 1, 'maxSurfaceBounces': 10})
     g.addPass(PathTracer, "PathTracer")
     VBufferRT = createPass("VBufferRT", {'samplePattern': 'Stratified', 'sampleCount': 16})
@@ -18,6 +18,6 @@ def render_graph_PathTracer():
     g.markOutput("ToneMapper.dst", TextureChannelFlags.Alpha)
     return g
 
-PathTracer = render_graph_PathTracer()
-try: m.addGraph(PathTracer)
+DefaultRenderGraph = render_graph_DefaultRenderGraph()
+try: m.addGraph(DefaultRenderGraph)
 except NameError: None
