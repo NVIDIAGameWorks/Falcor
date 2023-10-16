@@ -1,4 +1,4 @@
-/***************************************************************************
+﻿/***************************************************************************
  # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
@@ -74,7 +74,14 @@ private:
         ref<RtBindingTable> pBindingTable;
         ref<RtProgramVars> pVars;
 
-        TracePass(ref<Device> pDevice, const std::string& name, const std::string& passDefine, const ref<Scene>& pScene, const DefineList& defines, const Program::TypeConformanceList& globalTypeConformances);
+        TracePass(
+            ref<Device> pDevice,
+            const std::string& name,
+            const std::string& passDefine,
+            const ref<Scene>& pScene,
+            const DefineList& defines,
+            const Program::TypeConformanceList& globalTypeConformances
+        );
         void prepareProgram(ref<Device> pDevice, const DefineList& defines);
     };
 

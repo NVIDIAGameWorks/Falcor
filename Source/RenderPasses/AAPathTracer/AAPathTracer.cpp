@@ -1,4 +1,4 @@
-﻿/***************************************************************************
+/***************************************************************************
  # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
@@ -25,35 +25,38 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#pragma once
-#include "Falcor.h"
-#include "RenderGraph/RenderPass.h"
+#include "AAPathTracer.h"
 
-using namespace Falcor;
-
-class WireframePass : public RenderPass
+extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registry)
 {
-public:
-    FALCOR_PLUGIN_CLASS(WireframePass, "WireframePass", "Insert pass description here.");
+    registry.registerClass<RenderPass, AAPathTracer>();
+}
 
-    static ref<WireframePass> create(ref<Device> pDevice, const Properties& props) { return make_ref<WireframePass>(pDevice, props); }
+AAPathTracer::AAPathTracer(ref<Device> pDevice, const Properties& props)
+    : RenderPass(pDevice)
+{
+}
 
-    WireframePass(ref<Device> pDevice, const Properties& props);
+Properties AAPathTracer::getProperties() const
+{
+    return {};
+}
 
-    virtual Properties getProperties() const override;
-    virtual RenderPassReflection reflect(const CompileData& compileData) override;
-    virtual void compile(RenderContext* pRenderContext, const CompileData& compileData) override {}
-    virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
-    virtual void renderUI(Gui::Widgets& widget) override;
-    virtual void setScene(RenderContext* pRenderContext, const ref<Scene>& pScene) override;
-    virtual bool onMouseEvent(const MouseEvent& mouseEvent) override { return false; }
-    virtual bool onKeyEvent(const KeyboardEvent& keyEvent) override { return false; }
+RenderPassReflection AAPathTracer::reflect(const CompileData& compileData)
+{
+    // Define the required resources here
+    RenderPassReflection reflector;
+    //reflector.addOutput("dst");
+    //reflector.addInput("src");
+    return reflector;
+}
 
-private:
-    ref<Scene> mpScene;
-    ref<GraphicsProgram> mpProgram;
-    ref<GraphicsState> mpGraphicsState;
-    ref<RasterizerState> mpRasterizerState;
-    ref<GraphicsVars> mpVars;
-    ref<Fbo> mpFbo;
-};
+void AAPathTracer::execute(RenderContext* pRenderContext, const RenderData& renderData)
+{
+    // renderData holds the requested resources
+    // auto& pTexture = renderData.getTexture("src");
+}
+
+void AAPathTracer::renderUI(Gui::Widgets& widget)
+{
+}
