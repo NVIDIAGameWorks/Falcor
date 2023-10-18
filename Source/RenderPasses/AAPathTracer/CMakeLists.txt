@@ -3,7 +3,7 @@
 target_sources(AAPathTracer PRIVATE
     AAPathTracer.cpp
     AAPathTracer.h
-    MinimalPathTracer.rt.slang
+    AAPathTracer.rt.slang
 )
 
 target_copy_shaders(AAPathTracer RenderPasses/AAPathTracer)
