@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,28 +26,29 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 
-/** Temporal accumulation render pass.
-
-    There are entry points for each of the three supported accumulation modes.
-    Note that for the compensated summation mode the shader _must_ be compiled
-    for precise floating-point operations (no reordering).
-
-    In all modes, the shader writes the current accumulated average to the
-    output texture. The intermediate buffers are internal to the pass.
-*/
+/**
+ * Temporal accumulation render pass.
+ *
+ * There are entry points for each of the three supported accumulation modes.
+ * Note that for the compensated summation mode the shader _must_ be compiled
+ * for precise floating-point operations (no reordering).
+ *
+ * In all modes, the shader writes the current accumulated average to the
+ * output texture. The intermediate buffers are internal to the pass.
+ */
 
 cbuffer PerFrameCB
 {
-    uint2   gResolution;
-    uint    gAccumCount;
-    bool    gAccumulate;
-    bool    gMovingAverageMode;
+    uint2 gResolution;
+    uint gAccumCount;
+    bool gAccumulate;
+    bool gMovingAverageMode;
 }
 
 // Input data to accumulate and accumulated output.
 #define INPUT_FORMAT_FLOAT 0
-#define INPUT_FORMAT_UINT  1
-#define INPUT_FORMAT_SINT  2
+#define INPUT_FORMAT_UINT 1
+#define INPUT_FORMAT_SINT 2
 
 #if _INPUT_FORMAT == INPUT_FORMAT_FLOAT
 typedef float4 InputDataType;
@@ -63,18 +64,19 @@ Texture2D<InputDataType> gCurFrame;
 RWTexture2D<float4> gOutputFrame;
 
 // Last frame data, format depends on accumulation mode.
-RWTexture2D<float4> gLastFrameSum;      // If mode is Single or SingleKahan
-RWTexture2D<float4> gLastFrameCorr;     // If mode is SingleKahan
-RWTexture2D<uint4>  gLastFrameSumLo;    // If mode is Double
-RWTexture2D<uint4>  gLastFrameSumHi;    // If mode is Double
+RWTexture2D<float4> gLastFrameSum;  // If mode is Single or SingleKahan
+RWTexture2D<float4> gLastFrameCorr; // If mode is SingleKahan
+RWTexture2D<uint4> gLastFrameSumLo; // If mode is Double
+RWTexture2D<uint4> gLastFrameSumHi; // If mode is Double
 
-
-/** Single precision standard summation.
-*/
+/**
+ * Single precision standard summation.
+ */
 [numthreads(16, 16, 1)]
-void accumulateSingle(uint3 dispatchThreadId : SV_DispatchThreadID)
+void accumulateSingle(uint3 dispatchThreadId: SV_DispatchThreadID)
 {
-    if (any(dispatchThreadId.xy >= gResolution)) return;
+    if (any(dispatchThreadId.xy >= gResolution))
+        return;
     const uint2 pixelPos = dispatchThreadId.xy;
     const float4 curColor = gCurFrame[pixelPos];
 
@@ -109,12 +111,14 @@ void accumulateSingle(uint3 dispatchThreadId : SV_DispatchThreadID)
     gOutputFrame[pixelPos] = output;
 }
 
-/** Single precision compensated summation.
-*/
+/**
+ * Single precision compensated summation.
+ */
 [numthreads(16, 16, 1)]
-void accumulateSingleCompensated(uint3 dispatchThreadId : SV_DispatchThreadID)
+void accumulateSingleCompensated(uint3 dispatchThreadId: SV_DispatchThreadID)
 {
-    if (any(dispatchThreadId.xy >= gResolution)) return;
+    if (any(dispatchThreadId.xy >= gResolution))
+        return;
     const uint2 pixelPos = dispatchThreadId.xy;
     const float4 curColor = gCurFrame[pixelPos];
 
@@ -123,16 +127,19 @@ void accumulateSingleCompensated(uint3 dispatchThreadId : SV_DispatchThreadID)
     {
         // Fetch the previous sum and running compensation term.
         float4 sum = gLastFrameSum[pixelPos];
-        float4 c = gLastFrameCorr[pixelPos];                // c measures how large (+) or small (-) the current sum is compared to what it should be.
+        // c measures how large (+) or small (-) the current sum is compared to what it should be.
+        float4 c = gLastFrameCorr[pixelPos];
 
         // Adjust current value to minimize the running error.
         // Compute the new sum by adding the adjusted current value.
         float4 y = curColor - c;
-        float4 sumNext = sum + y;                           // The value we'll see in 'sum' on the next iteration.
+        // The value we'll see in 'sum' on the next iteration.
+        float4 sumNext = sum + y;
         output = sumNext / (gAccumCount + 1);
 
         gLastFrameSum[pixelPos] = sumNext;
-        gLastFrameCorr[pixelPos] = (sumNext - sum) - y;     // Store new correction term.
+        // Store new correction term.
+        gLastFrameCorr[pixelPos] = (sumNext - sum) - y;
     }
     else
     {
@@ -142,12 +149,14 @@ void accumulateSingleCompensated(uint3 dispatchThreadId : SV_DispatchThreadID)
     gOutputFrame[pixelPos] = output;
 }
 
-/** Double precision standard summation.
-*/
+/**
+ * Double precision standard summation.
+ */
 [numthreads(16, 16, 1)]
-void accumulateDouble(uint3 dispatchThreadId : SV_DispatchThreadID)
+void accumulateDouble(uint3 dispatchThreadId: SV_DispatchThreadID)
 {
-    if (any(dispatchThreadId.xy >= gResolution)) return;
+    if (any(dispatchThreadId.xy >= gResolution))
+        return;
     const uint2 pixelPos = dispatchThreadId.xy;
     const float4 curColor = gCurFrame[pixelPos];
 

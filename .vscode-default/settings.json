@@ -4,5 +4,6 @@
     },
     "cmake.configureOnEdit": false,
     "C_Cpp.clang_format_path": "${workspaceFolder}/tools/.packman/clang-format/clang-format",
-    "slang.format.clangFormatLocation": "${workspaceFolder}/tools/.packman/clang-format/clang-format"
+    "slang.format.clangFormatLocation": "${workspaceFolder}/tools/.packman/clang-format/clang-format",
+    "cmake.useProjectStatusView": false
 }

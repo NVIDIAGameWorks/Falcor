@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -29,7 +29,8 @@
 #include "Utils/ObjectID.h"
 #include <cstdint>
 
-namespace Falcor
+// Scene1 IDs are now defined in scene1 namespace, so places that need to distinguish multiple MeshIDs can.
+namespace Falcor::scene1
 {
     enum class SceneObjectKind
     {
@@ -58,4 +59,10 @@ namespace Falcor
     using CameraID = ObjectID<SceneObjectKind, SceneObjectKind::kCamera, uint32_t>;
     using VolumeID = ObjectID<SceneObjectKind, SceneObjectKind::kVolume, uint32_t>;
     using GlobalGeometryID = ObjectID<SceneObjectKind, SceneObjectKind::kGlobalGeometry, uint32_t>;
+}
+
+// scene1 is by default included in Falcor namespace to keep ensure that everything works are when IDs were directly in Falcor namespace
+namespace Falcor
+{
+using namespace scene1;
 }

@@ -30,7 +30,7 @@
 #include "Core/Macros.h"
 #include "Core/API/Buffer.h"
 #include "Core/API/Texture.h"
-#include "Core/API/GpuFence.h"
+#include "Core/API/Fence.h"
 #include "Core/Pass/ComputePass.h"
 #include "Utils/UI/Gui.h"
 #include "Utils/Algorithm/ParallelReduction.h"
@@ -115,7 +115,7 @@ namespace Falcor
         // Internal state
         std::unique_ptr<ParallelReduction>  mpParallelReduction;            ///< Helper for parallel reduction on the GPU.
         ref<Buffer>                         mpReductionResult;              ///< Results buffer for stats readback (CPU mappable).
-        ref<GpuFence>                       mpFence;                        ///< GPU fence for sychronizing readback.
+        ref<Fence>                          mpFence;                        ///< GPU fence for sychronizing readback.
 
         // Configuration
         bool                                mEnabled = false;               ///< Enable pixel statistics.

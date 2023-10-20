@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -37,16 +37,19 @@
     \param[in] cosTheta Cosine of angle between microfacet normal and incident direction (LdotH).
     \return Fresnel term.
 */
+[Differentiable]
 float3 evalFresnelSchlick(float3 f0, float3 f90, float cosTheta)
 {
     return f0 + (f90 - f0) * pow(max(1 - cosTheta, 0), 5); // Clamp to avoid NaN if cosTheta = 1+epsilon
 }
 
+[Differentiable]
 float evalFresnelSchlick(float f0, float f90, float cosTheta)
 {
     return f0 + (f90 - f0) * pow(max(1 - cosTheta, 0), 5); // Clamp to avoid NaN if cosTheta = 1+epsilon
 }
 
+[Differentiable]
 float3 evalFresnelGeneralizedSchlick(float3 f0, float3 f90, float exponent, float cosTheta)
 {
     return f0 + (f90 - f0) * pow(max(1 - cosTheta, 0), exponent); // Clamp to avoid NaN if cosTheta = 1+epsilon
@@ -60,6 +63,7 @@ float3 evalFresnelGeneralizedSchlick(float3 f0, float3 f90, float exponent, floa
     \param[out] cosThetaT Cosine of angle between negative normal and transmitted direction (0 for total internal reflection).
     \return Returns Fr(eta, cosThetaI).
 */
+[Differentiable]
 float evalFresnelDielectric(float eta, float cosThetaI, out float cosThetaT)
 {
     if (cosThetaI < 0)
@@ -93,6 +97,7 @@ float evalFresnelDielectric(float eta, float cosThetaI, out float cosThetaT)
     \param[in] cosThetaI Cosine of angle between normal and incident direction.
     \return Returns Fr(eta, cosThetaI).
 */
+[Differentiable]
 float evalFresnelDielectric(float eta, float cosThetaI)
 {
     float cosThetaT;
@@ -108,6 +113,7 @@ float evalFresnelDielectric(float eta, float cosThetaI)
     \param[in] cosThetaI Cosine of angle between normal and incident direction.
     \return Returns conductor reflectance.
 */
+[Differentiable]
 float evalFresnelConductor(float eta, float k, float cosThetaI)
 {
     float cosThetaISq = cosThetaI * cosThetaI;
@@ -134,6 +140,7 @@ float evalFresnelConductor(float eta, float k, float cosThetaI)
     \param[in] cosThetaI Cosine of angle between normal and incident direction.
     \return Returns conductor reflectance.
 */
+[Differentiable]
 float3 evalFresnelConductor(float3 eta, float3 k, float cosThetaI)
 {
     return float3(

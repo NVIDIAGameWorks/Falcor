@@ -29,73 +29,73 @@
 
 namespace
 {
-    const char kShaderFile[] = "RenderPasses/SceneDebugger/SceneDebugger.cs.slang";
-    const char kShaderModel[] = "6_5";
+const char kShaderFile[] = "RenderPasses/SceneDebugger/SceneDebugger.cs.slang";
 
-    const std::string kOutput = "output";
+const std::string kOutput = "output";
 
-    std::string getModeDesc(SceneDebuggerMode mode)
+std::string getModeDesc(SceneDebuggerMode mode)
+{
+    switch (mode)
     {
-        switch (mode)
-        {
-        // Geometry
-        case SceneDebuggerMode::HitType: return
-            "Hit type in pseudocolor";
-        case SceneDebuggerMode::InstanceID: return
-            "Instance ID in pseudocolor";
-        case SceneDebuggerMode::MaterialID: return
-            "Material ID in pseudocolor";
-        case SceneDebuggerMode::PrimitiveID: return
-            "Primitive ID in pseudocolor";
-        case SceneDebuggerMode::GeometryID: return
-            "Geometry ID in pseudocolor";
-        case SceneDebuggerMode::BlasID: return
-            "Raytracing bottom-level acceleration structure (BLAS) ID in pseudocolor";
-        case SceneDebuggerMode::InstancedGeometry: return
-            "Green = instanced geometry\n"
-            "Red = non-instanced geometry";
-        // Shading data
-        case SceneDebuggerMode::FaceNormal: return
-            "Face normal in RGB color";
-        case SceneDebuggerMode::ShadingNormal: return
-            "Shading normal in RGB color";
-        case SceneDebuggerMode::ShadingTangent: return
-            "Shading tangent in RGB color";
-        case SceneDebuggerMode::ShadingBitangent: return
-            "Shading bitangent in RGB color";
-        case SceneDebuggerMode::FrontFacingFlag: return
-            "Green = front-facing\n"
-            "Red = back-facing";
-        case SceneDebuggerMode::BackfacingShadingNormal: return
-            "Pixels where the shading normal is back-facing with respect to view vector are highlighted";
-        case SceneDebuggerMode::TexCoords: return
-            "Texture coordinates in RG color wrapped to [0,1]";
-        // Material properties
-        case SceneDebuggerMode::GuideNormal: return
-            "Guide normal in RGB color";
-        case SceneDebuggerMode::Roughness: return
-            "Material roughness estimate";
-        case SceneDebuggerMode::FlatShaded: return
-            "Flat shaded";
-        default:
-            FALCOR_UNREACHABLE();
-            return "";
-        }
-    }
-
-    // Scripting
-    const char kMode[] = "mode";
-    const char kShowVolumes[] = "showVolumes";
-
-    void registerBindings(pybind11::module& m)
-    {
-        pybind11::class_<SceneDebugger, RenderPass, ref<SceneDebugger>> pass(m, "SceneDebugger");
-        pass.def_property(kMode,
-            [](const SceneDebugger& self) { return enumToString(self.getMode()); },
-            [](SceneDebugger& self, const std::string& value) {self.setMode(stringToEnum<SceneDebuggerMode>(value)); }
-        );
+    // Geometry
+    case SceneDebuggerMode::HitType:
+        return "Hit type in pseudocolor";
+    case SceneDebuggerMode::InstanceID:
+        return "Instance ID in pseudocolor";
+    case SceneDebuggerMode::MaterialID:
+        return "Material ID in pseudocolor";
+    case SceneDebuggerMode::PrimitiveID:
+        return "Primitive ID in pseudocolor";
+    case SceneDebuggerMode::GeometryID:
+        return "Geometry ID in pseudocolor";
+    case SceneDebuggerMode::BlasID:
+        return "Raytracing bottom-level acceleration structure (BLAS) ID in pseudocolor";
+    case SceneDebuggerMode::InstancedGeometry:
+        return "Green = instanced geometry\n"
+               "Red = non-instanced geometry";
+    // Shading data
+    case SceneDebuggerMode::FaceNormal:
+        return "Face normal in RGB color";
+    case SceneDebuggerMode::ShadingNormal:
+        return "Shading normal in RGB color";
+    case SceneDebuggerMode::ShadingTangent:
+        return "Shading tangent in RGB color";
+    case SceneDebuggerMode::ShadingBitangent:
+        return "Shading bitangent in RGB color";
+    case SceneDebuggerMode::FrontFacingFlag:
+        return "Green = front-facing\n"
+               "Red = back-facing";
+    case SceneDebuggerMode::BackfacingShadingNormal:
+        return "Pixels where the shading normal is back-facing with respect to view vector are highlighted";
+    case SceneDebuggerMode::TexCoords:
+        return "Texture coordinates in RG color wrapped to [0,1]";
+    // Material properties
+    case SceneDebuggerMode::GuideNormal:
+        return "Guide normal in RGB color";
+    case SceneDebuggerMode::Roughness:
+        return "Material roughness estimate";
+    case SceneDebuggerMode::FlatShaded:
+        return "Flat shaded";
+    default:
+        FALCOR_UNREACHABLE();
+        return "";
     }
 }
+
+// Scripting
+const char kMode[] = "mode";
+const char kShowVolumes[] = "showVolumes";
+
+void registerBindings(pybind11::module& m)
+{
+    pybind11::class_<SceneDebugger, RenderPass, ref<SceneDebugger>> pass(m, "SceneDebugger");
+    pass.def_property(
+        kMode,
+        [](const SceneDebugger& self) { return enumToString(self.getMode()); },
+        [](SceneDebugger& self, const std::string& value) { self.setMode(stringToEnum<SceneDebuggerMode>(value)); }
+    );
+}
+} // namespace
 
 extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registry)
 {
@@ -103,23 +103,25 @@ extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registr
     Falcor::ScriptBindings::registerBinding(registerBindings);
 }
 
-SceneDebugger::SceneDebugger(ref<Device> pDevice, const Properties& props)
-    : RenderPass(pDevice)
+SceneDebugger::SceneDebugger(ref<Device> pDevice, const Properties& props) : RenderPass(pDevice)
 {
+    if (!mpDevice->isShaderModelSupported(ShaderModel::SM6_5))
+        FALCOR_THROW("SceneDebugger requires Shader Model 6.5 support.");
     if (!mpDevice->isFeatureSupported(Device::SupportedFeatures::RaytracingTier1_1))
-    {
-        throw RuntimeError("SceneDebugger: Raytracing Tier 1.1 is not supported by the current device");
-    }
+        FALCOR_THROW("SceneDebugger requires Raytracing Tier 1.1 support.");
 
     // Parse dictionary.
     for (const auto& [key, value] : props)
     {
-        if (key == kMode) mParams.mode = (uint32_t)value.operator SceneDebuggerMode();
-        else if (key == kShowVolumes) mParams.showVolumes = value;
-        else logWarning("Unknown property '{}' in a SceneDebugger properties.", key);
+        if (key == kMode)
+            mParams.mode = (uint32_t)value.operator SceneDebuggerMode();
+        else if (key == kShowVolumes)
+            mParams.showVolumes = value;
+        else
+            logWarning("Unknown property '{}' in a SceneDebugger properties.", key);
     }
 
-    mpFence = GpuFence::create(mpDevice);
+    mpFence = mpDevice->createFence();
 }
 
 Properties SceneDebugger::getProperties() const
@@ -152,18 +154,24 @@ void SceneDebugger::setScene(RenderContext* pRenderContext, const ref<Scene>& pS
     if (mpScene)
     {
         // Prepare our programs for the scene.
-        Program::Desc desc;
+        ProgramDesc desc;
         desc.addShaderModules(mpScene->getShaderModules());
         desc.addShaderLibrary(kShaderFile).csEntry("main");
         desc.addTypeConformances(mpScene->getTypeConformances());
-        desc.setShaderModel(kShaderModel);
         mpDebugPass = ComputePass::create(mpDevice, desc, mpScene->getSceneDefines());
 
         // Create lookup table for mesh to BLAS ID.
         auto blasIDs = mpScene->getMeshBlasIDs();
         if (!blasIDs.empty())
         {
-            mpMeshToBlasID = Buffer::createStructured(mpDevice, sizeof(uint32_t), (uint32_t)blasIDs.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, blasIDs.data(), false);
+            mpMeshToBlasID = mpDevice->createStructuredBuffer(
+                sizeof(uint32_t),
+                (uint32_t)blasIDs.size(),
+                ResourceBindFlags::ShaderResource,
+                MemoryType::DeviceLocal,
+                blasIDs.data(),
+                false
+            );
         }
 
         // Create instance metadata.
@@ -173,8 +181,16 @@ void SceneDebugger::setScene(RenderContext* pRenderContext, const ref<Scene>& pS
         auto var = mpDebugPass->getRootVar()["CB"]["gSceneDebugger"];
         if (!mpPixelData)
         {
-            mpPixelData = Buffer::createStructured(mpDevice, var["pixelData"], 1, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr, false);
-            mpPixelDataStaging = Buffer::createStructured(mpDevice, var["pixelData"], 1, ResourceBindFlags::None, Buffer::CpuAccess::Read, nullptr, false);
+            mpPixelData = mpDevice->createStructuredBuffer(
+                var["pixelData"],
+                1,
+                ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess,
+                MemoryType::DeviceLocal,
+                nullptr,
+                false
+            );
+            mpPixelDataStaging =
+                mpDevice->createStructuredBuffer(var["pixelData"], 1, ResourceBindFlags::None, MemoryType::ReadBack, nullptr, false);
         }
         var["pixelData"] = mpPixelData;
         var["meshToBlasID"] = mpMeshToBlasID;
@@ -193,7 +209,13 @@ void SceneDebugger::execute(RenderContext* pRenderContext, const RenderData& ren
         return;
     }
     // DEMO21:
-    //mpScene->getCamera()->setJitter(0.f, 0.f);
+    // mpScene->getCamera()->setJitter(0.f, 0.f);
+
+    if (is_set(mpScene->getUpdates(), Scene::UpdateFlags::RecompileNeeded) ||
+        is_set(mpScene->getUpdates(), Scene::UpdateFlags::GeometryChanged))
+    {
+        FALCOR_THROW("This render pass does not support scene changes that require shader recompilation.");
+    }
 
     mpScene->setRaytracingShaderData(pRenderContext, mpDebugPass->getRootVar());
 
@@ -204,8 +226,8 @@ void SceneDebugger::execute(RenderContext* pRenderContext, const RenderData& ren
     mpDebugPass->execute(pRenderContext, uint3(mParams.frameDim, 1));
 
     pRenderContext->copyResource(mpPixelDataStaging.get(), mpPixelData.get());
-    pRenderContext->flush(false);
-    mpFence->gpuSignal(pRenderContext->getLowLevelData()->getCommandQueue());
+    pRenderContext->submit(false);
+    pRenderContext->signal(mpFence.get());
 
     mPixelDataAvailable = true;
     mParams.frameCount++;
@@ -213,7 +235,7 @@ void SceneDebugger::execute(RenderContext* pRenderContext, const RenderData& ren
 
 void SceneDebugger::renderUI(Gui::Widgets& widget)
 {
-    widget.dropdown("Mode", reinterpret_cast<SceneDebuggerMode &>(mParams.mode));
+    widget.dropdown("Mode", reinterpret_cast<SceneDebuggerMode&>(mParams.mode));
     widget.tooltip("Selects visualization mode");
 
     widget.checkbox("Clamp to [0,1]", mParams.clamp);
@@ -240,26 +262,28 @@ void SceneDebugger::renderUI(Gui::Widgets& widget)
     widget.textWrapped("Description:\n" + getModeDesc((SceneDebuggerMode)mParams.mode));
 
     // Show data for the currently selected pixel.
-    widget.dummy("#spacer0", { 1, 20 });
+    widget.dummy("#spacer0", {1, 20});
     widget.var("Selected pixel", mParams.selectedPixel);
 
     renderPixelDataUI(widget);
 
-    widget.dummy("#spacer1", { 1, 20 });
+    widget.dummy("#spacer1", {1, 20});
     widget.text("Scene: " + (mpScene ? mpScene->getPath().string() : "No scene loaded"));
 }
 
 void SceneDebugger::renderPixelDataUI(Gui::Widgets& widget)
 {
-    if (!mPixelDataAvailable) return;
+    if (!mPixelDataAvailable)
+        return;
 
     FALCOR_ASSERT(mpPixelDataStaging);
-    mpFence->syncCpu();
-    const PixelData& data = *reinterpret_cast<const PixelData*>(mpPixelDataStaging->map(Buffer::MapType::Read));
+    mpFence->wait();
+    const PixelData data = mpPixelDataStaging->getElement<PixelData>(0);
 
     switch ((HitType)data.hitType)
     {
     case HitType::Triangle:
+    {
         {
             std::string text;
             text += fmt::format("Mesh ID: {}\n", data.geometryID);
@@ -268,14 +292,14 @@ void SceneDebugger::renderPixelDataUI(Gui::Widgets& widget)
             text += fmt::format("Material ID: {}\n", data.materialID);
             text += fmt::format("BLAS ID: {}\n", data.blasID);
             widget.text(text);
-            widget.dummy("#spacer2", { 1, 10 });
+            widget.dummy("#spacer2", {1, 10});
         }
 
         // Show mesh details.
         if (auto g = widget.group("Mesh info"); g.open())
         {
             FALCOR_ASSERT(data.geometryID < mpScene->getMeshCount());
-            const auto& mesh = mpScene->getMesh(MeshID{ data.geometryID });
+            const auto& mesh = mpScene->getMesh(MeshID{data.geometryID});
             std::string text;
             text += fmt::format("flags: 0x{:08x}\n", mesh.flags);
             text += fmt::format("materialID: {}\n", mesh.materialID);
@@ -309,7 +333,7 @@ void SceneDebugger::renderPixelDataUI(Gui::Widgets& widget)
             // Print the list of scene graph nodes affecting this mesh instance.
             std::vector<NodeID> nodes;
             {
-                NodeID nodeID{ instance.globalMatrixID };
+                NodeID nodeID{instance.globalMatrixID};
                 while (nodeID != NodeID::Invalid())
                 {
                     nodes.push_back(nodeID);
@@ -331,7 +355,9 @@ void SceneDebugger::renderPixelDataUI(Gui::Widgets& widget)
             }
         }
         break;
+    }
     case HitType::Curve:
+    {
         {
             std::string text;
             text += fmt::format("Curve ID: {}\n", data.geometryID);
@@ -339,13 +365,13 @@ void SceneDebugger::renderPixelDataUI(Gui::Widgets& widget)
             text += fmt::format("Material ID: {}\n", data.materialID);
             text += fmt::format("BLAS ID: {}\n", data.blasID);
             widget.text(text);
-            widget.dummy("#spacer2", { 1, 10 });
+            widget.dummy("#spacer2", {1, 10});
         }
 
         // Show mesh details.
         if (auto g = widget.group("Curve info"); g.open())
         {
-            const auto& curve = mpScene->getCurve(CurveID{ data.geometryID });
+            const auto& curve = mpScene->getCurve(CurveID{data.geometryID});
             std::string text;
             text += fmt::format("degree: {}\n", curve.degree);
             text += fmt::format("vertexCount: {}\n", curve.vertexCount);
@@ -355,7 +381,9 @@ void SceneDebugger::renderPixelDataUI(Gui::Widgets& widget)
             g.text(text);
         }
         break;
+    }
     case HitType::SDFGrid:
+    {
         {
             std::string text;
             text += fmt::format("SDF Grid ID: {}\n", data.geometryID);
@@ -363,18 +391,19 @@ void SceneDebugger::renderPixelDataUI(Gui::Widgets& widget)
             text += fmt::format("Material ID: {}\n", data.materialID);
             text += fmt::format("BLAS ID: {}\n", data.blasID);
             widget.text(text);
-            widget.dummy("#spacer2", { 1, 10 });
+            widget.dummy("#spacer2", {1, 10});
         }
 
         // Show SDF grid details.
         if (auto g = widget.group("SDF grid info"); g.open())
         {
-            const ref<SDFGrid>& pSDFGrid = mpScene->getSDFGrid(SdfGridID{ data.geometryID });
+            const ref<SDFGrid>& pSDFGrid = mpScene->getSDFGrid(SdfGridID{data.geometryID});
             std::string text;
             text += fmt::format("gridWidth: {}\n", pSDFGrid->getGridWidth());
             g.text(text);
         }
         break;
+    }
     case HitType::None:
         widget.text("Background pixel");
         break;
@@ -408,7 +437,7 @@ void SceneDebugger::renderPixelDataUI(Gui::Widgets& widget)
     {
         if (auto g = widget.group("Material info"); g.open())
         {
-            const auto& material = *mpScene->getMaterial(MaterialID{ data.materialID });
+            const auto& material = *mpScene->getMaterial(MaterialID{data.materialID});
             const auto& header = material.getHeader();
             std::string text;
             text += fmt::format("name: {}\n", material.getName());
@@ -427,8 +456,6 @@ void SceneDebugger::renderPixelDataUI(Gui::Widgets& widget)
             g.text(text);
         }
     }
-
-    mpPixelDataStaging->unmap();
 }
 
 bool SceneDebugger::onMouseEvent(const MouseEvent& mouseEvent)
@@ -455,7 +482,8 @@ void SceneDebugger::initInstanceInfo()
 
     // Count number of times each geometry is used.
     std::vector<std::vector<uint32_t>> instanceCounts((size_t)GeometryType::Count);
-    for (auto& counts : instanceCounts) counts.resize(mpScene->getGeometryCount());
+    for (auto& counts : instanceCounts)
+        counts.resize(mpScene->getGeometryCount());
 
     for (uint32_t instanceID = 0; instanceID < instanceCount; instanceID++)
     {
@@ -476,5 +504,12 @@ void SceneDebugger::initInstanceInfo()
     }
 
     // Create GPU buffer.
-    mpInstanceInfo = Buffer::createStructured(mpDevice, sizeof(InstanceInfo), (uint32_t)instanceInfo.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, instanceInfo.data(), false);
+    mpInstanceInfo = mpDevice->createStructuredBuffer(
+        sizeof(InstanceInfo),
+        (uint32_t)instanceInfo.size(),
+        ResourceBindFlags::ShaderResource,
+        MemoryType::DeviceLocal,
+        instanceInfo.data(),
+        false
+    );
 }

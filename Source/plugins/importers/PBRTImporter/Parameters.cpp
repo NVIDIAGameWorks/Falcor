@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -33,7 +33,7 @@
 
 #include "Parameters.h"
 #include "Helpers.h"
-#include "Core/Assert.h"
+#include "Core/Error.h"
 
 namespace Falcor::pbrt
 {
@@ -206,7 +206,7 @@ FileLoc ParameterDictionary::getParameterLoc(const std::string& name) const
 {
     auto p = findParameter(name);
     if (!p)
-        throw RuntimeError("Parameter not found!");
+        FALCOR_THROW("Parameter not found!");
     return p->loc;
 }
 
@@ -507,7 +507,9 @@ std::vector<Spectrum> ParameterDictionary::extractSpectrumArray(const ParsedPara
     if (param.type == "rgb")
     {
         return returnArray<Spectrum>(
-            param, param.floats, 3,
+            param,
+            param.floats,
+            3,
             [&param](const Float* v) -> Spectrum
             {
                 Falcor::float3 rgb(v[0], v[1], v[2]);
@@ -531,7 +533,9 @@ std::vector<Spectrum> ParameterDictionary::extractSpectrumArray(const ParsedPara
         }
         size_t sampleCount = param.floats.size() / 2;
         return returnArray<Spectrum>(
-            param, param.floats, param.floats.size(),
+            param,
+            param.floats,
+            param.floats.size(),
             [&param, sampleCount](const Float* v) -> Spectrum
             {
                 std::vector<Float> wavelengths(sampleCount), values(sampleCount);
@@ -540,8 +544,11 @@ std::vector<Spectrum> ParameterDictionary::extractSpectrumArray(const ParsedPara
                     if (i > 0 && v[2 * i] <= wavelengths[i - 1])
                     {
                         throwError(
-                            param.loc, "Spectrum description invalid: at %d'th entry, wavelengths aren't increasing: %f >= %f.", i - 1,
-                            wavelengths[i - 1], v[2 * i]
+                            param.loc,
+                            "Spectrum description invalid: at %d'th entry, wavelengths aren't increasing: %f >= %f.",
+                            i - 1,
+                            wavelengths[i - 1],
+                            v[2 * i]
                         );
                     }
                     wavelengths[i] = v[2 * i];
@@ -554,7 +561,9 @@ std::vector<Spectrum> ParameterDictionary::extractSpectrumArray(const ParsedPara
     else if (param.type == "spectrum" && !param.strings.empty())
     {
         return returnArray<Spectrum>(
-            param, param.strings, 1,
+            param,
+            param.strings,
+            1,
             [&param, &resolver](const std::string* s) -> Spectrum
             {
                 auto namedSpectrum = Spectra::getNamedSpectrum(*s);

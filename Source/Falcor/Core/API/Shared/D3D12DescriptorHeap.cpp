@@ -61,7 +61,7 @@ ref<D3D12DescriptorHeap> D3D12DescriptorHeap::create(
     desc.NumDescriptors = chunkCount * kDescPerChunk;
     if (FAILED(pD3D12Device->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&pHeap->mApiHandle))))
     {
-        throw RuntimeError("Failed to create descriptor heap");
+        FALCOR_THROW("Failed to create descriptor heap");
     }
 
     pHeap->mCpuHeapStart = pHeap->mApiHandle->GetCPUDescriptorHandleForHeapStart();
@@ -74,7 +74,7 @@ ref<D3D12DescriptorHeap> D3D12DescriptorHeap::create(
 D3D12DescriptorHeap::GpuHandle D3D12DescriptorHeap::getBaseGpuHandle() const
 {
     if (!mShaderVisible)
-        throw RuntimeError("getBaseGpuHandle() - heap must be shader visible.");
+        FALCOR_THROW("getBaseGpuHandle() - heap must be shader visible.");
     return mGpuHeapStart;
 }
 

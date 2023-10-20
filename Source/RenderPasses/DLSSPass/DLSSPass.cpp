@@ -80,7 +80,7 @@ DLSSPass::DLSSPass(ref<Device> pDevice, const Properties& props) : RenderPass(pD
             logWarning("Unknown property '{}' in a DLSSPass properties.", key);
     }
 
-    mpExposure = Texture::create2D(mpDevice, 1, 1, ResourceFormat::R32Float, 1, 1);
+    mpExposure = mpDevice->createTexture2D(1, 1, ResourceFormat::R32Float, 1, 1);
 }
 
 Properties DLSSPass::getProperties() const
@@ -189,8 +189,13 @@ void DLSSPass::initializeDLSS(RenderContext* pRenderContext)
     auto optimalSettings = mpNGXWrapper->queryOptimalSettings(mInputSize, perfQuality);
 
     mDLSSOutputSize = uint2(float2(mInputSize) * float2(mInputSize) / float2(optimalSettings.optimalRenderSize));
-    mpOutput = Texture::create2D(
-        mpDevice, mDLSSOutputSize.x, mDLSSOutputSize.y, ResourceFormat::RGBA32Float, 1, 1, nullptr,
+    mpOutput = mpDevice->createTexture2D(
+        mDLSSOutputSize.x,
+        mDLSSOutputSize.y,
+        ResourceFormat::RGBA32Float,
+        1,
+        1,
+        nullptr,
         ResourceBindFlags::UnorderedAccess | ResourceBindFlags::ShaderResource
     );
 
@@ -241,9 +246,9 @@ void DLSSPass::executeInternal(RenderContext* pRenderContext, const RenderData& 
         {
             auto tex = renderData.getTexture(name);
             if (!tex)
-                throw RuntimeError("DLSSPass: Missing input '{}'", name);
+                FALCOR_THROW("DLSSPass: Missing input '{}'", name);
             if (tex->getWidth() != mInputSize.x || tex->getHeight() != mInputSize.y)
-                throw RuntimeError("DLSSPass: Input '{}' has mismatching size. All inputs must be of the same size.", name);
+                FALCOR_THROW("DLSSPass: Input '{}' has mismatching size. All inputs must be of the same size.", name);
             return tex;
         };
 
@@ -269,7 +274,15 @@ void DLSSPass::executeInternal(RenderContext* pRenderContext, const RenderData& 
             motionVectorScale = inputSize;
 
         mpNGXWrapper->evaluateDLSS(
-            pRenderContext, color.get(), output.get(), motionVectors.get(), depth.get(), mpExposure.get(), false, mSharpness, jitterOffset,
+            pRenderContext,
+            color.get(),
+            output.get(),
+            motionVectors.get(),
+            depth.get(),
+            mpExposure.get(),
+            false,
+            mSharpness,
+            jitterOffset,
             motionVectorScale
         );
 

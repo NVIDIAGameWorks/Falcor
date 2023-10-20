@@ -61,9 +61,9 @@ void testCopyColorChannel(
 
     // Create test textures.
     auto data = generateTestData<T>(width * height * srcChannels);
-    auto pSrc = Texture::create2D(pDevice, width, height, srcFormat, 1, 1, data.data(), ResourceBindFlags::ShaderResource);
-    auto pDst = Texture::create2D(
-        pDevice, width, height, dstFormat, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess
+    auto pSrc = pDevice->createTexture2D(width, height, srcFormat, 1, 1, data.data(), ResourceBindFlags::ShaderResource);
+    auto pDst = pDevice->createTexture2D(
+        width, height, dstFormat, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess
     );
 
     // Test copying from color channel i=0..3.

@@ -82,27 +82,26 @@ private:
 
     struct UI2D
     {
-        bool                        recordStartingMousePos = false;
-        float                       scrollDelta = 0.0f;
-        KeyboardButtonsPressed      keyboardButtonsPressed;
-        float2                      startMousePosition = { 0.0f, 0.0f };
-        float2                      currentMousePosition = { 0.0f, 0.0f };
-        float2                      prevMousePosition = { 0.0f, 0.0f };
-        CpuTimer                    timer;
-        CpuTimer::TimePoint         timeOfReleaseMainGUIKey;
-        bool                        fadeAwayGUI = false;
-        bool                        drawCurrentModes = true;
-        std::unique_ptr<Marker2DSet>    pMarker2DSet;
+        bool recordStartingMousePos = false;
+        float scrollDelta = 0.0f;
+        KeyboardButtonsPressed keyboardButtonsPressed;
+        float2 startMousePosition = {0.0f, 0.0f};
+        float2 currentMousePosition = {0.0f, 0.0f};
+        float2 prevMousePosition = {0.0f, 0.0f};
+        CpuTimer timer;
+        CpuTimer::TimePoint timeOfReleaseMainGUIKey;
+        bool fadeAwayGUI = false;
+        bool drawCurrentModes = true;
+        std::unique_ptr<Marker2DSet> pMarker2DSet;
         std::unique_ptr<SelectionWheel> pSelectionWheel;
-        float                       currentBlobbing = 0.0f;
-        SDF3DShapeType              currentEditingShape = SDF3DShapeType::Sphere;
-        SDFOperationType            currentEditingOperator = SDFOperationType::Union;
-        SDFBBRenderSettings         bbRenderSettings;
-        SDFGridPlane                previousGridPlane;
-        SDFGridPlane                gridPlane;
-        SDFGridPlane                previousSymmetryPlane;
-        SDFGridPlane                symmetryPlane;
-
+        float currentBlobbing = 0.0f;
+        SDF3DShapeType currentEditingShape = SDF3DShapeType::Sphere;
+        SDFOperationType currentEditingOperator = SDFOperationType::Union;
+        SDFBBRenderSettings bbRenderSettings;
+        SDFGridPlane previousGridPlane;
+        SDFGridPlane gridPlane;
+        SDFGridPlane previousSymmetryPlane;
+        SDFGridPlane symmetryPlane;
     };
 
     struct CurrentEdit
@@ -129,16 +128,36 @@ private:
     };
 
 private:
-    void setShaderData(const ShaderVar& var, const ref<Texture>& pInputColor, const ref<Texture>& pVBuffer);
+    void bindShaderData(const ShaderVar& var, const ref<Texture>& pInputColor, const ref<Texture>& pVBuffer);
     void fetchPreviousVBufferAndZBuffer(RenderContext* pRenderContext, ref<Texture>& pVBuffer, ref<Texture>& pDepth);
 
     // 2D GUI functions.
     void setup2DGUI();
     bool isMainGUIKeyDown() const;
-    void setupPrimitiveAndOperation(const float2& center, const float markerSize, const SDF3DShapeType editingPrimitive, const SDFOperationType editingOperator, const float4& color, const float alpha = 1.0f);
+    void setupPrimitiveAndOperation(
+        const float2& center,
+        const float markerSize,
+        const SDF3DShapeType editingPrimitive,
+        const SDFOperationType editingOperator,
+        const float4& color,
+        const float alpha = 1.0f
+    );
     void setupCurrentModes2D();
-    void manipulateGridPlane(SDFGridPlane& gridPlane, SDFGridPlane& previousGridPlane, bool isTranslationKeyDown, bool isConstrainedManipulationKeyDown);
-    void rotateGridPlane(const float mouseDiff, const float3& rotationVector, const float3& inNormal, const float3& inRightVector, float3& outNormal, float3& outRightVector, const bool fromPreviousMouse = true);
+    void manipulateGridPlane(
+        SDFGridPlane& gridPlane,
+        SDFGridPlane& previousGridPlane,
+        bool isTranslationKeyDown,
+        bool isConstrainedManipulationKeyDown
+    );
+    void rotateGridPlane(
+        const float mouseDiff,
+        const float3& rotationVector,
+        const float3& inNormal,
+        const float3& inRightVector,
+        float3& outNormal,
+        float3& outRightVector,
+        const bool fromPreviousMouse = true
+    );
     void translateGridPlane(const float mouseDiff, const float3& translationVector, const float3& inPosition, float3& outPosition);
     bool gridPlaneManipulated() const;
     bool symmetryPlaneManipulated() const;
@@ -165,13 +184,13 @@ private:
     void bakePrimitives();
 
 private:
-    ref<Scene>                  mpScene;                    ///< The current scene.
-    ref<Camera>                 mpCamera;                   ///< The camera.
-    ref<FullScreenPass>         mpGUIPass;                  ///< A full screen pass drawing the 2D GUI.
-    ref<Fbo>                    mpFbo;                      ///< Frame buffer object.
-    ref<Texture>                mpEditingVBuffer;           ///< A copy of the VBuffer used while moving/adding a primitive.
-    ref<Texture>                mpEditingLinearZBuffer;     ///< A copy of the linear Z buffer used while moving/adding a primitive.
-    ref<Buffer>                 mpSDFEditingDataBuffer;     ///< A buffer that contain current Edit data for GUI visualization.
+    ref<Scene> mpScene;                  ///< The current scene.
+    ref<Camera> mpCamera;                ///< The camera.
+    ref<FullScreenPass> mpGUIPass;       ///< A full screen pass drawing the 2D GUI.
+    ref<Fbo> mpFbo;                      ///< Frame buffer object.
+    ref<Texture> mpEditingVBuffer;       ///< A copy of the VBuffer used while moving/adding a primitive.
+    ref<Texture> mpEditingLinearZBuffer; ///< A copy of the linear Z buffer used while moving/adding a primitive.
+    ref<Buffer> mpSDFEditingDataBuffer;  ///< A buffer that contain current Edit data for GUI visualization.
 
     struct
     {
@@ -180,11 +199,11 @@ private:
         Transform startInstanceTransform;
         Transform startPrimitiveTransform;
         SDF3DPrimitive startPrimitive;
-        float3 startPlanePos = { 0.0f, 0.0f, 0.0f };
-        float3 referencePlaneDir = { 0.0f, 0.0f, 0.0f };
+        float3 startPlanePos = {0.0f, 0.0f, 0.0f};
+        float3 referencePlaneDir = {0.0f, 0.0f, 0.0f};
         SDFEditorAxis axis = SDFEditorAxis::All;
         SDFEditorAxis prevAxis = SDFEditorAxis::All;
-        float2 startMousePos = { 0.0f, 0.0f };
+        float2 startMousePos = {0.0f, 0.0f};
     } mPrimitiveTransformationEdit;
 
     struct
@@ -192,43 +211,43 @@ private:
         TransformationState prevState = TransformationState::None;
         TransformationState state = TransformationState::None;
         Transform startTransform;
-        float3 startPlanePos = { 0.0f, 0.0f, 0.0f };
-        float3 referencePlaneDir = { 0.0f, 0.0f, 0.0f };
+        float3 startPlanePos = {0.0f, 0.0f, 0.0f};
+        float3 referencePlaneDir = {0.0f, 0.0f, 0.0f};
         float prevScrollTotal = 0.0f;
         float scrollTotal = 0.0f;
-        float2 startMousePos = { 0.0f, 0.0f };
+        float2 startMousePos = {0.0f, 0.0f};
     } mInstanceTransformationEdit;
 
-    CurrentEdit                 mCurrentEdit;
-    std::vector<SDFEdit>        mPerformedSDFEdits;
-    std::vector<UndoneSDFEdit>  mUndoneSDFEdits;
-    bool                        mLMBDown = false;
-    bool                        mRMBDown = false;
-    bool                        mMMBDown = false;
-    bool                        mEditingKeyDown = false;
-    bool                        mGUIKeyDown = false;
-    bool                        mPreviewEnabled = true;
-    bool                        mAllowEditingOnOtherSurfaces = false;
-    bool                        mAutoBakingEnabled = true;
+    CurrentEdit mCurrentEdit;
+    std::vector<SDFEdit> mPerformedSDFEdits;
+    std::vector<UndoneSDFEdit> mUndoneSDFEdits;
+    bool mLMBDown = false;
+    bool mRMBDown = false;
+    bool mMMBDown = false;
+    bool mEditingKeyDown = false;
+    bool mGUIKeyDown = false;
+    bool mPreviewEnabled = true;
+    bool mAllowEditingOnOtherSurfaces = false;
+    bool mAutoBakingEnabled = true;
 
-    uint2                       mFrameDim = { 0, 0 };
-    UI2D                        mUI2D;
+    uint2 mFrameDim = {0, 0};
+    UI2D mUI2D;
 
-    ref<Buffer>                 mpPickingInfo;                  ///< Buffer for reading back picking info from the GPU.
-    ref<Buffer>                 mpPickingInfoReadBack;          ///< Staging buffer for reading back picking info from the GPU.
-    ref<GpuFence>               mpReadbackFence;                ///< GPU fence for synchronizing picking info readback.
-    SDFPickingInfo              mPickingInfo;
+    ref<Buffer> mpPickingInfo;         ///< Buffer for reading back picking info from the GPU.
+    ref<Buffer> mpPickingInfoReadBack; ///< Staging buffer for reading back picking info from the GPU.
+    ref<Fence> mpReadbackFence;        ///< GPU fence for synchronizing picking info readback.
+    SDFPickingInfo mPickingInfo;
 
-    SDFEditingData              mGPUEditingData;
+    SDFEditingData mGPUEditingData;
 
-    ref<Buffer>                 mpGridInstanceIDsBuffer;
-    uint32_t                    mGridInstanceCount = 0;
+    ref<Buffer> mpGridInstanceIDsBuffer;
+    uint32_t mGridInstanceCount = 0;
 
-    uint32_t                    mNonBakedPrimitiveCount = 0;
-    uint32_t                    mBakePrimitivesBatchSize = 5;   ///< The number of primitives to bake at a time.
-    uint32_t                    mPreservedHistoryCount = 100;   ///< Primitives that should not be baked.
+    uint32_t mNonBakedPrimitiveCount = 0;
+    uint32_t mBakePrimitivesBatchSize = 5; ///< The number of primitives to bake at a time.
+    uint32_t mPreservedHistoryCount = 100; ///< Primitives that should not be baked.
 
     // Undo/Redo
-    uint32_t                    mUndoPressedCount = 0;
-    uint32_t                    mRedoPressedCount = 0;
+    uint32_t mUndoPressedCount = 0;
+    uint32_t mRedoPressedCount = 0;
 };

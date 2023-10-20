@@ -40,12 +40,12 @@ namespace Falcor
         SharedData(ref<Device> pDevice)
         {
             Sampler::Desc sdfGridSamplerDesc;
-            sdfGridSamplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
-            sdfGridSamplerDesc.setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
-            pSampler = Sampler::create(pDevice, sdfGridSamplerDesc);
+            sdfGridSamplerDesc.setFilterMode(TextureFilteringMode::Linear, TextureFilteringMode::Linear, TextureFilteringMode::Linear);
+            sdfGridSamplerDesc.setAddressingMode(TextureAddressingMode::Clamp, TextureAddressingMode::Clamp, TextureAddressingMode::Clamp);
+            pSampler = pDevice->createSampler(sdfGridSamplerDesc);
 
             RtAABB unitAABB { float3(-0.5f), float3(0.5f) };
-            pUnitAABBBuffer = Buffer::create(pDevice, sizeof(RtAABB), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, &unitAABB);
+            pUnitAABBBuffer = pDevice->createBuffer(sizeof(RtAABB), ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, &unitAABB);
         }
     };
 
@@ -79,7 +79,7 @@ namespace Falcor
     {
         if (!mPrimitives.empty())
         {
-            throw RuntimeError("An NDSDFGrid instance cannot be created from primitives!");
+            FALCOR_THROW("An NDSDFGrid instance cannot be created from primitives!");
         }
 
         uint32_t lodCount = (uint32_t)mValues.size();
@@ -101,7 +101,7 @@ namespace Falcor
             }
             else
             {
-                pNDSDFTexture = Texture::create3D(mpDevice, lodWidth, lodWidth, lodWidth, ResourceFormat::R8Snorm, 1, mValues[lod].data());
+                pNDSDFTexture = mpDevice->createTexture3D(lodWidth, lodWidth, lodWidth, ResourceFormat::R8Snorm, 1, mValues[lod].data());
             }
         }
     }
@@ -111,11 +111,11 @@ namespace Falcor
         return mpSharedData->pUnitAABBBuffer;
     }
 
-    void NDSDFGrid::setShaderData(const ShaderVar& var) const
+    void NDSDFGrid::bindShaderData(const ShaderVar& var) const
     {
         if (mNDSDFTextures.empty())
         {
-            throw RuntimeError("NDSDFGrid::setShaderData() can't be called before calling NDSDFGrid::createResources()!");
+            FALCOR_THROW("NDSDFGrid::bindShaderData() can't be called before calling NDSDFGrid::createResources()!");
         }
 
         var["sampler"] = mpSharedData->pSampler;
@@ -138,7 +138,7 @@ namespace Falcor
 
         if (kCoarsestAllowedGridWidth > mGridWidth)
         {
-            throw RuntimeError("NDSDFGrid::setValues() grid width must be larger than {}.", kCoarsestAllowedGridWidth);
+            FALCOR_THROW("NDSDFGrid::setValues() grid width must be larger than {}.", kCoarsestAllowedGridWidth);
         }
 
         uint32_t lodCount = bitScanReverse(mGridWidth / kCoarsestAllowedGridWidth) + 1;

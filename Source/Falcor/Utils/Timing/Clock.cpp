@@ -265,12 +265,12 @@ Clock& Clock::step(int64_t frames)
 
 void Clock::renderUI(Gui::Window& w)
 {
-    const Texture* pRewind = w.loadImage("framework/images/rewind.jpg");
-    const Texture* pPlay = w.loadImage("framework/images/play.jpg");
-    const Texture* pPause = w.loadImage("framework/images/pause.jpg");
-    const Texture* pStop = w.loadImage("framework/images/stop.jpg");
-    const Texture* pNextFrame = w.loadImage("framework/images/next-frame.jpg");
-    const Texture* pPrevFrame = w.loadImage("framework/images/prev-frame.jpg");
+    const Texture* pRewind = w.loadImage(getRuntimeDirectory() / "data/framework/images/rewind.jpg");
+    const Texture* pPlay = w.loadImage(getRuntimeDirectory() / "data/framework/images/play.jpg");
+    const Texture* pPause = w.loadImage(getRuntimeDirectory() / "data/framework/images/pause.jpg");
+    const Texture* pStop = w.loadImage(getRuntimeDirectory() / "data/framework/images/stop.jpg");
+    const Texture* pNextFrame = w.loadImage(getRuntimeDirectory() / "data/framework/images/next-frame.jpg");
+    const Texture* pPrevFrame = w.loadImage(getRuntimeDirectory() / "data/framework/images/prev-frame.jpg");
 
     float time = (float)getTime();
     float scale = (float)getTimeScale();

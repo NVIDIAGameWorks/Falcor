@@ -2,6 +2,8 @@
 
 --------
 
+**Note:** This document is not updated and does not reflect the current state of the Python API anymore.
+
 # Mogwai Scripting Reference
 
 ## Sample API

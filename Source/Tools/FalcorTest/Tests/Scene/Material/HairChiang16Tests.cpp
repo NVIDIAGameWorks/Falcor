@@ -56,14 +56,14 @@ void testWhiteFurnace(GPUUnitTestContext& ctx, const std::string& funcName, cons
 
     // Setup GPU test.
     auto defines = pSampleGenerator->getDefines();
-    ctx.createProgram(kShaderFile, funcName, defines, Program::CompilerFlags::None, "6_2");
+    ctx.createProgram(kShaderFile, funcName, defines, SlangCompilerFlags::None, ShaderModel::SM6_2);
 
-    pSampleGenerator->setShaderData(ctx.vars().getRootVar());
+    pSampleGenerator->bindShaderData(ctx.vars().getRootVar());
 
     ctx.allocateStructuredBuffer("roughness", testCount, testRoughness.data(), testRoughness.size() * sizeof(float2));
     ctx.allocateStructuredBuffer("result", testCount);
     ctx["TestCB"]["resultSize"] = testCount;
-    ctx["TestCB"]["sampleCount"] = 300000;
+    ctx["TestCB"]["sampleCount"] = 300000u;
 
     ctx.runProgram(testCount);
 
@@ -107,7 +107,7 @@ GPU_TEST(HairChiang16_PbrtReference)
 
     // Setup GPU test.
     auto defines = pSampleGenerator->getDefines();
-    ctx.createProgram(kShaderFile, "testPbrtReference", defines, Program::CompilerFlags::None, "6_2");
+    ctx.createProgram(kShaderFile, "testPbrtReference", defines, SlangCompilerFlags::None, ShaderModel::SM6_2);
 
     ctx.allocateStructuredBuffer("gBetaM", testCount, buf.data());
     ctx.allocateStructuredBuffer("gBetaN", testCount, buf.data() + testCount);
@@ -164,9 +164,9 @@ GPU_TEST(HairChiang16_ImportanceSamplingWeights)
 
     // Setup GPU test.
     auto defines = pSampleGenerator->getDefines();
-    ctx.createProgram(kShaderFile, "testImportanceSamplingWeights", defines, Program::CompilerFlags::None, "6_2");
+    ctx.createProgram(kShaderFile, "testImportanceSamplingWeights", defines, SlangCompilerFlags::None, ShaderModel::SM6_2);
 
-    pSampleGenerator->setShaderData(ctx.vars().getRootVar());
+    pSampleGenerator->bindShaderData(ctx.vars().getRootVar());
 
     ctx.allocateStructuredBuffer("roughness", testCount, testRoughness.data(), testRoughness.size() * sizeof(float2));
     ctx.allocateStructuredBuffer("result", testCount * sampleCount);
@@ -213,9 +213,9 @@ GPU_TEST(HairChiang16_SamplingConsistency)
 
     // Setup GPU test.
     auto defines = pSampleGenerator->getDefines();
-    ctx.createProgram(kShaderFile, "testSamplingConsistency", defines, Program::CompilerFlags::None, "6_2");
+    ctx.createProgram(kShaderFile, "testSamplingConsistency", defines, SlangCompilerFlags::None, ShaderModel::SM6_2);
 
-    pSampleGenerator->setShaderData(ctx.vars().getRootVar());
+    pSampleGenerator->bindShaderData(ctx.vars().getRootVar());
 
     ctx.allocateStructuredBuffer("roughness", testCount, testRoughness.data(), testRoughness.size() * sizeof(float2));
     ctx.allocateStructuredBuffer("result", testCount);

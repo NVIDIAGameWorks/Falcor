@@ -28,6 +28,7 @@
 #pragma once
 #include "PlatformHandles.h"
 #include "Core/Macros.h"
+#include <fstd/span.h>
 #include <filesystem>
 #include <functional>
 #include <optional>
@@ -36,8 +37,6 @@
 
 namespace Falcor
 {
-class SearchDirectories;
-
 /**
  * Utility class to start/stop OS services.
  */
@@ -154,17 +153,12 @@ FALCOR_API uint32_t msgBox(
 FALCOR_API bool isSamePath(const std::filesystem::path& lhs, const std::filesystem::path& rhs);
 
 /**
- * Finds a file in one of the data search directories.
+ * Finds a file in a list of search directories.
  * @param[in] path The file path to look for.
- * @param[in] fullPath If the file was found, the full path to the file. If the file wasn't found, this is invalid.
- * @return Returns true if the file was found, false otherwise.
+ * @param[in] directories List of directories to search in.
+ * @return Returns the found path, or an empty path if not found.
  */
-FALCOR_API bool findFileInDataDirectories(const std::filesystem::path& path, std::filesystem::path& fullPath);
-FALCOR_API bool findFileInDirectories(
-    const std::filesystem::path& path,
-    std::filesystem::path& fullPath,
-    const SearchDirectories& directories
-);
+FALCOR_API std::filesystem::path findFileInDirectories(const std::filesystem::path& path, fstd::span<std::filesystem::path> directories);
 
 /**
  * Finds all files in given (absolute or relative path), whose filename matches the given regexPattern.
@@ -173,13 +167,13 @@ FALCOR_API bool findFileInDirectories(
  *
  * @param[in] path Directory path to look in.
  * @param[in] regexPattern C++ regular extension pattern to match with the files
- * @param[in] firstHitOnly Set true when you want only the first file matching the pattern.
+ * @param[in] firstMatchOnly Set true when you want only the first file matching the pattern.
  * @return All paths to the resolved files in the form path / <matching filename>.
  */
 FALCOR_API std::vector<std::filesystem::path> globFilesInDirectory(
     const std::filesystem::path& path,
     const std::regex& regexPattern,
-    bool firstHitOnly = false
+    bool firstMatchOnly = false
 );
 
 /**
@@ -188,19 +182,14 @@ FALCOR_API std::vector<std::filesystem::path> globFilesInDirectory(
  *
  * @param[in] path Directory (sub)path to look in.
  * @param[in] regexPattern C++ regular extension pattern to match with the files
- * @param[in] firstHitOnly Set true when you want only the first file matching the pattern.
+ * @param[in] firstMatchOnly Set true when you want only the first file matching the pattern.
  * @return Full paths to all files matching the pattern.
  */
-FALCOR_API std::vector<std::filesystem::path> globFilesInDataDirectories(
-    const std::filesystem::path& path,
-    const std::regex& regexPattern,
-    bool firstHitOnly = false
-);
 FALCOR_API std::vector<std::filesystem::path> globFilesInDirectories(
     const std::filesystem::path& path,
     const std::regex& regexPattern,
-    const SearchDirectories& directories,
-    bool firstHitOnly = false
+    fstd::span<std::filesystem::path> directories,
+    bool firstMatchOnly = false
 );
 
 /**
@@ -217,12 +206,6 @@ FALCOR_API bool findFileInShaderDirectories(const std::filesystem::path& path, s
  * Get a list of all shader directories.
  */
 FALCOR_API const std::vector<std::filesystem::path>& getShaderDirectoriesList();
-
-/**
- * Given a path, returns the shortest possible path to the file relative to the data directories.
- * If the path is not relative to the data directories, return the original path.
- */
-FALCOR_API std::filesystem::path stripDataDirectories(const std::filesystem::path& path);
 
 /**
  * Structure to help with file dialog file-extension filters
@@ -311,6 +294,13 @@ FALCOR_API bool isProcessRunning(size_t processID);
 FALCOR_API void terminateProcess(size_t processID);
 
 /**
+ * Get the full path to the Falcor project directory.
+ * Note: This is only useful during development.
+ * @return The full path of the project directory.
+ */
+FALCOR_API const std::filesystem::path& getProjectDirectory();
+
+/**
  * Get the full path to the current executable.
  * @return The full path of the executable.
  */
@@ -349,24 +339,6 @@ FALCOR_API const std::filesystem::path& getHomeDirectory();
  * @return The environment variable's value or nullopt if not found.
  */
 FALCOR_API std::optional<std::string> getEnvironmentVariable(const std::string& varName);
-
-/**
- * Get a list of all recorded data directories.
- */
-FALCOR_API const std::vector<std::filesystem::path>& getDataDirectoriesList();
-
-/**
- * Adds a folder to data search directories. Once added, calls to findFileInDataDirectories() will search that directory as well.
- * @param[in] dir The new directory to add to the data search directories.
- * @param[in] addToFront Add the new directory to the front of the list, making it the highest priority.
- */
-FALCOR_API void addDataDirectory(const std::filesystem::path& dir, bool addToFront = false);
-
-/**
- * Removes a folder from the data search directories
- * @param[in] dir The directory name to remove from the data search directories.
- */
-FALCOR_API void removeDataDirectory(const std::filesystem::path& dir);
 
 /**
  * Find a new filename based on the supplied parameters. This function doesn't actually create the file, just find an available file name.

@@ -65,13 +65,11 @@ interface IMaterial
     */
     MaterialInstance setupMaterialInstance(const MaterialSystem ms, const ShadingData sd, const ITextureSampler lod, const uint hints = (uint)MaterialInstanceHints::None);
 
-    /** Evaluate opacity at the given shading point.
-        \param[in] ms Material system. This provides the resources for opacity evaluation.
-        \param[in] v Interpolated attributes at the shading point.
-        \param[in] lod Method to use for computing texture level of detail, must implement the `ITextureSampler` interface.
-        \return Opacity value in range 0..1.
+    /** A differentiable version of `setupMaterialInstance`.
+        This operation returns an additional `DiffMaterialData` structure that contains differentiable parameters.
     */
-    float evalOpacity(const MaterialSystem ms, const VertexData v, const ITextureSampler lod);
+    [Differentiable]
+    MaterialInstance setupDiffMaterialInstance(out DiffMaterialData diffData, const MaterialSystem ms, const ShadingData sd, const ITextureSampler lod, const uint hints = (uint)MaterialInstanceHints::None);
 
     /** Returns volume properties that are homogeneous for the whole volume (do not depend on the hitpoint).
      */

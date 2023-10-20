@@ -142,7 +142,7 @@ struct PathGenerator
                     {
                         // RTXDI uses a simple material model with only diffuse and specular reflection lobes.
                         // We query the BSDF for the diffuse albedo and specular reflectance.
-                        gRTXDI.setSurfaceData(pixel, sd.computeNewRayOrigin(), bsdfProperties.guideNormal, bsdfProperties.diffuseReflectionAlbedo, bsdfProperties.specularReflectance, bsdfProperties.roughness);
+                        gRTXDI.setSurfaceData(pixel, sd.computeRayOrigin(), bsdfProperties.guideNormal, bsdfProperties.diffuseReflectionAlbedo, bsdfProperties.specularReflectance, bsdfProperties.roughness);
                     }
                 }
                 if (!validSurface) gRTXDI.setInvalidSurfaceData(pixel);

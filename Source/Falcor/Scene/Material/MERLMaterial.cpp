@@ -46,20 +46,14 @@ namespace Falcor
     MERLMaterial::MERLMaterial(ref<Device> pDevice, const std::string& name, const std::filesystem::path& path)
         : Material(pDevice, name, MaterialType::MERL)
     {
-        std::filesystem::path fullPath;
-        if (!findFileInDataDirectories(path, fullPath))
-        {
-            throw RuntimeError("MERLMaterial: Can't find file '{}'.", path);
-        }
-
-        MERLFile merlFile(fullPath);
+        MERLFile merlFile(path);
         init(merlFile);
 
         // Create albedo LUT texture.
         auto lut = merlFile.prepareAlbedoLUT(mpDevice);
-        checkInvariant(!lut.empty() && sizeof(lut[0]) == sizeof(float4), "Expected albedo LUT in float4 format.");
+        FALCOR_CHECK(!lut.empty() && sizeof(lut[0]) == sizeof(float4), "Expected albedo LUT in float4 format.");
         static_assert(MERLFile::kAlbedoLUTFormat == ResourceFormat::RGBA32Float);
-        mpAlbedoLUT = Texture::create2D(mpDevice, (uint32_t)lut.size(), 1, MERLFile::kAlbedoLUTFormat, 1, 1, lut.data(), ResourceBindFlags::ShaderResource);
+        mpAlbedoLUT = mpDevice->createTexture2D((uint32_t)lut.size(), 1, MERLFile::kAlbedoLUTFormat, 1, 1, lut.data(), ResourceBindFlags::ShaderResource);
     }
 
     MERLMaterial::MERLMaterial(ref<Device> pDevice, const MERLFile& merlFile)
@@ -76,15 +70,15 @@ namespace Falcor
 
         // Create GPU buffer.
         const auto& brdf = merlFile.getData();
-        checkInvariant(!brdf.empty() && sizeof(brdf[0]) == sizeof(float3), "Expected BRDF data in float3 format.");
-        mpBRDFData = Buffer::create(mpDevice, brdf.size() * sizeof(brdf[0]), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, brdf.data());
+        FALCOR_CHECK(!brdf.empty() && sizeof(brdf[0]) == sizeof(float3), "Expected BRDF data in float3 format.");
+        mpBRDFData = mpDevice->createBuffer(brdf.size() * sizeof(brdf[0]), ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, brdf.data());
 
         // Create sampler for albedo LUT.
         Sampler::Desc desc;
-        desc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Point, Sampler::Filter::Point);
-        desc.setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
+        desc.setFilterMode(TextureFilteringMode::Linear, TextureFilteringMode::Point, TextureFilteringMode::Point);
+        desc.setAddressingMode(TextureAddressingMode::Clamp, TextureAddressingMode::Clamp, TextureAddressingMode::Clamp);
         desc.setMaxAnisotropy(1);
-        mpLUTSampler = Sampler::create(mpDevice, desc);
+        mpLUTSampler = mpDevice->createSampler(desc);
 
         markUpdates(Material::UpdateFlags::ResourcesChanged);
     }
@@ -145,12 +139,12 @@ namespace Falcor
         return true;
     }
 
-    Program::ShaderModuleList MERLMaterial::getShaderModules() const
+    ProgramDesc::ShaderModuleList MERLMaterial::getShaderModules() const
     {
-        return { Program::ShaderModule(kShaderFile) };
+        return { ProgramDesc::ShaderModule::fromFile(kShaderFile) };
     }
 
-    Program::TypeConformanceList MERLMaterial::getTypeConformances() const
+    TypeConformanceList MERLMaterial::getTypeConformances() const
     {
         return { {{"MERLMaterial", "IMaterial"}, (uint32_t)MaterialType::MERL} };
     }
@@ -164,7 +158,7 @@ namespace Falcor
         pybind11::class_<MERLMaterial, Material, ref<MERLMaterial>> material(m, "MERLMaterial");
         auto create = [] (const std::string& name, const std::filesystem::path& path)
         {
-            return MERLMaterial::create(accessActivePythonSceneBuilder().getDevice(), name, path);
+            return MERLMaterial::create(accessActivePythonSceneBuilder().getDevice(), name, getActiveAssetResolver().resolvePath(path));
         };
         material.def(pybind11::init(create), "name"_a, "path"_a); // PYTHONDEPRECATED
     }

@@ -42,4 +42,3 @@ float4 main(FullScreenPassVsOut vsOut) : SV_TARGET0
     const float2 nPacked = ndir_to_oct_snorm(gNormal[ipos].xyz);
     return float4(gLinearZ[ipos].xy, nPacked.x, nPacked.y);
 }
-

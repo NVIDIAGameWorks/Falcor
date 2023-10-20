@@ -28,6 +28,7 @@
 #pragma once
 #include "DirectedGraph.h"
 #include "Core/Macros.h"
+#include "Core/Error.h"
 #include <queue>
 #include <stack>
 #include <string>

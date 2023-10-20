@@ -36,8 +36,7 @@
 
 namespace Falcor
 {
-class GraphicsProgram;
-class ComputeProgram;
+class Program;
 class ComputeContext;
 
 /**
@@ -49,6 +48,22 @@ class FALCOR_API ProgramVars : public ParameterBlock
 {
 public:
     /**
+     * Create a new graphics vars object.
+     * @param[in] pDevice GPU device.
+     * @param[in] pReflector A program reflection object containing the requested declarations.
+     * @return A new object, or an exception is thrown if creation failed.
+     */
+    static ref<ProgramVars> create(ref<Device> pDevice, const ref<const ProgramReflection>& pReflector);
+
+    /**
+     * Create a new graphics vars object.
+     * @param[in] pDevice GPU device.
+     * @param[in] pProg A program containing the requested declarations. The active version of the program is used.
+     * @return A new object, or an exception is thrown if creation failed.
+     */
+    static ref<ProgramVars> create(ref<Device> pDevice, const Program* pProg);
+
+    /**
      * Get the program reflection interface
      */
     const ref<const ProgramReflection>& getReflection() const { return mpReflector; }
@@ -57,57 +72,6 @@ protected:
     ProgramVars(ref<Device> pDevice, const ref<const ProgramReflection>& pReflector);
 
     ref<const ProgramReflection> mpReflector;
-};
-
-class FALCOR_API GraphicsVars : public ProgramVars
-{
-public:
-    /**
-     * Create a new graphics vars object.
-     * @param[in] pDevice GPU device.
-     * @param[in] pReflector A program reflection object containing the requested declarations.
-     * @return A new object, or an exception is thrown if creation failed.
-     */
-    static ref<GraphicsVars> create(ref<Device> pDevice, const ref<const ProgramReflection>& pReflector);
-
-    /**
-     * Create a new graphics vars object.
-     * @param[in] pDevice GPU device.
-     * @param[in] pProg A program containing the requested declarations. The active version of the program is used.
-     * @return A new object, or an exception is thrown if creation failed.
-     */
-    static ref<GraphicsVars> create(ref<Device> pDevice, const GraphicsProgram* pProg);
-
-protected:
-    GraphicsVars(ref<Device> pDevice, const ref<const ProgramReflection>& pReflector);
-};
-
-class FALCOR_API ComputeVars : public ProgramVars
-{
-public:
-    /**
-     * Create a new compute vars object.
-     * @param[in] pDevice GPU device.
-     * @param[in] pReflector A program reflection object containing the requested declarations.
-     * @return A new object, or an exception is thrown if creation failed.
-     */
-    static ref<ComputeVars> create(ref<Device> pDevice, const ref<const ProgramReflection>& pReflector);
-
-    /**
-     * Create a new compute vars object.
-     * @param[in] pDevice GPU device.
-     * @param[in] pProg A program containing the requested declarations. The active version of the program is used.
-     * @return A new object, or an exception is thrown if creation failed.
-     */
-    static ref<ComputeVars> create(ref<Device> pDevice, const ComputeProgram* pProg);
-
-    /**
-     * Dispatch the program using the argument values set in this object.
-     */
-    void dispatchCompute(ComputeContext* pContext, const uint3& threadGroupCount);
-
-protected:
-    ComputeVars(ref<Device> pDevice, const ref<const ProgramReflection>& pReflector);
 };
 
 class RtStateObject;
@@ -125,7 +89,7 @@ public:
      * @param[in] pBindingTable The raytracing binding table.
      * @return A new object, or an exception is thrown if creation failed.
      */
-    static ref<RtProgramVars> create(ref<Device> pDevice, const ref<RtProgram>& pProgram, const ref<RtBindingTable>& pBindingTable);
+    static ref<RtProgramVars> create(ref<Device> pDevice, const ref<Program>& pProgram, const ref<RtBindingTable>& pBindingTable);
 
     bool prepareShaderTable(RenderContext* pCtx, RtStateObject* pRtso);
 
@@ -145,7 +109,7 @@ private:
 
     using VarsVector = std::vector<EntryPointGroupInfo>;
 
-    RtProgramVars(ref<Device> pDevice, const ref<RtProgram>& pProgram, const ref<RtBindingTable>& pBindingTable);
+    RtProgramVars(ref<Device> pDevice, const ref<Program>& pProgram, const ref<RtBindingTable>& pBindingTable);
 
     void init(const ref<RtBindingTable>& pBindingTable);
 

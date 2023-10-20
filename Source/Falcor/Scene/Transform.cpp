@@ -105,7 +105,7 @@ namespace Falcor
                 mMatrix = mul(mul(R, S), T);
                 break;
             case CompositionOrder::Unknown:
-                throw RuntimeError("Unknown transform composition order.");
+                FALCOR_THROW("Unknown transform composition order.");
                 break;
             }
             mDirty = false;
@@ -131,7 +131,7 @@ namespace Falcor
         case Transform::CompositionOrder::TranslateScaleRotate:
             return Transform::CompositionOrder::RotateScaleTranslate;
         case Transform::CompositionOrder::Unknown:
-            throw RuntimeError("Cannot invert unknown transform composition order.");
+            FALCOR_THROW("Cannot invert unknown transform composition order.");
         }
         return Transform::CompositionOrder::Unknown;
     }

@@ -26,7 +26,8 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "TriangleMesh.h"
-#include "Core/Assert.h"
+#include "GlobalState.h"
+#include "Core/Error.h"
 #include "Core/Platform/OS.h"
 #include "Utils/Logger.h"
 #include "Utils/Scripting/ScriptBindings.h"
@@ -192,12 +193,11 @@ namespace Falcor
         return create(vertices, indices);
     }
 
-    ref<TriangleMesh> TriangleMesh::createFromFile(const std::filesystem::path& path, bool smoothNormals)
+    ref<TriangleMesh> TriangleMesh::createFromFile(const std::filesystem::path& path, ImportFlags importFlags)
     {
-        std::filesystem::path fullPath;
-        if (!findFileInDataDirectories(path, fullPath))
+        if (!std::filesystem::exists(path))
         {
-            logWarning("Error when loading triangle mesh. Can't find mesh file '{}'.", path);
+            logWarning("Failed to load triangle mesh from '{}': File not found", path);
             return nullptr;
         }
 
@@ -206,24 +206,25 @@ namespace Falcor
         unsigned int flags =
             aiProcess_FlipUVs |
             aiProcess_Triangulate |
-            (smoothNormals ? aiProcess_GenSmoothNormals : aiProcess_GenNormals) |
             aiProcess_PreTransformVertices;
+        flags |= is_set(importFlags, ImportFlags::GenSmoothNormals) ? aiProcess_GenSmoothNormals : aiProcess_GenNormals;
+        flags |= is_set(importFlags, ImportFlags::JoinIdenticalVertices) ? aiProcess_JoinIdenticalVertices : 0;
 
         const aiScene* scene = nullptr;
 
-        if (hasExtension(fullPath, "gz"))
+        if (hasExtension(path, "gz"))
         {
-            auto decompressed = decompressFile(fullPath);
+            auto decompressed = decompressFile(path);
             scene = importer.ReadFileFromMemory(decompressed.data(), decompressed.size(), flags);
         }
         else
         {
-            scene = importer.ReadFile(fullPath.string().c_str(), flags);
+            scene = importer.ReadFile(path.string().c_str(), flags);
         }
 
         if (!scene)
         {
-            logWarning("Failed to load triangle mesh from '{}': {}", fullPath, importer.GetErrorString());
+            logWarning("Failed to load triangle mesh from '{}': {}", path, importer.GetErrorString());
             return nullptr;
         }
 
@@ -262,7 +263,7 @@ namespace Falcor
                 const auto& face = mesh->mFaces[faceIdx];
                 if (face.mNumIndices != 3)
                 {
-                    logWarning("Failed to load triangle mesh from '{}': Broken face data", fullPath);
+                    logWarning("Failed to load triangle mesh from '{}': Broken face data", path);
                     return nullptr;
                 }
                 for (size_t i = 0; i < 3; ++i) indices.emplace_back((uint32_t)(indexBase + face.mIndices[i]));
@@ -270,6 +271,12 @@ namespace Falcor
         }
 
         return create(vertices, indices);
+    }
+
+    ref<TriangleMesh> TriangleMesh::createFromFile(const std::filesystem::path& path, bool smoothNormals)
+    {
+        ImportFlags flags = smoothNormals ? ImportFlags::GenSmoothNormals : ImportFlags::None;
+        return createFromFile(path, flags);
     }
 
     uint32_t TriangleMesh::addVertex(float3 position, float3 normal, float2 texCoord)
@@ -319,6 +326,12 @@ namespace Falcor
     {
         using namespace pybind11::literals;
 
+        pybind11::enum_<TriangleMesh::ImportFlags> flags(m, "TriangleMeshImportFlags");
+        flags.value("Default", TriangleMesh::ImportFlags::Default);
+        flags.value("GenSmoothNormals", TriangleMesh::ImportFlags::GenSmoothNormals);
+        flags.value("JoinIdenticalVertices", TriangleMesh::ImportFlags::JoinIdenticalVertices);
+        ScriptBindings::addEnumBinaryOperators(flags);
+
         pybind11::class_<TriangleMesh, ref<TriangleMesh>> triangleMesh(m, "TriangleMesh");
 
         pybind11::class_<TriangleMesh::Vertex> vertex(triangleMesh, "Vertex");
@@ -337,6 +350,15 @@ namespace Falcor
         triangleMesh.def_static("createDisk", &TriangleMesh::createDisk, "radius"_a = 1.f, "segments"_a = 32);
         triangleMesh.def_static("createCube", &TriangleMesh::createCube, "size"_a = float3(1.f));
         triangleMesh.def_static("createSphere", &TriangleMesh::createSphere, "radius"_a = 1.f, "segmentsU"_a = 32, "segmentsV"_a = 32);
-        triangleMesh.def_static("createFromFile", &TriangleMesh::createFromFile, "path"_a, "smoothNormals"_a = false);
+        triangleMesh.def_static("createFromFile",
+            [](const std::filesystem::path& path, bool smoothNormals)
+            { return TriangleMesh::createFromFile(getActiveAssetResolver().resolvePath(path), smoothNormals); },
+            "path"_a, "smoothNormals"_a = false
+        ); // PYTHONDEPRECATED
+        triangleMesh.def_static("createFromFile",
+            [](const std::filesystem::path& path, TriangleMesh::ImportFlags importFlags)
+            { return TriangleMesh::createFromFile(getActiveAssetResolver().resolvePath(path), importFlags); },
+            "path"_a, "importFlags"_a
+        ); // PYTHONDEPRECATED
     }
 }

@@ -45,7 +45,7 @@ namespace Mogwai
             uint64_t yEnd = yStart + yCount - 1;
             if (xStart <= yEnd && yStart <= xEnd)
             {
-                throw ArgumentError("This range overlaps an existing range!");
+                FALCOR_THROW("This range overlaps an existing range!");
             }
         }
 
@@ -191,7 +191,7 @@ namespace Mogwai
     std::string CaptureTrigger::getScript(const std::string& var) const
     {
         std::string s;
-        s += ScriptWriter::makeSetProperty(var, kOutputDir, ScriptWriter::getPathString(mOutputDir, false));
+        s += ScriptWriter::makeSetProperty(var, kOutputDir, ScriptWriter::getPathString(mOutputDir));
         s += ScriptWriter::makeSetProperty(var, kBaseFilename, mBaseFilename);
         return s;
     }

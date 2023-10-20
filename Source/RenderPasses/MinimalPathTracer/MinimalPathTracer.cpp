@@ -36,33 +36,34 @@ extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registr
 
 namespace
 {
-    const char kShaderFile[] = "RenderPasses/MinimalPathTracer/MinimalPathTracer.rt.slang";
+const char kShaderFile[] = "RenderPasses/MinimalPathTracer/MinimalPathTracer.rt.slang";
 
-    // Ray tracing settings that affect the traversal stack size.
-    // These should be set as small as possible.
-    const uint32_t kMaxPayloadSizeBytes = 72u;
-    const uint32_t kMaxRecursionDepth = 2u;
+// Ray tracing settings that affect the traversal stack size.
+// These should be set as small as possible.
+const uint32_t kMaxPayloadSizeBytes = 72u;
+const uint32_t kMaxRecursionDepth = 2u;
 
-    const char kInputViewDir[] = "viewW";
+const char kInputViewDir[] = "viewW";
 
-    const ChannelList kInputChannels =
-    {
-        { "vbuffer",        "gVBuffer",     "Visibility buffer in packed format" },
-        { kInputViewDir,    "gViewW",       "World-space view direction (xyz float format)", true /* optional */ },
-    };
+const ChannelList kInputChannels = {
+    // clang-format off
+    { "vbuffer",        "gVBuffer",     "Visibility buffer in packed format" },
+    { kInputViewDir,    "gViewW",       "World-space view direction (xyz float format)", true /* optional */ },
+    // clang-format on
+};
 
-    const ChannelList kOutputChannels =
-    {
-        { "color",          "gOutputColor", "Output color (sum of direct and indirect)", false, ResourceFormat::RGBA32Float },
-    };
+const ChannelList kOutputChannels = {
+    // clang-format off
+    { "color",          "gOutputColor", "Output color (sum of direct and indirect)", false, ResourceFormat::RGBA32Float },
+    // clang-format on
+};
 
-    const char kMaxBounces[] = "maxBounces";
-    const char kComputeDirect[] = "computeDirect";
-    const char kUseImportanceSampling[] = "useImportanceSampling";
-}
+const char kMaxBounces[] = "maxBounces";
+const char kComputeDirect[] = "computeDirect";
+const char kUseImportanceSampling[] = "useImportanceSampling";
+} // namespace
 
-MinimalPathTracer::MinimalPathTracer(ref<Device> pDevice, const Properties& props)
-    : RenderPass(pDevice)
+MinimalPathTracer::MinimalPathTracer(ref<Device> pDevice, const Properties& props) : RenderPass(pDevice)
 {
     parseProperties(props);
 
@@ -75,10 +76,14 @@ void MinimalPathTracer::parseProperties(const Properties& props)
 {
     for (const auto& [key, value] : props)
     {
-        if (key == kMaxBounces) mMaxBounces = value;
-        else if (key == kComputeDirect) mComputeDirect = value;
-        else if (key == kUseImportanceSampling) mUseImportanceSampling = value;
-        else logWarning("Unknown property '{}' in MinimalPathTracer properties.", key);
+        if (key == kMaxBounces)
+            mMaxBounces = value;
+        else if (key == kComputeDirect)
+            mComputeDirect = value;
+        else if (key == kUseImportanceSampling)
+            mUseImportanceSampling = value;
+        else
+            logWarning("Unknown property '{}' in MinimalPathTracer properties.", key);
     }
 }
 
@@ -119,14 +124,16 @@ void MinimalPathTracer::execute(RenderContext* pRenderContext, const RenderData&
         for (auto it : kOutputChannels)
         {
             Texture* pDst = renderData.getTexture(it.name).get();
-            if (pDst) pRenderContext->clearTexture(pDst);
+            if (pDst)
+                pRenderContext->clearTexture(pDst);
         }
         return;
     }
 
-    if (is_set(mpScene->getUpdates(), Scene::UpdateFlags::GeometryChanged))
+    if (is_set(mpScene->getUpdates(), Scene::UpdateFlags::RecompileNeeded) ||
+        is_set(mpScene->getUpdates(), Scene::UpdateFlags::GeometryChanged))
     {
-        throw RuntimeError("MinimalPathTracer: This render pass does not support scene geometry changes.");
+        FALCOR_THROW("This render pass does not support scene changes that require shader recompilation.");
     }
 
     // Request the light collection if emissive lights are enabled.
@@ -159,7 +166,8 @@ void MinimalPathTracer::execute(RenderContext* pRenderContext, const RenderData&
 
     // Prepare program vars. This may trigger shader compilation.
     // The program should have all necessary defines set at this point.
-    if (!mTracer.pVars) prepareVars();
+    if (!mTracer.pVars)
+        prepareVars();
     FALCOR_ASSERT(mTracer.pVars);
 
     // Set constants.
@@ -175,8 +183,10 @@ void MinimalPathTracer::execute(RenderContext* pRenderContext, const RenderData&
             var[desc.texname] = renderData.getTexture(desc.name);
         }
     };
-    for (auto channel : kInputChannels) bind(channel);
-    for (auto channel : kOutputChannels) bind(channel);
+    for (auto channel : kInputChannels)
+        bind(channel);
+    for (auto channel : kOutputChannels)
+        bind(channel);
 
     // Get dimensions of ray dispatch.
     const uint2 targetDim = renderData.getDefaultTextureDims();
@@ -229,7 +239,7 @@ void MinimalPathTracer::setScene(RenderContext* pRenderContext, const ref<Scene>
         }
 
         // Create ray tracing program.
-        RtProgram::Desc desc;
+        ProgramDesc desc;
         desc.addShaderModules(mpScene->getShaderModules());
         desc.addShaderLibrary(kShaderFile);
         desc.setMaxPayloadSize(kMaxPayloadSizeBytes);
@@ -244,29 +254,49 @@ void MinimalPathTracer::setScene(RenderContext* pRenderContext, const ref<Scene>
 
         if (mpScene->hasGeometryType(Scene::GeometryType::TriangleMesh))
         {
-            sbt->setHitGroup(0, mpScene->getGeometryIDs(Scene::GeometryType::TriangleMesh), desc.addHitGroup("scatterTriangleMeshClosestHit", "scatterTriangleMeshAnyHit"));
-            sbt->setHitGroup(1, mpScene->getGeometryIDs(Scene::GeometryType::TriangleMesh), desc.addHitGroup("", "shadowTriangleMeshAnyHit"));
+            sbt->setHitGroup(
+                0,
+                mpScene->getGeometryIDs(Scene::GeometryType::TriangleMesh),
+                desc.addHitGroup("scatterTriangleMeshClosestHit", "scatterTriangleMeshAnyHit")
+            );
+            sbt->setHitGroup(
+                1, mpScene->getGeometryIDs(Scene::GeometryType::TriangleMesh), desc.addHitGroup("", "shadowTriangleMeshAnyHit")
+            );
         }
 
         if (mpScene->hasGeometryType(Scene::GeometryType::DisplacedTriangleMesh))
         {
-            sbt->setHitGroup(0, mpScene->getGeometryIDs(Scene::GeometryType::DisplacedTriangleMesh), desc.addHitGroup("scatterDisplacedTriangleMeshClosestHit", "", "displacedTriangleMeshIntersection"));
-            sbt->setHitGroup(1, mpScene->getGeometryIDs(Scene::GeometryType::DisplacedTriangleMesh), desc.addHitGroup("", "", "displacedTriangleMeshIntersection"));
+            sbt->setHitGroup(
+                0,
+                mpScene->getGeometryIDs(Scene::GeometryType::DisplacedTriangleMesh),
+                desc.addHitGroup("scatterDisplacedTriangleMeshClosestHit", "", "displacedTriangleMeshIntersection")
+            );
+            sbt->setHitGroup(
+                1,
+                mpScene->getGeometryIDs(Scene::GeometryType::DisplacedTriangleMesh),
+                desc.addHitGroup("", "", "displacedTriangleMeshIntersection")
+            );
         }
 
         if (mpScene->hasGeometryType(Scene::GeometryType::Curve))
         {
-            sbt->setHitGroup(0, mpScene->getGeometryIDs(Scene::GeometryType::Curve), desc.addHitGroup("scatterCurveClosestHit", "", "curveIntersection"));
+            sbt->setHitGroup(
+                0, mpScene->getGeometryIDs(Scene::GeometryType::Curve), desc.addHitGroup("scatterCurveClosestHit", "", "curveIntersection")
+            );
             sbt->setHitGroup(1, mpScene->getGeometryIDs(Scene::GeometryType::Curve), desc.addHitGroup("", "", "curveIntersection"));
         }
 
         if (mpScene->hasGeometryType(Scene::GeometryType::SDFGrid))
         {
-            sbt->setHitGroup(0, mpScene->getGeometryIDs(Scene::GeometryType::SDFGrid), desc.addHitGroup("scatterSdfGridClosestHit", "", "sdfGridIntersection"));
+            sbt->setHitGroup(
+                0,
+                mpScene->getGeometryIDs(Scene::GeometryType::SDFGrid),
+                desc.addHitGroup("scatterSdfGridClosestHit", "", "sdfGridIntersection")
+            );
             sbt->setHitGroup(1, mpScene->getGeometryIDs(Scene::GeometryType::SDFGrid), desc.addHitGroup("", "", "sdfGridIntersection"));
         }
 
-        mTracer.pProgram = RtProgram::create(mpDevice, desc, mpScene->getSceneDefines());
+        mTracer.pProgram = Program::create(mpDevice, desc, mpScene->getSceneDefines());
     }
 }
 
@@ -285,5 +315,5 @@ void MinimalPathTracer::prepareVars()
 
     // Bind utility classes into shared data.
     auto var = mTracer.pVars->getRootVar();
-    mpSampleGenerator->setShaderData(var);
+    mpSampleGenerator->bindShaderData(var);
 }

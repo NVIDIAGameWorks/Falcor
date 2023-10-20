@@ -1,10 +1,14 @@
+IMAGE_TEST = {
+    "device_types": ["d3d12", "vulkan"]
+}
+
 import sys
 sys.path.append('..')
 from helpers import render_frames
 from graphs.MVecRT import MVecRT as g
 from falcor import *
 
-sceneFile = 'Cerberus/Standard/Cerberus.pyscene'
+sceneFile = 'test_scenes/cesium_man/CesiumMan.pyscene'
 
 m.addGraph(g)
 m.loadScene(sceneFile)

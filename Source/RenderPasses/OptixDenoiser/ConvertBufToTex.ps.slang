@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -30,11 +30,9 @@ cbuffer GlobalCB
     uint gStride;
 }
 
-Buffer<float4>      gInBuf;
+Buffer<float4> gInBuf;
 
-float4 main(
-    float2 texC : TEXCOORD,
-    float4 posH : SV_POSITION) : SV_Target0
+float4 main(float2 texC: TEXCOORD, float4 posH: SV_POSITION) : SV_Target0
 {
     uint2 pixel = uint2(posH.xy);
     uint bufIdx = pixel.x + pixel.y * gStride;

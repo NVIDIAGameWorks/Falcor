@@ -87,10 +87,15 @@ private:
     void setCbData(const ref<Fbo>& pDstFbo);
     void renderText(RenderContext* pRenderContext, const std::string& text, const ref<Fbo>& pDstFbo, float2 pos);
 
+    // Use 3 rotating VAOs to avoid stalling the GPU.
+    // A better way would be to upload the data using an upload heap.
+    static constexpr uint32_t kVaoCount = 3;
+
     ref<Device> mpDevice;
     Flags mFlags = Flags::Shadowed;
     float3 mColor = float3(1.f);
-    ref<Buffer> mpVb;
+    ref<Vao> mpVaos[kVaoCount];
+    uint32_t mVaoIndex = 0;
     ref<RasterPass> mpPass;
     std::unique_ptr<Font> mpFont;
 };

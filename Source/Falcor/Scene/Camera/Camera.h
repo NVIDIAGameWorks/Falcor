@@ -249,7 +249,7 @@ namespace Falcor
 
         /** Set the camera into a shader var
         */
-        void setShaderData(const ShaderVar& var) const;
+        void bindShaderData(const ShaderVar& var) const;
 
         /** Returns the raw camera data
         */

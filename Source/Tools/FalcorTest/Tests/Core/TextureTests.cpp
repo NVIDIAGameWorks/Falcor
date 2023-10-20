@@ -36,8 +36,8 @@ GPU_TEST(RWTexture3D)
 {
     ref<Device> pDevice = ctx.getDevice();
 
-    auto pTex = Texture::create3D(
-        pDevice, 16, 16, 16, ResourceFormat::R32Uint, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess
+    auto pTex = pDevice->createTexture3D(
+        16, 16, 16, ResourceFormat::R32Uint, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess
     );
     EXPECT(pTex);
 
@@ -96,8 +96,13 @@ GPU_TEST(TextureMinMaxMip)
     }
 
     // Create texture.
-    auto pTex = Texture::create2D(
-        pDevice, texWidth, texHeight, ResourceFormat::RGBA8Unorm, 1, Resource::kMaxPossible, textureBase.data(),
+    auto pTex = pDevice->createTexture2D(
+        texWidth,
+        texHeight,
+        ResourceFormat::RGBA8Unorm,
+        1,
+        Resource::kMaxPossible,
+        textureBase.data(),
         ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess
     );
     EXPECT(pTex) << "Texture was not created";
@@ -192,11 +197,11 @@ GPU_TEST(Texture_Load8Bit)
 
     // Create texture in BGRX8Unorm format.
     // This is what Bitmap::createFromFile currently returns (see BitmapTests.cpp).
-    auto texUnorm = Texture::create2D(pDevice, 256, 1, ResourceFormat::BGRX8Unorm, 1, 1, data);
+    auto texUnorm = pDevice->createTexture2D(256, 1, ResourceFormat::BGRX8Unorm, 1, 1, data);
     EXPECT(texUnorm != nullptr);
 
     // Create texture in RGBA8Uint format.
-    auto texUint = Texture::create2D(pDevice, 256, 1, ResourceFormat::RGBA8Uint, 1, 1, data);
+    auto texUint = pDevice->createTexture2D(256, 1, ResourceFormat::RGBA8Uint, 1, 1, data);
     EXPECT(texUint != nullptr);
 
     ctx.createProgram("Tests/Core/TextureLoadTests.cs.slang", "testLoadFormat");

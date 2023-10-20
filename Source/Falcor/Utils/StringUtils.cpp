@@ -26,6 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "StringUtils.h"
+#include "Core/Error.h"
 
 #include <array>
 #include <string>
@@ -314,7 +315,7 @@ std::vector<uint8_t> decodeBase64(const std::string& in)
     if (inLen == 0)
         return {};
     if (inLen % 4 != 0)
-        throw ArgumentError("Input data size is not a multiple of 4");
+        FALCOR_THROW("Input data size is not a multiple of 4");
 
     size_t outLen = inLen / 4 * 3;
     if (in[inLen - 1] == '=')

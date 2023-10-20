@@ -166,7 +166,7 @@ class Test:
         files = filter(lambda f: f.suffix.lower() in config.IMAGE_EXTENSIONS, files)
         return list(files)
 
-    def generate_images(self, output_dir, mogwai_exe):
+    def generate_images(self, output_dir, mogwai_exe, run_only=False):
         '''
         Run Mogwai to generate a set of images and store them in output_dir.
         Returns a tuple containing the result code and a list of messages.
@@ -190,6 +190,10 @@ class Test:
         # Write helper script to run test.
         generate_file = output_dir / 'generate.py'
         with open(generate_file, 'w') as f:
+            # Hack to pass run only flag to helpers.py
+            if run_only:
+                f.write("import falcor\n")
+                f.write(f'falcor.__dict__["IMAGE_TEST_RUN_ONLY"]=True\n')
             f.write(f'm.frameCapture.outputDir = r"{output_dir}"\n')
             f.write(f'm.script(r"{relative_to_cwd(self.script_file)}")\n')
 
@@ -221,7 +225,7 @@ class Test:
             return Test.Result.FAILED, errors + [f'{mogwai_exe} exited with return code {p.returncode}'], rerun_env
 
         # Bail out if no images have been generated.
-        if len(self.collect_images(output_dir)) == 0:
+        if not run_only and len(self.collect_images(output_dir)) == 0:
             return Test.Result.FAILED, ['Test did not generate any images.'], rerun_env
 
         return Test.Result.PASSED, [], rerun_env
@@ -302,7 +306,7 @@ class Test:
 
         return result, messages, image_reports
 
-    def run(self, compare_only, ref_dir, result_dir, mogwai_exe, image_compare_exe):
+    def run(self, run_only, compare_only, ref_dir, result_dir, mogwai_exe, image_compare_exe):
         '''
         Run the image test.
         First, result images are generated (unless compare_only is True).
@@ -324,10 +328,10 @@ class Test:
 
         # Generate results images.
         if not compare_only:
-            result, messages, rerun_env = self.generate_images(result_dir, mogwai_exe)
+            result, messages, rerun_env = self.generate_images(result_dir, mogwai_exe, run_only)
 
         # Compare to references.
-        if result == Test.Result.PASSED:
+        if not run_only and result == Test.Result.PASSED:
             result, messages, report['images'] = self.compare_images(ref_dir, result_dir, image_compare_exe)
 
         # Finish report.
@@ -408,7 +412,7 @@ def generate_refs(env, tests, ref_dir, process_controller):
 
     return success
 
-def run_test(env, test, compare_only, ref_dir, result_dir, min_tolerance, process_controller):
+def run_test(env, test, run_only, compare_only, ref_dir, result_dir, min_tolerance, process_controller):
     if process_controller.is_interrupted():
         return
     with print_mutex:
@@ -416,11 +420,11 @@ def run_test(env, test, compare_only, ref_dir, result_dir, min_tolerance, proces
     test.tolerance = max(test.tolerance, min_tolerance)
     test.process_controller = process_controller
     start_time = time.time()
-    result, messages = test.run(compare_only, ref_dir, result_dir, env.mogwai_exe, env.image_compare_exe)
+    result, messages = test.run(run_only, compare_only, ref_dir, result_dir, env.mogwai_exe, env.image_compare_exe)
     elapsed_time = time.time() - start_time
     return {"name": test.name, "elapsed_time": elapsed_time, "result": result, "messages": messages}
 
-def run_tests(env, tests, compare_only, ref_dir, result_dir, min_tolerance, xml_report, process_controller):
+def run_tests(env, tests, run_only, compare_only, ref_dir, result_dir, min_tolerance, xml_report, process_controller):
     '''
     Runs a set of tests, stores them into result_dir and compares them to ref_dir.
     '''
@@ -439,7 +443,7 @@ def run_tests(env, tests, compare_only, ref_dir, result_dir, min_tolerance, xml_
     try:
         # Run tests on #CPU - 2 (to retain some performance control)
         with concurrent.futures.ThreadPoolExecutor(process_controller.thread_count) as executor:
-            futures = {executor.submit(run_test, env, test, compare_only, ref_dir, result_dir, min_tolerance, process_controller) for test in tests}
+            futures = {executor.submit(run_test, env, test, run_only, compare_only, ref_dir, result_dir, min_tolerance, process_controller) for test in tests}
             try:
                 for future in concurrent.futures.as_completed(futures):
                     run_result   = future.result()
@@ -529,6 +533,11 @@ def collect_tests(root_dir, filter_regex, tags):
             print(e)
             sys.exit(1)
 
+        # Check if test is enabled for current platform.
+        platforms = header.get("platforms", config.DEFAULT_PLATFORMS)
+        if not config.PLATFORM in platforms:
+            continue
+
         # For now we default to d3d12 as we bring in image tests on vulkan.
         # We should later switch this default to ["d3d12", "vulkan"].
         device_types = header.get("device_types", ["d3d12"])
@@ -574,7 +583,7 @@ def main():
     default_processes_count = min(config.DEFAULT_PROCESS_COUNT, multiprocessing.cpu_count())
 
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--environment', type=str, action='store', help=f'Environment (default: {config.DEFAULT_ENVIRONMENT})', default=config.DEFAULT_ENVIRONMENT)
+    parser.add_argument('--environment', type=str, action='store', help=f'Environment', default=None)
     parser.add_argument('--config', type=str, action='store', help=f'Build configuration (default: {default_config})', default=default_config)
     parser.add_argument('--list-configs', action='store_true', help='List available build configurations.')
 
@@ -583,6 +592,7 @@ def main():
     parser.add_argument('-f', '--filter', type=str, action='store', help='Regular expression for filtering tests to run')
     parser.add_argument('-x', '--xml-report', type=str, action='store', help='XML report output file')
     parser.add_argument('-b', '--ref-branch', help='Reference branch to compare against (defaults to master branch)', default='master')
+    parser.add_argument('--run-only', action='store_true', help='Run tests without comparing images')
     parser.add_argument('--compare-only', action='store_true', help='Compare previous results against references without generating new images')
     parser.add_argument('--tolerance', type=float, action='store', help='Override tolerance to be at least this value.', default=config.DEFAULT_TOLERANCE)
     parser.add_argument('--parallel', type=int, action='store', help='Set the number of Mogwai processes to be used in parallel', default=default_processes_count)
@@ -651,7 +661,7 @@ def main():
                 sys.exit(1)
 
         # Give some instructions on how to acquire reference images if not available.
-        if not ref_dir.exists():
+        if not args.run_only and not ref_dir.exists():
             print(ref_dir)
             print(colored(f'\n!!! Reference images for "{args.ref_branch}" branch are not available !!!', 'red'))
             print('')
@@ -668,7 +678,7 @@ def main():
             sys.exit(1)
 
         # Run tests.
-        if not run_tests(env, tests, args.compare_only, ref_dir, result_dir, args.tolerance, args.xml_report, process_controller):
+        if not run_tests(env, tests, args.run_only, args.compare_only, ref_dir, result_dir, args.tolerance, args.xml_report, process_controller):
             sys.exit(1)
 
     sys.exit(0)

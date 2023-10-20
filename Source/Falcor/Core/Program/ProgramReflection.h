@@ -26,9 +26,10 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "Core/Assert.h"
 #include "Core/Macros.h"
+#include "Core/Error.h"
 #include "Core/Object.h"
+#include "Core/Enum.h"
 #include "Core/API/ShaderResourceType.h"
 #include "Utils/Math/Vector.h"
 #if FALCOR_HAS_D3D12
@@ -39,8 +40,8 @@
 
 #include <map>
 #include <string>
+#include <string_view>
 #include <vector>
-#include <unordered_map>
 
 namespace Falcor
 {
@@ -531,6 +532,10 @@ protected:
  * Because `TypedShaderVarOffset` inherits from `ShaderVarOffset` it can be used
  * in all the same places, and also implicitly converts to both
  * `UniformShaderVarOffset` and `ResourceShaderVarOffset`.
+ *
+ * This struct has a non-owning pointer to the type information.
+ * The caller is responsible for ensuring that the type information remains valid,
+ * which is typically owned by the `ParameterBlockReflection` object.
  */
 struct TypedShaderVarOffset : ShaderVarOffset
 {
@@ -543,7 +548,7 @@ public:
     /**
      * Get the type of the shader variable.
      */
-    ref<const ReflectionType> getType() const { return mpType; }
+    const ReflectionType* getType() const { return mpType; }
 
     /**
      * Check if `this` represents a valid offset.
@@ -553,12 +558,7 @@ public:
     /**
      * Look up type and offset of a sub-field with the given `name`.
      */
-    TypedShaderVarOffset operator[](const std::string& name) const;
-
-    /**
-     * Look up type and offset of a sub-field with the given `name`.
-     */
-    TypedShaderVarOffset operator[](const char*) const;
+    TypedShaderVarOffset operator[](std::string_view name) const;
 
     /**
      * Look up type and offset of a sub-element or sub-field with the given `index`.
@@ -571,10 +571,10 @@ public:
      * The caller takes responsibility for ensuring that `pType` is a valid type
      * for the data at `offset`.
      */
-    TypedShaderVarOffset(ref<const ReflectionType> pType, ShaderVarOffset offset);
+    TypedShaderVarOffset(const ReflectionType* pType, ShaderVarOffset offset);
 
 private:
-    ref<const ReflectionType> mpType;
+    const ReflectionType* mpType{nullptr};
 };
 
 /**
@@ -601,6 +601,16 @@ public:
         Resource,  ///< ReflectionResourceType
         Interface, ///< ReflectionInterfaceType
     };
+    FALCOR_ENUM_INFO(
+        Kind,
+        {
+            {Kind::Array, "Array"},
+            {Kind::Struct, "Struct"},
+            {Kind::Basic, "Basic"},
+            {Kind::Resource, "Resource"},
+            {Kind::Interface, "Interface"},
+        }
+    );
 
     /**
      * Get the kind of this type.
@@ -667,7 +677,7 @@ public:
      *
      * If this type doesn't have fields/members, or doesn't have a field/member matching `name`, then returns null.
      */
-    ref<const ReflectionVar> findMember(const std::string& name) const;
+    ref<const ReflectionVar> findMember(std::string_view name) const;
 
     /**
      * Get the (type and) offset of a field/member with the given `name`.
@@ -675,7 +685,7 @@ public:
      * If this type doesn't have fields/members, or doesn't have a field/member matching `name`,
      * then logs an error and returns an invalid offset.
      */
-    TypedShaderVarOffset getMemberOffset(const std::string& name) const;
+    TypedShaderVarOffset getMemberOffset(std::string_view name) const;
 
     /**
      * Find a typed member/element offset corresponding to the given byte offset.
@@ -811,7 +821,7 @@ public:
     /**
      * Get the type of the array elements.
      */
-    const ref<const ReflectionType>& getElementType() const { return mpElementType; }
+    const ReflectionType* getElementType() const { return mpElementType.get(); }
 
     bool operator==(const ReflectionArrayType& other) const;
     bool operator==(const ReflectionType& other) const override;
@@ -854,7 +864,7 @@ public:
     /**
      * Get member by name
      */
-    const ref<const ReflectionVar>& getMember(const std::string& name) const;
+    const ref<const ReflectionVar>& getMember(std::string_view name) const;
 
     /**
      * Constant used to indicate that member lookup failed.
@@ -866,7 +876,7 @@ public:
      *
      * Returns `kInvalidMemberIndex` if no such member exists.
      */
-    int32_t getMemberIndex(const std::string& name) const;
+    int32_t getMemberIndex(std::string_view name) const;
 
     /**
      * Find a member based on a byte offset.
@@ -902,8 +912,8 @@ public:
 
 private:
     ReflectionStructType(size_t size, const std::string& name, slang::TypeLayoutReflection* pSlangTypeLayout);
-    std::vector<ref<const ReflectionVar>> mMembers;        // Struct members
-    std::unordered_map<std::string, int32_t> mNameToIndex; // Translates from a name to an index in mMembers
+    std::vector<ref<const ReflectionVar>> mMembers;           // Struct members
+    std::map<std::string, int32_t, std::less<>> mNameToIndex; // Translates from a name to an index in mMembers
     std::string mName;
 };
 
@@ -1000,6 +1010,78 @@ public:
 
         Unknown = -1
     };
+    FALCOR_ENUM_INFO(
+        Type,
+        {
+            {Type::Bool, "Bool"},
+            {Type::Bool2, "Bool2"},
+            {Type::Bool3, "Bool3"},
+            {Type::Bool4, "Bool4"},
+            {Type::Uint8, "Uint8"},
+            {Type::Uint8_2, "Uint8_2"},
+            {Type::Uint8_3, "Uint8_3"},
+            {Type::Uint8_4, "Uint8_4"},
+            {Type::Uint16, "Uint16"},
+            {Type::Uint16_2, "Uint16_2"},
+            {Type::Uint16_3, "Uint16_3"},
+            {Type::Uint16_4, "Uint16_4"},
+            {Type::Uint, "Uint"},
+            {Type::Uint2, "Uint2"},
+            {Type::Uint3, "Uint3"},
+            {Type::Uint4, "Uint4"},
+            {Type::Uint64, "Uint64"},
+            {Type::Uint64_2, "Uint64_2"},
+            {Type::Uint64_3, "Uint64_3"},
+            {Type::Uint64_4, "Uint64_4"},
+            {Type::Int8, "Int8"},
+            {Type::Int8_2, "Int8_2"},
+            {Type::Int8_3, "Int8_3"},
+            {Type::Int8_4, "Int8_4"},
+            {Type::Int16, "Int16"},
+            {Type::Int16_2, "Int16_2"},
+            {Type::Int16_3, "Int16_3"},
+            {Type::Int16_4, "Int16_4"},
+            {Type::Int, "Int"},
+            {Type::Int2, "Int2"},
+            {Type::Int3, "Int3"},
+            {Type::Int4, "Int4"},
+            {Type::Int64, "Int64"},
+            {Type::Int64_2, "Int64_2"},
+            {Type::Int64_3, "Int64_3"},
+            {Type::Int64_4, "Int64_4"},
+            {Type::Float16, "Float16"},
+            {Type::Float16_2, "Float16_2"},
+            {Type::Float16_3, "Float16_3"},
+            {Type::Float16_4, "Float16_4"},
+            {Type::Float16_2x2, "Float16_2x2"},
+            {Type::Float16_2x3, "Float16_2x3"},
+            {Type::Float16_2x4, "Float16_2x4"},
+            {Type::Float16_3x2, "Float16_3x2"},
+            {Type::Float16_3x3, "Float16_3x3"},
+            {Type::Float16_3x4, "Float16_3x4"},
+            {Type::Float16_4x2, "Float16_4x2"},
+            {Type::Float16_4x3, "Float16_4x3"},
+            {Type::Float16_4x4, "Float16_4x4"},
+            {Type::Float, "Float"},
+            {Type::Float2, "Float2"},
+            {Type::Float3, "Float3"},
+            {Type::Float4, "Float4"},
+            {Type::Float2x2, "Float2x2"},
+            {Type::Float2x3, "Float2x3"},
+            {Type::Float2x4, "Float2x4"},
+            {Type::Float3x2, "Float3x2"},
+            {Type::Float3x3, "Float3x3"},
+            {Type::Float3x4, "Float3x4"},
+            {Type::Float4x2, "Float4x2"},
+            {Type::Float4x3, "Float4x3"},
+            {Type::Float4x4, "Float4x4"},
+            {Type::Float64, "Float64"},
+            {Type::Float64_2, "Float64_2"},
+            {Type::Float64_3, "Float64_3"},
+            {Type::Float64_4, "Float64_4"},
+            {Type::Unknown, "Unknown"},
+        }
+    );
 
     /**
      * Create a new object
@@ -1044,6 +1126,14 @@ public:
         Read,
         ReadWrite
     };
+    FALCOR_ENUM_INFO(
+        ShaderAccess,
+        {
+            {ShaderAccess::Undefined, "Undefined"},
+            {ShaderAccess::Read, "Read"},
+            {ShaderAccess::ReadWrite, "ReadWrite"},
+        }
+    );
 
     /**
      * The expected return type
@@ -1056,6 +1146,16 @@ public:
         Int,
         Uint
     };
+    FALCOR_ENUM_INFO(
+        ReturnType,
+        {
+            {ReturnType::Unknown, "Unknown"},
+            {ReturnType::Float, "Float"},
+            {ReturnType::Double, "Double"},
+            {ReturnType::Int, "Int"},
+            {ReturnType::Uint, "Uint"},
+        }
+    );
 
     /**
      * The resource dimension
@@ -1077,6 +1177,23 @@ public:
 
         Count
     };
+    FALCOR_ENUM_INFO(
+        Dimensions,
+        {
+            {Dimensions::Unknown, "Unknown"},
+            {Dimensions::Texture1D, "Texture1D"},
+            {Dimensions::Texture2D, "Texture2D"},
+            {Dimensions::Texture3D, "Texture3D"},
+            {Dimensions::TextureCube, "TextureCube"},
+            {Dimensions::Texture1DArray, "Texture1DArray"},
+            {Dimensions::Texture2DArray, "Texture2DArray"},
+            {Dimensions::Texture2DMS, "Texture2DMS"},
+            {Dimensions::Texture2DMSArray, "Texture2DMSArray"},
+            {Dimensions::TextureCubeArray, "TextureCubeArray"},
+            {Dimensions::AccelerationStructure, "AccelerationStructure"},
+            {Dimensions::Buffer, "Buffer"},
+        }
+    );
 
     /**
      * For structured-buffers, describes the type of the buffer
@@ -1089,6 +1206,16 @@ public:
         Append,  ///< AppendStructuredBuffer
         Consume  ///< ConsumeStructuredBuffer
     };
+    FALCOR_ENUM_INFO(
+        StructuredType,
+        {
+            {StructuredType::Invalid, "Invalid"},
+            {StructuredType::Default, "Default"},
+            {StructuredType::Counter, "Counter"},
+            {StructuredType::Append, "Append"},
+            {StructuredType::Consume, "Consume"},
+        }
+    );
 
     /**
      * The type of the resource
@@ -1103,6 +1230,18 @@ public:
         ConstantBuffer,
         AccelerationStructure,
     };
+    FALCOR_ENUM_INFO(
+        Type,
+        {
+            {Type::Texture, "Texture"},
+            {Type::StructuredBuffer, "StructuredBuffer"},
+            {Type::RawBuffer, "RawBuffer"},
+            {Type::TypedBuffer, "TypedBuffer"},
+            {Type::Sampler, "Sampler"},
+            {Type::ConstantBuffer, "ConstantBuffer"},
+            {Type::AccelerationStructure, "AccelerationStructure"},
+        }
+    );
 
     /**
      * Create a new object
@@ -1124,7 +1263,7 @@ public:
     /**
      * Get the struct-type
      */
-    const ref<const ReflectionType>& getStructType() const { return mpStructType; }
+    const ReflectionType* getStructType() const { return mpStructType.get(); }
 
     const ref<const ParameterBlockReflection>& getParameterBlockReflector() const { return mpParameterBlockReflector; }
     void setParameterBlockReflector(const ref<const ParameterBlockReflection>& pReflector) { mpParameterBlockReflector = pReflector; }
@@ -1224,7 +1363,7 @@ public:
     /**
      * Get the variable type
      */
-    const ref<const ReflectionType>& getType() const { return mpType; }
+    const ReflectionType* getType() const { return mpType.get(); }
 
     /**
      * Get the variable offset
@@ -1277,12 +1416,12 @@ public:
     /**
      * Get the variable for a resource in the block
      */
-    const ref<const ReflectionVar> getResource(const std::string& name) const;
+    const ref<const ReflectionVar> getResource(std::string_view name) const;
 
     /**
      * Get the bind-location for a resource in the block
      */
-    BindLocation getResourceBinding(const std::string& name) const;
+    BindLocation getResourceBinding(std::string_view name) const;
 
 #if FALCOR_HAS_D3D12
     /// Information on how a particular descriptor set should be filled in.
@@ -1415,7 +1554,7 @@ public:
 
     ProgramVersion const* getProgramVersion() const { return mpProgramVersion; }
 
-    ref<const ReflectionVar> findMember(const std::string& name) const { return getElementType()->findMember(name); }
+    ref<const ReflectionVar> findMember(std::string_view name) const { return getElementType()->findMember(name); }
 
 protected:
     ParameterBlockReflection(ProgramVersion const* pProgramVersion);
@@ -1472,8 +1611,6 @@ private:
     ProgramVersion const* mpProgramVersion = nullptr;
 };
 
-typedef ParameterBlockReflection ParameterBlockReflection;
-
 class FALCOR_API EntryPointGroupReflection : public ParameterBlockReflection
 {
 public:
@@ -1504,7 +1641,7 @@ public:
         std::string semanticName;                                            ///> The semantic name of the variable
         ReflectionBasicType::Type type = ReflectionBasicType::Type::Unknown; ///> The type of the variable
     };
-    using VariableMap = std::unordered_map<std::string, ShaderVariable>;
+    using VariableMap = std::map<std::string, ShaderVariable, std::less<>>;
 
     using BindLocation = ParameterBlockReflection::BindLocation;
 
@@ -1534,7 +1671,7 @@ public:
     /**
      * Get parameter block by name
      */
-    ref<const ParameterBlockReflection> getParameterBlock(const std::string& name) const;
+    ref<const ParameterBlockReflection> getParameterBlock(std::string_view name) const;
 
     /**
      * Get the default (unnamed) parameter block.
@@ -1554,30 +1691,30 @@ public:
     /**
      * Get a resource from the default parameter block
      */
-    const ref<const ReflectionVar> getResource(const std::string& name) const;
+    const ref<const ReflectionVar> getResource(std::string_view name) const;
 
     /**
      * Search for a vertex attribute by its semantic name
      */
-    const ShaderVariable* getVertexAttributeBySemantic(const std::string& semantic) const;
+    const ShaderVariable* getVertexAttributeBySemantic(std::string_view semantic) const;
 
     /**
      * Search for a vertex attribute by the variable name
      */
-    const ShaderVariable* getVertexAttribute(const std::string& name) const;
+    const ShaderVariable* getVertexAttribute(std::string_view name) const;
 
     /**
      * Get a pixel shader output variable
      */
-    const ShaderVariable* getPixelShaderOutput(const std::string& name) const;
+    const ShaderVariable* getPixelShaderOutput(std::string_view name) const;
 
     /**
      * Look up a type by name.
      * @return nullptr if the type does not exist.
      */
-    ref<ReflectionType> findType(const std::string& name) const;
+    ref<ReflectionType> findType(std::string_view name) const;
 
-    ref<const ReflectionVar> findMember(const std::string& name) const;
+    ref<const ReflectionVar> findMember(std::string_view name) const;
 
     const std::vector<ref<EntryPointGroupReflection>>& getEntryPointGroups() const { return mEntryPointGroups; }
 
@@ -1607,129 +1744,19 @@ private:
     VariableMap mVertAttrBySemantic;
 
     slang::ShaderReflection* mpSlangReflector = nullptr;
-    mutable std::map<std::string, ref<ReflectionType>> mMapNameToType;
+    mutable std::map<std::string, ref<ReflectionType>, std::less<>> mMapNameToType;
 
     std::vector<ref<EntryPointGroupReflection>> mEntryPointGroups;
 
     std::vector<HashedString> mHashedStrings;
 };
 
-inline const std::string to_string(ReflectionBasicType::Type type)
-{
-#define type_2_string(a)               \
-    case ReflectionBasicType::Type::a: \
-        return #a;
-    switch (type)
-    {
-        type_2_string(Bool);
-        type_2_string(Bool2);
-        type_2_string(Bool3);
-        type_2_string(Bool4);
-        type_2_string(Uint);
-        type_2_string(Uint2);
-        type_2_string(Uint3);
-        type_2_string(Uint4);
-        type_2_string(Int);
-        type_2_string(Int2);
-        type_2_string(Int3);
-        type_2_string(Int4);
-        type_2_string(Float);
-        type_2_string(Float2);
-        type_2_string(Float3);
-        type_2_string(Float4);
-        type_2_string(Float2x2);
-        type_2_string(Float2x3);
-        type_2_string(Float2x4);
-        type_2_string(Float3x2);
-        type_2_string(Float3x3);
-        type_2_string(Float3x4);
-        type_2_string(Float4x2);
-        type_2_string(Float4x3);
-        type_2_string(Float4x4);
-    default:
-        FALCOR_UNREACHABLE();
-        return "";
-    }
-#undef type_2_string
-}
+FALCOR_ENUM_REGISTER(ReflectionType::Kind);
+FALCOR_ENUM_REGISTER(ReflectionBasicType::Type);
+FALCOR_ENUM_REGISTER(ReflectionResourceType::ShaderAccess);
+FALCOR_ENUM_REGISTER(ReflectionResourceType::ReturnType);
+FALCOR_ENUM_REGISTER(ReflectionResourceType::Dimensions);
+FALCOR_ENUM_REGISTER(ReflectionResourceType::StructuredType);
+FALCOR_ENUM_REGISTER(ReflectionResourceType::Type);
 
-inline const std::string to_string(ReflectionResourceType::ShaderAccess access)
-{
-#define access_2_string(a)                        \
-    case ReflectionResourceType::ShaderAccess::a: \
-        return #a;
-    switch (access)
-    {
-        access_2_string(Undefined);
-        access_2_string(Read);
-        access_2_string(ReadWrite);
-    default:
-        FALCOR_UNREACHABLE();
-        return "";
-    }
-#undef access_2_string
-}
-
-inline const std::string to_string(ReflectionResourceType::ReturnType retType)
-{
-#define type_2_string(a)                        \
-    case ReflectionResourceType::ReturnType::a: \
-        return #a;
-    switch (retType)
-    {
-        type_2_string(Unknown);
-        type_2_string(Float);
-        type_2_string(Uint);
-        type_2_string(Int);
-    default:
-        FALCOR_UNREACHABLE();
-        return "";
-    }
-#undef type_2_string
-}
-
-inline const std::string to_string(ReflectionResourceType::Dimensions resource)
-{
-#define type_2_string(a)                        \
-    case ReflectionResourceType::Dimensions::a: \
-        return #a;
-    switch (resource)
-    {
-        type_2_string(Unknown);
-        type_2_string(Texture1D);
-        type_2_string(Texture2D);
-        type_2_string(Texture3D);
-        type_2_string(TextureCube);
-        type_2_string(Texture1DArray);
-        type_2_string(Texture2DArray);
-        type_2_string(Texture2DMS);
-        type_2_string(Texture2DMSArray);
-        type_2_string(TextureCubeArray);
-        type_2_string(Buffer);
-    default:
-        FALCOR_UNREACHABLE();
-        return "";
-    }
-#undef type_2_string
-}
-
-inline const std::string to_string(ReflectionResourceType::Type type)
-{
-#define type_2_string(a)                  \
-    case ReflectionResourceType::Type::a: \
-        return #a;
-    switch (type)
-    {
-        type_2_string(Texture);
-        type_2_string(ConstantBuffer);
-        type_2_string(StructuredBuffer);
-        type_2_string(RawBuffer);
-        type_2_string(TypedBuffer);
-        type_2_string(Sampler);
-    default:
-        FALCOR_UNREACHABLE();
-        return "";
-    }
-#undef type_2_string
-}
 } // namespace Falcor

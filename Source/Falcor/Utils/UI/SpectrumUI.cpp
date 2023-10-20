@@ -27,7 +27,7 @@
  **************************************************************************/
 #include "SpectrumUI.h"
 
-#include "Core/Assert.h"
+#include "Core/Error.h"
 #include "Utils/Color/SpectrumUtils.h"
 #include "Utils/Color/ColorHelpers.slang"
 
@@ -140,8 +140,10 @@ void SpectrumUI<T>::drawLine(
 )
 {
     drawList->AddLine(
-        ImVec2(canvasPos.x + point0.x, canvasPos.y + point0.y), ImVec2(canvasPos.x + point1.x, canvasPos.y + point1.y),
-        ImColor(color.x, color.y, color.z, color.w), lineWidth
+        ImVec2(canvasPos.x + point0.x, canvasPos.y + point0.y),
+        ImVec2(canvasPos.x + point1.x, canvasPos.y + point1.y),
+        ImColor(color.x, color.y, color.z, color.w),
+        lineWidth
     );
 }
 
@@ -338,8 +340,12 @@ void SpectrumUI<T>::drawTextSpectralIntensityAndTicks(
 )
 {
     const float halfTickSize = 4.0f;
-    auto renderTextAndTick = [&](ImDrawList* drawList, const float spectralIntensity, const float2& canvasPos, const float2& xAxisRange,
-                                 const float2& yAxisRange, const bool first = false)
+    auto renderTextAndTick = [&](ImDrawList* drawList,
+                                 const float spectralIntensity,
+                                 const float2& canvasPos,
+                                 const float2& xAxisRange,
+                                 const float2& yAxisRange,
+                                 const bool first = false)
     {
         const auto str = fmt::format("{:1.1f}", spectralIntensity);
         float y = toYCoord(spectralIntensity, yAxisRange);
@@ -600,7 +606,11 @@ bool SpectrumUI<T>::render(Gui::Widgets& w, const std::string name, std::vector<
             if (spectra.size() * numComponents > 1)
             {
                 changed |= guiGroup.var(
-                    makeUnique("Index to editable curve").c_str(), mEditSpectrumIndex, 0u, uint32_t(spectra.size() * numComponents - 1), 1u,
+                    makeUnique("Index to editable curve").c_str(),
+                    mEditSpectrumIndex,
+                    0u,
+                    uint32_t(spectra.size() * numComponents - 1),
+                    1u,
                     true
                 );
             }
@@ -650,7 +660,9 @@ bool SpectrumUI<T>::render(Gui::Widgets& w, const std::string name, std::vector<
     // This is the main drawing area of the spectrum visualization.
     ImGui::BeginChild(
         makeUnique("Spectrum visualization").c_str(),
-        ImVec2(ImGui::GetWindowContentRegionWidth() - strSize.x * 3 / 4, float(mDrawAreaHeight)), false, ImGuiWindowFlags_NoScrollWithMouse
+        ImVec2(ImGui::GetWindowContentRegionWidth() - strSize.x * 3 / 4, float(mDrawAreaHeight)),
+        false,
+        ImGuiWindowFlags_NoScrollWithMouse
     );
     {
         // ImDrawList API uses screen coordinates.

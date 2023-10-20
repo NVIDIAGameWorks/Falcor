@@ -26,11 +26,11 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "GpuMemoryHeap.h"
-#include "GpuFence.h"
+#include "Fence.h"
 #include "Buffer.h"
 #include "Device.h"
 #include "GFXAPI.h"
-#include "Core/Assert.h"
+#include "Core/Error.h"
 #include "Utils/Math/Common.h"
 
 namespace Falcor
@@ -40,15 +40,15 @@ GpuMemoryHeap::~GpuMemoryHeap()
     mDeferredReleases = decltype(mDeferredReleases)();
 }
 
-GpuMemoryHeap::GpuMemoryHeap(ref<Device> pDevice, Type type, size_t pageSize, ref<GpuFence> pFence)
-    : mpDevice(pDevice), mType(type), mpFence(pFence), mPageSize(pageSize)
+GpuMemoryHeap::GpuMemoryHeap(ref<Device> pDevice, MemoryType memoryType, size_t pageSize, ref<Fence> pFence)
+    : mpDevice(pDevice), mMemoryType(memoryType), mpFence(pFence), mPageSize(pageSize)
 {
     allocateNewPage();
 }
 
-ref<GpuMemoryHeap> GpuMemoryHeap::create(ref<Device> pDevice, Type type, size_t pageSize, ref<GpuFence> pFence)
+ref<GpuMemoryHeap> GpuMemoryHeap::create(ref<Device> pDevice, MemoryType memoryType, size_t pageSize, ref<Fence> pFence)
 {
-    return ref<GpuMemoryHeap>(new GpuMemoryHeap(pDevice, type, pageSize, pFence));
+    return ref<GpuMemoryHeap>(new GpuMemoryHeap(pDevice, memoryType, pageSize, pFence));
 }
 
 void GpuMemoryHeap::allocateNewPage()
@@ -94,6 +94,7 @@ GpuMemoryHeap::Allocation GpuMemoryHeap::allocate(size_t size, size_t alignment)
         }
 
         data.pageID = mCurrentPageId;
+        data.size = size;
         data.offset = currentOffset;
         data.pData = mpActivePage->pData + currentOffset;
         data.gfxBufferResource = mpActivePage->gfxBufferResource;
@@ -101,8 +102,14 @@ GpuMemoryHeap::Allocation GpuMemoryHeap::allocate(size_t size, size_t alignment)
         mpActivePage->allocationsCount++;
     }
 
-    data.fenceValue = mpFence->getCpuValue();
+    data.fenceValue = mpFence->getSignaledValue();
     return data;
+}
+
+GpuMemoryHeap::Allocation GpuMemoryHeap::allocate(size_t size, ResourceBindFlags bindFlags)
+{
+    size_t alignment = mpDevice->getBufferDataAlignment(bindFlags);
+    return allocate(align_to(alignment, size), alignment);
 }
 
 void GpuMemoryHeap::release(Allocation& data)
@@ -113,8 +120,8 @@ void GpuMemoryHeap::release(Allocation& data)
 
 void GpuMemoryHeap::executeDeferredReleases()
 {
-    uint64_t gpuVal = mpFence->getGpuValue();
-    while (mDeferredReleases.size() && mDeferredReleases.top().fenceValue <= gpuVal)
+    uint64_t currentValue = mpFence->getCurrentValue();
+    while (mDeferredReleases.size() && mDeferredReleases.top().fenceValue < currentValue)
     {
         const Allocation& data = mDeferredReleases.top();
         if (data.pageID == mCurrentPageId)
@@ -143,41 +150,25 @@ void GpuMemoryHeap::executeDeferredReleases()
     }
 }
 
-Slang::ComPtr<gfx::IBufferResource> createBuffer(
+Slang::ComPtr<gfx::IBufferResource> createBufferResource(
     ref<Device> pDevice,
     Buffer::State initState,
     size_t size,
-    Buffer::BindFlags bindFlags,
-    Buffer::CpuAccess cpuAccess
+    ResourceBindFlags bindFlags,
+    MemoryType memoryType
 );
 
 namespace
 {
-Buffer::CpuAccess getCpuAccess(GpuMemoryHeap::Type t)
+Buffer::State getInitState(MemoryType memoryType)
 {
-    switch (t)
+    switch (memoryType)
     {
-    case GpuMemoryHeap::Type::Default:
-        return Buffer::CpuAccess::None;
-    case GpuMemoryHeap::Type::Upload:
-        return Buffer::CpuAccess::Write;
-    case GpuMemoryHeap::Type::Readback:
-        return Buffer::CpuAccess::Read;
-    default:
-        FALCOR_UNREACHABLE();
-        return Buffer::CpuAccess::None;
-    }
-}
-
-Buffer::State getInitState(GpuMemoryHeap::Type t)
-{
-    switch (t)
-    {
-    case GpuMemoryHeap::Type::Default:
+    case MemoryType::DeviceLocal:
         return Buffer::State::Common;
-    case GpuMemoryHeap::Type::Upload:
+    case MemoryType::Upload:
         return Buffer::State::GenericRead;
-    case GpuMemoryHeap::Type::Readback:
+    case MemoryType::ReadBack:
         return Buffer::State::CopyDest;
     default:
         FALCOR_UNREACHABLE();
@@ -188,10 +179,14 @@ Buffer::State getInitState(GpuMemoryHeap::Type t)
 
 void GpuMemoryHeap::initBasePageData(BaseData& data, size_t size)
 {
-    data.gfxBufferResource = createBuffer(
-        mpDevice, getInitState(mType), size, Buffer::BindFlags::Vertex | Buffer::BindFlags::Index | Buffer::BindFlags::Constant,
-        getCpuAccess(mType)
+    data.gfxBufferResource = createBufferResource(
+        mpDevice,
+        getInitState(mMemoryType),
+        size,
+        ResourceBindFlags::Vertex | ResourceBindFlags::Index | ResourceBindFlags::Constant,
+        mMemoryType
     );
+    data.size = size;
     data.offset = 0;
     FALCOR_GFX_CALL(data.gfxBufferResource->map(nullptr, (void**)&data.pData));
 }

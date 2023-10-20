@@ -118,13 +118,11 @@ GPU_TEST(BufferAllocatorNoAlign)
         EXPECT_EQ(pBuffer->getSize(), 156); // Size should be padded to the next 4B boundary.
 
         const uint8_t* ref = buf.getStartPointer();
-        const uint8_t* ptr = reinterpret_cast<const uint8_t*>(pBuffer->map(Buffer::MapType::Read));
+        std::vector<uint8_t> data = pBuffer->getElements<uint8_t>(0, buf.getSize());
         for (size_t i = 0; i < buf.getSize(); i++)
         {
-            EXPECT_EQ((uintptr_t)ptr[i], (uintptr_t)ref[i]) << "i=" << i;
+            EXPECT_EQ((uintptr_t)data[i], (uintptr_t)ref[i]) << "i=" << i;
         }
-
-        pBuffer->unmap();
     };
 
     validateGpuBuffer();
@@ -238,12 +236,11 @@ GPU_TEST(BufferAllocatorStructNoAlign)
         EXPECT_EQ(pBuffer->getStructSize(), 16);
         EXPECT_EQ(pBuffer->getSize(), 80); // Size should be padded to a whole number of structs.
 
-        const float* data = reinterpret_cast<const float*>(pBuffer->map(Buffer::MapType::Read));
+        std::vector<float> data = pBuffer->getElements<float>(0, 17);
         for (size_t i = 0; i < 17; i++)
         {
             EXPECT_EQ(data[i], (float)i + 1);
         }
-        pBuffer->unmap();
     }
 }
 
@@ -308,12 +305,11 @@ GPU_TEST(BufferAllocatorStructAlign)
         EXPECT_EQ(pBuffer->getSize(), 224); // Size should be padded to a whole number of structs.
 
         const float* ref = reinterpret_cast<const float*>(buf.getStartPointer());
-        const float* data = reinterpret_cast<const float*>(pBuffer->map(Buffer::MapType::Read));
+        std::vector<float> data = pBuffer->getElements<float>(0, buf.getSize() / 4);
         for (size_t i = 0; i < buf.getSize() / 4; i++)
         {
             EXPECT_EQ(data[i], ref[i]);
         }
-        pBuffer->unmap();
     }
 }
 

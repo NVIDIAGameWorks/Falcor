@@ -42,7 +42,7 @@ import Scene.Scene;
 
 /** Implementation of the BSDF for the measured MERL material.
 */
-struct MERLMaterialInstance : IMaterialInstance
+struct MERLMaterialInstance : MaterialInstanceBase, IMaterialInstance
 {
     ShadingFrame sf;    ///< Shading frame in world space.
     uint bufferID;      ///< Buffer ID in material system where BRDF data is stored.
@@ -71,6 +71,12 @@ struct MERLMaterialInstance : IMaterialInstance
 #else
         return evalLocal(wiLocal, woLocal);
 #endif
+    }
+
+    [Differentiable]
+    float3 evalAD<S : ISampleGenerator>(const DiffMaterialData diffData, const ShadingData sd, const float3 wo, inout S sg)
+    {
+        return float3(0.f);
     }
 
     bool sample<S : ISampleGenerator>(const ShadingData sd, inout S sg, out BSDFSample result, bool useImportanceSampling = true)

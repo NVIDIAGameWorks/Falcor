@@ -197,20 +197,19 @@ Bitmap::UniqueConstPtr Bitmap::create(uint32_t width, uint32_t height, ResourceF
 
 Bitmap::UniqueConstPtr Bitmap::createFromFile(const std::filesystem::path& path, bool isTopDown)
 {
-    std::filesystem::path fullPath;
-    if (!findFileInDataDirectories(path, fullPath))
+    if (!std::filesystem::exists(path))
     {
-        logWarning("Error when loading image file. Can't find image file '{}'.", path);
+        logWarning("Error when loading image file. File '{}' does not exist.", path);
         return nullptr;
     }
 
     FREE_IMAGE_FORMAT fifFormat = FIF_UNKNOWN;
 
-    fifFormat = FreeImage_GetFileType(fullPath.string().c_str(), 0);
+    fifFormat = FreeImage_GetFileType(path.string().c_str(), 0);
     if (fifFormat == FIF_UNKNOWN)
     {
         // Can't get the format from the file. Use file extension
-        fifFormat = FreeImage_GetFIFFromFilename(fullPath.string().c_str());
+        fifFormat = FreeImage_GetFIFFromFilename(path.string().c_str());
 
         if (fifFormat == FIF_UNKNOWN)
         {
@@ -227,7 +226,7 @@ Bitmap::UniqueConstPtr Bitmap::createFromFile(const std::filesystem::path& path,
     }
 
     // Read file using memory mapped access which is much faster than regular file IO.
-    MemoryMappedFile file(fullPath, MemoryMappedFile::kWholeFile, MemoryMappedFile::AccessHint::SequentialScan);
+    MemoryMappedFile file(path, MemoryMappedFile::kWholeFile, MemoryMappedFile::AccessHint::SequentialScan);
     if (!file.isOpen())
     {
         genWarning("Can't open image file {}", path);
@@ -405,7 +404,7 @@ Bitmap::FileFormat Bitmap::getFormatFromFileExtension(const std::string& ext)
         if (kExtensions[i] == ext)
             return Bitmap::FileFormat(i);
     }
-    throw ArgumentError("Can't find a matching format for file extension '{}'.", ext);
+    FALCOR_THROW("Can't find a matching format for file extension '{}'.", ext);
 }
 
 FileDialogFilterVec Bitmap::getFileDialogFilters(ResourceFormat format)
@@ -477,14 +476,10 @@ void Bitmap::saveImage(
     void* pData
 )
 {
-    if (pData == nullptr)
-        throw ArgumentError("Provided data must not be nullptr.");
-
+    FALCOR_CHECK(pData, "Provided data must not be nullptr.");
+    FALCOR_CHECK(fileFormat != FileFormat::DdsFile, "Cannot save DDS files. Use ImageIO instead.");
     if (is_set(exportFlags, ExportFlags::Uncompressed) && is_set(exportFlags, ExportFlags::Lossy))
-        throw ArgumentError("Incompatible flags: lossy cannot be combined with uncompressed.");
-
-    if (fileFormat == FileFormat::DdsFile)
-        throw ArgumentError("Cannot save DDS files. Use ImageIO instead.");
+        FALCOR_THROW("Incompatible flags: lossy cannot be combined with uncompressed.");
 
     int flags = 0;
     FIBITMAP* pImage = nullptr;
@@ -520,21 +515,19 @@ void Bitmap::saveImage(
         }
         else if (bytesPerPixel != 16 && bytesPerPixel != 12)
         {
-            throw ArgumentError("Only support for 32-bit/channel RGB/RGBA or 16-bit RGBA images as PFM/EXR files.");
+            FALCOR_THROW("Only support for 32-bit/channel RGB/RGBA or 16-bit RGBA images as PFM/EXR files.");
         }
 
         const bool exportAlpha = is_set(exportFlags, ExportFlags::ExportAlpha);
 
         if (fileFormat == Bitmap::FileFormat::PfmFile)
         {
-            if (is_set(exportFlags, ExportFlags::Lossy))
-                throw ArgumentError("PFM does not support lossy compression mode.");
-            if (exportAlpha)
-                throw ArgumentError("PFM does not support alpha channel.");
+            FALCOR_CHECK(!is_set(exportFlags, ExportFlags::Lossy), "PFM does not support lossy compression mode.");
+            FALCOR_CHECK(!exportAlpha, "PFM does not support alpha channel.");
         }
 
         if (exportAlpha && bytesPerPixel != 16)
-            throw ArgumentError("Requesting to export alpha-channel to EXR file, but the resource doesn't have an alpha-channel");
+            FALCOR_THROW("Requesting to export alpha-channel to EXR file, but the resource doesn't have an alpha-channel");
 
         // Upload the image manually and flip it vertically
         bool scanlineCopy = exportAlpha ? bytesPerPixel == 16 : bytesPerPixel == 12;
@@ -577,7 +570,14 @@ void Bitmap::saveImage(
     else
     {
         FIBITMAP* pTemp = FreeImage_ConvertFromRawBits(
-            (BYTE*)pData, width, height, bytesPerPixel * width, bytesPerPixel * 8, FI_RGBA_RED_MASK, FI_RGBA_GREEN_MASK, FI_RGBA_BLUE_MASK,
+            (BYTE*)pData,
+            width,
+            height,
+            bytesPerPixel * width,
+            bytesPerPixel * 8,
+            FI_RGBA_RED_MASK,
+            FI_RGBA_GREEN_MASK,
+            FI_RGBA_BLUE_MASK,
             isTopDown
         );
         if (is_set(exportFlags, ExportFlags::ExportAlpha) == false || fileFormat == Bitmap::FileFormat::JpegFile)
@@ -643,7 +643,7 @@ void Bitmap::saveImage(
     }
 
     if (!FreeImage_Save(toFreeImageFormat(fileFormat), pImage, path.string().c_str(), flags))
-        throw RuntimeError("FreeImage failed to save image");
+        FALCOR_THROW("FreeImage failed to save image");
 
     FreeImage_Unload(pImage);
 }

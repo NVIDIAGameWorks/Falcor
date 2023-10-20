@@ -26,8 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "OS.h"
-#include "SearchDirectories.h"
-#include "Core/Errors.h"
+#include "Core/Error.h"
 #include "Utils/StringUtils.h"
 #include "Utils/StringFormatters.h"
 #include <backward/backward.hpp> // TODO: Replace with C++20 <stacktrace> when available.
@@ -39,6 +38,13 @@
 
 namespace Falcor
 {
+
+const std::filesystem::path& getProjectDirectory()
+{
+    static std::filesystem::path directory(FALCOR_PROJECT_DIR);
+    return directory;
+}
+
 const std::filesystem::path& getExecutableDirectory()
 {
     static std::filesystem::path directory{getExecutablePath().parent_path()};
@@ -53,13 +59,11 @@ const std::string& getExecutableName()
 
 inline std::vector<std::filesystem::path> getInitialShaderDirectories()
 {
-    std::filesystem::path projectDir(_PROJECT_DIR_);
-
     std::vector<std::filesystem::path> developmentDirectories = {
         // First we search in source folders.
-        projectDir,
-        projectDir / "..",
-        projectDir / ".." / "Tools" / "FalcorTest",
+        getProjectDirectory() / "Source" / "Falcor",
+        getProjectDirectory() / "Source",
+        getProjectDirectory() / "Source" / "Tools" / "FalcorTest",
         // Then we search in deployment folder (necessary to pickup NVAPI and other third-party shaders).
         getRuntimeDirectory() / "shaders",
     };
@@ -75,21 +79,9 @@ static std::vector<std::filesystem::path> gShaderDirectories = getInitialShaderD
 
 inline std::vector<std::filesystem::path> getInitialDataDirectories()
 {
-    std::filesystem::path projectDir(_PROJECT_DIR_);
+    std::vector<std::filesystem::path> directories;
 
-    std::vector<std::filesystem::path> developmentDirectories = {
-        projectDir / ".." / ".." / "data",
-        getRuntimeDirectory() / "data",
-    };
-
-    std::vector<std::filesystem::path> deploymentDirectories = {getRuntimeDirectory() / "data"};
-
-    std::vector<std::filesystem::path> directories = isDevelopmentMode() ? developmentDirectories : deploymentDirectories;
-
-    // Add development media folder.
-    directories.push_back(projectDir / ".." / ".." / "media");
-
-    // Add additional media folders.
+    // Add media folders.
     if (auto mediaFolders = getEnvironmentVariable("FALCOR_MEDIA_FOLDERS"))
     {
         auto folders = splitString(*mediaFolders, ";");
@@ -100,43 +92,6 @@ inline std::vector<std::filesystem::path> getInitialDataDirectories()
 }
 
 static std::vector<std::filesystem::path> gDataDirectories = getInitialDataDirectories(); // TODO: REMOVEGLOBAL
-
-const std::vector<std::filesystem::path>& getDataDirectoriesList()
-{
-    return gDataDirectories;
-}
-
-void addDataDirectory(const std::filesystem::path& dir, bool addToFront)
-{
-    FALCOR_CHECK_ARG_MSG(!dir.empty(), "Do not add empty directories to search paths");
-
-    if (std::find_if(
-            gDataDirectories.begin(), gDataDirectories.end(), [&dir](const std::filesystem::path& d) { return isSamePath(dir, d); }
-        ) == gDataDirectories.end())
-    {
-        if (addToFront)
-        {
-            gDataDirectories.insert(gDataDirectories.begin(), dir);
-        }
-        else
-        {
-            gDataDirectories.push_back(dir);
-        }
-    }
-}
-
-void removeDataDirectory(const std::filesystem::path& dir)
-{
-    FALCOR_CHECK_ARG_MSG(!dir.empty(), "Do not remove empty directories to search paths");
-
-    auto it = std::find_if(
-        gDataDirectories.begin(), gDataDirectories.end(), [&dir](const std::filesystem::path& d) { return isSamePath(dir, d); }
-    );
-    if (it != gDataDirectories.end())
-    {
-        gDataDirectories.erase(it);
-    }
-}
 
 bool isDevelopmentMode()
 {
@@ -154,41 +109,27 @@ bool isSamePath(const std::filesystem::path& lhs, const std::filesystem::path& r
     return std::filesystem::weakly_canonical(lhs) == std::filesystem::weakly_canonical(rhs);
 }
 
-bool findFileInDataDirectories(const std::filesystem::path& path, std::filesystem::path& fullPath)
+std::filesystem::path findFileInDirectories(const std::filesystem::path& path, fstd::span<std::filesystem::path> directories)
 {
-    return findFileInDirectories(path, fullPath, getDataDirectoriesList());
-}
-
-bool findFileInDirectories(const std::filesystem::path& path, std::filesystem::path& fullPath, const SearchDirectories& directories)
-{
-    // Check if this is an absolute path.
-    if (path.is_absolute())
-    {
-        if (std::filesystem::exists(path))
-        {
-            fullPath = std::filesystem::canonical(path);
-            return true;
-        }
-    }
+    // Check if this is an existing an absolute path.
+    if (path.is_absolute() && std::filesystem::exists(path))
+        return std::filesystem::canonical(path);
 
     // Search in other paths.
-    for (const auto& dir : directories.get())
+    for (const auto& dir : directories)
     {
-        fullPath = dir / path;
+        std::filesystem::path fullPath = dir / path;
         if (std::filesystem::exists(fullPath))
-        {
-            fullPath = std::filesystem::canonical(fullPath);
-            return true;
-        }
+            return std::filesystem::canonical(fullPath);
     }
 
-    return false;
+    return {};
 }
 
 std::vector<std::filesystem::path> globFilesInDirectory(
     const std::filesystem::path& path,
     const std::regex& regexPattern,
-    bool firstHitOnly
+    bool firstMatchOnly
 )
 {
     std::vector<std::filesystem::path> result;
@@ -202,7 +143,7 @@ std::vector<std::filesystem::path> globFilesInDirectory(
         if (std::regex_match(filename, regexPattern))
         {
             result.push_back(entry.path());
-            if (firstHitOnly)
+            if (firstMatchOnly)
                 return result;
         }
     }
@@ -210,19 +151,11 @@ std::vector<std::filesystem::path> globFilesInDirectory(
     return result;
 }
 
-std::vector<std::filesystem::path> globFilesInDataDirectories(
-    const std::filesystem::path& path,
-    const std::regex& regexPattern,
-    bool firstHitOnly
-)
-{
-    return globFilesInDirectories(path, regexPattern, getDataDirectoriesList(), firstHitOnly);
-}
 std::vector<std::filesystem::path> globFilesInDirectories(
     const std::filesystem::path& path,
     const std::regex& regexPattern,
-    const SearchDirectories& directories,
-    bool firstHitOnly
+    fstd::span<std::filesystem::path> directories,
+    bool firstMatchOnly
 )
 {
     std::vector<std::filesystem::path> result;
@@ -230,19 +163,19 @@ std::vector<std::filesystem::path> globFilesInDirectories(
     // Check if this is an absolute path.
     if (path.is_absolute())
     {
-        result = globFilesInDirectory(path, regexPattern, firstHitOnly);
+        result = globFilesInDirectory(path, regexPattern, firstMatchOnly);
     }
     else
     {
         // Search in other paths.
-        for (const auto& dir : directories.get())
+        for (const auto& dir : directories)
         {
-            auto fullPath = dir / path;
-            std::vector<std::filesystem::path> local = globFilesInDirectory(fullPath, regexPattern, firstHitOnly);
+            std::filesystem::path fullPath = dir / path;
+            std::vector<std::filesystem::path> local = globFilesInDirectory(fullPath, regexPattern, firstMatchOnly);
             result.reserve(result.size() + local.size());
             for (auto&& it : local)
                 result.push_back(std::move(it));
-            if (firstHitOnly && !result.empty())
+            if (firstMatchOnly && !result.empty())
                 break;
         }
     }
@@ -293,27 +226,7 @@ std::filesystem::path findAvailableFilename(const std::string& prefix, const std
         if (!std::filesystem::exists(path))
             return path;
     }
-    throw RuntimeError("Failed to find available filename.");
-}
-
-std::filesystem::path stripDataDirectories(const std::filesystem::path& path)
-{
-    if (path.is_relative())
-        return path;
-
-    auto canonicalPath = std::filesystem::weakly_canonical(path);
-
-    for (const auto& dir : gDataDirectories)
-    {
-        auto canonicalDir = std::filesystem::weakly_canonical(dir);
-
-        if (hasPrefix(canonicalPath.string(), canonicalDir.string()))
-        {
-            return std::filesystem::relative(canonicalPath, canonicalDir);
-        }
-    }
-
-    return path;
+    FALCOR_THROW("Failed to find available filename.");
 }
 
 bool hasExtension(const std::filesystem::path& path, std::string_view ext)
@@ -352,7 +265,7 @@ std::filesystem::path getTempFilePath()
     char* name = std::tmpnam(nullptr);
     if (name == nullptr)
     {
-        throw RuntimeError("Failed to create temporary file path.");
+        FALCOR_THROW("Failed to create temporary file path.");
     }
     return name;
 }
@@ -361,7 +274,7 @@ std::string readFile(const std::filesystem::path& path)
 {
     std::ifstream ifs(path, std::ios::binary);
     if (!ifs)
-        throw RuntimeError("Failed to read from file '{}'.", path);
+        FALCOR_THROW("Failed to read from file '{}'.", path);
     return std::string((std::istreambuf_iterator<char>(ifs)), (std::istreambuf_iterator<char>()));
 }
 
@@ -372,7 +285,7 @@ std::string decompressFile(const std::filesystem::path& path)
     z_stream zs = {};
     // MAX_WBITS | 32 to support both zlib or gzip files.
     if (inflateInit2(&zs, MAX_WBITS | 32) != Z_OK)
-        throw RuntimeError("inflateInit2 failed while decompressing.");
+        FALCOR_THROW("inflateInit2 failed while decompressing.");
 
     zs.next_in = reinterpret_cast<Bytef*>(compressed.data());
     zs.avail_in = (uInt)compressed.size();
@@ -403,7 +316,7 @@ std::string decompressFile(const std::filesystem::path& path)
     // Check for errors.
     if (ret != Z_STREAM_END)
     {
-        throw RuntimeError("Failure to decompress file '{}' (error: {}).", path, ret);
+        FALCOR_THROW("Failure to decompress file '{}' (error: {}).", path, ret);
     }
 
     return decompressed;
@@ -411,6 +324,10 @@ std::string decompressFile(const std::filesystem::path& path)
 
 std::string getStackTrace(size_t skip, size_t maxDepth)
 {
+    // We need to initialize the resolver before taking the stack trace,
+    // otherwise we get invalid stack traces.
+    backward::TraceResolver resolver;
+
     // Capture stack trace.
     backward::StackTrace st;
     st.load_here(maxDepth == 0 ? 1000 : maxDepth);
@@ -418,7 +335,6 @@ std::string getStackTrace(size_t skip, size_t maxDepth)
 
     // We implement our own stack trace formatting here as the default printer in backward is not printing
     // source locations in a way that is parsable by typical IDEs (file:line).
-    backward::TraceResolver resolver;
     resolver.load_stacktrace(st);
     std::string result;
     for (size_t i = 0; i < st.size(); ++i)

@@ -26,7 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "Core/Errors.h"
+#include "Core/Error.h"
 #include <utility>
 #include <stdexcept>
 
@@ -66,11 +66,7 @@ public:
         T mValue;
     };
 
-    explicit NumericRange(const T& begin, const T& end) : mBegin(begin), mEnd(end)
-    {
-        if (begin > end)
-            throw ArgumentError("Invalid range");
-    }
+    explicit NumericRange(const T& begin, const T& end) : mBegin(begin), mEnd(end) { FALCOR_CHECK(begin <= end, "Invalid range"); }
     NumericRange() = delete;
     NumericRange(const NumericRange&) = delete;
     NumericRange(NumericRange&& other) = delete;

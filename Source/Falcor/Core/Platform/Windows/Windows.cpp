@@ -26,8 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "Core/Platform/OS.h"
-#include "Core/Assert.h"
-#include "Core/Errors.h"
+#include "Core/Error.h"
 #include "Utils/Logger.h"
 #include "Utils/StringUtils.h"
 
@@ -47,15 +46,6 @@
 #include <vector>
 #include <filesystem>
 #include <mutex>
-
-#define os_call(a)           \
-    {                        \
-        auto hr_ = a;        \
-        if (FAILED(hr_))     \
-        {                    \
-            reportError(#a); \
-        }                    \
-    }
 
 // Always run in Optimus mode on laptops
 extern "C"
@@ -208,6 +198,16 @@ uint32_t msgBox(
     config.pButtons = buttonConfigs.data();
     config.nDefaultButton = defaultId;
     config.cxWidth = dialogWidth;
+    // We want the message box window to be the top most window.
+    config.pfCallback = [](HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam, LONG_PTR lpRefData) -> HRESULT
+    {
+        if (msg == TDN_CREATED)
+        {
+            // Make this dialog the top most window, but don't change position/size.
+            SetWindowPos(hwnd, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+        }
+        return 0;
+    };
 
     // By default return the id of the last button.
     uint32_t result = buttons.back().id;
@@ -341,8 +341,13 @@ bool deleteJunction(const std::filesystem::path& link)
 {
     // Open file handle to junction directory.
     HANDLE handle = CreateFileW(
-        link.native().c_str(), GENERIC_WRITE, 0, NULL, OPEN_EXISTING,
-        FILE_FLAG_DELETE_ON_CLOSE | FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_BACKUP_SEMANTICS, NULL
+        link.native().c_str(),
+        GENERIC_WRITE,
+        0,
+        NULL,
+        OPEN_EXISTING,
+        FILE_FLAG_DELETE_ON_CLOSE | FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_BACKUP_SEMANTICS,
+        NULL
     );
     if (handle == INVALID_HANDLE_VALUE)
         return false;
@@ -367,7 +372,7 @@ const std::filesystem::path& getExecutablePath()
             CHAR pathStr[1024];
             if (GetModuleFileNameA(nullptr, pathStr, ARRAYSIZE(pathStr)) == 0)
             {
-                throw RuntimeError("Failed to get the executable path.");
+                FALCOR_THROW("Failed to get the executable path.");
             }
             return std::filesystem::path(pathStr);
         }()
@@ -385,12 +390,12 @@ const std::filesystem::path& getRuntimeDirectory()
                     GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, (LPCSTR)&getRuntimeDirectory, &hm
                 ) == 0)
             {
-                throw RuntimeError("Failed to get the falcor directory. GetModuleHandle failed, error = {}.", GetLastError());
+                FALCOR_THROW("Failed to get the falcor directory. GetModuleHandle failed, error = {}.", GetLastError());
             }
             CHAR pathStr[1024];
             if (GetModuleFileNameA(hm, pathStr, sizeof(pathStr)) == 0)
             {
-                throw RuntimeError("Failed to get the falcor directory. GetModuleFileNameA failed, error = {}.", GetLastError());
+                FALCOR_THROW("Failed to get the falcor directory. GetModuleFileNameA failed, error = {}.", GetLastError());
             }
             return std::filesystem::path(pathStr).parent_path();
         }()
@@ -406,7 +411,7 @@ const std::filesystem::path& getAppDataDirectory()
             PWSTR pathStr;
             if (!SUCCEEDED(SHGetKnownFolderPath(FOLDERID_LocalAppData, 0, NULL, &pathStr)))
             {
-                throw RuntimeError("Failed to get the application data directory.");
+                FALCOR_THROW("Failed to get the application data directory.");
             }
             return std::filesystem::path(pathStr);
         }()
@@ -513,7 +518,8 @@ static bool fileDialogCommon(const FileDialogFilterVec& filters, std::filesystem
     FilterSpec fs(filters, typeid(DialogType) == typeid(IFileOpenDialog));
 
     DialogType* pDialog;
-    os_call(CoCreateInstance(clsid, NULL, CLSCTX_ALL, IID_PPV_ARGS(&pDialog)));
+    if (FAILED(CoCreateInstance(clsid, NULL, CLSCTX_ALL, IID_PPV_ARGS(&pDialog))))
+        FALCOR_THROW("Failed to create file dialog.");
     pDialog->SetOptions(options | FOS_FORCEFILESYSTEM);
     pDialog->SetFileTypes((uint32_t)fs.size(), fs.data());
     pDialog->SetDefaultExtension(fs.data()->pszSpec);
@@ -556,7 +562,7 @@ void setWindowIcon(const std::filesystem::path& path, WindowHandle windowHandle)
 {
     HANDLE hIcon = LoadImageW(GetModuleHandleW(NULL), path.c_str(), IMAGE_ICON, 0, 0, LR_DEFAULTSIZE | LR_LOADFROMFILE);
     if (!hIcon)
-        throw RuntimeError("Failed to load icon from '{}'.", path);
+        FALCOR_THROW("Failed to load icon from '{}'.", path);
     HWND hWnd = windowHandle ? static_cast<HWND>(windowHandle) : GetActiveWindow();
     SendMessage(hWnd, WM_SETICON, ICON_BIG, (LPARAM)hIcon);
 }
@@ -660,12 +666,12 @@ void setKeyboardInterruptHandler(std::function<void()> handler)
     if (handler && !data.handler)
     {
         if (SetConsoleCtrlHandler(consoleCtrlHandler, TRUE) == 0)
-            throw RuntimeError("Failed to register keyboard interrupt handler");
+            FALCOR_THROW("Failed to register keyboard interrupt handler");
     }
     else if (!handler && data.handler)
     {
         if (SetConsoleCtrlHandler(consoleCtrlHandler, FALSE) == 0)
-            throw RuntimeError("Failed to unregister keyboard interrupt handler");
+            FALCOR_THROW("Failed to unregister keyboard interrupt handler");
     }
     data.handler = handler;
 }
@@ -691,11 +697,19 @@ size_t executeProcess(const std::string& appName, const std::string& commandLine
     STARTUPINFOA startupInfo{};
     PROCESS_INFORMATION processInformation{};
     if (!CreateProcessA(
-            nullptr, (LPSTR)commandLine.c_str(), nullptr, nullptr, TRUE, NORMAL_PRIORITY_CLASS, nullptr, nullptr, &startupInfo,
+            nullptr,
+            (LPSTR)commandLine.c_str(),
+            nullptr,
+            nullptr,
+            TRUE,
+            NORMAL_PRIORITY_CLASS,
+            nullptr,
+            nullptr,
+            &startupInfo,
             &processInformation
         ))
     {
-        throw RuntimeError("Unable to execute process: {} {}", appName, commandLineArgs);
+        FALCOR_THROW("Unable to execute process: {} {}", appName, commandLineArgs);
     }
 
     return reinterpret_cast<size_t>(processInformation.hProcess);
@@ -729,8 +743,13 @@ static void checkFileModifiedStatus(const std::filesystem::path& path, const std
     auto dir = path.parent_path();
 
     HANDLE hFile = CreateFileW(
-        dir.native().c_str(), GENERIC_READ | FILE_LIST_DIRECTORY, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING,
-        FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED, NULL
+        dir.native().c_str(),
+        GENERIC_READ | FILE_LIST_DIRECTORY,
+        FILE_SHARE_READ | FILE_SHARE_WRITE,
+        nullptr,
+        OPEN_EXISTING,
+        FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED,
+        NULL
     );
     FALCOR_ASSERT(hFile != INVALID_HANDLE_VALUE);
 
@@ -745,8 +764,14 @@ static void checkFileModifiedStatus(const std::filesystem::path& path, const std
         buffer.resize(1024);
 
         if (!ReadDirectoryChangesW(
-                hFile, buffer.data(), static_cast<uint32_t>(sizeof(uint32_t) * buffer.size()), FALSE, FILE_NOTIFY_CHANGE_LAST_WRITE, 0,
-                &overlapped, nullptr
+                hFile,
+                buffer.data(),
+                static_cast<uint32_t>(sizeof(uint32_t) * buffer.size()),
+                FALSE,
+                FILE_NOTIFY_CHANGE_LAST_WRITE,
+                0,
+                &overlapped,
+                nullptr
             ))
         {
             logError("Failed to read directory changes for shared file '{}'. Aborting monitoring.", path);
@@ -831,8 +856,13 @@ void setThreadAffinity(std::thread::native_handle_type thread, uint32_t affinity
     {
         LPVOID lpMsgBuf;
         FormatMessage(
-            FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, dwError,
-            MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPTSTR)&lpMsgBuf, 0, NULL
+            FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+            NULL,
+            dwError,
+            MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+            (LPTSTR)&lpMsgBuf,
+            0,
+            NULL
         );
         std::wstring err((LPTSTR)lpMsgBuf);
         logWarning("setThreadAffinity failed with error: {}", wstring_2_string(err));
@@ -855,8 +885,13 @@ void setThreadPriority(std::thread::native_handle_type thread, ThreadPriorityTyp
     {
         LPVOID lpMsgBuf;
         FormatMessage(
-            FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, dwError,
-            MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPTSTR)&lpMsgBuf, 0, NULL
+            FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+            NULL,
+            dwError,
+            MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+            (LPTSTR)&lpMsgBuf,
+            0,
+            NULL
         );
         std::wstring err((LPTSTR)lpMsgBuf);
         logWarning("setThreadPriority failed with error: {}", wstring_2_string(err));
@@ -869,7 +904,7 @@ time_t getFileModifiedTime(const std::filesystem::path& path)
     struct stat s;
     if (stat(path.string().c_str(), &s) != 0)
     {
-        throw RuntimeError("Can't get file time for '{}'.", path);
+        FALCOR_THROW("Can't get file time for '{}'.", path);
     }
 
     return s.st_mtime;
@@ -945,14 +980,27 @@ void* getProcAddress(SharedLibraryHandle library, const std::string& funcName)
     return reinterpret_cast<void*>(GetProcAddress(static_cast<HMODULE>(library), funcName.c_str()));
 }
 
+static std::mutex sOSServicesInitMutex;
+static uint32_t sOSServicesInitCount = 0;
+
 void OSServices::start()
 {
-    os_call(CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE));
+    std::lock_guard<std::mutex> lock(sOSServicesInitMutex);
+    if (sOSServicesInitCount++ == 0)
+    {
+        if (FAILED(CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE)))
+            FALCOR_THROW("Failed to initialize COM library.");
+    }
 }
 
 void OSServices::stop()
 {
-    CoUninitialize();
+    std::lock_guard<std::mutex> lock(sOSServicesInitMutex);
+    uint32_t count = sOSServicesInitCount--;
+    if (count == 1)
+        CoUninitialize();
+    else if (count == 0)
+        FALCOR_THROW("OSServices::stop() called more times than OSServices::start().");
 }
 
 size_t getCurrentRSS()

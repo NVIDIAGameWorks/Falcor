@@ -28,13 +28,17 @@
 #include "Program.h"
 #include "ProgramManager.h"
 #include "ProgramVars.h"
+#include "Core/Error.h"
 #include "Core/ObjectPython.h"
 #include "Core/Platform/OS.h"
 #include "Core/API/Device.h"
 #include "Core/API/ParameterBlock.h"
+#include "Core/API/RtStateObject.h"
+#include "Core/API/PythonHelpers.h"
 #include "Utils/StringUtils.h"
 #include "Utils/Logger.h"
 #include "Utils/Timing/CpuTimer.h"
+#include "Utils/CryptoUtils.h"
 #include "Utils/Scripting/ScriptBindings.h"
 
 #include <slang.h>
@@ -43,151 +47,39 @@
 
 namespace Falcor
 {
-const std::string kSupportedShaderModels[] = {
-    "6_0", "6_1", "6_2", "6_3", "6_4", "6_5",
-#if FALCOR_HAS_D3D12_AGILITY_SDK
-    "6_6",
-#endif
-};
 
-Program::Desc::Desc() = default;
-
-Program::Desc::Desc(const std::filesystem::path& path)
+void ProgramDesc::finalize()
 {
-    addShaderLibrary(path);
+    uint32_t globalIndex = 0;
+    for (auto& entryPointGroup : entryPointGroups)
+        for (auto& entryPoint : entryPointGroup.entryPoints)
+            entryPoint.globalIndex = globalIndex++;
 }
 
-Program::Desc& Program::Desc::setLanguagePrelude(const std::string_view prelude)
+Program::Program(ref<Device> pDevice, ProgramDesc desc, DefineList defineList)
+    : mpDevice(std::move(pDevice)), mDesc(std::move(desc)), mDefineList(std::move(defineList)), mTypeConformanceList(mDesc.typeConformances)
 {
-    mLanguagePrelude = prelude;
-    return *this;
-}
+    mDesc.finalize();
 
-Program::Desc& Program::Desc::addShaderModule(const ShaderModule& src)
-{
-    if (src.type == ShaderModule::Type::String && src.createTranslationUnit && src.moduleName.empty())
+    // If not shader model was requested, use the default shader model for the device.
+    if (mDesc.shaderModel == ShaderModel::Unknown)
+        mDesc.shaderModel = mpDevice->getDefaultShaderModel();
+
+    // Check that shader model is supported on the device.
+    if (!mpDevice->isShaderModelSupported(mDesc.shaderModel))
+        FALCOR_THROW("Requested Shader Model {} is not supported by the device", enumToString(mDesc.shaderModel));
+
+    if (mDesc.hasEntryPoint(ShaderType::RayGeneration))
     {
-        // Warn if module name is left empty when creating a new translation unit from string.
-        // This is valid, but unexpected so issue a warning.
-        logWarning("addShaderModule() - Creating a new translation unit, but missing module name. Is this intended?");
+        if (desc.maxTraceRecursionDepth == uint32_t(-1))
+            FALCOR_THROW("Can't create a raytacing program without specifying maximum trace recursion depth");
+        if (desc.maxPayloadSize == uint32_t(-1))
+            FALCOR_THROW("Can't create a raytacing program without specifying maximum ray payload size");
     }
 
-    SourceEntryPoints source(src);
-    mActiveSource = (int32_t)mSources.size();
-    mSources.emplace_back(std::move(source));
-
-    return *this;
-}
-
-Program::Desc& Program::Desc::addShaderModules(const ShaderModuleList& modules)
-{
-    for (const auto& module : modules)
-    {
-        addShaderModule(module);
-    }
-    return *this;
-}
-
-Program::Desc& Program::Desc::beginEntryPointGroup(const std::string& entryPointNameSuffix)
-{
-    mActiveGroup = (int32_t)mGroups.size();
-    mGroups.push_back(EntryPointGroup());
-    mGroups[mActiveGroup].nameSuffix = entryPointNameSuffix;
-
-    return *this;
-}
-
-Program::Desc& Program::Desc::entryPoint(ShaderType shaderType, const std::string& name)
-{
-    checkArgument(!name.empty(), "Missing entry point name.");
-
-    if (mActiveGroup < 0)
-    {
-        beginEntryPointGroup();
-    }
-
-    uint32_t entryPointIndex = declareEntryPoint(shaderType, name);
-    mGroups[mActiveGroup].entryPoints.push_back(entryPointIndex);
-    return *this;
-}
-
-bool Program::Desc::hasEntryPoint(ShaderType stage) const
-{
-    for (auto& entryPoint : mEntryPoints)
-    {
-        if (entryPoint.stage == stage)
-        {
-            return true;
-        }
-    }
-    return false;
-}
-
-Program::Desc& Program::Desc::addTypeConformancesToGroup(const TypeConformanceList& typeConformances)
-{
-    FALCOR_ASSERT(mActiveGroup >= 0);
-    mGroups[mActiveGroup].typeConformances.add(typeConformances);
-    return *this;
-}
-
-uint32_t Program::Desc::declareEntryPoint(ShaderType type, const std::string& name)
-{
-    FALCOR_ASSERT(!name.empty());
-    FALCOR_ASSERT(mActiveGroup >= 0 && mActiveGroup < mGroups.size());
-
-    if (mActiveSource < 0)
-    {
-        throw RuntimeError("Cannot declare an entry point without first adding a source file/library");
-    }
-
-    EntryPoint entryPoint;
-    entryPoint.stage = type;
-    entryPoint.name = name;
-    entryPoint.exportName = name + mGroups[mActiveGroup].nameSuffix;
-    entryPoint.sourceIndex = mActiveSource;
-    entryPoint.groupIndex = mActiveGroup;
-
-    uint32_t index = (uint32_t)mEntryPoints.size();
-    mEntryPoints.push_back(entryPoint);
-    mSources[mActiveSource].entryPoints.push_back(index);
-
-    return index;
-}
-
-Program::Desc& Program::Desc::setShaderModel(const std::string& sm)
-{
-    // Check that the model is supported
-    bool b = false;
-    for (size_t i = 0; i < std::size(kSupportedShaderModels); i++)
-    {
-        if (kSupportedShaderModels[i] == sm)
-        {
-            b = true;
-            break;
-        }
-    }
-
-    if (b == false)
-    {
-        std::string warn = "Unsupported shader-model '" + sm + "' requested. Supported shader-models are ";
-        for (size_t i = 0; i < std::size(kSupportedShaderModels); i++)
-        {
-            warn += kSupportedShaderModels[i];
-            warn += (i == kSupportedShaderModels->size() - 1) ? "." : ", ";
-        }
-        warn += "\nThis is not an error, but if something goes wrong try using one of the supported models.";
-        logWarning(warn);
-    }
-
-    mShaderModel = sm;
-    return *this;
-}
-
-Program::Program(ref<Device> pDevice, const Desc& desc, const DefineList& defineList)
-    : mpDevice(pDevice), mDesc(desc), mDefineList(defineList), mTypeConformanceList(desc.mTypeConformances)
-{
-    mpDevice->getProgramManager()->registerProgramForReload(this);
     validateEntryPoints();
+
+    mpDevice->getProgramManager()->registerProgramForReload(this);
 }
 
 Program::~Program()
@@ -205,11 +97,14 @@ void Program::validateEntryPoints() const
     // They don't necessarily have to be, but it could be an indication of the program not created correctly.
     using NameTypePair = std::pair<std::string, ShaderType>;
     std::set<NameTypePair> entryPointNamesAndTypes;
-    for (const auto& e : mDesc.mEntryPoints)
+    for (const auto& group : mDesc.entryPointGroups)
     {
-        if (!entryPointNamesAndTypes.insert(NameTypePair(e.exportName, e.stage)).second)
+        for (const auto& e : group.entryPoints)
         {
-            logWarning("Duplicate program entry points '{}' of type '{}'.", e.exportName, to_string(e.stage));
+            if (!entryPointNamesAndTypes.insert(NameTypePair(e.exportName, e.type)).second)
+            {
+                logWarning("Duplicate program entry points '{}' of type '{}'.", e.exportName, e.type);
+            }
         }
     }
 }
@@ -218,36 +113,37 @@ std::string Program::getProgramDescString() const
 {
     std::string desc;
 
-    int32_t groupCount = (int32_t)mDesc.mGroups.size();
-
-    for (size_t i = 0; i < mDesc.mSources.size(); i++)
+    for (const auto& shaderModule : mDesc.shaderModules)
     {
-        const auto& src = mDesc.mSources[i];
-        if (i != 0)
+        for (const auto& source : shaderModule.sources)
+        {
+            switch (source.type)
+            {
+            case ProgramDesc::ShaderSource::Type::File:
+                desc += source.path.string();
+                break;
+            case ProgramDesc::ShaderSource::Type::String:
+                desc += "<string>";
+                break;
+            default:
+                FALCOR_UNREACHABLE();
+            }
             desc += " ";
-        switch (src.getType())
-        {
-        case ShaderModule::Type::File:
-            desc += src.source.filePath.string();
-            break;
-        case ShaderModule::Type::String:
-            desc += "Created from string";
-            break;
-        default:
-            FALCOR_UNREACHABLE();
         }
+    }
 
-        desc += "(";
-        for (size_t ee = 0; ee < src.entryPoints.size(); ++ee)
+    desc += "(";
+    size_t entryPointIndex = 0;
+    for (const auto& entryPointGroup : mDesc.entryPointGroups)
+    {
+        for (const auto& entryPoint : entryPointGroup.entryPoints)
         {
-            auto& entryPoint = mDesc.mEntryPoints[src.entryPoints[ee]];
-
-            if (ee != 0)
+            if (entryPointIndex++ > 0)
                 desc += ", ";
             desc += entryPoint.exportName;
         }
-        desc += ")";
     }
+    desc += ")";
 
     return desc;
 }
@@ -403,7 +299,7 @@ const ref<const ProgramVersion>& Program::getActiveVersion() const
             // On error we get false, and mActiveProgram points to the last successfully compiled version.
             if (link() == false)
             {
-                throw RuntimeError("Program linkage failed");
+                FALCOR_THROW("Program linkage failed");
             }
             else
             {
@@ -430,17 +326,17 @@ bool Program::link() const
 
         if (pVersion == nullptr)
         {
-            std::string error = "Failed to link program:\n" + getProgramDescString() + "\n\n" + log;
-            reportErrorAndAllowRetry(error);
-
-            // Continue loop to keep trying...
+            std::string msg = "Failed to link program:\n" + getProgramDescString() + "\n\n" + log;
+            bool showMessageBox = is_set(getErrorDiagnosticFlags(), ErrorDiagnosticFlags::ShowMessageBoxOnError);
+            if (showMessageBox && reportErrorAndAllowRetry(msg))
+                continue;
+            FALCOR_THROW(msg);
         }
         else
         {
             if (!log.empty())
             {
-                std::string warn = "Warnings in program:\n" + getProgramDescString() + "\n" + log;
-                logWarning(warn);
+                logWarning("Warnings in program:\n{}\n{}", getProgramDescString(), log);
             }
 
             mpActiveVersion = pVersion;
@@ -462,8 +358,98 @@ void Program::breakStrongReferenceToDevice()
     mpDevice.breakStrongReference();
 }
 
+ref<RtStateObject> Program::getRtso(RtProgramVars* pVars)
+{
+    auto pProgramVersion = getActiveVersion();
+    auto pProgramKernels = pProgramVersion->getKernels(mpDevice, pVars);
+
+    mRtsoGraph.walk((void*)pProgramKernels.get());
+
+    ref<RtStateObject> pRtso = mRtsoGraph.getCurrentNode();
+
+    if (pRtso == nullptr)
+    {
+        RtStateObjectDesc desc;
+        desc.pProgramKernels = pProgramKernels;
+        desc.maxTraceRecursionDepth = mDesc.maxTraceRecursionDepth;
+        desc.pipelineFlags = mDesc.rtPipelineFlags;
+
+        StateGraph::CompareFunc cmpFunc = [&desc](ref<RtStateObject> pRtso) -> bool { return pRtso && (desc == pRtso->getDesc()); };
+
+        if (mRtsoGraph.scanForMatchingNode(cmpFunc))
+        {
+            pRtso = mRtsoGraph.getCurrentNode();
+        }
+        else
+        {
+            pRtso = mpDevice->createRtStateObject(desc);
+            mRtsoGraph.setCurrentNodeData(pRtso);
+        }
+    }
+
+    return pRtso;
+}
+
 FALCOR_SCRIPT_BINDING(Program)
 {
-    pybind11::class_<Program, ref<Program>>(m, "Program");
+    using namespace pybind11::literals;
+
+    FALCOR_SCRIPT_BINDING_DEPENDENCY(Types)
+    FALCOR_SCRIPT_BINDING_DEPENDENCY(ProgramReflection)
+
+    pybind11::enum_<SlangCompilerFlags> slangCompilerFlags(m, "SlangCompilerFlags");
+    slangCompilerFlags.value("None_", SlangCompilerFlags::None);
+    slangCompilerFlags.value("TreatWarningsAsErrors", SlangCompilerFlags::TreatWarningsAsErrors);
+    slangCompilerFlags.value("DumpIntermediates", SlangCompilerFlags::DumpIntermediates);
+    slangCompilerFlags.value("FloatingPointModeFast", SlangCompilerFlags::FloatingPointModeFast);
+    slangCompilerFlags.value("FloatingPointModePrecise", SlangCompilerFlags::FloatingPointModePrecise);
+    slangCompilerFlags.value("GenerateDebugInfo", SlangCompilerFlags::GenerateDebugInfo);
+    slangCompilerFlags.value("MatrixLayoutColumnMajor", SlangCompilerFlags::MatrixLayoutColumnMajor);
+    ScriptBindings::addEnumBinaryOperators(slangCompilerFlags);
+
+    pybind11::class_<ProgramDesc> programDesc(m, "ProgramDesc");
+
+    pybind11::class_<ProgramDesc::ShaderModule>(programDesc, "ShaderModule")
+        .def("add_file", &ProgramDesc::ShaderModule::addFile, "path"_a)
+        .def("add_string", &ProgramDesc::ShaderModule::addString, "string"_a, "path"_a = std::filesystem::path());
+
+    pybind11::class_<ProgramDesc::EntryPointGroup>(programDesc, "EntryPointGroup")
+        .def_property(
+            "type_conformances",
+            [](const ProgramDesc::EntryPointGroup& self) { return typeConformanceListToPython(self.typeConformances); },
+            [](ProgramDesc::EntryPointGroup& self, const pybind11::dict& dict)
+            { return self.typeConformances = typeConformanceListFromPython(dict); }
+        );
+
+    programDesc.def(pybind11::init<>());
+    programDesc.def_readwrite("shader_model", &ProgramDesc::shaderModel);
+    programDesc.def_readwrite("compiler_flags", &ProgramDesc::compilerFlags);
+    programDesc.def_readwrite("compiler_arguments", &ProgramDesc::compilerArguments);
+    programDesc.def(
+        "add_shader_module",
+        pybind11::overload_cast<std::string>(&ProgramDesc::addShaderModule),
+        "name"_a = "",
+        pybind11::return_value_policy::reference
+    );
+    programDesc.def("cs_entry", &ProgramDesc::csEntry, "name"_a);
+
+    pybind11::class_<Program, ref<Program>> program(m, "Program");
+
+    program.def_property_readonly("reflector", &Program::getReflector);
+    program.def_property(
+        "defines",
+        [](const Program& self) { return defineListToPython(self.getDefines()); },
+        [](Program& self, const pybind11::dict& dict) { self.setDefines(defineListFromPython(dict)); }
+    );
+    program.def("add_define", &Program::addDefine, "name"_a, "value"_a = "");
+    program.def("remove_define", &Program::removeDefine, "name"_a);
+    program.def_property(
+        "type_conformances",
+        [](const Program& self) { return typeConformanceListToPython(self.getTypeConformances()); },
+        [](Program& self, const pybind11::dict& dict) { return self.setTypeConformances(typeConformanceListFromPython(dict)); }
+    );
+    program.def("add_type_conformance", &Program::addTypeConformance, "type_name"_a, "interface_type"_a, "id"_a);
+    program.def("remove_type_conformance", &Program::removeTypeConformance, "type_name"_a, "interface_type"_a);
 }
+
 } // namespace Falcor

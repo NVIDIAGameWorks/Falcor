@@ -28,7 +28,7 @@
 #pragma once
 #include "Core/Macros.h"
 #include "Core/API/Buffer.h"
-#include "Core/API/GpuFence.h"
+#include "Core/API/Fence.h"
 #include "Core/Pass/ComputePass.h"
 #include "Utils/Math/Vector.h"
 #include "Scene/Scene.h"
@@ -75,7 +75,6 @@ namespace Falcor
         ref<Buffer> mpResultBuffer;                 ///< Buffer for intermediate results.
         ref<Buffer> mpFinalResultBuffer;            ///< Buffer for final results after reduction.
         ref<Buffer> mpStagingBuffer;                ///< Staging buffer for readback of final results.
-        ref<GpuFence> mpFence;                      ///< Fence for synchronizing readback.
         uint32_t mResultCount;                      ///< Number of intermediate results per integration grid.
     };
 }

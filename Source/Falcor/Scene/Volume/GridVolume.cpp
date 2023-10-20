@@ -146,13 +146,12 @@ namespace Falcor
 
     uint32_t GridVolume::loadGridSequence(GridSlot slot, const std::filesystem::path& path, const std::string& gridname, bool keepEmpty)
     {
-        std::filesystem::path fullPath;
-        if (!findFileInDataDirectories(path, fullPath))
+        if (!std::filesystem::exists(path))
         {
-            logWarning("Cannot find directory '{}'.", path);
+            logWarning("'{}' does not exist.", path);
             return 0;
         }
-        if (!std::filesystem::is_directory(fullPath))
+        if (!std::filesystem::is_directory(path))
         {
             logWarning("'{}' is not a directory.", path);
             return 0;
@@ -160,7 +159,7 @@ namespace Falcor
 
         // Enumerate grid files.
         std::vector<std::filesystem::path> paths;
-        for (auto it : std::filesystem::directory_iterator(fullPath))
+        for (auto it : std::filesystem::directory_iterator(path))
         {
             if (hasExtension(it.path(), "nvdb") || hasExtension(it.path(), "vdb")) paths.push_back(it.path());
         }
@@ -402,13 +401,26 @@ namespace Falcor
             return GridVolume::create(accessActivePythonSceneBuilder().getDevice(), name);
         };
         volume.def(pybind11::init(create), "name"_a); // PYTHONDEPRECATED
-        volume.def("loadGrid", &GridVolume::loadGrid, "slot"_a, "path"_a, "gridname"_a);
+        volume.def("loadGrid",
+            [](GridVolume& self, GridVolume::GridSlot slot, const std::filesystem::path& path, const std::string& gridname)
+            { return self.loadGrid(slot, getActiveAssetResolver().resolvePath(path), gridname); },
+            "slot"_a, "path"_a, "gridname"_a
+        ); // PYTHONDEPRECATED
         volume.def("loadGridSequence",
-            pybind11::overload_cast<GridVolume::GridSlot, const std::vector<std::filesystem::path>&, const std::string&, bool>(&GridVolume::loadGridSequence),
-            "slot"_a, "paths"_a, "gridname"_a, "keepEmpty"_a = true);
+            [](GridVolume& self, GridVolume::GridSlot slot, const std::vector<std::filesystem::path>& paths, const std::string& gridname, bool keepEmpty)
+            {
+                std::vector<std::filesystem::path> resolvedPaths;
+                for (const auto& path : paths)
+                    resolvedPaths.push_back(getActiveAssetResolver().resolvePath(path));
+                return self.loadGridSequence(slot, resolvedPaths, gridname, keepEmpty);
+            },
+            "slot"_a, "paths"_a, "gridname"_a, "keepEmpty"_a = true
+        ); // PYTHONDEPRECATED
         volume.def("loadGridSequence",
-            pybind11::overload_cast<GridVolume::GridSlot, const std::filesystem::path&, const std::string&, bool>(&GridVolume::loadGridSequence),
-            "slot"_a, "path"_a, "gridnames"_a, "keepEmpty"_a = true);
+            [](GridVolume& self, GridVolume::GridSlot slot, const std::filesystem::path& path, const std::string& gridname, bool keepEmpty)
+            { return self.loadGridSequence(slot, getActiveAssetResolver().resolvePath(path), gridname, keepEmpty); },
+            "slot"_a, "path"_a, "gridnames"_a, "keepEmpty"_a = true
+        ); // PYTHONDEPRECATED
 
         m.attr("Volume") = m.attr("GridVolume"); // PYTHONDEPRECATED
     }

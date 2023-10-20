@@ -50,9 +50,12 @@ public:
 private:
     bool loadImage(const std::filesystem::path& path);
 
-    RenderPassHelpers::IOSize mOutputSizeSelection = RenderPassHelpers::IOSize::Default; ///< Selected output size.
-    ResourceFormat mOutputFormat = ResourceFormat::Unknown;     ///< Current output resource format.
-    uint2 mOutputSize = {};                                     ///< Current output size in pixels.
+    /// Selected output size.
+    RenderPassHelpers::IOSize mOutputSizeSelection = RenderPassHelpers::IOSize::Default;
+    /// Current output resource format.
+    ResourceFormat mOutputFormat = ResourceFormat::Unknown;
+    /// Current output size in pixels.
+    uint2 mOutputSize = {};
 
     ref<Texture> mpTex;
     std::filesystem::path mImagePath;

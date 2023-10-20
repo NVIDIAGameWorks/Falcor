@@ -9,8 +9,6 @@ target_sources(CudaInterop PRIVATE
     CopySurface.h
     CudaInterop.cpp
     CudaInterop.h
-    FalcorCUDA.cpp
-    FalcorCUDA.h
 )
 
 set_target_properties(CudaInterop PROPERTIES CUDA_SEPARABLE_COMPILATION ON)

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,7 +27,7 @@
  **************************************************************************/
 #pragma once
 
-#include "Errors.h"
+#include "Error.h"
 #include "Utils/Logger.h"
 #include <fstd/span.h>
 #include <string>
@@ -64,7 +64,7 @@ inline const std::string& enumToString(T value)
     const auto& items = EnumInfo<T>::items();
     auto it = std::find_if(items.begin(), items.end(), [value](const auto& item) { return item.first == value; });
     if (it == items.end())
-        throw RuntimeError("Invalid enum value {}", int(value));
+        FALCOR_THROW("Invalid enum value {}", int(value));
     return it->second;
 }
 
@@ -78,7 +78,7 @@ inline T stringToEnum(std::string_view name)
     const auto& items = EnumInfo<T>::items();
     auto it = std::find_if(items.begin(), items.end(), [name](const auto& item) { return item.second == name; });
     if (it == items.end())
-        throw RuntimeError("Invalid enum name '{}'", name);
+        FALCOR_THROW("Invalid enum name '{}'", name);
     return it->first;
 }
 
@@ -111,7 +111,7 @@ inline std::vector<std::string> flagsToStringList(T flags)
         }
     }
     if (flags != T(0))
-        throw RuntimeError("Invalid enum flags value {}", int(flags));
+        FALCOR_THROW("Invalid enum flags value {}", int(flags));
     return list;
 }
 

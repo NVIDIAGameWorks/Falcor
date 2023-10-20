@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -38,24 +38,26 @@ import Utils.Math.MatrixUtils;
 import Marker2DSet;
 import SDFEditorTypes;
 
-
-Texture2D gInputColor;                  ///< Input color (2D GUI will be blended on top).
-Texture2D<PackedHitInfo> gVBuffer;      ///< Fullscreen V-buffer for the primary hits.
-Texture2D<float2> gLinearZ;             ///< Linear Z constructed from GBuffer.
+/// Input color (2D GUI will be blended on top).
+Texture2D gInputColor;
+/// Fullscreen V-buffer for the primary hits.
+Texture2D<PackedHitInfo> gVBuffer;
+/// Linear Z constructed from GBuffer.
+Texture2D<float2> gLinearZ;
 
 struct GUIPass
 {
     uint2 resolution;
     uint2 mousePos;
-    Marker2DSet                         markerSet;
-    RWStructuredBuffer<SDFPickingInfo>  pickingData;
-    StructuredBuffer<SDFEditingData>    editingPrimitiveData;
-    Buffer<uint>                        gridInstanceIDs;
-    SDFBBRenderSettings                 bbRenderSettings;
-    uint                                gridInstanceCount;
-    uint                                ui2DActive;
-    SDFGridPlane                        gridPlane;
-    SDFGridPlane                        symmetryPlane;
+    Marker2DSet markerSet;
+    RWStructuredBuffer<SDFPickingInfo> pickingData;
+    StructuredBuffer<SDFEditingData> editingPrimitiveData;
+    Buffer<uint> gridInstanceIDs;
+    SDFBBRenderSettings bbRenderSettings;
+    uint gridInstanceCount;
+    uint ui2DActive;
+    SDFGridPlane gridPlane;
+    SDFGridPlane symmetryPlane;
 };
 
 ParameterBlock<GUIPass> gGUIPass;
@@ -86,7 +88,17 @@ bool iBoundingBox(in float3 ro, in float3 rd, in float3 halfExtent, in float e, 
     return abs(sd) < 0.001f;
 }
 
-bool intersectGridPlane(float3 rayOrigin, float3 rayDir, float3 pointOnPlane, float3 normal, float3 rightVec, out float distanceToIntersection, float gridWidth = 0.1f, float gridScale = 1.0f, float gridSize = 1.0f)
+bool intersectGridPlane(
+    float3 rayOrigin,
+    float3 rayDir,
+    float3 pointOnPlane,
+    float3 normal,
+    float3 rightVec,
+    out float distanceToIntersection,
+    float gridWidth = 0.1f,
+    float gridScale = 1.0f,
+    float gridSize = 1.0f
+)
 {
     distanceToIntersection = -dot(normal, rayOrigin - pointOnPlane) / dot(normal, rayDir);
     if (distanceToIntersection < 0.0f)
@@ -135,7 +147,8 @@ float4 traceSDFBoundingBox(Ray cameraRay, uint instanceID, float distanceToHitPo
     if (iBoundingBox(cameraRay.origin, cameraRay.dir, float3(0.5f), gGUIPass.bbRenderSettings.edgeThickness, t))
     {
         float alpha = t > distanceToHitPoint ? 0.2f : 1.0f;
-        color = (gGUIPass.bbRenderSettings.selectedInstanceID == instanceID) ? float4(0.0f, 1.0f, 0.0f, alpha) : float4(1.0f, 0.0f, 0.0f, alpha);
+        color = (gGUIPass.bbRenderSettings.selectedInstanceID == instanceID) ? float4(0.0f, 1.0f, 0.0f, alpha)
+                                                                             : float4(1.0f, 0.0f, 0.0f, alpha);
     }
 
     return color;
@@ -188,7 +201,17 @@ float4 renderGridPlanes(const Ray cameraRayAtPixel, const HitInfo hit, const flo
         if (gGUIPass.gridPlane.active == 1)
         {
             float distanceToIntersection;
-            bool hitGridPlane = intersectGridPlane(cameraRayAtPixel.origin, cameraRayAtPixel.dir, gGUIPass.gridPlane.position, gGUIPass.gridPlane.normal, gGUIPass.gridPlane.rightVector, distanceToIntersection, gGUIPass.gridPlane.gridLineWidth, gGUIPass.gridPlane.gridScale, gGUIPass.gridPlane.planeSize);
+            bool hitGridPlane = intersectGridPlane(
+                cameraRayAtPixel.origin,
+                cameraRayAtPixel.dir,
+                gGUIPass.gridPlane.position,
+                gGUIPass.gridPlane.normal,
+                gGUIPass.gridPlane.rightVector,
+                distanceToIntersection,
+                gGUIPass.gridPlane.gridLineWidth,
+                gGUIPass.gridPlane.gridScale,
+                gGUIPass.gridPlane.planeSize
+            );
 
             // Compute distance from the current pixel's position on the grid plane the the position of the plane where the mouse is.
             float distanceToIntersectionAtMouse = gGUIPass.gridPlane.intersect(cameraRayMouse.origin, cameraRayMouse.dir);
@@ -211,7 +234,8 @@ float4 renderGridPlanes(const Ray cameraRayAtPixel, const HitInfo hit, const flo
             {
                 alpha = hitGridPlane ? gGUIPass.gridPlane.color.a : 0.0f;
 
-                if (distanceToIntersection > distanceToHitPoint)   // Is the point on the grid plane through the current pixel behind already rendered geometry?
+                if (distanceToIntersection > distanceToHitPoint) // Is the point on the grid plane through the current pixel behind already
+                                                                 // rendered geometry?
                 {
                     alpha = alpha * alphaFactorForHiddenGrid;
                 }
@@ -222,14 +246,26 @@ float4 renderGridPlanes(const Ray cameraRayAtPixel, const HitInfo hit, const flo
             // Mix with circular blob showing where the mouse is.
             float radius = gGUIPass.gridPlane.planeSize * 0.1f;
             float falloff = (radius - len) / radius;
-            float4 circularBlobColor = (len < radius&& gGUIPass.ui2DActive == 0) ? (float4(1.0) - gGUIPass.gridPlane.color) * falloff : float4(0.0);
-            finalColor = gridColorPlusBackground + circularBlobColor * (distanceToIntersection > distanceToHitPoint ? factorForHiddenBlob : 1.0);
+            float4 circularBlobColor =
+                (len < radius && gGUIPass.ui2DActive == 0) ? (float4(1.0) - gGUIPass.gridPlane.color) * falloff : float4(0.0);
+            finalColor =
+                gridColorPlusBackground + circularBlobColor * (distanceToIntersection > distanceToHitPoint ? factorForHiddenBlob : 1.0);
         }
 
         if (gGUIPass.symmetryPlane.active == 1)
         {
             float distanceToIntersection;
-            bool hitSymmetryPlane = intersectGridPlane(cameraRayAtPixel.origin, cameraRayAtPixel.dir, gGUIPass.symmetryPlane.position, gGUIPass.symmetryPlane.normal, gGUIPass.symmetryPlane.rightVector, distanceToIntersection, gGUIPass.symmetryPlane.gridLineWidth, gGUIPass.symmetryPlane.gridScale, gGUIPass.symmetryPlane.planeSize);
+            bool hitSymmetryPlane = intersectGridPlane(
+                cameraRayAtPixel.origin,
+                cameraRayAtPixel.dir,
+                gGUIPass.symmetryPlane.position,
+                gGUIPass.symmetryPlane.normal,
+                gGUIPass.symmetryPlane.rightVector,
+                distanceToIntersection,
+                gGUIPass.symmetryPlane.gridLineWidth,
+                gGUIPass.symmetryPlane.gridScale,
+                gGUIPass.symmetryPlane.planeSize
+            );
 
             // Compute distance from the current pixel's position on the grid plane the the position of the plane where the mouse is.
             float distanceToIntersectionAtMouse = gGUIPass.symmetryPlane.intersect(cameraRayMouse.origin, cameraRayMouse.dir);
@@ -250,7 +286,7 @@ float4 renderGridPlanes(const Ray cameraRayAtPixel, const HitInfo hit, const flo
     return finalColor;
 }
 
-float4 psMain(float2 texC : TEXCOORD) : SV_TARGET
+float4 psMain(float2 texC: TEXCOORD) : SV_TARGET
 {
     const uint2 pixel = uint2(texC * float2(gGUIPass.resolution));
     const float diagonal = length(gGUIPass.resolution);
@@ -313,7 +349,14 @@ float4 psMain(float2 texC : TEXCOORD) : SV_TARGET
         float3 previewColor = float3(1.0f, 0.0f, 0.0f);
         float alpha = 1.0f;
 
-        if (sdfIntersectPrimitive(cameraRay.origin, cameraRay.dir, editingData.primitiveBB.center(), editingData.primitiveBB.extent(), editingData.primitive, t))
+        if (sdfIntersectPrimitive(
+                cameraRay.origin,
+                cameraRay.dir,
+                editingData.primitiveBB.center(),
+                editingData.primitiveBB.extent(),
+                editingData.primitive,
+                t
+            ))
         {
             alpha = t > distanceToHitPoint ? hiddenHitAlpha : hitAlpha;
             hit = true;
@@ -321,7 +364,14 @@ float4 psMain(float2 texC : TEXCOORD) : SV_TARGET
 
         if (gGUIPass.symmetryPlane.active == 1)
         {
-            if (sdfIntersectPrimitive(cameraRay.origin, cameraRay.dir, editingData.symmetryPrimitiveBB.center(), editingData.symmetryPrimitiveBB.extent(), editingData.symmetryPrimitive, t))
+            if (sdfIntersectPrimitive(
+                    cameraRay.origin,
+                    cameraRay.dir,
+                    editingData.symmetryPrimitiveBB.center(),
+                    editingData.symmetryPrimitiveBB.extent(),
+                    editingData.symmetryPrimitive,
+                    t
+                ))
             {
                 if (t <= distanceToHitPoint)
                 {
@@ -338,7 +388,8 @@ float4 psMain(float2 texC : TEXCOORD) : SV_TARGET
 
         if (editingData.scalingAxis < uint(SDFEditorAxis::Count))
         {
-            float3 rayOriginPrimLocal = mul(editingData.primitive.invRotationScale, (cameraRay.origin - editingData.primitive.translation)).xyz;
+            float3 rayOriginPrimLocal =
+                mul(editingData.primitive.invRotationScale, (cameraRay.origin - editingData.primitive.translation)).xyz;
             float3 rayDirPrimLocal = normalize(mul(editingData.primitive.invRotationScale, cameraRay.dir).xyz);
 
             float axisPreviewT = 0.0f;

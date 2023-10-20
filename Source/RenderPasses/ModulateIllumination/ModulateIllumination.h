@@ -37,7 +37,10 @@ class ModulateIllumination : public RenderPass
 public:
     FALCOR_PLUGIN_CLASS(ModulateIllumination, "ModulateIllumination", "Modulate illumination pass.");
 
-    static ref<ModulateIllumination> create(ref<Device> pDevice, const Properties& props) { return make_ref<ModulateIllumination>(pDevice, props); }
+    static ref<ModulateIllumination> create(ref<Device> pDevice, const Properties& props)
+    {
+        return make_ref<ModulateIllumination>(pDevice, props);
+    }
 
     ModulateIllumination(ref<Device> pDevice, const Properties& props);
 
@@ -48,21 +51,21 @@ public:
     virtual void renderUI(Gui::Widgets& widget) override;
 
 private:
-    uint2                      mFrameDim = { 0, 0 };
-    RenderPassHelpers::IOSize  mOutputSizeSelection = RenderPassHelpers::IOSize::Default; ///< Selected output size.
+    uint2 mFrameDim = {0, 0};
+    RenderPassHelpers::IOSize mOutputSizeSelection = RenderPassHelpers::IOSize::Default;
 
-    ref<ComputePass>        mpModulateIlluminationPass;
+    ref<ComputePass> mpModulateIlluminationPass;
 
-    bool                    mUseEmission = true;
-    bool                    mUseDiffuseReflectance = true;
-    bool                    mUseDiffuseRadiance = true;
-    bool                    mUseSpecularReflectance = true;
-    bool                    mUseSpecularRadiance = true;
-    bool                    mUseDeltaReflectionEmission = true;
-    bool                    mUseDeltaReflectionReflectance = true;
-    bool                    mUseDeltaReflectionRadiance = true;
-    bool                    mUseDeltaTransmissionEmission = true;
-    bool                    mUseDeltaTransmissionReflectance = true;
-    bool                    mUseDeltaTransmissionRadiance = true;
-    bool                    mUseResidualRadiance = true;
+    bool mUseEmission = true;
+    bool mUseDiffuseReflectance = true;
+    bool mUseDiffuseRadiance = true;
+    bool mUseSpecularReflectance = true;
+    bool mUseSpecularRadiance = true;
+    bool mUseDeltaReflectionEmission = true;
+    bool mUseDeltaReflectionReflectance = true;
+    bool mUseDeltaReflectionRadiance = true;
+    bool mUseDeltaTransmissionEmission = true;
+    bool mUseDeltaTransmissionReflectance = true;
+    bool mUseDeltaTransmissionRadiance = true;
+    bool mUseResidualRadiance = true;
 };

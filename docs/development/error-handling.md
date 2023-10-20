@@ -19,6 +19,7 @@ Exceptions is the primary error handling method because it offers several advant
 * The exception is passed up the stack until the application handles it or the program terminates. Intermediate layers automatically let the error propagate.
 * The exception stack-unwinding destroys all objects in scope according to well-defined rules.
 * There is a clean separation between the code that detects the error and the code that handles the error.
+* Exceptions can pass the Python API boundary in a well defined way.
 
 Note that error reporting is a separate topic from error handling and is discussed further down. All failure conditions that occur must be appropriately detected and handled.
 
@@ -27,8 +28,9 @@ Note that error reporting is a separate topic from error handling and is discuss
 * Use asserts to check for logic errors in C++ code; errors that should never occur and are a result of programmer mistakes rather than runtime conditions.
 * Use `static_assert()` to check for logic errors at compile time if possible, for example, type checking of template arguments, or checking struct sizes.
 * Use `FALCOR_ASSERT()` to check for logic errors at runtime.
+* Use `FALCOR_ASSERT_EQ`, `FALCOR_ASSERT_NE`, `FALCOR_ASSERT_GE`, `FALCOR_ASSERT_GT`, `FALCOR_ASSERT_LE`, `FALCOR_ASSERT_LT` to do binary comparison between two values. These assert macros will print messages that not only show the tested condition but also the values that lead to failure.
 * Use asserts generously. Even trivially correct code might be affected by changes elsewhere.
-* Make a habit of running the application in Debug mode regularly to make sure that no asserts trigger.
+* Assertions are only enabled in Debug builds by default. Make a habit of running the application in Debug mode regularly to make sure that no asserts trigger.
 
 ## Exceptions
 
@@ -39,16 +41,41 @@ Note that error reporting is a separate topic from error handling and is discuss
 * Throw exceptions by value, catch them by reference.
 * Do not catch exceptions in user code, other than in rare cases. Falcor's default error handler logs the error and terminates the application, which is often the most reasonable action.
 
-Falcor provides its own set of exception classes. The root for all exceptions is `Exception` (inheriting from `std::exception`). Currently Falcor has three exception types:
+Falcor provides its own exception classes (inherited from `std::exception`) and some utility macros for improved development experience. The main exception class is `Exception`. For simplicity, we try to avoid using many different categories of exceptions. The main exception should always be thrown using the `FALCOR_THROW(fmt, ...)` macro which supports format strings for formatting the error message. This macro has the advantage of being able to break into the debugger if one is attached. This is convenient during development as we automatically break into the debugger before throwning the exception, making it easy to find the code/conditions responsible for the exception. Alternatively one can use the debugger _break on exception_ functionality but this can be cumbersome to use as it breaks on **all** exceptions, both local and external code. The `FALCOR_THROW` macro also logs a stack trace of where the exception is thrown in case no debugger is attached, which helps post-mortem debugging.
 
-- `RuntimeError` used as a general exception to indicate runtime errors.
-- `ArgumentError` used to indicate invalid arguments passed to a function.
-- `ImporterError` used to indicate errors when importing assets.
+In addition to `FALCOR_THROW` there is also a `FALCOR_CHECK(cond, fmt, ...)` macro which can be used to check conditions, including checking for valid arguments as well as for runtime invariants. The macro is simply defined as:
 
-In addition some helper functions are provided to check for common conditions:
+```c++
+#define FALCOR_CHECK(cond, fmt, ...)        \
+    if (!(cond))                            \
+        FALCOR_THROW(fmt, ##__VA_ARGS__)
+```
 
-- `checkInvariant(condition, fmt, ...)` checks that an invariant holds and throws a `RuntimeError` when it is violated.
-- `checkArgument(condition, fmt, ...)` checks that a function argument fulfills some condition and throws an `ArgumentError` if it doesn't.
+## Assertions vs. Exceptions
+
+Sometimes the line between using _assertions_ and _exceptions_ can be blurry. In general, _exceptions_ should be used rigorously on all public facing API, that is especially true for functions exposed through the Python API. Internal code can rely more heavily on assertions. Here is a simple example:
+
+```c++
+// This is the public facing function.
+// We throw an exception if the data is not in a valid format.
+void processTriplets(std::span<float> data)
+{
+    FALCOR_CHECK(
+        data.size() % 3 == 0,
+        "'data' needs to contain multiples of 3 values but got size={}.",
+        data.size()
+    );
+    processTripletsInternal(data)
+}
+
+// This is the internal function.
+// We assume the data to be in the correct format, but we still check our
+// precondition to help finding logical errors during development/refactoring.
+void processTripletsInternal(std::span<float> data)
+{
+    FALCOR_ASSERT(data.size() % 3 == 0);
+}
+```
 
 ## Return values
 

@@ -33,21 +33,21 @@
 
 namespace Falcor
 {
-static GraphicsStateObject::PrimitiveType topology2Type(Vao::Topology t)
+static GraphicsStateObjectDesc::PrimitiveType topology2Type(Vao::Topology t)
 {
     switch (t)
     {
     case Vao::Topology::PointList:
-        return GraphicsStateObject::PrimitiveType::Point;
+        return GraphicsStateObjectDesc::PrimitiveType::Point;
     case Vao::Topology::LineList:
     case Vao::Topology::LineStrip:
-        return GraphicsStateObject::PrimitiveType::Line;
+        return GraphicsStateObjectDesc::PrimitiveType::Line;
     case Vao::Topology::TriangleList:
     case Vao::Topology::TriangleStrip:
-        return GraphicsStateObject::PrimitiveType::Triangle;
+        return GraphicsStateObjectDesc::PrimitiveType::Triangle;
     default:
         FALCOR_UNREACHABLE();
-        return GraphicsStateObject::PrimitiveType::Undefined;
+        return GraphicsStateObjectDesc::PrimitiveType::Undefined;
     }
 }
 
@@ -75,7 +75,7 @@ GraphicsState::GraphicsState(ref<Device> pDevice) : mpDevice(pDevice)
 
 GraphicsState::~GraphicsState() = default;
 
-ref<GraphicsStateObject> GraphicsState::getGSO(const GraphicsVars* pVars)
+ref<GraphicsStateObject> GraphicsState::getGSO(const ProgramVars* pVars)
 {
     auto pProgramKernels = mpProgram ? mpProgram->getActiveVersion()->getKernels(mpDevice, pVars) : nullptr;
     bool newProgVersion = pProgramKernels.get() != mCachedData.pProgramKernels;
@@ -95,10 +95,10 @@ ref<GraphicsStateObject> GraphicsState::getGSO(const GraphicsVars* pVars)
     ref<GraphicsStateObject> pGso = mpGsoGraph->getCurrentNode();
     if (pGso == nullptr)
     {
-        mDesc.setProgramKernels(pProgramKernels);
-        mDesc.setFboFormats(mpFbo ? mpFbo->getDesc() : Fbo::Desc());
-        mDesc.setVertexLayout(mpVao->getVertexLayout());
-        mDesc.setPrimitiveType(topology2Type(mpVao->getPrimitiveTopology()));
+        mDesc.pProgramKernels = pProgramKernels;
+        mDesc.fboDesc = mpFbo ? mpFbo->getDesc() : Fbo::Desc();
+        mDesc.pVertexLayout = mpVao->getVertexLayout();
+        mDesc.primitiveType = topology2Type(mpVao->getPrimitiveTopology());
 
         GraphicsStateGraph::CompareFunc cmpFunc = [&desc = mDesc](ref<GraphicsStateObject> pGso) -> bool
         { return pGso && (desc == pGso->getDesc()); };
@@ -109,7 +109,7 @@ ref<GraphicsStateObject> GraphicsState::getGSO(const GraphicsVars* pVars)
         }
         else
         {
-            pGso = GraphicsStateObject::create(mpDevice, mDesc);
+            pGso = mpDevice->createGraphicsStateObject(mDesc);
             pGso->breakStrongReferenceToDevice();
             mpGsoGraph->setCurrentNodeData(pGso);
         }
@@ -139,7 +139,7 @@ void GraphicsState::pushFbo(const ref<Fbo>& pFbo, bool setVp0Sc0)
 
 void GraphicsState::popFbo(bool setVp0Sc0)
 {
-    checkInvariant(!mFboStack.empty(), "Empty stack.");
+    FALCOR_CHECK(!mFboStack.empty(), "Empty stack.");
 
     setFbo(mFboStack.top(), setVp0Sc0);
     mFboStack.pop();
@@ -157,9 +157,9 @@ GraphicsState& GraphicsState::setVao(const ref<Vao>& pVao)
 
 GraphicsState& GraphicsState::setBlendState(ref<BlendState> pBlendState)
 {
-    if (mDesc.getBlendState() != pBlendState)
+    if (mDesc.pBlendState != pBlendState)
     {
-        mDesc.setBlendState(pBlendState);
+        mDesc.pBlendState = pBlendState;
         mpGsoGraph->walk((void*)pBlendState.get());
     }
     return *this;
@@ -167,9 +167,9 @@ GraphicsState& GraphicsState::setBlendState(ref<BlendState> pBlendState)
 
 GraphicsState& GraphicsState::setRasterizerState(ref<RasterizerState> pRasterizerState)
 {
-    if (mDesc.getRasterizerState() != pRasterizerState)
+    if (mDesc.pRasterizerState != pRasterizerState)
     {
-        mDesc.setRasterizerState(pRasterizerState);
+        mDesc.pRasterizerState = pRasterizerState;
         mpGsoGraph->walk((void*)pRasterizerState.get());
     }
     return *this;
@@ -177,9 +177,9 @@ GraphicsState& GraphicsState::setRasterizerState(ref<RasterizerState> pRasterize
 
 GraphicsState& GraphicsState::setSampleMask(uint32_t sampleMask)
 {
-    if (mDesc.getSampleMask() != sampleMask)
+    if (mDesc.sampleMask != sampleMask)
     {
-        mDesc.setSampleMask(sampleMask);
+        mDesc.sampleMask = sampleMask;
         mpGsoGraph->walk((void*)(uint64_t)sampleMask);
     }
     return *this;
@@ -187,9 +187,9 @@ GraphicsState& GraphicsState::setSampleMask(uint32_t sampleMask)
 
 GraphicsState& GraphicsState::setDepthStencilState(ref<DepthStencilState> pDepthStencilState)
 {
-    if (mDesc.getDepthStencilState() != pDepthStencilState)
+    if (mDesc.pDepthStencilState != pDepthStencilState)
     {
-        mDesc.setDepthStencilState(pDepthStencilState);
+        mDesc.pDepthStencilState = pDepthStencilState;
         mpGsoGraph->walk((void*)pDepthStencilState.get());
     }
     return *this;
@@ -197,7 +197,7 @@ GraphicsState& GraphicsState::setDepthStencilState(ref<DepthStencilState> pDepth
 
 void GraphicsState::pushViewport(uint32_t index, const GraphicsState::Viewport& vp, bool setScissors)
 {
-    checkArgument(index < mVpStack.size(), "'index' is out of range.");
+    FALCOR_CHECK(index < mVpStack.size(), "'index' is out of range.");
 
     mVpStack[index].push(mViewports[index]);
     setViewport(index, vp, setScissors);
@@ -205,8 +205,8 @@ void GraphicsState::pushViewport(uint32_t index, const GraphicsState::Viewport& 
 
 void GraphicsState::popViewport(uint32_t index, bool setScissors)
 {
-    checkArgument(index < mVpStack.size(), "'index' is out of range.");
-    checkInvariant(!mVpStack[index].empty(), "Empty stack.");
+    FALCOR_CHECK(index < mVpStack.size(), "'index' is out of range.");
+    FALCOR_CHECK(!mVpStack[index].empty(), "Empty stack.");
 
     const auto& VP = mVpStack[index].top();
     setViewport(index, VP, setScissors);
@@ -215,7 +215,7 @@ void GraphicsState::popViewport(uint32_t index, bool setScissors)
 
 void GraphicsState::pushScissors(uint32_t index, const GraphicsState::Scissor& sc)
 {
-    checkArgument(index < mScStack.size(), "'index' is out of range.");
+    FALCOR_CHECK(index < mScStack.size(), "'index' is out of range.");
 
     mScStack[index].push(mScissors[index]);
     setScissors(index, sc);
@@ -223,8 +223,8 @@ void GraphicsState::pushScissors(uint32_t index, const GraphicsState::Scissor& s
 
 void GraphicsState::popScissors(uint32_t index)
 {
-    checkArgument(index < mScStack.size(), "'index' is out of range.");
-    checkInvariant(!mScStack[index].empty(), "Empty stack.");
+    FALCOR_CHECK(index < mScStack.size(), "'index' is out of range.");
+    FALCOR_CHECK(!mScStack[index].empty(), "Empty stack.");
 
     const auto& sc = mScStack[index].top();
     setScissors(index, sc);

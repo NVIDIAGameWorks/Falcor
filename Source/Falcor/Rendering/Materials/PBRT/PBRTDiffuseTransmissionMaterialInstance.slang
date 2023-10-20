@@ -35,7 +35,7 @@ import Utils.Math.MathHelpers;
     Note that the BSDF is implemented to handle wi/wo over the full sphere.
     The material is treated as single-sided and the shading normal should not be flipped.
 */
-struct PBRTDiffuseTransmissionMaterialInstance : IMaterialInstance
+struct PBRTDiffuseTransmissionMaterialInstance : MaterialInstanceBase, IMaterialInstance
 {
     ShadingFrame sf;            ///< Shading frame in world space.
     float3 albedoR;
@@ -50,6 +50,12 @@ struct PBRTDiffuseTransmissionMaterialInstance : IMaterialInstance
 
         float3 albedo = (wiLocal.z * woLocal.z > 0.0f) ? albedoR : albedoT;
         return albedo * abs(woLocal.z) * M_1_PI;
+    }
+
+    [Differentiable]
+    float3 evalAD<S : ISampleGenerator>(const DiffMaterialData diffData, const ShadingData sd, const float3 wo, inout S sg)
+    {
+        return float3(0.f);
     }
 
     bool sample<S : ISampleGenerator>(const ShadingData sd, inout S sg, out BSDFSample result, bool useImportanceSampling = true)

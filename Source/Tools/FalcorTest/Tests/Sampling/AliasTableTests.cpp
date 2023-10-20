@@ -80,7 +80,7 @@ void testAliasTable(GPUUnitTestContext& ctx, uint32_t N, std::vector<float> spec
         ctx.createProgram("Tests/Sampling/AliasTableTests.cs.slang", "testAliasTableSample");
         ctx.allocateStructuredBuffer("sampleResult", resultCount);
         ctx.allocateStructuredBuffer("random", randomCount, random.data());
-        aliasTable.setShaderData(ctx["CB"]["aliasTable"]);
+        aliasTable.bindShaderData(ctx["CB"]["aliasTable"]);
         ctx["CB"]["resultCount"] = resultCount;
         ctx.runProgram(resultCount);
 
@@ -125,7 +125,7 @@ void testAliasTable(GPUUnitTestContext& ctx, uint32_t N, std::vector<float> spec
         // Setup and run GPU test.
         ctx.createProgram("Tests/Sampling/AliasTableTests.cs.slang", "testAliasTableWeight");
         ctx.allocateStructuredBuffer("weightResult", resultCount);
-        aliasTable.setShaderData(ctx["CB"]["aliasTable"]);
+        aliasTable.bindShaderData(ctx["CB"]["aliasTable"]);
         ctx["CB"]["resultCount"] = resultCount;
         ctx.runProgram(resultCount);
 

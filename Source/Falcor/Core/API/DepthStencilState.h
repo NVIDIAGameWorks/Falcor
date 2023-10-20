@@ -26,7 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "Common.h"
+#include "Types.h"
 #include "Handles.h"
 #include "Core/Macros.h"
 #include "Core/Object.h"
@@ -51,11 +51,6 @@ public:
     };
 
     /**
-     * Comparison function
-     */
-    using Func = ComparisonFunc;
-
-    /**
      * Stencil operation
      */
     enum class StencilOp
@@ -75,7 +70,7 @@ public:
      */
     struct StencilDesc
     {
-        Func func = Func::Disabled;                     ///< Stencil comparison function
+        ComparisonFunc func = ComparisonFunc::Disabled; ///< Stencil comparison function
         StencilOp stencilFailOp = StencilOp::Keep;      ///< Stencil operation in case stencil test fails
         StencilOp depthFailOp = StencilOp::Keep;        ///< Stencil operation in case stencil test passes but depth test fails
         StencilOp depthStencilPassOp = StencilOp::Keep; ///< Stencil operation in case stencil and depth tests pass
@@ -101,7 +96,7 @@ public:
         /**
          * Set the depth-function
          */
-        Desc& setDepthFunc(Func depthFunc)
+        Desc& setDepthFunc(ComparisonFunc depthFunc)
         {
             mDepthFunc = depthFunc;
             return *this;
@@ -140,7 +135,7 @@ public:
          * @param face Chooses the face to apply the function to
          * @param func Comparison function
          */
-        Desc& setStencilFunc(Face face, Func func);
+        Desc& setStencilFunc(Face face, ComparisonFunc func);
 
         /**
          * Set the stencil operation
@@ -164,7 +159,7 @@ public:
         bool mDepthEnabled = true;
         bool mStencilEnabled = false;
         bool mWriteDepth = true;
-        Func mDepthFunc = Func::Less;
+        ComparisonFunc mDepthFunc = ComparisonFunc::Less;
         StencilDesc mStencilFront;
         StencilDesc mStencilBack;
         uint8_t mStencilReadMask = (uint8_t)-1;
@@ -194,7 +189,7 @@ public:
     /**
      * Get the depth comparison function
      */
-    Func getDepthFunc() const { return mDesc.mDepthFunc; }
+    ComparisonFunc getDepthFunc() const { return mDesc.mDepthFunc; }
 
     /**
      * Check if stencil is enabled or disabled

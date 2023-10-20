@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -54,6 +54,8 @@ struct EmissiveUniformSampler : IEmissiveLightSampler
     */
     bool sampleLight<S : ISampleGenerator>(const float3 posW, const float3 normalW, const bool upperHemisphere, inout S sg, out TriangleLightSample ls)
     {
+        ls = {};
+
         if (gScene.lightCollection.getActiveTriangleCount() == 0) return false;
 
         // Randomly pick a triangle out of the global list of active triangles with uniform probability.

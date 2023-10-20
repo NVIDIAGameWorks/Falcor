@@ -26,32 +26,33 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 
-/** Minimal path tracer.
-
-    The purpose is to use it for validation of more complex renderers.
-    The implementation here should be kept as simple/naive as possible.
-
-    At each hit point (including the primary hit loaded from the V-buffer),
-    analytic light sources (point, directional) are sampled uniformly using
-    1 shadow ray, and 1 scatter ray is traced to sample the hemisphere.
-    At hit/miss the scatter ray includes light from emissive surface and
-    the environment map, respectively. Traversal stops at a fixed path length.
-
-    Each type of light (analytic, emissive, env map) can be individually
-    enabled/disabled from the host. This clutters the code a bit, but it is
-    important as not all other renderes may support all three light types.
-
-    The host sets the following defines:
-
-    MAX_BOUNCES             Maximum number of indirect bounces (0 means no indirect).
-    COMPUTE_DIRECT          Nonzero if direct illumination should be included.
-    USE_IMPORTANCE_SAMPLING Nonzero if importance sampling should be used for sampling materials.
-    USE_ANALYTIC_LIGHTS     Nonzero if Falcor's analytic lights should be used.
-    USE_EMISSIVE_LIGHTS     Nonzero if emissive geometry should be used as lights.
-    USE_ENV_LIGHT           Nonzero if env map is available and should be used as light source.
-    USE_ENV_BACKGROUND      Nonzero if env map is available and should be used as background.
-    is_valid_<name>         1 if optional I/O buffer with this name should be used.
-*/
+/**
+ * Minimal path tracer.
+ *
+ * The purpose is to use it for validation of more complex renderers.
+ * The implementation here should be kept as simple/naive as possible.
+ *
+ * At each hit point (including the primary hit loaded from the V-buffer),
+ * analytic light sources (point, directional) are sampled uniformly using
+ * 1 shadow ray, and 1 scatter ray is traced to sample the hemisphere.
+ * At hit/miss the scatter ray includes light from emissive surface and
+ * the environment map, respectively. Traversal stops at a fixed path length.
+ *
+ * Each type of light (analytic, emissive, env map) can be individually
+ * enabled/disabled from the host. This clutters the code a bit, but it is
+ * important as not all other renderes may support all three light types.
+ *
+ * The host sets the following defines:
+ *
+ * MAX_BOUNCES             Maximum number of indirect bounces (0 means no indirect).
+ * COMPUTE_DIRECT          Nonzero if direct illumination should be included.
+ * USE_IMPORTANCE_SAMPLING Nonzero if importance sampling should be used for sampling materials.
+ * USE_ANALYTIC_LIGHTS     Nonzero if Falcor's analytic lights should be used.
+ * USE_EMISSIVE_LIGHTS     Nonzero if emissive geometry should be used as lights.
+ * USE_ENV_LIGHT           Nonzero if env map is available and should be used as light source.
+ * USE_ENV_BACKGROUND      Nonzero if env map is available and should be used as background.
+ * is_valid_<name>         1 if optional I/O buffer with this name should be used.
+ */
 
 #include "Scene/SceneDefines.slangh"
 #include "Utils/Math/MathConstants.slangh"
@@ -65,8 +66,8 @@ import Rendering.Lights.LightHelpers;
 
 cbuffer CB
 {
-    uint        gFrameCount;        // Frame count since scene was loaded.
-    uint        gPRNGDimension;     // First available PRNG dimension.
+    uint gFrameCount;    // Frame count since scene was loaded.
+    uint gPRNGDimension; // First available PRNG dimension.
 }
 
 // Inputs
@@ -88,28 +89,31 @@ static const bool kUseEnvBackground = USE_ENV_BACKGROUND;
 static const float3 kDefaultBackgroundColor = float3(0, 0, 0);
 static const float kRayTMax = FLT_MAX;
 
-/** Payload for shadow ray.
-*/
+/**
+ * Payload for shadow ray.
+ */
 struct ShadowRayData
 {
     bool visible;
 };
 
-/** Payload for scatter ray (up to 72B).
-*/
+/**
+ * Payload for scatter ray (up to 72B).
+ */
 struct ScatterRayData
 {
-    float3  radiance;       ///< Accumulated outgoing radiance from path.
-    bool    terminated;     ///< Set to true when path is terminated.
-    float3  thp;            ///< Current path throughput. This is updated at each path vertex.
-    uint    pathLength;     ///< Path length in number of path segments (0 at origin, 1 at first secondary hit, etc.). Max 2^31.
-    float3  origin;         ///< Next path segment origin.
-    float3  direction;      ///< Next path segment direction.
+    float3 radiance;  ///< Accumulated outgoing radiance from path.
+    bool terminated;  ///< Set to true when path is terminated.
+    float3 thp;       ///< Current path throughput. This is updated at each path vertex.
+    uint pathLength;  ///< Path length in number of path segments (0 at origin, 1 at first secondary hit, etc.). Max 2^31.
+    float3 origin;    ///< Next path segment origin.
+    float3 direction; ///< Next path segment direction.
 
-    SampleGenerator sg;     ///< Per-ray state for the sample generator (up to 16B).
+    SampleGenerator sg; ///< Per-ray state for the sample generator (up to 16B).
 
-    /** Initializes ray payload with default parameters.
-    */
+    /**
+     * Initializes ray payload with default parameters.
+     */
     __init(SampleGenerator sg)
     {
         this.terminated = false;
@@ -122,13 +126,14 @@ struct ScatterRayData
     }
 };
 
-/** Setup ShadingData based on loaded vertex/material attributes for a hit point.
-    \param[in] hit Hit information.
-    \param[in] rayOrigin Ray origin.
-    \param[in] rayDir Normalized ray direction.
-    \param[in] lod Method for computing texture level-of-detail.
-    \return ShadingData struct.
-*/
+/**
+ * Setup ShadingData based on loaded vertex/material attributes for a hit point.
+ * @param[in] hit Hit information.
+ * @param[in] rayOrigin Ray origin.
+ * @param[in] rayDir Normalized ray direction.
+ * @param[in] lod Method for computing texture level-of-detail.
+ * @return ShadingData struct.
+ */
 ShadingData loadShadingData(const HitInfo hit, const float3 rayOrigin, const float3 rayDir, const ITextureSampler lod)
 {
     VertexData v = {};
@@ -172,8 +177,9 @@ ShadingData loadShadingData(const HitInfo hit, const float3 rayOrigin, const flo
     return sd;
 }
 
-/** Returns the primary ray's direction.
-*/
+/**
+ * Returns the primary ray's direction.
+ */
 float3 getPrimaryRayDir(uint2 launchIndex, uint2 launchDim, const Camera camera)
 {
     if (is_valid(gViewW))
@@ -190,12 +196,13 @@ float3 getPrimaryRayDir(uint2 launchIndex, uint2 launchDim, const Camera camera)
     }
 }
 
-/** Traces a shadow ray towards a light source.
-    \param[in] origin Ray origin for the shadow ray.
-    \param[in] dir Direction from shading point towards the light source (normalized).
-    \param[in] distance Distance to the light source.
-    \return True if light is visible, false otherwise.
-*/
+/**
+ * Traces a shadow ray towards a light source.
+ * @param[in] origin Ray origin for the shadow ray.
+ * @param[in] dir Direction from shading point towards the light source (normalized).
+ * @param[in] distance Distance to the light source.
+ * @return True if light is visible, false otherwise.
+ */
 bool traceShadowRay(float3 origin, float3 dir, float distance)
 {
     RayDesc ray;
@@ -205,15 +212,25 @@ bool traceShadowRay(float3 origin, float3 dir, float distance)
     ray.TMax = distance;
 
     ShadowRayData rayData;
-    rayData.visible = false;    // Set to true by miss shader if ray is not terminated before
-    TraceRay(gScene.rtAccel, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH, 0xff /* instanceInclusionMask */, 1 /* hitIdx */, rayTypeCount, 1 /* missIdx */, ray, rayData);
+    rayData.visible = false; // Set to true by miss shader if ray is not terminated before
+    TraceRay(
+        gScene.rtAccel,
+        RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH,
+        0xff /* instanceInclusionMask */,
+        1 /* hitIdx */,
+        rayTypeCount,
+        1 /* missIdx */,
+        ray,
+        rayData
+    );
 
     return rayData.visible;
 }
 
-/** Traces a scatter ray based on ray parameters stored in the ray payload.
-    \param[in] rayData Describes the ray parameters. The struct is modified based on the result.
-*/
+/**
+ * Traces a scatter ray based on ray parameters stored in the ray payload.
+ * @param[in] rayData Describes the ray parameters. The struct is modified based on the result.
+ */
 void traceScatterRay(inout ScatterRayData rayData)
 {
     RayDesc ray;
@@ -222,21 +239,23 @@ void traceScatterRay(inout ScatterRayData rayData)
     ray.TMin = 0.f;
     ray.TMax = kRayTMax;
 
-    uint rayFlags = 0;      // TODO: Set cull mode from the app
+    uint rayFlags = 0; // TODO: Set cull mode from the app
     TraceRay(gScene.rtAccel, rayFlags, 0xff /* instanceInclusionMask */, 0 /* hitIdx */, rayTypeCount, 0 /* missIdx */, ray, rayData);
 }
 
-/** Evaluates the direct illumination from analytic lights.
-    This function samples Falcor's light list uniformly with one shadow ray.
-    \param[in] sd Shading data.
-    \param[in] mi Material instance.
-    \param[in,out] sg SampleGenerator object.
-    \return Outgoing radiance in view direction.
-*/
+/**
+ * Evaluates the direct illumination from analytic lights.
+ * This function samples Falcor's light list uniformly with one shadow ray.
+ * @param[in] sd Shading data.
+ * @param[in] mi Material instance.
+ * @param[in,out] sg SampleGenerator object.
+ * @return Outgoing radiance in view direction.
+ */
 float3 evalDirectAnalytic(const ShadingData sd, const IMaterialInstance mi, inout SampleGenerator sg)
 {
     const uint lightCount = gScene.getLightCount();
-    if (lightCount == 0) return float3(0.f);
+    if (lightCount == 0)
+        return float3(0.f);
 
     // Pick one of the analytic light sources randomly with equal probability.
     const uint lightIndex = min(uint(sampleNext1D(sg) * lightCount), lightCount - 1);
@@ -244,7 +263,8 @@ float3 evalDirectAnalytic(const ShadingData sd, const IMaterialInstance mi, inou
 
     // Sample local light source.
     AnalyticLightSample ls;
-    if (!sampleLight(sd.posW, gScene.getLight(lightIndex), sg, ls)) return float3(0.f);
+    if (!sampleLight(sd.posW, gScene.getLight(lightIndex), sg, ls))
+        return float3(0.f);
 
     // Reject sample if not in the hemisphere of a BSDF lobe.
     const uint lobeTypes = mi.getLobeTypes(sd);
@@ -259,20 +279,22 @@ float3 evalDirectAnalytic(const ShadingData sd, const IMaterialInstance mi, inou
 
     // Test visibility by tracing a shadow ray.
     bool V = traceShadowRay(origin, ls.dir, ls.distance);
-    if (!V) return float3(0.f);
+    if (!V)
+        return float3(0.f);
 
     // Evaluate contribution.
     return mi.eval(sd, ls.dir, sg) * ls.Li * invPdf;
 }
 
-/** Generate a new scatter ray or terminate.
-    \param[in] sd Shading data.
-    \param[in] mi Material instance.
-    \param[in] isCurveHit True if on curve hit.
-    \param[in] rayOrigin Ray origin for the new ray.
-    \param[in,out] rayData Ray payload.
-    \return True if the path continues.
-*/
+/**
+ * Generate a new scatter ray or terminate.
+ * @param[in] sd Shading data.
+ * @param[in] mi Material instance.
+ * @param[in] isCurveHit True if on curve hit.
+ * @param[in] rayOrigin Ray origin for the new ray.
+ * @param[in,out] rayData Ray payload.
+ * @return True if the path continues.
+ */
 bool generateScatterRay(const ShadingData sd, const IMaterialInstance mi, bool isCurveHit, float3 rayOrigin, inout ScatterRayData rayData)
 {
     // Sample material.
@@ -282,7 +304,7 @@ bool generateScatterRay(const ShadingData sd, const IMaterialInstance mi, bool i
         rayData.origin = rayOrigin;
         if (!isCurveHit && bsdfSample.isLobe(LobeType::Transmission))
         {
-            rayData.origin = sd.computeNewRayOrigin(false);
+            rayData.origin = sd.computeRayOrigin(false);
         }
         rayData.direction = bsdfSample.wo;
         rayData.thp *= bsdfSample.weight;
@@ -292,13 +314,14 @@ bool generateScatterRay(const ShadingData sd, const IMaterialInstance mi, bool i
     return false;
 }
 
-/** Process a hit.
-    Loads the shading data, samples analytic lights and samples a new scatter ray.
-    Terminates the path if maximum number of bounces is reached.
-    \param[in] hit Hit info.
-    \param[in,out] rayData Ray payload.
-
-*/
+/**
+ * Process a hit.
+ * Loads the shading data, samples analytic lights and samples a new scatter ray.
+ * Terminates the path if maximum number of bounces is reached.
+ * @param[in] hit Hit info.
+ * @param[in,out] rayData Ray payload.
+ *
+ */
 void handleHit(const HitInfo hit, inout ScatterRayData rayData)
 {
     const bool isCurveHit = hit.getType() == HitType::Curve;
@@ -332,7 +355,7 @@ void handleHit(const HitInfo hit, inout ScatterRayData rayData)
     }
     else
     {
-        rayOrigin = sd.computeNewRayOrigin();
+        rayOrigin = sd.computeRayOrigin();
     }
 
     // Add contribution of direct light from analytic lights.
@@ -353,19 +376,20 @@ void handleHit(const HitInfo hit, inout ScatterRayData rayData)
     rayData.pathLength++;
 }
 
-/** This is the main entry point for the minimal path tracer.
-
-    One path per pixel is generated, which is traced into the scene.
-    The path tracer is written as a for-loop over path segments.
-
-    Built-in light sources (point, directional) are sampled explicitly at each
-    path vertex. The contributions from area lights (env map and mesh lights)
-    are explicitly added by the scatter ray hit/miss shaders.
-
-    \param[in] pixel Pixel to trace a path for.
-    \param[in] frameDim Dimension of the frame in pixels.
-    \return Returns the estimated color (radiance).
-*/
+/**
+ * This is the main entry point for the minimal path tracer.
+ *
+ * One path per pixel is generated, which is traced into the scene.
+ * The path tracer is written as a for-loop over path segments.
+ *
+ * Built-in light sources (point, directional) are sampled explicitly at each
+ * path vertex. The contributions from area lights (env map and mesh lights)
+ * are explicitly added by the scatter ray hit/miss shaders.
+ *
+ * @param[in] pixel Pixel to trace a path for.
+ * @param[in] frameDim Dimension of the frame in pixels.
+ * @return Returns the estimated color (radiance).
+ */
 float3 tracePath(const uint2 pixel, const uint2 frameDim)
 {
     float3 outColor = float3(0.f);
@@ -392,7 +416,8 @@ float3 tracePath(const uint2 pixel, const uint2 frameDim)
 
         // Advance the generator to the first available dimension.
         // TODO: This is potentially expensive. We may want to store/restore the state from memory if it becomes a problem.
-        for (uint i = 0; i < gPRNGDimension; i++) sampleNext1D(sg);
+        for (uint i = 0; i < gPRNGDimension; i++)
+            sampleNext1D(sg);
 
         // Compute ray origin for new rays spawned from the G-buffer.
         float3 rayOrigin;
@@ -403,7 +428,7 @@ float3 tracePath(const uint2 pixel, const uint2 frameDim)
         }
         else
         {
-            rayOrigin = sd.computeNewRayOrigin();
+            rayOrigin = sd.computeRayOrigin();
         }
 
         if (kComputeDirect)
@@ -420,7 +445,8 @@ float3 tracePath(const uint2 pixel, const uint2 frameDim)
         ScatterRayData rayData = ScatterRayData(sg);
 
         // Generate scatter ray.
-        if (!generateScatterRay(sd, mi, isCurveHit, rayOrigin, rayData)) rayData.terminated = true;
+        if (!generateScatterRay(sd, mi, isCurveHit, rayOrigin, rayData))
+            rayData.terminated = true;
 
         // Follow path into the scene and compute its total contribution.
         for (uint depth = 0; depth <= kMaxBounces && !rayData.terminated; depth++)
@@ -478,7 +504,8 @@ void scatterTriangleMeshAnyHit(inout ScatterRayData rayData, BuiltInTriangleInte
     GeometryInstanceID instanceID = getGeometryInstanceID();
     VertexData v = getVertexData(instanceID, PrimitiveIndex(), attribs);
     const uint materialID = gScene.getMaterialID(instanceID);
-    if (gScene.materials.alphaTest(v, materialID, 0.f)) IgnoreHit();
+    if (gScene.materials.alphaTest(v, materialID, 0.f))
+        IgnoreHit();
 }
 
 [shader("closesthit")]
@@ -498,7 +525,8 @@ void shadowTriangleMeshAnyHit(inout ShadowRayData rayData, BuiltInTriangleInters
     GeometryInstanceID instanceID = getGeometryInstanceID();
     VertexData v = getVertexData(instanceID, PrimitiveIndex(), attribs);
     const uint materialID = gScene.getMaterialID(instanceID);
-    if (gScene.materials.alphaTest(v, materialID, 0.f)) IgnoreHit();
+    if (gScene.materials.alphaTest(v, materialID, 0.f))
+        IgnoreHit();
 }
 
 //

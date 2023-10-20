@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -61,7 +61,7 @@ void main(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 groupThreadID : SV
 #endif
 
     const uint3 voxelCoords = dispatchThreadID;
-    
+
 #if FINEST_LEVEL_PASS
     // Load the 8 corner values of the voxel.
     float4 values0xx;
@@ -90,7 +90,7 @@ void main(uint3 dispatchThreadID : SV_DispatchThreadID, uint3 groupThreadID : SV
         gLocationCodes.Store2(slot * 8, locationCode);
     }
 #else
-    const uint2 locationCode = SDFVoxelCommon::encodeLocation(voxelCoords, gLevel);
+    uint2 locationCode = SDFVoxelCommon::encodeLocation(voxelCoords, gLevel);
 
     // Set a valid bit in the 2 unused bits of location code.
     locationCode.y |= (1 << 31);

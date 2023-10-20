@@ -31,9 +31,9 @@
 #include "Core/Object.h"
 #include "Core/API/Buffer.h"
 #include "Core/API/Sampler.h"
-#include "Core/API/GpuFence.h"
+#include "Core/API/Fence.h"
 #include "Core/State/GraphicsState.h"
-#include "Core/Program/GraphicsProgram.h"
+#include "Core/Program/Program.h"
 #include "Core/Program/ProgramVars.h"
 #include "Core/Pass/ComputePass.h"
 #include "Utils/Math/Vector.h"
@@ -139,7 +139,7 @@ namespace Falcor
         /** Bind the light collection data to a given shader var
             \param[in] var The shader variable to set the data into.
         */
-        void setShaderData(const ShaderVar& var) const;
+        void bindShaderData(const ShaderVar& var) const;
 
         /** Returns the total number of active (non-culled) triangle lights.
         */
@@ -223,15 +223,15 @@ namespace Falcor
         ref<Buffer>                             mpPerMeshInstanceOffset; ///< Per-mesh instance offset into emissive triangles array (Scene::getMeshInstanceCount() elements).
 
         mutable ref<Buffer>                     mpStagingBuffer;        ///< Staging buffer used for retrieving the vertex positions, texture coordinates and light IDs from the GPU.
-        ref<GpuFence>                           mpStagingFence;         ///< Fence used for waiting on the staging buffer being filled in.
+        ref<Fence>                              mpStagingFence;         ///< Fence used for waiting on the staging buffer being filled in.
 
         ref<Sampler>                            mpSamplerState;         ///< Material sampler for emissive textures.
 
         // Shader programs.
         struct
         {
-            ref<GraphicsProgram>                pProgram;
-            ref<GraphicsVars>                   pVars;
+            ref<Program>                        pProgram;
+            ref<ProgramVars>                    pVars;
             ref<GraphicsState>                  pState;
             ref<Sampler>                        pPointSampler;      ///< Point sampler for fetching individual texels in integrator. Must use same wrap mode etc. as material sampler.
             ref<Buffer>                         pResultBuffer;      ///< The output of the integration pass is written here. Using raw buffer for fp32 compatibility.

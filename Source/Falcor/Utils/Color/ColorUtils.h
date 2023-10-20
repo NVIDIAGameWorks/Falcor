@@ -27,7 +27,7 @@
  **************************************************************************/
 #pragma once
 
-#include "Core/ErrorHandling.h"
+#include "Core/Error.h"
 #include "Utils/Math/Vector.h"
 #include "Utils/Math/Matrix.h"
 
@@ -65,44 +65,56 @@ namespace Falcor
 {
 // Transform from RGB color in Rec.709 to CIE XYZ.
 static const float3x3 kColorTransform_RGBtoXYZ_Rec709 = {
+    // clang-format off
     0.4123907992659595, 0.3575843393838780, 0.1804807884018343, // row 0
     0.2126390058715104, 0.7151686787677559, 0.0721923153607337, // row 1
     0.0193308187155918, 0.1191947797946259, 0.9505321522496608  // row 2
+    // clang-format on
 };
 
 // Transform from XYZ color to RGB in Rec.709.
 static const float3x3 kColorTransform_XYZtoRGB_Rec709 = {
+    // clang-format off
     3.2409699419045213,  -1.5373831775700935, -0.4986107602930033, // row 0
     -0.9692436362808798, 1.8759675015077206,  0.0415550574071756,  // row 1
     0.0556300796969936,  -0.2039769588889765, 1.0569715142428784   // row 2
+    // clang-format on
 };
 
 // Transform from CIE XYZ to LMS using the CAT02 transform.
 static const float3x3 kColorTransform_XYZtoLMS_CAT02 = {
+    // clang-format off
     0.7328,  0.4296, -0.1624, // row 0
     -0.7036, 1.6975, 0.0061,  // row 1
     0.0030,  0.0136, 0.9834   // row 2
+    // clang-format on
 };
 
 // Transform from LMS to CIE XYZ using the inverse CAT02 transform.
 static const float3x3 kColorTransform_LMStoXYZ_CAT02 = {
+    // clang-format off
     1.096123820835514,  -0.278869000218287, 0.182745179382773, // row 0
     0.454369041975359,  0.473533154307412,  0.072097803717229, // row 1
     -0.009627608738429, -0.005698031216113, 1.015325639954543  // row 2
+    // clang-format on
 };
 
 // Transform from CIE XYZ to LMS using the Bradford transform.
 static const float3x3 kColorTransform_XYZtoLMS_Bradford = {
+    // clang-format off
     0.8951,  0.2664,  -0.1614, // row 0
     -0.7502, 1.7135,  0.0367,  // row 1
     0.0389,  -0.0685, 1.0296   // row 2
+    // clang-format on
 };
 
 // Transform from LMS to CIE XYZ using the inverse Bradford transform.
 static const float3x3 kColorTransform_LMStoXYZ_Bradford = {
+    // clang-format off
     0.98699290546671214,  -0.14705425642099013, 0.15996265166373122, // row 0
     0.43230526972339445,  0.51836027153677744,  0.04929122821285559, // row 1
     -0.00852866457517732, 0.04004282165408486,  0.96848669578754998  // row 2
+    // clang-format on
 };
 
 /**
@@ -141,11 +153,7 @@ static float3 xyYtoXYZ(float x, float y, float Y)
  */
 static float3 colorTemperatureToXYZ(float T, float Y = 1.f)
 {
-    if (T < 1667.f || T > 25000.f)
-    {
-        reportError("colorTemperatureToXYZ() - T is out of range");
-        return float3(0, 0, 0);
-    }
+    FALCOR_CHECK(T >= 1667.f && T <= 25000.f, "T is out of range.");
 
     // We do the computations in double
     double t = T;

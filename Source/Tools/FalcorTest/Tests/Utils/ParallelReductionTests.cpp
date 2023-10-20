@@ -188,26 +188,24 @@ void testReduction(GPUUnitTestContext& ctx, ParallelReduction& reduction, Resour
     }
 
     // Create a texture with test data.
-    ref<Texture> pTexture = Texture::create2D(pDevice, width, height, format, 1, 1, pInitData.get());
+    ref<Texture> pTexture = pDevice->createTexture2D(width, height, format, 1, 1, pInitData.get());
 
     // Test Sum operation.
     {
         // Allocate buffer for the result on the GPU.
         DataType nullValue = {};
-        ref<Buffer> pResultBuffer = Buffer::create(pDevice, 16, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, &nullValue);
+        ref<Buffer> pResultBuffer = pDevice->createBuffer(16, ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, &nullValue);
 
         // Perform reduction operation.
         DataType result;
         reduction.execute(ctx.getRenderContext(), pTexture, ParallelReduction::Type::Sum, &result, pResultBuffer, 0);
 
         // Verify that returned result is identical to result stored to GPU buffer.
-        DataType* resultBuffer = (DataType*)pResultBuffer->map(Buffer::MapType::Read);
-        FALCOR_ASSERT(resultBuffer);
+        DataType resultBuffer = pResultBuffer->getElement<DataType>(0);
         for (uint32_t i = 0; i < 4; i++)
         {
-            EXPECT_EQ((*resultBuffer)[i], result[i % 4]) << "i = " << i;
+            EXPECT_EQ(resultBuffer[i], result[i % 4]) << "i = " << i;
         }
-        pResultBuffer->unmap();
 
         // Compare result to reference value computed on the CPU.
         for (uint32_t i = 0; i < 4; i++)
@@ -238,15 +236,14 @@ void testReduction(GPUUnitTestContext& ctx, ParallelReduction& reduction, Resour
     {
         // Allocate buffer for the result on the GPU.
         DataType nullValues[2] = {{}, {}};
-        ref<Buffer> pResultBuffer = Buffer::create(pDevice, 32, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, nullValues);
+        ref<Buffer> pResultBuffer = pDevice->createBuffer(32, ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, nullValues);
 
         // Perform reduction operation.
         DataType result[2];
         reduction.execute(ctx.getRenderContext(), pTexture, ParallelReduction::Type::MinMax, result, pResultBuffer, 0);
 
         // Verify that returned result is identical to result stored to GPU buffer.
-        DataType* resultBuffer = (DataType*)pResultBuffer->map(Buffer::MapType::Read);
-        FALCOR_ASSERT(resultBuffer);
+        std::vector<DataType> resultBuffer = pResultBuffer->getElements<DataType>();
         for (uint32_t i = 0; i < 2; i++)
         {
             for (uint32_t j = 0; j < 4; j++)
@@ -254,7 +251,6 @@ void testReduction(GPUUnitTestContext& ctx, ParallelReduction& reduction, Resour
                 EXPECT_EQ(resultBuffer[i][j], result[i][j]) << "i = " << i << " j = " << j;
             }
         }
-        pResultBuffer->unmap();
 
         // Compare result to reference value computed on the CPU.
         for (uint32_t i = 0; i < 4; i++)

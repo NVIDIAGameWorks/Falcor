@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -25,6 +25,7 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
+#ifndef FALCOR_USE_SCENE2
 #include "SceneDefines.slangh"
 
 __exported import Scene.HitInfo;
@@ -59,7 +60,6 @@ struct Scene
 {
     // DEMO21
     static bool kUseLightProfile = SCENE_USE_LIGHT_PROFILE;
-    static float kDiffuseAlbedoMultiplier = SCENE_DIFFUSE_ALBEDO_MULTIPLIER;
 
     // Raytracing
     [root] RaytracingAccelerationStructure rtAccel;
@@ -978,3 +978,5 @@ struct Scene
 };
 
 ParameterBlock<Scene> gScene;
+#else
+#endif

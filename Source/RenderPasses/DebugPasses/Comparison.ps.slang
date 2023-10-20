@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,12 +27,12 @@
  **************************************************************************/
 cbuffer GlobalCB
 {
-    int gSplitLocation; // X-value of the current split location to display
-    uint gDividerSize; // How wide should the divider be?
-    float4 gDividerColor; // What color should the divider be this frame?
-    int2 gMousePosition; // What is the current position of the mouse? (Used to position arrows)
-    bool gDrawArrows; // Should we draw arrows to the left & right of the divider?
-    uint gLeftBound; // How many pixels from the left side should the comparison window start?
+    int gSplitLocation;   ///< X-value of the current split location to display
+    uint gDividerSize;    ///< How wide should the divider be?
+    float4 gDividerColor; ///< What color should the divider be this frame?
+    int2 gMousePosition;  ///< What is the current position of the mouse? (Used to position arrows)
+    bool gDrawArrows;     ///< Should we draw arrows to the left & right of the divider?
+    uint gLeftBound;      ///< How many pixels from the left side should the comparison window start?
 };
 
 Texture2D gLeftInput;
@@ -44,10 +44,10 @@ interface ICalcPixelColor
     float2x4 calcColors(uint2 pixelPos);
 };
 
-float4 compare<C:ICalcPixelColor>(float2 texC, float4 pos, C calc)
+float4 compare<C : ICalcPixelColor>(float2 texC, float4 pos, C calc)
 {
     // Get the two sides of the image
-    uint2 pixelPos = (uint2) pos.xy;
+    uint2 pixelPos = (uint2)pos.xy;
     float2x4 colors = calc.calcColors(pixelPos);
     float4 leftColor = colors[0];
     float4 rightColor = colors[1];

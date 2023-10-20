@@ -44,6 +44,18 @@ ref<D3D12DescriptorSet> createCbvDescriptor(ref<Device> pDevice, const D3D12_CON
     return handle;
 }
 
+ref<D3D12ConstantBufferView> D3D12ConstantBufferView::create(ref<Device> pDevice, uint64_t gpuAddress, uint32_t byteSize)
+{
+    FALCOR_ASSERT(pDevice);
+    pDevice->requireD3D12();
+
+    D3D12_CONSTANT_BUFFER_VIEW_DESC desc = {};
+    desc.BufferLocation = gpuAddress;
+    desc.SizeInBytes = byteSize;
+
+    return ref<D3D12ConstantBufferView>(new D3D12ConstantBufferView(nullptr, createCbvDescriptor(pDevice, desc)));
+}
+
 ref<D3D12ConstantBufferView> D3D12ConstantBufferView::create(ref<Device> pDevice, ref<Buffer> pBuffer)
 {
     FALCOR_ASSERT(pDevice);

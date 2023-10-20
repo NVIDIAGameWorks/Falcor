@@ -212,7 +212,8 @@ struct HairChiang16 : IBSDF
         //     vp = v[p];
         // }
         bool done = false;
-        $for(i in Range(0, kMaxScatterEvents))
+        [ForceUnroll]
+        for (uint i = 0; i < kMaxScatterEvents; i++)
         {
             if (!done && u[0].x >= apPdf[i])
             {

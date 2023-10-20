@@ -81,7 +81,7 @@ bool isDeltaReflectionAllowedAlongDeltaTransmissionPath(const ShadingData sd)
     const float metallic = md.specular.b; // Blue component stores metallic in MetalRough mode.
     const float insideIoR = gScene.materials.evalIoR(sd.materialID);
 
-    const float eta = sd.frontFacing ? (sd.IoR / insideIoR) : (insideIoR / sd.IoR);
+    const float eta = sd.IoR / insideIoR;
     bool totalInternalReflection = evalFresnelDielectric(eta, sd.frame.toLocal(sd.V).z) == 1.f;
 
     bool nonTransmissiveMirror = (md.specularTransmission == 0.f) && (metallic == 1.f);

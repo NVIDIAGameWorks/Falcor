@@ -540,7 +540,7 @@ void swap(::Falcor::ref<T>& x, ::Falcor::ref<T>& y) noexcept
 template<typename T>
 struct hash<::Falcor::ref<T>>
 {
-    constexpr int operator()(const ::Falcor::ref<T>& r) const { return std::hash<T*>()(r.get()); }
+    constexpr size_t operator()(const ::Falcor::ref<T>& r) const { return std::hash<T*>()(r.get()); }
 };
 
 } // namespace std

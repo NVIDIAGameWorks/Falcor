@@ -32,8 +32,9 @@
 
 using namespace Falcor;
 
-/** Base class for the different types of G-buffer passes (including V-buffer).
-*/
+/**
+ * Base class for the different types of G-buffer passes (including V-buffer).
+ */
 class GBufferBase : public RenderPass
 {
 public:
@@ -45,12 +46,15 @@ public:
         Stratified,
     };
 
-    FALCOR_ENUM_INFO(SamplePattern, {
-        { SamplePattern::Center, "Center" },
-        { SamplePattern::DirectX, "DirectX" },
-        { SamplePattern::Halton, "Halton" },
-        { SamplePattern::Stratified, "Stratified" },
-    });
+    FALCOR_ENUM_INFO(
+        SamplePattern,
+        {
+            {SamplePattern::Center, "Center"},
+            {SamplePattern::DirectX, "DirectX"},
+            {SamplePattern::Halton, "Halton"},
+            {SamplePattern::Stratified, "Stratified"},
+        }
+    );
 
     virtual void renderUI(Gui::Widgets& widget) override;
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
@@ -66,25 +70,39 @@ protected:
     ref<Texture> getOutput(const RenderData& renderData, const std::string& name) const;
 
     // Internal state
-    ref<Scene>                      mpScene;
-    ref<CPUSampleGenerator>         mpSampleGenerator;                              ///< Sample generator for camera jitter.
 
-    uint32_t                        mFrameCount = 0;                                ///< Frames rendered since last change of scene. This is used as random seed.
-    uint2                           mFrameDim = {};                                 ///< Current frame dimension in pixels. Note this may be different from the window size.
-    float2                          mInvFrameDim = {};
-    ResourceFormat                  mVBufferFormat = HitInfo::kDefaultFormat;
+    ref<Scene> mpScene;
+    /// Sample generator for camera jitter.
+    ref<CPUSampleGenerator> mpSampleGenerator;
+
+    /// Frames rendered since last change of scene. This is used as random seed.
+    uint32_t mFrameCount = 0;
+    /// Current frame dimension in pixels. Note this may be different from the window size.
+    uint2 mFrameDim = {};
+    float2 mInvFrameDim = {};
+    ResourceFormat mVBufferFormat = HitInfo::kDefaultFormat;
 
     // UI variables
-    RenderPassHelpers::IOSize       mOutputSizeSelection = RenderPassHelpers::IOSize::Default; ///< Selected output size.
-    uint2                           mFixedOutputSize = { 512, 512 };                ///< Output size in pixels when 'Fixed' size is selected.
-    SamplePattern                   mSamplePattern = SamplePattern::Center;         ///< Which camera jitter sample pattern to use.
-    uint32_t                        mSampleCount = 16;                              ///< Sample count for camera jitter.
-    bool                            mUseAlphaTest = true;                           ///< Enable alpha test.
-    bool                            mAdjustShadingNormals = true;                   ///< Adjust shading normals.
-    bool                            mForceCullMode = false;                         ///< Force cull mode for all geometry, otherwise set it based on the scene.
-    RasterizerState::CullMode       mCullMode = RasterizerState::CullMode::Back;    ///< Cull mode to use for when mForceCullMode is true.
 
-    bool                            mOptionsChanged = false;                        ///< Indicates whether any options that affect the output have changed since last frame.
+    /// Selected output size.
+    RenderPassHelpers::IOSize mOutputSizeSelection = RenderPassHelpers::IOSize::Default;
+    /// Output size in pixels when 'Fixed' size is selected.
+    uint2 mFixedOutputSize = {512, 512};
+    /// Which camera jitter sample pattern to use.
+    SamplePattern mSamplePattern = SamplePattern::Center;
+    /// Sample count for camera jitter.
+    uint32_t mSampleCount = 16;
+    /// Enable alpha test.
+    bool mUseAlphaTest = true;
+    /// Adjust shading normals.
+    bool mAdjustShadingNormals = true;
+    /// Force cull mode for all geometry, otherwise set it based on the scene.
+    bool mForceCullMode = false;
+    /// Cull mode to use for when mForceCullMode is true.
+    RasterizerState::CullMode mCullMode = RasterizerState::CullMode::Back;
+
+    /// Indicates whether any options that affect the output have changed since last frame.
+    bool mOptionsChanged = false;
 };
 
 FALCOR_ENUM_REGISTER(GBufferBase::SamplePattern);

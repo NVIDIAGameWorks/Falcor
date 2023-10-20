@@ -47,14 +47,14 @@ struct S
     uint32_t b;
 };
 
-void testRootBuffer(GPUUnitTestContext& ctx, const std::string& shaderModel, bool useUav)
+void testRootBuffer(GPUUnitTestContext& ctx, ShaderModel shaderModel, bool useUav)
 {
     ref<Device> pDevice = ctx.getDevice();
 
     auto nextRandom = [&]() -> uint32_t { return dist(rng); };
 
     DefineList defines = {{"USE_UAV", useUav ? "1" : "0"}};
-    Program::CompilerFlags compilerFlags = Program::CompilerFlags::None;
+    SlangCompilerFlags compilerFlags = SlangCompilerFlags::None;
 
     ctx.createProgram("Tests/Core/RootBufferTests.cs.slang", "main", defines, compilerFlags, shaderModel);
     ctx.allocateStructuredBuffer("result", kNumElems);
@@ -68,8 +68,8 @@ void testRootBuffer(GPUUnitTestContext& ctx, const std::string& shaderModel, boo
     {
         for (uint32_t i = 0; i < kNumElems; i++)
             rawBuffer[i] = nextRandom();
-        var["rawBuffer"] = Buffer::create(
-            pDevice, kNumElems * sizeof(uint32_t), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, rawBuffer.data()
+        var["rawBuffer"] = pDevice->createBuffer(
+            kNumElems * sizeof(uint32_t), ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, rawBuffer.data()
         );
     }
 
@@ -77,8 +77,8 @@ void testRootBuffer(GPUUnitTestContext& ctx, const std::string& shaderModel, boo
     {
         for (uint32_t i = 0; i < kNumElems; i++)
             structBuffer[i] = {nextRandom() + 0.5f, nextRandom()};
-        var["structBuffer"] = Buffer::createStructured(
-            pDevice, var["structBuffer"], kNumElems, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, structBuffer.data()
+        var["structBuffer"] = pDevice->createStructuredBuffer(
+            var["structBuffer"], kNumElems, ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, structBuffer.data()
         );
     }
 
@@ -86,8 +86,8 @@ void testRootBuffer(GPUUnitTestContext& ctx, const std::string& shaderModel, boo
     {
         for (uint32_t i = 0; i < kNumElems; i++)
             typedBufferUint[i] = nextRandom();
-        var["typedBufferUint"] = Buffer::createTyped<uint32_t>(
-            pDevice, kNumElems, ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None, typedBufferUint.data()
+        var["typedBufferUint"] = pDevice->createTypedBuffer<uint32_t>(
+            kNumElems, ResourceBindFlags::UnorderedAccess, MemoryType::DeviceLocal, typedBufferUint.data()
         );
     }
 
@@ -95,8 +95,8 @@ void testRootBuffer(GPUUnitTestContext& ctx, const std::string& shaderModel, boo
     {
         for (uint32_t i = 0; i < kNumElems; i++)
             typedBufferFloat4[i] = {nextRandom() * 0.25f, nextRandom() * 0.5f, nextRandom() * 0.75f, float(nextRandom())};
-        var["typedBufferFloat4"] = Buffer::createTyped<float4>(
-            pDevice, kNumElems, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, typedBufferFloat4.data()
+        var["typedBufferFloat4"] = pDevice->createTypedBuffer<float4>(
+            kNumElems, ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, typedBufferFloat4.data()
         );
     }
 
@@ -105,9 +105,11 @@ void testRootBuffer(GPUUnitTestContext& ctx, const std::string& shaderModel, boo
     {
         for (uint32_t i = 0; i < kNumElems; i++)
             testBuffer[i] = nextRandom();
-        auto pTestBuffer = Buffer::create(
-            pDevice, kNumElems * sizeof(uint32_t), useUav ? ResourceBindFlags::UnorderedAccess : ResourceBindFlags::ShaderResource,
-            Buffer::CpuAccess::None, testBuffer.data()
+        auto pTestBuffer = pDevice->createBuffer(
+            kNumElems * sizeof(uint32_t),
+            useUav ? ResourceBindFlags::UnorderedAccess : ResourceBindFlags::ShaderResource,
+            MemoryType::DeviceLocal,
+            testBuffer.data()
         );
         var[kRootBufferName] = pTestBuffer;
 
@@ -141,12 +143,11 @@ void testRootBuffer(GPUUnitTestContext& ctx, const std::string& shaderModel, boo
     for (uint32_t i = 0; i < kNumElems; i++)
         rawBuffer[i] = nextRandom();
     var["rawBuffer"] =
-        Buffer::create(pDevice, kNumElems * sizeof(uint32_t), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, rawBuffer.data());
+        pDevice->createBuffer(kNumElems * sizeof(uint32_t), ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, rawBuffer.data());
     for (uint32_t i = 0; i < kNumElems; i++)
         typedBufferFloat4[i] = {nextRandom() * 0.25f, nextRandom() * 0.5f, nextRandom() * 0.75f, float(nextRandom())};
-    var["typedBufferFloat4"] = Buffer::createTyped<float4>(
-        pDevice, kNumElems, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, typedBufferFloat4.data()
-    );
+    var["typedBufferFloat4"] =
+        pDevice->createTypedBuffer<float4>(kNumElems, ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, typedBufferFloat4.data());
     var["CB"]["c0"] = ++c0;
 
     ctx.runProgram(kNumElems, 1, 1);
@@ -156,9 +157,11 @@ void testRootBuffer(GPUUnitTestContext& ctx, const std::string& shaderModel, boo
     {
         for (uint32_t i = 0; i < kNumElems; i++)
             testBuffer[i] = nextRandom();
-        auto pTestBuffer = Buffer::create(
-            pDevice, kNumElems * sizeof(uint32_t), useUav ? ResourceBindFlags::UnorderedAccess : ResourceBindFlags::ShaderResource,
-            Buffer::CpuAccess::None, testBuffer.data()
+        auto pTestBuffer = pDevice->createBuffer(
+            kNumElems * sizeof(uint32_t),
+            useUav ? ResourceBindFlags::UnorderedAccess : ResourceBindFlags::ShaderResource,
+            MemoryType::DeviceLocal,
+            testBuffer.data()
         );
         var[kRootBufferName] = pTestBuffer;
 
@@ -173,21 +176,21 @@ void testRootBuffer(GPUUnitTestContext& ctx, const std::string& shaderModel, boo
 
 GPU_TEST(RootBufferSRV_6_0)
 {
-    testRootBuffer(ctx, "6_0", false);
+    testRootBuffer(ctx, ShaderModel::SM6_0, false);
 }
 
 GPU_TEST(RootBufferUAV_6_0)
 {
-    testRootBuffer(ctx, "6_0", true);
+    testRootBuffer(ctx, ShaderModel::SM6_0, true);
 }
 
 GPU_TEST(RootBufferSRV_6_3)
 {
-    testRootBuffer(ctx, "6_3", false);
+    testRootBuffer(ctx, ShaderModel::SM6_3, false);
 }
 
 GPU_TEST(RootBufferUAV_6_3)
 {
-    testRootBuffer(ctx, "6_3", true);
+    testRootBuffer(ctx, ShaderModel::SM6_3, true);
 }
 } // namespace Falcor

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -50,10 +50,11 @@ Texture2D gResidualRadiance;
 RWTexture2D gOutput;
 
 [numthreads(16, 16, 1)]
-void main(uint3 dispatchThreadId : SV_DispatchThreadID)
+void main(uint3 dispatchThreadId: SV_DispatchThreadID)
 {
     const uint2 pixel = dispatchThreadId.xy;
-    if (any(pixel >= frameDim)) return;
+    if (any(pixel >= frameDim))
+        return;
 
     float4 outputColor = float4(0.f);
 

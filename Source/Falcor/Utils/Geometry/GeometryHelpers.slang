@@ -41,10 +41,16 @@ import Utils.Math.MathHelpers;
  * The method is described in Ray Tracing Gems, Chapter 6, "A Fast and Robust
  * Method for Avoiding Self-Intersection" by Carsten Wächter and Nikolaus Binder.
  *
+ * (Temporarily) We'll substitute a simple identity method for the gradient computation
+ * since the asfloat(asint(x)) will break gradient propagation.
+ *
  * @param[in] pos Ray hit position.
  * @param[in] normal Face normal of hit surface (normalized). The offset will be in the positive direction.
  * @return Ray origin of the new ray.
  */
+[ForwardDerivative(fwd_computeRayOrigin)]
+[BackwardDerivative(bwd_computeRayOrigin)]
+[PreferRecompute]
 float3 computeRayOrigin(float3 pos, float3 normal)
 {
 
@@ -59,6 +65,21 @@ float3 computeRayOrigin(float3 pos, float3 normal)
     // Select per-component between small fixed offset or above variable offset depending on distance to origin.
     float3 fOff = normal * fScale;
     return select(abs(pos) < origin, pos + fOff, iPos);
+}
+
+[Differentiable]
+[PreferRecompute]
+DifferentialPair<float3> fwd_computeRayOrigin(DifferentialPair<float3> pos, DifferentialPair<float3> normal)
+{
+    return DifferentialPair<float3>(computeRayOrigin(pos.p, normal.p), pos.d);
+}
+
+[Differentiable]
+[PreferRecompute]
+void bwd_computeRayOrigin(inout DifferentialPair<float3> pos, inout DifferentialPair<float3> normal, float3.Differential dOut)
+{
+    pos = diffPair(pos.p, dOut);
+    normal = diffPair(normal.p, float3.dzero());
 }
 
 /*******************************************************************
@@ -407,6 +428,57 @@ float computeClippedTriangleArea2D(const float2 pos[3], const float2 minPoint, c
     }
 
     return 0.5f * area;
+}
+
+/**
+ * Computes the distance of a ray hitting a triangle (hit is guaranteed).
+ * @param[in] v Positions of the three vertices.
+ * @param[in] origin Ray origin.
+ * @param[in] direction Ray direction.
+ * @return Distance of the ray hitting the triangle.
+ */
+[Differentiable]
+[PreferRecompute]
+float computeRayDistanceToTriangle(const float3 v[3], const float3 origin, const float3 direction)
+{
+    float3 edge1 = v[1] - v[0];
+    float3 edge2 = v[2] - v[0];
+    float3 pvec = cross(direction, edge2);
+    float det = dot(edge1, pvec);
+
+    float3 tvec = origin - v[0];
+    float u = dot(tvec, pvec);
+    float3 qvec = cross(tvec, edge1);
+    float v = dot(direction, qvec);
+
+    float t = dot(edge2, qvec) / det;
+
+    return t;
+}
+
+/**
+ * Computes the barycentric coordinates of a point on a triangle.
+ * @param[in] v Positions of the three vertices.
+ * @param[in] p Intersection point.
+ * @param[out] barycentrics Barycentric coordinates of the intersection.
+ */
+void computeBarycentrics(const float3 v[3], const float3 p, out float3 barycentrics)
+{
+    float3 edgep0 = v[0] - p;
+    float3 edgep1 = v[1] - p;
+    float3 edgep2 = v[2] - p;
+
+    float area0 = length(cross(edgep1, edgep2));
+    float area1 = length(cross(edgep2, edgep0));
+    float area2 = length(cross(edgep0, edgep1));
+
+    float area = area0 + area1 + area2;
+
+    float bx = area0 / area;
+    float by = area1 / area;
+    float bz = area2 / area;
+
+    barycentrics = float3(bx, by, bz);
 }
 
 /*******************************************************************

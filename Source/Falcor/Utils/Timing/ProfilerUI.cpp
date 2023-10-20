@@ -152,7 +152,11 @@ void ProfilerUI::render()
                     auto stats = eventData.pEvent->computeCpuTimeStats();
                     ImGui::BeginTooltip();
                     ImGui::Text(
-                        "%s\nMin: %.2f\nMax: %.2f\nMean: %.2f\nStdDev: %.2f", eventData.name.c_str(), stats.min, stats.max, stats.mean,
+                        "%s\nMin: %.2f\nMax: %.2f\nMean: %.2f\nStdDev: %.2f",
+                        eventData.name.c_str(),
+                        stats.min,
+                        stats.max,
+                        stats.mean,
                         stats.stdDev
                     );
                     ImGui::EndTooltip();
@@ -165,8 +169,11 @@ void ProfilerUI::render()
                 bool isGraphShown = mGraphMode == GraphMode::CpuTime;
                 bool isHighlighted = isGraphShown && i == mHighlightIndex;
                 drawBar(
-                    fraction, ImVec2(kBarWidth, kBarHeight), isGraphShown ? eventData.color : kBarColor,
-                    isGraphShown ? eventData.mutedColor : kBarMutedColor, isHighlighted
+                    fraction,
+                    ImVec2(kBarWidth, kBarHeight),
+                    isGraphShown ? eventData.color : kBarColor,
+                    isGraphShown ? eventData.mutedColor : kBarMutedColor,
+                    isHighlighted
                 );
                 ImGui::Dummy(ImVec2(kBarWidth, ImGui::GetTextLineHeight()));
                 if (ImGui::IsItemHovered())
@@ -187,7 +194,11 @@ void ProfilerUI::render()
                     auto stats = eventData.pEvent->computeGpuTimeStats();
                     ImGui::BeginTooltip();
                     ImGui::Text(
-                        "%s\nMin: %.2f\nMax: %.2f\nMean: %.2f\nStdDev: %.2f", eventData.name.c_str(), stats.min, stats.max, stats.mean,
+                        "%s\nMin: %.2f\nMax: %.2f\nMean: %.2f\nStdDev: %.2f",
+                        eventData.name.c_str(),
+                        stats.min,
+                        stats.max,
+                        stats.mean,
                         stats.stdDev
                     );
                     ImGui::EndTooltip();
@@ -200,8 +211,11 @@ void ProfilerUI::render()
                 bool isGraphShown = mGraphMode == GraphMode::GpuTime;
                 bool isHighlighted = isGraphShown && i == mHighlightIndex;
                 drawBar(
-                    fraction, ImVec2(kBarWidth, kBarHeight), isGraphShown ? eventData.color : kBarColor,
-                    isGraphShown ? eventData.mutedColor : kBarMutedColor, isHighlighted
+                    fraction,
+                    ImVec2(kBarWidth, kBarHeight),
+                    isGraphShown ? eventData.color : kBarColor,
+                    isGraphShown ? eventData.mutedColor : kBarMutedColor,
+                    isHighlighted
                 );
                 ImGui::Dummy(ImVec2(kBarWidth, ImGui::GetTextLineHeight()));
                 if (ImGui::IsItemHovered())

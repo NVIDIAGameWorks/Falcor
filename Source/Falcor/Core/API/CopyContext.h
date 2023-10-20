@@ -36,6 +36,11 @@
 #include <string>
 #include <vector>
 
+#if FALCOR_HAS_CUDA
+struct CUstream_st;
+typedef CUstream_st* cudaStream_t;
+#endif
+
 namespace Falcor
 {
 class Texture;
@@ -49,11 +54,12 @@ public:
     public:
         using SharedPtr = std::shared_ptr<ReadTextureTask>;
         static SharedPtr create(CopyContext* pCtx, const Texture* pTexture, uint32_t subresourceIndex);
-        std::vector<uint8_t> getData();
+        void getData(void* pData, size_t size) const;
+        std::vector<uint8_t> getData() const;
 
     private:
         ReadTextureTask() = default;
-        ref<GpuFence> mpFence;
+        ref<Fence> mpFence;
         ref<Buffer> mpBuffer;
         CopyContext* mpContext;
         uint32_t mRowCount;
@@ -79,7 +85,7 @@ public:
      * Flush the command list. This doesn't reset the command allocator, just submits the commands
      * @param[in] wait If true, will block execution until the GPU finished processing the commands
      */
-    virtual void flush(bool wait = false);
+    virtual void submit(bool wait = false);
 
     /**
      * Check if we have pending commands
@@ -90,6 +96,41 @@ public:
      * Signal the context that we have pending commands. Useful in case you make raw API calls
      */
     void setPendingCommands(bool commandsPending) { mCommandsPending = commandsPending; }
+
+    /**
+     * Signal a fence.
+     * @param pFence The fence to signal.
+     * @param value The value to signal. If Fence::kAuto, the signaled value will be auto-incremented.
+     * @return Returns the signaled value.
+     */
+    uint64_t signal(Fence* pFence, uint64_t value = Fence::kAuto);
+
+    /**
+     * Wait for a fence to be signaled on the device.
+     * Queues a device-side wait and returns immediately.
+     * The device will wait until the fence reaches or exceeds the specified value.
+     * @param pFence The fence to wait for.
+     * @param value The value to wait for. If Fence::kAuto, wait for the last signaled value.
+     */
+    void wait(Fence* pFence, uint64_t value = Fence::kAuto);
+
+#if FALCOR_HAS_CUDA
+    /**
+     * Wait for the CUDA stream to finish execution.
+     * Queues a device-side wait on the command queue and adds an async fence
+     * signal on the CUDA stream. Returns immediately.
+     * @param stream The CUDA stream to wait for.
+     */
+    void waitForCuda(cudaStream_t stream = 0);
+
+    /**
+     * Wait for the Falcor command queue to finish execution.
+     * Queues a device-side signal on the command queue and adds an async fence
+     * wait on the CUDA stream. Returns immediately.
+     * @param stream The CUDA stream to wait on.
+     */
+    void waitForFalcor(cudaStream_t stream = 0);
+#endif
 
     /**
      * Insert a resource barrier
@@ -156,6 +197,22 @@ public:
      * Update a buffer
      */
     void updateBuffer(const Buffer* pBuffer, const void* pData, size_t offset = 0, size_t numBytes = 0);
+
+    void readBuffer(const Buffer* pBuffer, void* pData, size_t offset = 0, size_t numBytes = 0);
+
+    template<typename T>
+    std::vector<T> readBuffer(const Buffer* pBuffer, size_t firstElement = 0, size_t elementCount = 0)
+    {
+        if (elementCount == 0)
+            elementCount = pBuffer->getSize() / sizeof(T);
+
+        size_t offset = firstElement * sizeof(T);
+        size_t numBytes = elementCount * sizeof(T);
+
+        std::vector<T> result(elementCount);
+        readBuffer(pBuffer, result.data(), offset, numBytes);
+        return result;
+    }
 
     /**
      * Read texture data synchronously. Calling this command will flush the pipeline and wait for the GPU to finish execution

@@ -29,7 +29,7 @@
 #include "Core/Macros.h"
 #include "Core/API/Buffer.h"
 #include "Core/State/ComputeState.h"
-#include "Core/Program/ComputeProgram.h"
+#include "Core/Program/Program.h"
 #include "Core/Program/ProgramVars.h"
 #include <memory>
 
@@ -97,9 +97,9 @@ private:
     ref<Device> mpDevice;
 
     ref<ComputeState> mpState;
-    ref<ComputeProgram> mpInitialProgram;
-    ref<ComputeProgram> mpFinalProgram;
-    ref<ComputeVars> mpVars;
+    ref<Program> mpInitialProgram;
+    ref<Program> mpFinalProgram;
+    ref<ProgramVars> mpVars;
 
     ref<Buffer> mpBuffers[2]; ///< Intermediate buffers for reduction iterations.
 };

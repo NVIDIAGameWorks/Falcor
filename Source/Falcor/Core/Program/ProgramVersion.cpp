@@ -29,6 +29,7 @@
 #include "Program.h"
 #include "ProgramManager.h"
 #include "ProgramVars.h"
+#include "Core/Error.h"
 #include "Core/API/Device.h"
 #include "Core/API/ParameterBlock.h"
 #include "Utils/Logger.h"
@@ -232,8 +233,7 @@ ref<const ProgramKernels> ProgramVersion::getKernels(Device* pDevice, ProgramVar
 
             if (!log.empty())
             {
-                std::string warn = "Warnings in program:\n" + getName() + "\n" + log;
-                logWarning(warn);
+                logWarning("Warnings in program:\n{}\n{}", getName(), log);
             }
 
             mpKernels[specializationKey] = pKernels;
@@ -242,11 +242,11 @@ ref<const ProgramKernels> ProgramVersion::getKernels(Device* pDevice, ProgramVar
         else
         {
             // Failure
-
-            std::string error = "Failed to link program:\n" + getName() + "\n\n" + log;
-            reportErrorAndAllowRetry(error);
-
-            // Continue loop to keep trying...
+            std::string msg = fmt::format("Failed to link program:\n{}\n\n{}", getName(), log);
+            bool showMessageBox = is_set(getErrorDiagnosticFlags(), ErrorDiagnosticFlags::ShowMessageBoxOnError);
+            if (showMessageBox && reportErrorAndAllowRetry(msg))
+                continue;
+            FALCOR_THROW(msg);
         }
     }
 }

@@ -43,11 +43,11 @@ RWTexture2D<float4> gFaceNormalW;
 RWTexture2D<float2> gTexC;
 RWTexture2D<float4> gTexGrads;
 RWTexture2D<float2> gMotionVector;
-RWTexture2D<uint4>  gMaterialData;
+RWTexture2D<uint4> gMaterialData;
 
 // GBufferRT channels
 RWTexture2D<PackedHitInfo> gVBuffer;
-RWTexture2D<float>  gDepth;
+RWTexture2D<float> gDepth;
 RWTexture2D<float2> gLinearZ;
 RWTexture2D<float4> gMotionVectorW;
 RWTexture2D<float4> gNormalWRoughnessMaterialID;
@@ -56,9 +56,9 @@ RWTexture2D<float4> gDiffOpacity;
 RWTexture2D<float4> gSpecRough;
 RWTexture2D<float4> gEmissive;
 RWTexture2D<float4> gViewW;
-RWTexture2D<uint>   gTime;
-RWTexture2D<float>  gDisocclusion;
-RWTexture2D<float>  gMask;
+RWTexture2D<uint> gTime;
+RWTexture2D<float> gDisocclusion;
+RWTexture2D<float> gMask;
 
 #define is_valid(name) (is_valid_##name != 0)
 
@@ -80,9 +80,18 @@ struct GBufferRT
     uint frameCount;
     float screenSpacePixelSpreadAngle;
 
-    /** Ray differentials for primary hit. Code from RayTracingGems, Chapter 20.
-    */
-    void computeRayDifferentials(const TriangleHit hit, float3 rayDir, float hitT, const Camera camera, float2 invFrameDim, out float2 ddx, out float2 ddy)
+    /**
+     * Ray differentials for primary hit. Code from RayTracingGems, Chapter 20.
+     */
+    void computeRayDifferentials(
+        const TriangleHit hit,
+        float3 rayDir,
+        float hitT,
+        const Camera camera,
+        float2 invFrameDim,
+        out float2 ddx,
+        out float2 ddy
+    )
     {
         // TODO: Is this code correct for instance transforms that flip the handedness of the coordinate system?
 
@@ -97,9 +106,12 @@ struct GBufferRT
         float3 cu = cross(e2, d);
         float3 cv = cross(d, e1);
         // Assumes a normalized ray direction
-        float3 dx = camera.data.cameraU * 2.f * invFrameDim.x / camera.data.focalDistance; // dDdx in ray gen
-        float3 dy = camera.data.cameraV * 2.f * invFrameDim.y / camera.data.focalDistance; // dDdy in ray gen
-        float3 q = dx * hitT; // Transfer to primary hit
+        // dDdx in ray gen
+        float3 dx = camera.data.cameraU * 2.f * invFrameDim.x / camera.data.focalDistance;
+        // dDdy in ray gen
+        float3 dy = camera.data.cameraV * 2.f * invFrameDim.y / camera.data.focalDistance;
+        // Transfer to primary hit
+        float3 q = dx * hitT;
         float3 r = dy * hitT;
         float dudx = k * dot(cu, q);
         float dudy = k * dot(cu, r);
@@ -117,14 +129,24 @@ struct GBufferRT
         ddy = float2(dsdy, dtdy);
     }
 
-    void computeAnisotropicAxesRayCones(const TriangleHit hit, VertexData v, float3 rayDir, float hitT, float pixelAngle, out float2 ddx, out float2 ddy)
+    void computeAnisotropicAxesRayCones(
+        const TriangleHit hit,
+        VertexData v,
+        float3 rayDir,
+        float hitT,
+        float pixelAngle,
+        out float2 ddx,
+        out float2 ddy
+    )
     {
         float3 positions[3];
         float2 texCoords[3];
         gScene.getVertexPositionsW(hit.instanceID, hit.primitiveIndex, positions);
         gScene.getVertexTexCoords(hit.instanceID, hit.primitiveIndex, texCoords);
 
-        float coneWidthAtHitPoint = hitT * tan(pixelAngle);   // The exact expression is 2.0f * hitT * tan(pixelAngle * 0.5f), but can be approximated as hitT * tan(pixelAngle) due to tan(b) ~= b for small b.
+        // The exact expression is 2.0f * hitT * tan(pixelAngle * 0.5f),
+        // but can be approximated as hitT * tan(pixelAngle) due to tan(b) ~= b for small b.
+        float coneWidthAtHitPoint = hitT * tan(pixelAngle);
         // Using faceNormal, since it is needed for the barycentric computations inside computeAnisotropicEllipseAxes().
         computeAnisotropicEllipseAxes(v.posW, v.faceNormalW, rayDir, coneWidthAtHitPoint, positions, texCoords, v.texC, ddx, ddy);
     }
@@ -248,7 +270,8 @@ struct GBufferRT
             float2 pixelPos = pixel + float2(0.5f, 0.5f);
             float4 prevPosH = mul(gScene.camera.data.prevViewProjMatNoJitter, float4(prevPosW, 1.f));
 
-            motionVector = calcMotionVector(pixelPos, prevPosH, frameDim) + float2(gScene.camera.data.jitterX, -gScene.camera.data.jitterY); // Remove camera jitter from motion vector
+            // Remove camera jitter from motion vector
+            motionVector = calcMotionVector(pixelPos, prevPosH, frameDim) + float2(gScene.camera.data.jitterX, -gScene.camera.data.jitterY);
             motionVectorW = float4(prevPosW - sd.posW, 0.f);
 
             // Compute disocclusion.
@@ -264,23 +287,38 @@ struct GBufferRT
         const GBufferData gbuf = prepareGBufferData(sd, v, mi, bsdfProperties);
 
         // GBuffer channels
-        if (is_valid(gPosW))                gPosW[pixel]                = gbuf.posW;
-        if (is_valid(gNormW))               gNormW[pixel]               = gbuf.normW;
-        if (is_valid(gTangentW))            gTangentW[pixel]            = gbuf.tangentW;
-        if (is_valid(gFaceNormalW))         gFaceNormalW[pixel]         = gbuf.faceNormalW;
-        if (is_valid(gTexC))                gTexC[pixel]                = gbuf.texC;
-        if (is_valid(gTexGrads))            gTexGrads[pixel]            = texGrads;
-        if (is_valid(gMotionVector))        gMotionVector[pixel]        = motionVector;
-        if (is_valid(gMaterialData))        gMaterialData[pixel]        = gbuf.mtlData;
+        if (is_valid(gPosW))
+            gPosW[pixel] = gbuf.posW;
+        if (is_valid(gNormW))
+            gNormW[pixel] = gbuf.normW;
+        if (is_valid(gTangentW))
+            gTangentW[pixel] = gbuf.tangentW;
+        if (is_valid(gFaceNormalW))
+            gFaceNormalW[pixel] = gbuf.faceNormalW;
+        if (is_valid(gTexC))
+            gTexC[pixel] = gbuf.texC;
+        if (is_valid(gTexGrads))
+            gTexGrads[pixel] = texGrads;
+        if (is_valid(gMotionVector))
+            gMotionVector[pixel] = motionVector;
+        if (is_valid(gMaterialData))
+            gMaterialData[pixel] = gbuf.mtlData;
 
         // GBufferRT channels
-        if (is_valid(gMotionVectorW))       gMotionVectorW[pixel]       = motionVectorW;
-        if (is_valid(gGuideNormalW))        gGuideNormalW[pixel]        = gbuf.guideNormalW;
-        if (is_valid(gDiffOpacity))         gDiffOpacity[pixel]         = gbuf.diffuseOpacity;
-        if (is_valid(gSpecRough))           gSpecRough[pixel]           = gbuf.specRough;
-        if (is_valid(gEmissive))            gEmissive[pixel]            = gbuf.emissive;
-        if (is_valid(gDisocclusion))        gDisocclusion[pixel]        = disocclusion;
-        if (is_valid(gMask))                gMask[pixel]                = 1.0f;
+        if (is_valid(gMotionVectorW))
+            gMotionVectorW[pixel] = motionVectorW;
+        if (is_valid(gGuideNormalW))
+            gGuideNormalW[pixel] = gbuf.guideNormalW;
+        if (is_valid(gDiffOpacity))
+            gDiffOpacity[pixel] = gbuf.diffuseOpacity;
+        if (is_valid(gSpecRough))
+            gSpecRough[pixel] = gbuf.specRough;
+        if (is_valid(gEmissive))
+            gEmissive[pixel] = gbuf.emissive;
+        if (is_valid(gDisocclusion))
+            gDisocclusion[pixel] = disocclusion;
+        if (is_valid(gMask))
+            gMask[pixel] = 1.0f;
 
         if (is_valid(gLinearZ))
         {
@@ -309,7 +347,8 @@ struct GBufferRT
         if (is_valid(gNormalWRoughnessMaterialID))
         {
             float3 normal = bsdfProperties.guideNormal;
-            if (sd.mtl.getMaterialType() == MaterialType::Hair) normal = sd.frame.T;
+            if (sd.mtl.getMaterialType() == MaterialType::Hair)
+                normal = sd.frame.T;
 
             float2 octNormal = ndir_to_oct_unorm(normal);
             float roughness = bsdfProperties.roughness;
@@ -331,7 +370,8 @@ struct GBufferRT
 
         float2 pixelPos = pixel + float2(0.5f, 0.5f);
         float4 prevPosH = mul(gScene.camera.data.prevViewProjMatNoJitter, float4(worldPos, 1.f));
-        return calcMotionVector(pixelPos, prevPosH, frameDim) + float2(gScene.camera.data.jitterX, -gScene.camera.data.jitterY); // Remove camera jitter from motion vector
+        // Remove camera jitter from motion vector
+        return calcMotionVector(pixelPos, prevPosH, frameDim) + float2(gScene.camera.data.jitterX, -gScene.camera.data.jitterY);
     }
 
     void writeMiss(const uint2 pixel, const float3 rayOrigin, const float3 rayDir)
@@ -342,42 +382,64 @@ struct GBufferRT
         const float materialID = 0.f;
 
         // GBuffer channels
-        if (is_valid(gPosW))                        gPosW[pixel]                        = {};
-        if (is_valid(gNormW))                       gNormW[pixel]                       = {};
-        if (is_valid(gTangentW))                    gTangentW[pixel]                    = {};
-        if (is_valid(gFaceNormalW))                 gFaceNormalW[pixel]                 = {};
-        if (is_valid(gTexC))                        gTexC[pixel]                        = {};
-        if (is_valid(gTexGrads))                    gTexGrads[pixel]                    = {};
-        if (is_valid(gMotionVector))                gMotionVector[pixel]                = mvec;
-        if (is_valid(gMaterialData))                gMaterialData[pixel]                = {};
+        if (is_valid(gPosW))
+            gPosW[pixel] = {};
+        if (is_valid(gNormW))
+            gNormW[pixel] = {};
+        if (is_valid(gTangentW))
+            gTangentW[pixel] = {};
+        if (is_valid(gFaceNormalW))
+            gFaceNormalW[pixel] = {};
+        if (is_valid(gTexC))
+            gTexC[pixel] = {};
+        if (is_valid(gTexGrads))
+            gTexGrads[pixel] = {};
+        if (is_valid(gMotionVector))
+            gMotionVector[pixel] = mvec;
+        if (is_valid(gMaterialData))
+            gMaterialData[pixel] = {};
 
         // GBufferRT channels
-        if (is_valid(gVBuffer))                     gVBuffer[pixel]                     = {};
-        if (is_valid(gDepth))                       gDepth[pixel]                       = 1.f;
-        if (is_valid(gLinearZ))                     gLinearZ[pixel]                     = float2(kEnvMapDepth, 0.f);
-        if (is_valid(gMotionVectorW))               gMotionVectorW[pixel]               = {};
-        if (is_valid(gNormalWRoughnessMaterialID))  gNormalWRoughnessMaterialID[pixel]  = float4(octNormal, roughness, materialID);
-        if (is_valid(gGuideNormalW))                gGuideNormalW[pixel]                = {};
-        if (is_valid(gDiffOpacity))                 gDiffOpacity[pixel]                 = {};
-        if (is_valid(gSpecRough))                   gSpecRough[pixel]                   = {};
-        if (is_valid(gEmissive))                    gEmissive[pixel]                    = {};
-        if (is_valid(gDisocclusion))                gDisocclusion[pixel]                = 0.f;
-        if (is_valid(gMask))                        gMask[pixel]                        = 0.0f;
+        if (is_valid(gVBuffer))
+            gVBuffer[pixel] = {};
+        if (is_valid(gDepth))
+            gDepth[pixel] = 1.f;
+        if (is_valid(gLinearZ))
+            gLinearZ[pixel] = float2(kEnvMapDepth, 0.f);
+        if (is_valid(gMotionVectorW))
+            gMotionVectorW[pixel] = {};
+        if (is_valid(gNormalWRoughnessMaterialID))
+            gNormalWRoughnessMaterialID[pixel] = float4(octNormal, roughness, materialID);
+        if (is_valid(gGuideNormalW))
+            gGuideNormalW[pixel] = {};
+        if (is_valid(gDiffOpacity))
+            gDiffOpacity[pixel] = {};
+        if (is_valid(gSpecRough))
+            gSpecRough[pixel] = {};
+        if (is_valid(gEmissive))
+            gEmissive[pixel] = {};
+        if (is_valid(gDisocclusion))
+            gDisocclusion[pixel] = 0.f;
+        if (is_valid(gMask))
+            gMask[pixel] = 0.0f;
     }
 
     void writeAux(uint2 pixel, const Ray ray)
     {
         // Write view direction.
-        if (is_valid(gViewW)) gViewW[pixel] = float4(-ray.dir, 0.f);
+        if (is_valid(gViewW))
+            gViewW[pixel] = float4(-ray.dir, 0.f);
     }
 
     void beginTime(inout GpuTimer timer)
     {
-        if (is_valid(gTime)) timer.start();
+        if (is_valid(gTime))
+            timer.start();
     }
 
     void endTime(uint2 pixel, inout GpuTimer timer)
     {
-        if (is_valid(gTime)) gTime[pixel] = timer.getElapsed();
+        if (is_valid(gTime))
+            gTime[pixel] = timer.getElapsed();
     }
 };

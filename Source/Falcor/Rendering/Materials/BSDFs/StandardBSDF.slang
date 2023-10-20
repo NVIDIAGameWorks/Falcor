@@ -30,6 +30,7 @@
 import Scene.Material.MaterialData;
 import Utils.Color.ColorHelpers;
 import Rendering.Materials.Fresnel;
+import Rendering.Materials.IMaterialInstance;
 #if DiffuseBrdf == DiffuseBrdfLambert
 import Rendering.Materials.BSDFs.LambertDiffuseBRDF;
 #elif DiffuseBrdf == DiffuseBrdfDisney
@@ -39,6 +40,7 @@ import Rendering.Materials.BSDFs.FrostbiteDiffuseBRDF;
 #endif
 import Rendering.Materials.BSDFs.LambertDiffuseBTDF;
 import Rendering.Materials.BSDFs.SpecularMicrofacet;
+import DiffRendering.DiffMaterialData;
 __exported import Rendering.Materials.IBSDF;
 
 // Enable support for delta reflection/transmission.
@@ -54,17 +56,34 @@ static const float kMinGGXAlpha = 0.0064f;
  * BSDF parameters for the standard MaterialInstance.
  * These are needed for initializing a `StandardBSDF` instance.
  */
-struct StandardBSDFData
+struct StandardBSDFData : IDifferentiable
 {
-    float3 diffuse;            ///< Diffuse albedo.
-    float3 specular;           ///< Specular albedo.
-    float roughness;           ///< This is the original roughness, before remapping.
-    float metallic;            ///< Metallic parameter, blends between dielectric and conducting BSDFs.
-    float eta;                 ///< Relative index of refraction (incident IoR / transmissive IoR).
-    float3 transmission;       ///< Transmission color.
-    float diffuseTransmission; ///< Diffuse transmission, blends between diffuse reflection and transmission lobes.
-    /// Specular transmission, blends between opaque dielectric BRDF and specular transmissive BSDF.
-    float specularTransmission;
+    float3 diffuse;                     ///< Diffuse albedo.
+    float3 specular;                    ///< Specular albedo.
+    float roughness;                    ///< This is the original roughness, before remapping.
+    float metallic;                     ///< Metallic parameter, blends between dielectric and conducting BSDFs.
+    float eta;                          ///< Relative index of refraction (incident IoR / transmissive IoR).
+    float3 transmission;                ///< Transmission color.
+    float diffuseTransmission;          ///< Diffuse transmission, blends between diffuse reflection and transmission lobes.
+    float specularTransmission;         ///< Specular transmission, blends between opaque dielectric BRDF and specular transmissive BSDF.
+    float3 volumeScattering;            ///< Volume scattering parameters from the volume.
+    float volumeAnsiotropy;             ///< Mean cosine of the volumetric phase function.
+    bool hasEntryPointVolumeProperties; ///< Flag that specifies from where sigmaA is taken from (volume or surface).
+    bool hasSigmaSGreaterZero;          ///< Flag that indicates if we have to do albedo conversion
+
+    [Differentiable]
+    __init(const DiffMaterialData diffData)
+    {
+        uint offset = 0;
+        diffData.read(diffuse, offset);
+        diffData.read(specular, offset);
+        roughness = diffData.read(offset);
+        metallic = diffData.read(offset);
+        eta = diffData.read(offset);
+        diffData.read(transmission, offset);
+        diffuseTransmission = diffData.read(offset);
+        specularTransmission = diffData.read(offset);
+    }
 }
 
 /**
@@ -73,7 +92,7 @@ struct StandardBSDFData
  * This consists of a diffuse and specular BRDF.
  * A specular BSDF is mixed in using the specularTransmission parameter.
  */
-struct StandardBSDF : IBSDF
+struct StandardBSDF : IBSDF, IDifferentiable
 {
 #if DiffuseBrdf == DiffuseBrdfLambert
     LambertDiffuseBRDF diffuseReflection;
@@ -90,10 +109,11 @@ struct StandardBSDF : IBSDF
     float diffTrans; ///< Mix between diffuse BRDF and diffuse BTDF.
     float specTrans; ///< Mix between dielectric BRDF and specular BSDF.
 
-    float pDiffuseReflection;    ///< Probability for sampling the diffuse BRDF.
-    float pDiffuseTransmission;  ///< Probability for sampling the diffuse BTDF.
-    float pSpecularReflection;   ///< Probability for sampling the specular BRDF.
-    float pSpecularTransmission; ///< Probability for sampling the specular BSDF.
+    // No need to differentiate probabilities.
+    no_diff float pDiffuseReflection;    ///< Probability for sampling the diffuse BRDF.
+    no_diff float pDiffuseTransmission;  ///< Probability for sampling the diffuse BTDF.
+    no_diff float pSpecularReflection;   ///< Probability for sampling the specular BRDF.
+    no_diff float pSpecularTransmission; ///< Probability for sampling the specular BSDF.
 
     /**
      * Initialize a new instance.
@@ -101,6 +121,7 @@ struct StandardBSDF : IBSDF
      * @param[in] mtl Material header.
      * @param[in] data BSDF parameters.
      */
+    [Differentiable]
     __init(const float3 wi, const MaterialHeader mtl, const StandardBSDFData data)
     {
         // TODO: Currently specular reflection and transmission lobes are not properly separated.
@@ -150,14 +171,16 @@ struct StandardBSDF : IBSDF
         float diffuseWeight = luminance(data.diffuse);
         float specularWeight = luminance(evalFresnelSchlick(data.specular, 1.f, wi.z));
 
-        pDiffuseReflection = (activeLobes & (uint)LobeType::DiffuseReflection) ? diffuseWeight * dielectricBSDF * (1.f - diffTrans) : 0.f;
-        pDiffuseTransmission = (activeLobes & (uint)LobeType::DiffuseTransmission) ? diffuseWeight * dielectricBSDF * diffTrans : 0.f;
+        pDiffuseReflection =
+            (activeLobes & (uint)LobeType::DiffuseReflection) ? detach(diffuseWeight * dielectricBSDF * (1.f - diffTrans)) : 0.f;
+        pDiffuseTransmission =
+            (activeLobes & (uint)LobeType::DiffuseTransmission) ? detach(diffuseWeight * dielectricBSDF * diffTrans) : 0.f;
         pSpecularReflection = (activeLobes & ((uint)LobeType::SpecularReflection | (uint)LobeType::DeltaReflection))
-                                  ? specularWeight * (metallicBRDF + dielectricBSDF)
+                                  ? detach(specularWeight * (metallicBRDF + dielectricBSDF))
                                   : 0.f;
         pSpecularTransmission = (activeLobes & ((uint)LobeType::SpecularReflection | (uint)LobeType::DeltaReflection |
                                                 (uint)LobeType::SpecularTransmission | (uint)LobeType::DeltaTransmission))
-                                    ? specularBSDF
+                                    ? detach(specularBSDF)
                                     : 0.f;
 
         float normFactor = pDiffuseReflection + pDiffuseTransmission + pSpecularReflection + pSpecularTransmission;
@@ -201,6 +224,7 @@ struct StandardBSDF : IBSDF
         return lobeTypes;
     }
 
+    [Differentiable]
     float3 eval<S : ISampleGenerator>(const float3 wi, const float3 wo, inout S sg)
     {
         float3 result = 0.f;

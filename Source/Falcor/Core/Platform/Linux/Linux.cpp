@@ -26,7 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "Core/Platform/OS.h"
-#include "Core/Assert.h"
+#include "Core/Error.h"
 #include "Core/GLFW.h"
 #include "Utils/Logger.h"
 #include "Utils/StringUtils.h"
@@ -93,7 +93,7 @@ uint32_t msgBox(
 )
 {
     if (!gtk_init_check(0, nullptr))
-        throw RuntimeError("Failed to initialize GTK.");
+        FALCOR_THROW("Failed to initialize GTK.");
 
     GtkWidget* pParent = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     GtkWidget* pDialog = gtk_message_dialog_new(
@@ -144,7 +144,7 @@ size_t executeProcess(const std::string& appName, const std::string& commandLine
     {
         if (execv(linuxAppName.c_str(), (char* const*)argv.data()))
         {
-            throw RuntimeError("Unable to execute process: {} {}", appName, commandLineArgs);
+            FALCOR_THROW("Unable to execute process: {} {}", appName, commandLineArgs);
         }
     }
 
@@ -206,7 +206,7 @@ const std::filesystem::path& getExecutablePath()
             char pathStr[PATH_MAX] = {0};
             if (readlink("/proc/self/exe", pathStr, PATH_MAX) == -1)
             {
-                throw RuntimeError("Failed to get the executable path.");
+                FALCOR_THROW("Failed to get the executable path.");
             }
             return std::filesystem::path(pathStr);
         }()
@@ -222,7 +222,7 @@ const std::filesystem::path& getRuntimeDirectory()
             Dl_info info;
             if (dladdr((void*)&getRuntimeDirectory, &info) == 0)
             {
-                throw RuntimeError("Failed to get the falcor directory. dladdr() failed.");
+                FALCOR_THROW("Failed to get the falcor directory. dladdr() failed.");
             }
             return std::filesystem::path(info.dli_fname).parent_path();
         }()
@@ -269,7 +269,7 @@ template<bool bOpen>
 bool fileDialogCommon(const FileDialogFilterVec& filters, std::filesystem::path& path)
 {
     if (!gtk_init_check(0, nullptr))
-        throw RuntimeError("Failed to initialize GTK.");
+        FALCOR_THROW("Failed to initialize GTK.");
 
     GtkWidget* pParent = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     GtkWidget* pDialog = nullptr;
@@ -398,7 +398,7 @@ void setKeyboardInterruptHandler(std::function<void()> handler)
         sigemptyset(&action.sa_mask);
         action.sa_flags = 0;
         if (sigaction(SIGINT, &action, nullptr) != 0)
-            throw RuntimeError("Failed to register keyboard interrupt handler");
+            FALCOR_THROW("Failed to register keyboard interrupt handler");
     }
     else if (!handler && data.handler)
     {
@@ -407,7 +407,7 @@ void setKeyboardInterruptHandler(std::function<void()> handler)
         sigemptyset(&action.sa_mask);
         action.sa_flags = 0;
         if (sigaction(SIGINT, &action, nullptr) != 0)
-            throw RuntimeError("Failed to unregister keyboard interrupt handler");
+            FALCOR_THROW("Failed to unregister keyboard interrupt handler");
     }
     data.handler = handler;
 }

@@ -26,8 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "BSDFIntegrator.h"
-#include "Core/Assert.h"
-#include "Core/Errors.h"
+#include "Core/Error.h"
 #include "Core/API/RenderContext.h"
 #include "Utils/Logger.h"
 
@@ -47,17 +46,19 @@ namespace Falcor
         : mpDevice(pDevice)
         , mpScene(pScene)
     {
-        checkArgument(mpScene != nullptr, "'pDevice' must be a valid device");
-        checkArgument(pScene != nullptr, "'pScene' must be a valid scene");
+        FALCOR_CHECK(pDevice != nullptr, "'pDevice' must be a valid device");
+        FALCOR_CHECK(pScene != nullptr, "'pScene' must be a valid scene");
+
+        if (!mpDevice->isShaderModelSupported(ShaderModel::SM6_6))
+            FALCOR_THROW("BSDFIntegrator requires Shader Model 6.6 support");
 
         // Create programs.
-        Program::Desc desc;
-        desc.setShaderModel("6_6");
+        ProgramDesc desc;
         desc.addShaderModules(pScene->getShaderModules());
         desc.addShaderLibrary(kShaderFile);
         desc.addTypeConformances(pScene->getTypeConformances());
         auto defines = pScene->getSceneDefines();
-        Program::Desc descFinal = desc;
+        ProgramDesc descFinal = desc;
 
         desc.csEntry("mainIntegration");
         mpIntegrationPass = ComputePass::create(mpDevice, desc, defines);
@@ -74,8 +75,6 @@ namespace Falcor
         uint3 finalGroupSize = mpFinalPass->getThreadGroupSize();
         FALCOR_ASSERT(finalGroupSize.x == 256 && finalGroupSize.y == 1 && finalGroupSize.z == 1);
         FALCOR_ASSERT(finalGroupSize.x == mResultCount);
-
-        mpFence = GpuFence::create(mpDevice);
     }
 
     float3 BSDFIntegrator::integrateIsotropic(RenderContext* pRenderContext, const MaterialID materialID, float cosTheta)
@@ -88,8 +87,8 @@ namespace Falcor
     std::vector<float3> BSDFIntegrator::integrateIsotropic(RenderContext* pRenderContext, const MaterialID materialID, const std::vector<float>& cosThetas)
     {
         FALCOR_ASSERT(mpScene);
-        checkArgument(materialID.get() < mpScene->getMaterialCount(), "'materialID' is out of range");
-        checkArgument(!cosThetas.empty(), "'cosThetas' array is empty");
+        FALCOR_CHECK(materialID.get() < mpScene->getMaterialCount(), "'materialID' is out of range");
+        FALCOR_CHECK(!cosThetas.empty(), "'cosThetas' array is empty");
 
         CpuTimer timer;
         timer.update();
@@ -100,7 +99,7 @@ namespace Falcor
 
         if (!mpCosThetaBuffer || mpCosThetaBuffer->getElementCount() < gridCount)
         {
-            mpCosThetaBuffer = Buffer::createStructured(mpDevice, sizeof(float), gridCount, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, cosThetas.data(), false);
+            mpCosThetaBuffer = mpDevice->createStructuredBuffer(sizeof(float), gridCount, ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, cosThetas.data(), false);
         }
         else
         {
@@ -111,12 +110,12 @@ namespace Falcor
         uint32_t elemCount = gridCount * mResultCount;
         if (!mpResultBuffer || mpResultBuffer->getElementCount() < elemCount)
         {
-            mpResultBuffer = Buffer::createStructured(mpDevice, sizeof(float3), elemCount, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr, false);
+            mpResultBuffer = mpDevice->createStructuredBuffer(sizeof(float3), elemCount, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, MemoryType::DeviceLocal, nullptr, false);
         }
         if (!mpFinalResultBuffer || mpFinalResultBuffer->getElementCount() < gridCount)
         {
-            mpFinalResultBuffer = Buffer::createStructured(mpDevice, sizeof(float3), gridCount, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr, false);
-            mpStagingBuffer = Buffer::createStructured(mpDevice, sizeof(float3), gridCount, ResourceBindFlags::None, Buffer::CpuAccess::Read, nullptr, false);
+            mpFinalResultBuffer = mpDevice->createStructuredBuffer(sizeof(float3), gridCount, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, MemoryType::DeviceLocal, nullptr, false);
+            mpStagingBuffer = mpDevice->createStructuredBuffer(sizeof(float3), gridCount, ResourceBindFlags::None, MemoryType::ReadBack, nullptr, false);
         }
 
         // Execute GPU passes.
@@ -126,10 +125,8 @@ namespace Falcor
         // Copy result to staging buffer.
         pRenderContext->copyBufferRegion(mpStagingBuffer.get(), 0, mpFinalResultBuffer.get(), 0, sizeof(float3) * gridCount);
 
-        // Flush GPU and wait for results to be available.
-        pRenderContext->flush(false);
-        mpFence->gpuSignal(pRenderContext->getLowLevelData()->getCommandQueue());
-        mpFence->syncCpu();
+        // Wait for results to be available.
+        pRenderContext->submit(true);
 
         // Read back final results.
         const float3* finalResults = reinterpret_cast<const float3*>(mpStagingBuffer->map(Buffer::MapType::Read));
@@ -153,7 +150,7 @@ namespace Falcor
         var["cosThetas"] = mpCosThetaBuffer;
         var["results"] = mpResultBuffer;
 
-        mpIntegrationPass->getRootVar()["gScene"] = mpScene->getParameterBlock();
+        mpScene->bindShaderData(mpIntegrationPass->getRootVar()["gScene"]);
         mpIntegrationPass->execute(pRenderContext, uint3(kGridSize, gridCount));
     }
 
@@ -170,7 +167,7 @@ namespace Falcor
 
 #if 0
         // DEBUG: Final accumulation on the CPU.
-        const float3* results = reinterpret_cast<const float3*>(mpResultBuffer->map(Buffer::MapType::Read));
+        std::vector<float3> results = mpResultBuffer->getElements<float3>();
         for (uint32_t gridIdx = 0; gridIdx < gridCount; gridIdx++)
         {
             float3 sum = {};

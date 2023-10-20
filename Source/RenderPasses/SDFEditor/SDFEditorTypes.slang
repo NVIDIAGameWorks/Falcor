@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,8 +26,9 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 
-/** Structs and enums for GUIPass for the SDFEditor
-*/
+/**
+ * Structs and enums for GUIPass for the SDFEditor
+ */
 
 #pragma once
 #include "Utils/HostDeviceShared.slangh"
@@ -47,16 +48,16 @@ BEGIN_NAMESPACE_FALCOR
 struct SDFGridPlane
 {
     float3 position = float3(0.0f, 0.0f, 0.0f);
-    float  gridLineWidth = 0.04f;
+    float gridLineWidth = 0.04f;
     float3 normal = float3(0.0f, 0.0f, 1.0f);
-    float  gridScale = 25.0f;
+    float gridScale = 25.0f;
     float3 rightVector = float3(1.0f, 0.0f, 0.0f);
-    float  planeSize = 0.25f;
+    float planeSize = 0.25f;
     float4 color = float4(0.0f, 0.5f, 1.0f, 0.5f);
-    uint   active = 0;                                  // Only render and manipulate the grid if this is true.
-    uint3  _pad0;
+    uint active = 0; // Only render and manipulate the grid if this is true.
+    uint3 _pad0;
 
-    float intersect(float3 rayOrigin, float3 rayDir)    // Returns the distance from the ray to the plane.
+    float intersect(float3 rayOrigin, float3 rayDir) // Returns the distance from the ray to the plane.
     {
         return -dot(normal, rayOrigin - position) / dot(normal, rayDir);
     }

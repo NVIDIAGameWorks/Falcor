@@ -26,6 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "PBRTConductorMaterial.h"
+#include "PBRTConductorMaterialParamLayout.slang"
 #include "Utils/Scripting/ScriptBindings.h"
 #include "GlobalState.h"
 
@@ -46,12 +47,12 @@ namespace Falcor
         mTextureSlotInfo[(uint32_t)TextureSlot::Normal] = { "normal", TextureChannelFlags::RGB, false };
     }
 
-    Program::ShaderModuleList PBRTConductorMaterial::getShaderModules() const
+    ProgramDesc::ShaderModuleList PBRTConductorMaterial::getShaderModules() const
     {
-        return { Program::ShaderModule(kShaderFile) };
+        return { ProgramDesc::ShaderModule::fromFile(kShaderFile) };
     }
 
-    Program::TypeConformanceList PBRTConductorMaterial::getTypeConformances() const
+    TypeConformanceList PBRTConductorMaterial::getTypeConformances() const
     {
         return { {{"PBRTConductorMaterial", "IMaterial"}, (uint32_t)MaterialType::PBRTConductor} };
     }
@@ -71,6 +72,21 @@ namespace Falcor
             mData.specular[1] = (float16_t)roughness.y;
             markUpdates(UpdateFlags::DataChanged);
         }
+    }
+
+    const MaterialParamLayout& PBRTConductorMaterial::getParamLayout() const
+    {
+        return PBRTConductorMaterialParamLayout::layout();
+    }
+
+    SerializedMaterialParams PBRTConductorMaterial::serializeParams() const
+    {
+        return PBRTConductorMaterialParamLayout::serialize(this);
+    }
+
+    void PBRTConductorMaterial::deserializeParams(const SerializedMaterialParams& params)
+    {
+        PBRTConductorMaterialParamLayout::deserialize(this, params);
     }
 
     FALCOR_SCRIPT_BINDING(PBRTConductorMaterial)

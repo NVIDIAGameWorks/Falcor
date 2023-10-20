@@ -59,7 +59,7 @@ namespace Falcor
 
         /** Bind the light sampler data to a given shader var
         */
-        virtual void setShaderData(const ShaderVar& var) const {}
+        virtual void bindShaderData(const ShaderVar& var) const {}
 
         /** Render the GUI.
             \return True if settings that affect the rendering have changed.

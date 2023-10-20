@@ -45,12 +45,12 @@ namespace Falcor
         mTextureSlotInfo[(uint32_t)TextureSlot::Normal] = { "normal", TextureChannelFlags::RGB, false };
     }
 
-    Program::ShaderModuleList PBRTDiffuseTransmissionMaterial::getShaderModules() const
+    ProgramDesc::ShaderModuleList PBRTDiffuseTransmissionMaterial::getShaderModules() const
     {
-        return { Program::ShaderModule(kShaderFile) };
+        return { ProgramDesc::ShaderModule::fromFile(kShaderFile) };
     }
 
-    Program::TypeConformanceList PBRTDiffuseTransmissionMaterial::getTypeConformances() const
+    TypeConformanceList PBRTDiffuseTransmissionMaterial::getTypeConformances() const
     {
         return { {{"PBRTDiffuseTransmissionMaterial", "IMaterial"}, (uint32_t)MaterialType::PBRTDiffuseTransmission} };
     }

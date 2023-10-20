@@ -65,7 +65,9 @@ GPU_TEST(Inheritance_ManualCreate)
 
     DefineList defines;
     defines.add("NUM_TESTS", std::to_string(kNumTests));
-    ctx.createProgram("Tests/Slang/InheritanceTests.cs.slang", "testInheritanceManual", defines, Program::CompilerFlags::None, "6_5");
+    ctx.createProgram(
+        "Tests/Slang/InheritanceTests.cs.slang", "testInheritanceManual", defines, SlangCompilerFlags::None, ShaderModel::SM6_5
+    );
     ctx.allocateStructuredBuffer("resultsInt", kNumTests);
     ctx.allocateStructuredBuffer("resultsFloat", kNumTests);
 
@@ -86,14 +88,14 @@ GPU_TEST(Inheritance_ManualCreate)
     }
 
     auto var = ctx.vars().getRootVar();
-    var["testType"] = Buffer::createStructured(
-        pDevice, var["testType"], (uint32_t)testType.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, testType.data()
+    var["testType"] = pDevice->createStructuredBuffer(
+        var["testType"], (uint32_t)testType.size(), ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, testType.data()
     );
-    var["testValue"] = Buffer::createStructured(
-        pDevice, var["testValue"], (uint32_t)testValue.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, testValue.data()
+    var["testValue"] = pDevice->createStructuredBuffer(
+        var["testValue"], (uint32_t)testValue.size(), ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, testValue.data()
     );
-    var["data"] = Buffer::createStructured(
-        pDevice, var["data"], (uint32_t)testType.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, data.data()
+    var["data"] = pDevice->createStructuredBuffer(
+        var["data"], (uint32_t)testType.size(), ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, data.data()
     );
 
     ctx.runProgram(kNumTests, 1, 1);
@@ -115,12 +117,12 @@ GPU_TEST(Inheritance_ConformanceCreate)
 
     DefineList defines;
     defines.add("NUM_TESTS", std::to_string(kNumTests));
-    Program::Desc desc;
+    ProgramDesc desc;
     desc.addShaderLibrary("Tests/Slang/InheritanceTests.cs.slang");
     desc.csEntry("testInheritanceConformance");
-    desc.setShaderModel("6_5");
+    desc.setShaderModel(ShaderModel::SM6_5);
 
-    Program::TypeConformanceList typeConformancess{
+    TypeConformanceList typeConformancess{
         {{"TestV0SubNeg", "ITestInterface"}, 0},
         {{"TestV1DefDef", "ITestInterface"}, 1},
         {{"TestV2DefNeg", "ITestInterface"}, 2},
@@ -149,14 +151,14 @@ GPU_TEST(Inheritance_ConformanceCreate)
     }
 
     auto var = ctx.vars().getRootVar();
-    var["testType"] = Buffer::createStructured(
-        pDevice, var["testType"], (uint32_t)testType.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, testType.data()
+    var["testType"] = pDevice->createStructuredBuffer(
+        var["testType"], (uint32_t)testType.size(), ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, testType.data()
     );
-    var["testValue"] = Buffer::createStructured(
-        pDevice, var["testValue"], (uint32_t)testValue.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, testValue.data()
+    var["testValue"] = pDevice->createStructuredBuffer(
+        var["testValue"], (uint32_t)testValue.size(), ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, testValue.data()
     );
-    var["data"] = Buffer::createStructured(
-        pDevice, var["data"], (uint32_t)testType.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, data.data()
+    var["data"] = pDevice->createStructuredBuffer(
+        var["data"], (uint32_t)testType.size(), ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, data.data()
     );
 
     ctx.runProgram(kNumTests, 1, 1);
@@ -178,7 +180,7 @@ GPU_TEST(Inheritance_ConformanceCreate)
 //     defines.add("NUM_TESTS", std::to_string(kNumTests));
 //     defines.add("COMPILE_WITH_ERROR", "1");
 
-//     ctx.createProgram("Tests/Slang/InheritanceTests.cs.slang", "testInheritance", defines, Program::CompilerFlags::None, "6_5");
+//     ctx.createProgram("Tests/Slang/InheritanceTests.cs.slang", "testInheritance", defines, SlangCompilerFlags::None, ShaderModel::SM6_5);
 // }
 
 } // namespace Falcor

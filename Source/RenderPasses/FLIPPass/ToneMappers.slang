@@ -26,7 +26,8 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 
-/** Enums for FLIP -- see FLIPPass.cs.slang and FLIPPass.cpp|h
+/**
+ * Enums for FLIP -- see FLIPPass.cs.slang and FLIPPass.cpp|h
  */
 
 #pragma once
@@ -34,9 +35,10 @@
 
 BEGIN_NAMESPACE_FALCOR
 
-/** This enum is shared between CPU/GPU.
-    It enumerates the different tone mapper options for HDR-FLIP.
-*/
+/**
+ * This enum is shared between CPU/GPU.
+ * It enumerates the different tone mapper options for HDR-FLIP.
+ */
 enum class FLIPToneMapperType : uint32_t
 {
     ACES = 0,
@@ -44,11 +46,14 @@ enum class FLIPToneMapperType : uint32_t
     Reinhard = 2,
 };
 
-FALCOR_ENUM_INFO(FLIPToneMapperType, {
-    { FLIPToneMapperType::ACES, "ACES" },
-    { FLIPToneMapperType::Hable, "Hable" },
-    { FLIPToneMapperType::Reinhard, "Reinhard" },
-});
+FALCOR_ENUM_INFO(
+    FLIPToneMapperType,
+    {
+        { FLIPToneMapperType::ACES, "ACES" },
+        { FLIPToneMapperType::Hable, "Hable" },
+        { FLIPToneMapperType::Reinhard, "Reinhard" },
+    }
+);
 FALCOR_ENUM_REGISTER(FLIPToneMapperType);
 
 #ifndef HOST_CODE

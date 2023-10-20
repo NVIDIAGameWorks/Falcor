@@ -126,14 +126,14 @@ void setupSamplingTest(GPUUnitTestContext& ctx, const SamplingTestSpec& spec, co
     var["binSampleCount"] = spec.binSampleCount;
 
     auto testWi = BsdfConfig::getWi(spec.bsdfConfigs);
-    auto pTestWiBuffer = Buffer::createStructured(
-        pDevice, var["testWi"], testCount, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, testWi.data()
+    auto pTestWiBuffer = pDevice->createStructuredBuffer(
+        var["testWi"], testCount, ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, testWi.data()
     );
     var["testWi"] = pTestWiBuffer;
 
     auto testParams = BsdfConfig::getParams(spec.bsdfConfigs);
-    auto pTestParamsBuffer = Buffer::createStructured(
-        pDevice, var["testParams"], testCount, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, testParams.data()
+    auto pTestParamsBuffer = pDevice->createStructuredBuffer(
+        var["testParams"], testCount, ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, testParams.data()
     );
     var["testParams"] = pTestParamsBuffer;
 }
@@ -148,25 +148,22 @@ std::vector<std::vector<double>> tabulateHistogram(GPUUnitTestContext& ctx, cons
     setupSamplingTest(ctx, spec, "tabulateHistogram");
 
     auto var = ctx["SamplingTestCB"]["gSamplingTest"];
-    auto pHistogramBuffer = Buffer::createStructured(pDevice, var["histogramSampling"], testCount * binCount);
+    auto pHistogramBuffer = pDevice->createStructuredBuffer(var["histogramSampling"], testCount * binCount);
     var["histogramSampling"] = pHistogramBuffer;
     ctx.getRenderContext()->clearUAV(pHistogramBuffer->getUAV().get(), uint4(0));
 
     ctx.runProgram(spec.sampleCount / spec.threadSampleCount, 1, testCount);
 
-    auto pHistogramData = reinterpret_cast<const uint32_t*>(pHistogramBuffer->map(Buffer::MapType::Read));
-
+    std::vector<uint32_t> histogramData = pHistogramBuffer->getElements<uint32_t>();
     std::vector<std::vector<double>> histograms;
 
     for (uint32_t testIndex = 0; testIndex < testCount; ++testIndex)
     {
         std::vector<double> histogram(binCount);
         for (uint32_t i = 0; i < binCount; ++i)
-            histogram[i] = (double)pHistogramData[testIndex * binCount + i];
+            histogram[i] = (double)histogramData[testIndex * binCount + i];
         histograms.push_back(histogram);
     }
-
-    pHistogramBuffer->unmap();
 
     return histograms;
 }
@@ -181,22 +178,19 @@ std::vector<std::vector<double>> tabulatePdf(GPUUnitTestContext& ctx, const Samp
     setupSamplingTest(ctx, spec, "tabulatePdf");
 
     auto var = ctx["SamplingTestCB"]["gSamplingTest"];
-    auto pHistogramBuffer = Buffer::createStructured(pDevice, var["histogramPdf"], testCount * binCount);
+    auto pHistogramBuffer = pDevice->createStructuredBuffer(var["histogramPdf"], testCount * binCount);
     var["histogramPdf"] = pHistogramBuffer;
 
     ctx.runProgram(spec.phiBinCount, spec.cosThetaBinCount, testCount);
 
-    auto pHistogramData = reinterpret_cast<const double*>(pHistogramBuffer->map(Buffer::MapType::Read));
-
+    std::vector<double> histogramData = pHistogramBuffer->getElements<double>();
     std::vector<std::vector<double>> histograms;
 
     for (uint32_t testIndex = 0; testIndex < testCount; ++testIndex)
     {
         size_t offset = testIndex * binCount;
-        histograms.push_back(std::vector<double>(pHistogramData + offset, pHistogramData + offset + binCount));
+        histograms.push_back(std::vector<double>(histogramData.data() + offset, histogramData.data() + offset + binCount));
     }
-
-    pHistogramBuffer->unmap();
 
     return histograms;
 }
@@ -214,18 +208,18 @@ std::vector<std::pair<std::vector<double>, std::vector<double>>> tabulateWeightA
     setupSamplingTest(ctx, spec, "tabulateWeightAndPdfError");
 
     auto var = ctx["SamplingTestCB"]["gSamplingTest"];
-    auto pHistogramWeightBuffer = Buffer::createStructured(pDevice, var["histogramWeightError"], testCount * binCount);
+    auto pHistogramWeightBuffer = pDevice->createStructuredBuffer(var["histogramWeightError"], testCount * binCount);
     var["histogramWeightError"] = pHistogramWeightBuffer;
     ctx.getRenderContext()->clearUAV(pHistogramWeightBuffer->getUAV().get(), uint4(0));
 
-    auto pHistogramPdfBuffer = Buffer::createStructured(pDevice, var["histogramPdfError"], testCount * binCount);
+    auto pHistogramPdfBuffer = pDevice->createStructuredBuffer(var["histogramPdfError"], testCount * binCount);
     var["histogramPdfError"] = pHistogramPdfBuffer;
     ctx.getRenderContext()->clearUAV(pHistogramPdfBuffer->getUAV().get(), uint4(0));
 
     ctx.runProgram(spec.sampleCount / spec.threadSampleCount, 1, testCount);
 
-    auto pHistogramWeightData = reinterpret_cast<const float*>(pHistogramWeightBuffer->map(Buffer::MapType::Read));
-    auto pHistogramPdfData = reinterpret_cast<const float*>(pHistogramPdfBuffer->map(Buffer::MapType::Read));
+    std::vector<float> histogramWeightData = pHistogramWeightBuffer->getElements<float>();
+    std::vector<float> histogramPdfData = pHistogramPdfBuffer->getElements<float>();
 
     std::vector<std::pair<std::vector<double>, std::vector<double>>> histograms;
 
@@ -233,17 +227,14 @@ std::vector<std::pair<std::vector<double>, std::vector<double>>> tabulateWeightA
     {
         std::vector<double> histogramWeight(binCount);
         for (uint32_t i = 0; i < binCount; ++i)
-            histogramWeight[i] = (double)pHistogramWeightData[testIndex * binCount + i];
+            histogramWeight[i] = (double)histogramWeightData[testIndex * binCount + i];
 
         std::vector<double> histogramPdf(binCount);
         for (uint32_t i = 0; i < binCount; ++i)
-            histogramPdf[i] = (double)pHistogramPdfData[testIndex * binCount + i];
+            histogramPdf[i] = (double)histogramPdfData[testIndex * binCount + i];
 
         histograms.emplace_back(histogramWeight, histogramPdf);
     }
-
-    pHistogramWeightBuffer->unmap();
-    pHistogramPdfBuffer->unmap();
 
     return histograms;
 }
@@ -321,14 +312,15 @@ GPU_TEST(TestBsdf_DisneyDiffuseBRDF)
     const float3 grazing = normalize(float3(0.f, 1.f, 0.01f));
 
     testSampling(
-        ctx, {"Rendering.Materials.BSDFs.DisneyDiffuseBRDF",
-              "DisneyDiffuseBRDF",
-              "bsdf.albedo = float3(1.f); bsdf.roughness = 0.5f;",
-              {
-                  {"perp", perp, {0.f, 0.f, 0.f, 0.f}},
-                  {"oblique", oblique, {0.f, 0.f, 0.f, 0.f}},
-                  {"grazing", grazing, {0.f, 0.f, 0.f, 0.f}},
-              }}
+        ctx,
+        {"Rendering.Materials.BSDFs.DisneyDiffuseBRDF",
+         "DisneyDiffuseBRDF",
+         "bsdf.albedo = float3(1.f); bsdf.roughness = 0.5f;",
+         {
+             {"perp", perp, {0.f, 0.f, 0.f, 0.f}},
+             {"oblique", oblique, {0.f, 0.f, 0.f, 0.f}},
+             {"grazing", grazing, {0.f, 0.f, 0.f, 0.f}},
+         }}
     );
 }
 
@@ -339,14 +331,15 @@ GPU_TEST(TestBsdf_FrostbiteDiffuseBRDF)
     const float3 grazing = normalize(float3(0.f, 1.f, 0.01f));
 
     testSampling(
-        ctx, {"Rendering.Materials.BSDFs.FrostbiteDiffuseBRDF",
-              "FrostbiteDiffuseBRDF",
-              "bsdf.albedo = float3(1.f); bsdf.roughness = 0.5f;",
-              {
-                  {"perp", perp, {0.f, 0.f, 0.f, 0.f}},
-                  {"oblique", oblique, {0.f, 0.f, 0.f, 0.f}},
-                  {"grazing", grazing, {0.f, 0.f, 0.f, 0.f}},
-              }}
+        ctx,
+        {"Rendering.Materials.BSDFs.FrostbiteDiffuseBRDF",
+         "FrostbiteDiffuseBRDF",
+         "bsdf.albedo = float3(1.f); bsdf.roughness = 0.5f;",
+         {
+             {"perp", perp, {0.f, 0.f, 0.f, 0.f}},
+             {"oblique", oblique, {0.f, 0.f, 0.f, 0.f}},
+             {"grazing", grazing, {0.f, 0.f, 0.f, 0.f}},
+         }}
     );
 }
 
@@ -357,14 +350,15 @@ GPU_TEST(TestBsdf_LambertDiffuseBRDF)
     const float3 grazing = normalize(float3(0.f, 1.f, 0.01f));
 
     testSampling(
-        ctx, {"Rendering.Materials.BSDFs.LambertDiffuseBRDF",
-              "LambertDiffuseBRDF",
-              "bsdf.albedo = float3(1.f);",
-              {
-                  {"perp", perp, {0.f, 0.f, 0.f, 0.f}},
-                  {"oblique", oblique, {0.f, 0.f, 0.f, 0.f}},
-                  {"grazing", grazing, {0.f, 0.f, 0.f, 0.f}},
-              }}
+        ctx,
+        {"Rendering.Materials.BSDFs.LambertDiffuseBRDF",
+         "LambertDiffuseBRDF",
+         "bsdf.albedo = float3(1.f);",
+         {
+             {"perp", perp, {0.f, 0.f, 0.f, 0.f}},
+             {"oblique", oblique, {0.f, 0.f, 0.f, 0.f}},
+             {"grazing", grazing, {0.f, 0.f, 0.f, 0.f}},
+         }}
     );
 }
 
@@ -375,14 +369,15 @@ GPU_TEST(TestBsdf_LambertDiffuseBTDF)
     const float3 grazing = normalize(float3(0.f, 1.f, 0.01f));
 
     testSampling(
-        ctx, {"Rendering.Materials.BSDFs.LambertDiffuseBTDF",
-              "LambertDiffuseBTDF",
-              "bsdf.albedo = float3(1.f);",
-              {
-                  {"perp", perp, {0.f, 0.f, 0.f, 0.f}},
-                  {"oblique", oblique, {0.f, 0.f, 0.f, 0.f}},
-                  {"grazing", grazing, {0.f, 0.f, 0.f, 0.f}},
-              }}
+        ctx,
+        {"Rendering.Materials.BSDFs.LambertDiffuseBTDF",
+         "LambertDiffuseBTDF",
+         "bsdf.albedo = float3(1.f);",
+         {
+             {"perp", perp, {0.f, 0.f, 0.f, 0.f}},
+             {"oblique", oblique, {0.f, 0.f, 0.f, 0.f}},
+             {"grazing", grazing, {0.f, 0.f, 0.f, 0.f}},
+         }}
     );
 }
 
@@ -393,14 +388,15 @@ GPU_TEST(TestBsdf_OrenNayarBRDF)
     const float3 grazing = normalize(float3(0.f, 1.f, 0.01f));
 
     testSampling(
-        ctx, {"Rendering.Materials.BSDFs.OrenNayarBRDF",
-              "OrenNayarBRDF",
-              "bsdf.albedo = float3(1.f); bsdf.roughness = 0.5f",
-              {
-                  {"perp", perp, {0.f, 0.f, 0.f, 0.f}},
-                  {"oblique", oblique, {0.f, 0.f, 0.f, 0.f}},
-                  {"grazing", grazing, {0.f, 0.f, 0.f, 0.f}},
-              }}
+        ctx,
+        {"Rendering.Materials.BSDFs.OrenNayarBRDF",
+         "OrenNayarBRDF",
+         "bsdf.albedo = float3(1.f); bsdf.roughness = 0.5f",
+         {
+             {"perp", perp, {0.f, 0.f, 0.f, 0.f}},
+             {"oblique", oblique, {0.f, 0.f, 0.f, 0.f}},
+             {"grazing", grazing, {0.f, 0.f, 0.f, 0.f}},
+         }}
     );
 }
 
@@ -411,14 +407,15 @@ GPU_TEST(TestBsdf_SimpleBTDF, "Disabled, sampling test makes no sense for diract
     const float3 grazing = normalize(float3(0.f, 1.f, 0.01f));
 
     testSampling(
-        ctx, {"Rendering.Materials.BSDFs.SimpleBTDF",
-              "SimpleBTDF",
-              "bsdf.transmittance = float3(1.f);",
-              {
-                  {"perp", perp, {0.f, 0.f, 0.f, 0.f}},
-                  {"oblique", oblique, {0.f, 0.f, 0.f, 0.f}},
-                  {"grazing", grazing, {0.f, 0.f, 0.f, 0.f}},
-              }}
+        ctx,
+        {"Rendering.Materials.BSDFs.SimpleBTDF",
+         "SimpleBTDF",
+         "bsdf.transmittance = float3(1.f);",
+         {
+             {"perp", perp, {0.f, 0.f, 0.f, 0.f}},
+             {"oblique", oblique, {0.f, 0.f, 0.f, 0.f}},
+             {"grazing", grazing, {0.f, 0.f, 0.f, 0.f}},
+         }}
     );
 }
 
@@ -429,17 +426,18 @@ GPU_TEST(TestBsdf_SpecularMicrofacetBRDF)
     const float3 grazing = normalize(float3(0.f, 1.f, 0.01f));
 
     testSampling(
-        ctx, {"Rendering.Materials.BSDFs.SpecularMicrofacet",
-              "SpecularMicrofacetBRDF",
-              "bsdf.albedo = float3(1.f); bsdf.activeLobes = 0xff; bsdf.alpha = params.x;",
-              {
-                  {"smooth_perp", perp, {0.05f, 0.f, 0.f, 0.f}},
-                  {"smooth_oblique", oblique, {0.05f, 0.f, 0.f, 0.f}},
-                  {"smooth_grazing", grazing, {0.05f, 0.f, 0.f, 0.f}},
-                  {"rough_perp", perp, {0.5f, 0.f, 0.f, 0.f}},
-                  {"rough_oblique", oblique, {0.5f, 0.f, 0.f, 0.f}},
-                  {"rough_grazing", grazing, {0.5f, 0.f, 0.f, 0.f}},
-              }}
+        ctx,
+        {"Rendering.Materials.BSDFs.SpecularMicrofacet",
+         "SpecularMicrofacetBRDF",
+         "bsdf.albedo = float3(1.f); bsdf.activeLobes = 0xff; bsdf.alpha = params.x;",
+         {
+             {"smooth_perp", perp, {0.05f, 0.f, 0.f, 0.f}},
+             {"smooth_oblique", oblique, {0.05f, 0.f, 0.f, 0.f}},
+             {"smooth_grazing", grazing, {0.05f, 0.f, 0.f, 0.f}},
+             {"rough_perp", perp, {0.5f, 0.f, 0.f, 0.f}},
+             {"rough_oblique", oblique, {0.5f, 0.f, 0.f, 0.f}},
+             {"rough_grazing", grazing, {0.5f, 0.f, 0.f, 0.f}},
+         }}
     );
 }
 
@@ -450,23 +448,24 @@ GPU_TEST(TestBsdf_SpecularMicrofacetBSDF, "Disabled, not passing")
     const float3 grazing = normalize(float3(0.f, 1.f, 0.01f));
 
     testSampling(
-        ctx, {"Rendering.Materials.BSDFs.SpecularMicrofacet",
-              "SpecularMicrofacetBSDF",
-              "bsdf.activeLobes = 0xff; bsdf.transmissionAlbedo = float3(1.f); bsdf.alpha = params.x; bsdf.eta = params.y;",
-              {
-                  {"to_glass_smooth_perp", perp, {0.05f, 0.67f, 0.f, 0.f}},
-                  {"to_glass_smooth_oblique", oblique, {0.05f, 0.67f, 0.f, 0.f}},
-                  {"to_glass_smooth_grazing", grazing, {0.05f, 0.67f, 0.f, 0.f}},
-                  {"to_glass_rough_perp", perp, {0.5f, 0.67f, 0.f, 0.f}},
-                  {"to_glass_rough_oblique", oblique, {0.5f, 0.67f, 0.f, 0.f}},
-                  {"to_glass_rough_grazing", grazing, {0.5f, 0.67f, 0.f, 0.f}},
-                  {"from_glass_smooth_perp", perp, {0.05f, 1.5f, 0.f, 0.f}},
-                  {"from_glass_smooth_oblique", oblique, {0.05f, 1.5f, 0.f, 0.f}},
-                  {"from_glass_smooth_grazing", grazing, {0.05f, 1.5f, 0.f, 0.f}},
-                  {"from_glass_rough_perp", perp, {0.5f, 1.5f, 0.f, 0.f}},
-                  {"from_glass_rough_oblique", oblique, {0.5f, 1.5f, 0.f, 0.f}},
-                  {"from_glass_rough_grazing", grazing, {0.5f, 1.5f, 0.f, 0.f}},
-              }}
+        ctx,
+        {"Rendering.Materials.BSDFs.SpecularMicrofacet",
+         "SpecularMicrofacetBSDF",
+         "bsdf.activeLobes = 0xff; bsdf.transmissionAlbedo = float3(1.f); bsdf.alpha = params.x; bsdf.eta = params.y;",
+         {
+             {"to_glass_smooth_perp", perp, {0.05f, 0.67f, 0.f, 0.f}},
+             {"to_glass_smooth_oblique", oblique, {0.05f, 0.67f, 0.f, 0.f}},
+             {"to_glass_smooth_grazing", grazing, {0.05f, 0.67f, 0.f, 0.f}},
+             {"to_glass_rough_perp", perp, {0.5f, 0.67f, 0.f, 0.f}},
+             {"to_glass_rough_oblique", oblique, {0.5f, 0.67f, 0.f, 0.f}},
+             {"to_glass_rough_grazing", grazing, {0.5f, 0.67f, 0.f, 0.f}},
+             {"from_glass_smooth_perp", perp, {0.05f, 1.5f, 0.f, 0.f}},
+             {"from_glass_smooth_oblique", oblique, {0.05f, 1.5f, 0.f, 0.f}},
+             {"from_glass_smooth_grazing", grazing, {0.05f, 1.5f, 0.f, 0.f}},
+             {"from_glass_rough_perp", perp, {0.5f, 1.5f, 0.f, 0.f}},
+             {"from_glass_rough_oblique", oblique, {0.5f, 1.5f, 0.f, 0.f}},
+             {"from_glass_rough_grazing", grazing, {0.5f, 1.5f, 0.f, 0.f}},
+         }}
     );
 }
 
@@ -477,14 +476,15 @@ GPU_TEST(TestBsdf_SheenBSDF)
     const float3 grazing = normalize(float3(0.f, 1.f, 0.01f));
 
     testSampling(
-        ctx, {"Rendering.Materials.BSDFs.SheenBSDF",
-              "SheenBSDF",
-              "bsdf.color = float3(1.f); bsdf.roughness = 0.5f",
-              {
-                  {"perp", perp, {0.f, 0.f, 0.f, 0.f}},
-                  {"oblique", oblique, {0.f, 0.f, 0.f, 0.f}},
-                  {"grazing", grazing, {0.f, 0.f, 0.f, 0.f}},
-              }}
+        ctx,
+        {"Rendering.Materials.BSDFs.SheenBSDF",
+         "SheenBSDF",
+         "bsdf.color = float3(1.f); bsdf.roughness = 0.5f",
+         {
+             {"perp", perp, {0.f, 0.f, 0.f, 0.f}},
+             {"oblique", oblique, {0.f, 0.f, 0.f, 0.f}},
+             {"grazing", grazing, {0.f, 0.f, 0.f, 0.f}},
+         }}
     );
 }
 
@@ -495,14 +495,15 @@ GPU_TEST(TestBsdf_DiffuseSpecularBRDF)
     const float3 grazing = normalize(float3(0.f, 1.f, 0.01f));
 
     testSampling(
-        ctx, {"Rendering.Materials.BSDFs.DiffuseSpecularBRDF",
-              "DiffuseSpecularBRDF",
-              "bsdf.diffuse = float3(0.5f); bsdf.specular = float3(0.04f); bsdf.roughness = 0.5f",
-              {
-                  {"perp", perp, {0.f, 0.f, 0.f, 0.f}},
-                  {"oblique", oblique, {0.f, 0.f, 0.f, 0.f}},
-                  {"grazing", grazing, {0.f, 0.f, 0.f, 0.f}},
-              }}
+        ctx,
+        {"Rendering.Materials.BSDFs.DiffuseSpecularBRDF",
+         "DiffuseSpecularBRDF",
+         "bsdf.diffuse = float3(0.5f); bsdf.specular = float3(0.04f); bsdf.roughness = 0.5f",
+         {
+             {"perp", perp, {0.f, 0.f, 0.f, 0.f}},
+             {"oblique", oblique, {0.f, 0.f, 0.f, 0.f}},
+             {"grazing", grazing, {0.f, 0.f, 0.f, 0.f}},
+         }}
     );
 }
 } // namespace Falcor

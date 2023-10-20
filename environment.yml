@@ -1,0 +1,14 @@
+name: falcor-pytorch
+channels:
+    - pytorch
+    - nvidia
+    - conda-forge
+dependencies:
+    - numpy
+    - python=3.10
+    - pytorch-cuda=11.8
+    - torchaudio
+    - torchvision
+    - pip
+    - pip:
+        - pyexr

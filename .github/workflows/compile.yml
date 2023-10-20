@@ -4,15 +4,18 @@ on:
   pull_request:
     branches: ["master"]
 
-env:
-  CMAKE_EXE: tools\.packman\cmake\bin\cmake.exe
-  CMAKE_BUILD_PRESET: windows-ninja-msvc-ci
-  CMAKE_BUILD_CONFIG: Release
-
 jobs:
   windows:
-    name: Windows/MSVC
+    name: Windows Ninja/MSVC
     runs-on: windows-latest
+    env:
+      CMAKE_EXE: tools\.packman\cmake\bin\cmake.exe
+      CMAKE_BUILD_PRESET: windows-ninja-msvc
+    strategy:
+      matrix:
+        include:
+          - config: Release
+          - config: Debug
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -30,5 +33,32 @@ jobs:
       - name: Build
         run: |
           %CMAKE_EXE% --preset %CMAKE_BUILD_PRESET%
-          %CMAKE_EXE% --build build/%CMAKE_BUILD_PRESET% --config %CMAKE_BUILD_CONFIG%
+          %CMAKE_EXE% --build build/%CMAKE_BUILD_PRESET% --config ${{ matrix.config }}
         shell: cmd
+  linux:
+    name: Linux/GCC
+    runs-on: ubuntu-22.04
+    env:
+      CMAKE_EXE: ./tools/.packman/cmake/bin/cmake
+      CMAKE_BUILD_PRESET: linux-gcc
+    strategy:
+      matrix:
+        include:
+          - config: Release
+          - config: Debug
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+      - name: Install system dependencies
+        run: sudo apt install -y xorg-dev libgtk-3-dev
+        shell: bash
+      - name: Setup
+        run: ./setup.sh
+        shell: bash
+      - name: Build
+        run: |
+          ${CMAKE_EXE} --preset ${CMAKE_BUILD_PRESET}
+          ${CMAKE_EXE} --build build/${CMAKE_BUILD_PRESET} --config ${{ matrix.config }}
+        shell: bash

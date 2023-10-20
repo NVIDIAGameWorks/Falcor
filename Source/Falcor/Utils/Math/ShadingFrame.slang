@@ -31,7 +31,7 @@ import Utils.Math.MathHelpers;
  * Shading frame in world space.
  * The vectors TBN form an orthonormal basis.
  */
-struct ShadingFrame
+struct ShadingFrame : IDifferentiable
 {
     float3 T; ///< Shading tangent. Normalized.
     float3 B; ///< Shading bitangent. Normalized.
@@ -43,6 +43,7 @@ struct ShadingFrame
      * @param[in] Normal in world space. Not normalized.
      * @param[in] Target tangent in world space (xyz) and handedness sign (w). Not normalized.
      */
+    [Differentiable]
     __init(const float3 normalW, const float4 tangentW)
     {
         this.N = normalize(normalW);
@@ -53,6 +54,7 @@ struct ShadingFrame
      * Create identity shading frame.
      * @return New shading frame.
      */
+    [Differentiable]
     static ShadingFrame createIdentity()
     {
         ShadingFrame sf;
@@ -70,6 +72,7 @@ struct ShadingFrame
      * @param[out] valid True if a valid tangent space was computed based on the supplied tangent, or false if a tangent space was invented.
      * @return New shading frame.
      */
+    [Differentiable]
     static ShadingFrame createSafe(const float3 normalW, const float4 tangentW, out bool valid)
     {
         ShadingFrame sf;
@@ -83,6 +86,7 @@ struct ShadingFrame
      * @param[in] v Vector in local space.
      * @return Vector in world space.
      */
+    [Differentiable]
     float3 fromLocal(const float3 v) { return T * v.x + B * v.y + N * v.z; }
 
     /**
@@ -90,6 +94,7 @@ struct ShadingFrame
      * @param[in] v Vector in world space.
      * @return Vector in local space.
      */
+    [Differentiable]
     float3 toLocal(const float3 v) { return float3(dot(v, T), dot(v, B), dot(v, N)); }
 
     /**
@@ -105,6 +110,7 @@ struct ShadingFrame
      * @param[in] tangentW Target tangent in world space (xyz) and handedness sign (w). Not normalized.
      */
     [mutating]
+    [Differentiable]
     void orthonormalize(const float4 tangentW)
     {
         T = normalize(tangentW.xyz - N * dot(tangentW.xyz, N));
@@ -119,6 +125,7 @@ struct ShadingFrame
      * @return True if a valid tangent space was computed based on the supplied tangent, or false if a tangent space was invented.
      */
     [mutating]
+    [Differentiable]
     bool orthonormalizeSafe(const float4 tangentW)
     {
         // Check that tangent space exists and can be safely orthonormalized.
@@ -141,7 +148,7 @@ struct ShadingFrame
         }
         else
         {
-            T = perp_stark(N);
+            T = no_diff perp_stark(N);
             B = cross(N, T);
         }
 

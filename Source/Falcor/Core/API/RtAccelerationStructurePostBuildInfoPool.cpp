@@ -52,7 +52,7 @@ uint64_t RtAccelerationStructurePostBuildInfoPool::getElement(CopyContext* pCont
 {
     if (mNeedFlush)
     {
-        pContext->flush(true);
+        pContext->submit(true);
         mNeedFlush = false;
     }
     uint64_t result = 0;

@@ -48,21 +48,21 @@ public:
     virtual void renderUI(Gui::Widgets& widget) override;
     virtual void setScene(RenderContext* pRenderContext, const ref<Scene>& pScene) override {}
 
-    bool    getEnabled() const { return mEnabled; }
-    float   getWipe() const { return mWipe; }
-    float   getBloomAmount() const { return mBloomAmount; }
-    float   getStarAmount() const { return mStarAmount; }
-    float   getStarAngle() const { return mStarAngle; }
-    float   getVignetteAmount() const { return mVignetteAmount; }
-    float   getChromaticAberrationAmount() const { return mChromaticAberrationAmount; }
-    float   getBarrelDistortAmount() const { return mBarrelDistortAmount; }
-    float3  getSaturationCurve() const { return mSaturationCurve; }
-    float3  getColorOffset() const { return mColorOffset; }
-    float3  getColorScale() const { return mColorScale; }
-    float3  getColorPower() const { return mColorPower; }
-    float   getColorOffsetScalar() const { return mColorOffsetScalar; }
-    float   getColorScaleScalar() const { return mColorScaleScalar; }
-    float   getColorPowerScalar() const { return mColorPowerScalar; }
+    bool getEnabled() const { return mEnabled; }
+    float getWipe() const { return mWipe; }
+    float getBloomAmount() const { return mBloomAmount; }
+    float getStarAmount() const { return mStarAmount; }
+    float getStarAngle() const { return mStarAngle; }
+    float getVignetteAmount() const { return mVignetteAmount; }
+    float getChromaticAberrationAmount() const { return mChromaticAberrationAmount; }
+    float getBarrelDistortAmount() const { return mBarrelDistortAmount; }
+    float3 getSaturationCurve() const { return mSaturationCurve; }
+    float3 getColorOffset() const { return mColorOffset; }
+    float3 getColorScale() const { return mColorScale; }
+    float3 getColorPower() const { return mColorPower; }
+    float getColorOffsetScalar() const { return mColorOffsetScalar; }
+    float getColorScaleScalar() const { return mColorScaleScalar; }
+    float getColorPowerScalar() const { return mColorPowerScalar; }
 
     void setEnabled(bool e) { mEnabled = e; }
     void setWipe(float v) { mWipe = v; }
@@ -85,31 +85,51 @@ private:
 
     const static int kNumLevels = 8;
 
-    RenderPassHelpers::IOSize mOutputSizeSelection = RenderPassHelpers::IOSize::Default;    ///< Selected output size.
-    uint2 mFixedOutputSize = { 512, 512 };                                                  ///< Output size in pixels when 'Fixed' size is selected.
+    /// Selected output size.
+    RenderPassHelpers::IOSize mOutputSizeSelection = RenderPassHelpers::IOSize::Default;
+    /// Output size in pixels when 'Fixed' size is selected.
+    uint2 mFixedOutputSize = {512, 512};
 
-    ref<ComputePass>    mpDownsamplePass;
-    ref<ComputePass>    mpUpsamplePass;
-    ref<ComputePass>    mpPostFXPass;
+    ref<ComputePass> mpDownsamplePass;
+    ref<ComputePass> mpUpsamplePass;
+    ref<ComputePass> mpPostFXPass;
 
-    ref<Texture>        mpPyramid[kNumLevels + 1];                          ///< Image pyramid, fine to coarse, full res down in steps of 4x (16x area).
-    ref<Sampler>        mpLinearSampler;
+    /// Image pyramid, fine to coarse, full res down in steps of 4x (16x area).
+    ref<Texture> mpPyramid[kNumLevels + 1];
+    ref<Sampler> mpLinearSampler;
 
-    float   mWipe = 0.f;                                                    ///< Wipe across to see the effect without fx. 0<=all effect, 1>= disabled.
-    bool    mEnabled = true;                                                ///< Enable the entire pass.
+    /// Wipe across to see the effect without fx. 0<=all effect, 1>= disabled.
+    float mWipe = 0.f;
+    /// Enable the entire pass.
+    bool mEnabled = true;
 
-    float   mBloomAmount = 0.f;                                             ///< Amount of bloom.
-    float   mStarAmount = 0.f;                                              ///< how much of a 6 pointed star to add to the bloom kernel.
-    float   mStarAngle = 0.1f;                                              ///< angle of star rays.
-    float   mVignetteAmount = 0.f;                                          ///< Amount of circuit vignetting.
-    float   mChromaticAberrationAmount = 0.f;                               ///< Amount of radial chromatic aberration.
-    float   mBarrelDistortAmount = 0.f;                                     ///< Amount of Barrel distortion.
-    float3  mSaturationCurve = float3(1.f, 1.f, 1.f);                       ///< Saturation amount for shadows, midtones and hilights.
-    float3  mColorOffset = float3(0.5f, 0.5f, 0.5f);                        ///< Color offset, tints shadows.
-    float3  mColorScale = float3(0.5f, 0.5f, 0.5f);                         ///< Color scale, tints hilights.
-    float3  mColorPower = float3(0.5f, 0.5f, 0.5f);                         ///< Color power (gamma), tints midtones.
+    /// Amount of bloom.
+    float mBloomAmount = 0.f;
+    /// how much of a 6 pointed star to add to the bloom kernel.
+    float mStarAmount = 0.f;
+    /// angle of star rays.
+    float mStarAngle = 0.1f;
+    /// Amount of circuit vignetting.
+    float mVignetteAmount = 0.f;
+    /// Amount of radial chromatic aberration.
+    float mChromaticAberrationAmount = 0.f;
+    /// Amount of Barrel distortion.
+    float mBarrelDistortAmount = 0.f;
+    /// Saturation amount for shadows, midtones and hilights.
+    float3 mSaturationCurve = float3(1.f, 1.f, 1.f);
+    /// Color offset, tints shadows.
+    float3 mColorOffset = float3(0.5f, 0.5f, 0.5f);
+    /// Color scale, tints hilights.
+    float3 mColorScale = float3(0.5f, 0.5f, 0.5f);
+    /// Color power (gamma), tints midtones.
+    float3 mColorPower = float3(0.5f, 0.5f, 0.5f);
+
     // the above colors are also offered as scalars for ease of UI and also to set negative colors.
-    float   mColorOffsetScalar = 0.f;                                       ///< Luma offset, crushes shadows if negative.
-    float   mColorScaleScalar = 0.f;                                        ///< Luma scale, effectively another exposure control.
-    float   mColorPowerScalar = 0.f;                                        ///< Luma power, ie a gamma curve.
+
+    /// Luma offset, crushes shadows if negative.
+    float mColorOffsetScalar = 0.f;
+    /// Luma scale, effectively another exposure control.
+    float mColorScaleScalar = 0.f;
+    /// Luma power, ie a gamma curve.
+    float mColorPowerScalar = 0.f;
 };

@@ -63,7 +63,7 @@ namespace Falcor
         return samplerChanged;
     }
 
-    void EmissivePowerSampler::setShaderData(const ShaderVar& var) const
+    void EmissivePowerSampler::bindShaderData(const ShaderVar& var) const
     {
         FALCOR_ASSERT(var.isValid());
 
@@ -162,7 +162,7 @@ namespace Falcor
         {
             float(sum),
             N,
-            Buffer::createTyped<uint2>(mpScene->getDevice(), N),
+            mpScene->getDevice()->createTypedBuffer<uint2>(N),
         };
 
         result.fullTable->setBlob(&fullTable[0], 0, N * sizeof(uint2));

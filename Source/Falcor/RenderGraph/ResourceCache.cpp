@@ -97,7 +97,7 @@ void ResourceCache::registerField(
     bool addAlias = (alias.empty() == false);
     if (addAlias && mNameToIndex.count(alias) == 0)
     {
-        throw RuntimeError("Field named '{}' not found. Cannot register '{}' as an alias.", alias, name);
+        FALCOR_THROW("Field named '{}' not found. Cannot register '{}' as an alias.", alias, name);
     }
 
     // Add a new field
@@ -142,11 +142,11 @@ inline ref<Resource> createResourceForPass(
         format = field.getFormat() == ResourceFormat::Unknown ? params.format : field.getFormat();
         if (resolveBindFlags)
         {
-            ResourceBindFlags mask = Resource::BindFlags::UnorderedAccess | Resource::BindFlags::ShaderResource;
+            ResourceBindFlags mask = ResourceBindFlags::UnorderedAccess | ResourceBindFlags::ShaderResource;
             bool isOutput = is_set(field.getVisibility(), RenderPassReflection::Field::Visibility::Output);
             bool isInternal = is_set(field.getVisibility(), RenderPassReflection::Field::Visibility::Internal);
             if (isOutput || isInternal)
-                mask |= Resource::BindFlags::DepthStencil | Resource::BindFlags::RenderTarget;
+                mask |= ResourceBindFlags::DepthStencil | ResourceBindFlags::RenderTarget;
             auto supported = pDevice->getFormatBindFlags(format);
             mask &= supported;
             bindFlags |= mask;
@@ -155,33 +155,33 @@ inline ref<Resource> createResourceForPass(
     else // RawBuffer
     {
         if (resolveBindFlags)
-            bindFlags = Resource::BindFlags::UnorderedAccess | Resource::BindFlags::ShaderResource;
+            bindFlags = ResourceBindFlags::UnorderedAccess | ResourceBindFlags::ShaderResource;
     }
     ref<Resource> pResource;
 
     switch (field.getType())
     {
     case RenderPassReflection::Field::Type::RawBuffer:
-        pResource = Buffer::create(pDevice, width, bindFlags, Buffer::CpuAccess::None);
+        pResource = pDevice->createBuffer(width, bindFlags, MemoryType::DeviceLocal);
         break;
     case RenderPassReflection::Field::Type::Texture1D:
-        pResource = Texture::create1D(pDevice, width, format, arraySize, mipLevels, nullptr, bindFlags);
+        pResource = pDevice->createTexture1D(width, format, arraySize, mipLevels, nullptr, bindFlags);
         break;
     case RenderPassReflection::Field::Type::Texture2D:
         if (sampleCount > 1)
         {
-            pResource = Texture::create2DMS(pDevice, width, height, format, sampleCount, arraySize, bindFlags);
+            pResource = pDevice->createTexture2DMS(width, height, format, sampleCount, arraySize, bindFlags);
         }
         else
         {
-            pResource = Texture::create2D(pDevice, width, height, format, arraySize, mipLevels, nullptr, bindFlags);
+            pResource = pDevice->createTexture2D(width, height, format, arraySize, mipLevels, nullptr, bindFlags);
         }
         break;
     case RenderPassReflection::Field::Type::Texture3D:
-        pResource = Texture::create3D(pDevice, width, height, depth, format, mipLevels, nullptr, bindFlags);
+        pResource = pDevice->createTexture3D(width, height, depth, format, mipLevels, nullptr, bindFlags);
         break;
     case RenderPassReflection::Field::Type::TextureCube:
-        pResource = Texture::createCube(pDevice, width, height, format, arraySize, mipLevels, nullptr, bindFlags);
+        pResource = pDevice->createTextureCube(width, height, format, arraySize, mipLevels, nullptr, bindFlags);
         break;
     default:
         FALCOR_UNREACHABLE();

@@ -31,13 +31,13 @@ import SVGFCommon;
 
 cbuffer PerImageCB
 {
-    Texture2D   gIllumination;
-    Texture2D   gMoments;
-    Texture2D   gHistoryLength;
-    Texture2D   gLinearZAndNormal;
+    Texture2D gIllumination;
+    Texture2D gMoments;
+    Texture2D gHistoryLength;
+    Texture2D gLinearZAndNormal;
 
-    float       gPhiColor;
-    float       gPhiNormal;
+    float gPhiColor;
+    float gPhiNormal;
 };
 
 float4 main(FullScreenPassVsOut vsOut) : SV_TARGET0
@@ -50,9 +50,9 @@ float4 main(FullScreenPassVsOut vsOut) : SV_TARGET0
 
     if (h < 4.0) // not enough temporal history available
     {
-        float sumWIllumination   = 0.0;
-        float3 sumIllumination   = float3(0.0, 0.0, 0.0);
-        float2 sumMoments  = float2(0.0, 0.0);
+        float sumWIllumination = 0.0;
+        float3 sumIllumination = float3(0.0, 0.0, 0.0);
+        float2 sumMoments = float2(0.0, 0.0);
 
         const float4 illuminationCenter = gIllumination[ipos];
         const float lIlluminationCenter = luminance(illuminationCenter.rgb);
@@ -64,8 +64,8 @@ float4 main(FullScreenPassVsOut vsOut) : SV_TARGET0
             return illuminationCenter;
         }
         const float3 nCenter = oct_to_ndir_snorm(gLinearZAndNormal[ipos].zw);
-        const float phiLIllumination   = gPhiColor;
-        const float phiDepth     = max(zCenter.y, 1e-8) * 3.0;
+        const float phiLIllumination = gPhiColor;
+        const float phiDepth = max(zCenter.y, 1e-8) * 3.0;
 
         // compute first and second moment spatially. This code also applies cross-bilateral
         // filtering on the input illumination.
@@ -75,26 +75,33 @@ float4 main(FullScreenPassVsOut vsOut) : SV_TARGET0
         {
             for (int xx = -radius; xx <= radius; xx++)
             {
-                const int2 p     = ipos + int2(xx, yy);
-                const bool inside = all(p >= int2(0,0)) && all(p < screenSize);
-                const bool samePixel = (xx ==0 && yy == 0);
+                const int2 p = ipos + int2(xx, yy);
+                const bool inside = all(p >= int2(0, 0)) && all(p < screenSize);
+                const bool samePixel = (xx == 0 && yy == 0);
                 const float kernel = 1.0;
 
                 if (inside)
                 {
                     const float3 illuminationP = gIllumination[p].rgb;
-                    const float2 momentsP      = gMoments[p].xy;
+                    const float2 momentsP = gMoments[p].xy;
                     const float lIlluminationP = luminance(illuminationP.rgb);
                     const float zP = gLinearZAndNormal[p].x;
                     const float3 nP = oct_to_ndir_snorm(gLinearZAndNormal[p].zw);
 
                     const float w = computeWeight(
-                        zCenter.x, zP, phiDepth * length(float2(xx, yy)),
-                        nCenter, nP, gPhiNormal,
-                        lIlluminationCenter, lIlluminationP, phiLIllumination);
+                        zCenter.x,
+                        zP,
+                        phiDepth * length(float2(xx, yy)),
+                        nCenter,
+                        nP,
+                        gPhiNormal,
+                        lIlluminationCenter,
+                        lIlluminationP,
+                        phiLIllumination
+                    );
 
                     sumWIllumination += w;
-                    sumIllumination  += illuminationP * w;
+                    sumIllumination += illuminationP * w;
                     sumMoments += momentsP * w;
                 }
             }
@@ -103,8 +110,8 @@ float4 main(FullScreenPassVsOut vsOut) : SV_TARGET0
         // Clamp sum to >0 to avoid NaNs.
         sumWIllumination = max(sumWIllumination, 1e-6f);
 
-        sumIllumination   /= sumWIllumination;
-        sumMoments  /= sumWIllumination;
+        sumIllumination /= sumWIllumination;
+        sumMoments /= sumWIllumination;
 
         // compute variance using the first and second moments
         float variance = sumMoments.g - sumMoments.r * sumMoments.r;

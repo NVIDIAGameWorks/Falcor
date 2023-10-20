@@ -31,7 +31,7 @@ import Rendering.Materials.LayeredBSDF;
 import Rendering.Materials.PBRT.PBRTDielectricMaterialInstance;
 import Rendering.Materials.PBRT.PBRTDiffuseMaterialInstance;
 
-struct PBRTCoatedDiffuseMaterialInstance : IMaterialInstance
+struct PBRTCoatedDiffuseMaterialInstance : MaterialInstanceBase, IMaterialInstance
 {
     ShadingFrame sf;            ///< Shading frame in world space.
     AnisotropicGGX interfaceD;
@@ -52,11 +52,17 @@ struct PBRTCoatedDiffuseMaterialInstance : IMaterialInstance
         return LayeredBSDF(top, bottom).eval(wiLocal, woLocal, sg);
     }
 
+    [Differentiable]
+    float3 evalAD<S : ISampleGenerator>(const DiffMaterialData diffData, const ShadingData sd, const float3 wo, inout S sg)
+    {
+        return float3(0.f);
+    }
+
     bool sample<S : ISampleGenerator>(const ShadingData sd, inout S sg, out BSDFSample result, bool useImportanceSampling = true)
     {
         float3 wiLocal = sf.toLocal(sd.V);
         float3 woLocal = {};
-        
+
         PBRTDielectricBSDF top = {interfaceD, interfaceEta};
         PBRTDiffuseBSDF bottom = {diffuseAlbedo};
 
@@ -77,7 +83,7 @@ struct PBRTCoatedDiffuseMaterialInstance : IMaterialInstance
 
         PBRTDielectricBSDF top = {interfaceD, interfaceEta};
         PBRTDiffuseBSDF bottom = {diffuseAlbedo};
-        
+
         return LayeredBSDF(top, bottom).evalPdf(wiLocal, woLocal);
     }
 

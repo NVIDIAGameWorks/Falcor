@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -38,8 +38,8 @@ struct InteractiveImageComparison : ICalcPixelColor
     }
 };
 
-float4 main(float2 texC : TEXCOORD, float4 pos : SV_Position) : SV_Target0
+float4 main(float2 texC: TEXCOORD, float4 pos: SV_Position) : SV_Target0
 {
-    InteractiveImageComparison comp = { };
+    InteractiveImageComparison comp = {};
     return compare(texC, pos, comp);
 }

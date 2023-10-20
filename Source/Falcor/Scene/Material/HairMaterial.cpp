@@ -44,12 +44,12 @@ namespace Falcor
         mTextureSlotInfo[(uint32_t)TextureSlot::Specular] = { "specular", TextureChannelFlags::RGB, false };
     }
 
-    Program::ShaderModuleList HairMaterial::getShaderModules() const
+    ProgramDesc::ShaderModuleList HairMaterial::getShaderModules() const
     {
-        return { Program::ShaderModule(kShaderFile) };
+        return { ProgramDesc::ShaderModule::fromFile(kShaderFile) };
     }
 
-    Program::TypeConformanceList HairMaterial::getTypeConformances() const
+    TypeConformanceList HairMaterial::getTypeConformances() const
     {
         return { {{"HairMaterial", "IMaterial"}, (uint32_t)MaterialType::Hair} };
     }

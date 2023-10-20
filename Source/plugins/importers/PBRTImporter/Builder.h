@@ -34,7 +34,7 @@
 #pragma once
 #include "Types.h"
 #include "Parser.h"
-#include "Core/Assert.h"
+#include "Core/Error.h"
 #include "Utils/Math/Matrix.h"
 
 #include <filesystem>
@@ -186,7 +186,13 @@ struct ShapeSceneEntity : public TransformedSceneEntity
         return fmt::format(
             "ShapeSceneEntity(name='{}', params={}, transform={}, reverseOrientation={}, "
             "materialRef={}. lightIndex={}, insideMedium='{}', outsideMedium='{}')",
-            name, params.toString(), to_string(transform), reverseOrientation, to_string(materialRef), lightIndex, insideMedium,
+            name,
+            params.toString(),
+            to_string(transform),
+            reverseOrientation,
+            to_string(materialRef),
+            lightIndex,
+            insideMedium,
             outsideMedium
         );
     }

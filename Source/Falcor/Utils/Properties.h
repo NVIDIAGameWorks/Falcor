@@ -27,7 +27,7 @@
  **************************************************************************/
 #pragma once
 #include "Core/Macros.h"
-#include "Core/Assert.h"
+#include "Core/Error.h"
 #include "Core/Enum.h"
 #include "Utils/Math/VectorTypes.h"
 
@@ -149,21 +149,21 @@ public:
         {
             std::string value;
             if (!getInternal(name, value))
-                throw RuntimeError("Property '{}' does not exist.", name);
+                FALCOR_THROW("Property '{}' does not exist.", name);
             return stringToEnum<T>(value);
         }
         else if constexpr (detail::has_serialize_v<T>)
         {
             Properties props;
             if (!getInternal(name, props))
-                throw RuntimeError("Property '{}' does not exist.", name);
+                FALCOR_THROW("Property '{}' does not exist.", name);
             return deserializeFromProperties<T>(props);
         }
         else
         {
             T value;
             if (!getInternal(name, value))
-                throw RuntimeError("Property '{}' does not exist.", name);
+                FALCOR_THROW("Property '{}' does not exist.", name);
             return value;
         }
     }

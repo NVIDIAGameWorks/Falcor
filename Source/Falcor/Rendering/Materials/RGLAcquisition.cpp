@@ -70,10 +70,10 @@ namespace Falcor
         : mpDevice(pDevice)
         , mpScene(pScene)
     {
-        checkArgument(mpDevice != nullptr, "'pDevice' must be a valid device");
-        checkArgument(pScene != nullptr, "'pScene' must be a valid scene");
+        FALCOR_CHECK(mpDevice != nullptr, "'pDevice' must be a valid device");
+        FALCOR_CHECK(pScene != nullptr, "'pScene' must be a valid scene");
 
-        Program::Desc descBase;
+        ProgramDesc descBase;
         descBase.addShaderModules(pScene->getShaderModules());
         descBase.addShaderLibrary(kShaderFile);
         descBase.addTypeConformances(pScene->getTypeConformances());
@@ -97,12 +97,11 @@ namespace Falcor
 
         auto createStructured = [&](size_t elemSize, size_t count, const void* srcData = nullptr)
         {
-            return Buffer::createStructured(
-                mpDevice,
+            return mpDevice->createStructuredBuffer(
                 uint32_t(elemSize),
                 uint32_t(count),
                 ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess,
-                Buffer::CpuAccess::None,
+                MemoryType::DeviceLocal,
                 srcData,
                 false
             );
@@ -126,7 +125,7 @@ namespace Falcor
     void RGLAcquisition::acquireIsotropic(RenderContext* pRenderContext, const MaterialID materialID)
     {
         FALCOR_ASSERT(mpScene);
-        checkArgument(materialID.get() < mpScene->getMaterialCount(), "'materialID' is out of range");
+        FALCOR_CHECK(materialID.get() < mpScene->getMaterialCount(), "'materialID' is out of range");
 
         CpuTimer timer;
         timer.update();
@@ -156,7 +155,7 @@ namespace Falcor
             var["lumi"] = mpLumiBuffer;
             var["rgb"] = mpRGBBuffer;
 
-            pPass->getRootVar()["gScene"] = mpScene->getParameterBlock();
+            mpScene->bindShaderData(pPass->getRootVar()["gScene"]);
         };
 
         setupParams(mpRetroReflectionPass);
@@ -189,11 +188,8 @@ namespace Falcor
         mpSumSigmaPass->execute(pRenderContext, uint3(kNDFSize.x, kNDFSize.y, 1));
 
         // Normalize NDF and projected areas.
-        std::vector<float> ndfCPU(kNDFN), sigmaCPU(kNDFN);
-        std::memcpy(  ndfCPU.data(), mpNDFBuffer  ->map(Buffer::MapType::Read), kNDFN * sizeof(float));
-        std::memcpy(sigmaCPU.data(), mpSigmaBuffer->map(Buffer::MapType::Read), kNDFN * sizeof(float));
-        mpNDFBuffer  ->unmap();
-        mpSigmaBuffer->unmap();
+        std::vector<float> ndfCPU = mpNDFBuffer->getElements<float>(0, kNDFN);
+        std::vector<float> sigmaCPU = mpSigmaBuffer->getElements<float>(0, kNDFN);
         for (uint y = 0; y < kNDFSize.y; ++y)
         {
             // First entry of sigma in each row corresponds to integrating <wi, wm> NDF(wm) with theta_i=0
@@ -215,9 +211,8 @@ namespace Falcor
         // Phase 4: Compute the VNDF and make it samplable.
         mpComputeVNDFPass->execute(pRenderContext, uint3(kVNDFSize.x, kVNDFSize.y, kVNDFSize.z * kVNDFSize.w));
 
-        const float* vndfBuf = reinterpret_cast<const float*>(mpVNDFBuffer->map(Buffer::MapType::Read));
-        SamplableDistribution4D vndfDist(vndfBuf, kVNDFSize);
-        mpVNDFBuffer->unmap();
+        std::vector<float> vndfBuf = mpVNDFBuffer->getElements<float>();
+        SamplableDistribution4D vndfDist(vndfBuf.data(), kVNDFSize);
         mpVNDFBuffer    ->setBlob(vndfDist.getPDF(),         0, sizeof(float) * kVNDFN);
         mpVNDFCondBuffer->setBlob(vndfDist.getConditional(), 0, sizeof(float) * kVNDFN);
         mpVNDFMargBuffer->setBlob(vndfDist.getMarginal(),    0, sizeof(float) * kVNDFN / kVNDFSize.z);
@@ -233,31 +228,23 @@ namespace Falcor
     {
         RGLFile result;
 
-        auto theta = mpThetaBuffer->map(Buffer::MapType::Read);
-        auto phi   = mpPhiBuffer  ->map(Buffer::MapType::Read);
-        auto sigma = mpSigmaBuffer->map(Buffer::MapType::Read);
-        auto ndf   = mpNDFBuffer  ->map(Buffer::MapType::Read);
-        auto vndf  = mpVNDFBuffer ->map(Buffer::MapType::Read);
-        auto rgb   = mpRGBBuffer  ->map(Buffer::MapType::Read);
-        auto lumi  = mpLumiBuffer ->map(Buffer::MapType::Read);
+        std::vector<float> theta = mpThetaBuffer->getElements<float>();
+        std::vector<float> phi   = mpPhiBuffer  ->getElements<float>();
+        std::vector<float> sigma = mpSigmaBuffer->getElements<float>();
+        std::vector<float> ndf   = mpNDFBuffer  ->getElements<float>();
+        std::vector<float> vndf  = mpVNDFBuffer ->getElements<float>();
+        std::vector<float> rgb   = mpRGBBuffer  ->getElements<float>();
+        std::vector<float> lumi  = mpLumiBuffer ->getElements<float>();
 
         std::string description = "Virtually measured BRDF";
         result.addField("description", RGLFile::UInt8,   std::vector<uint>{{uint(description.size())}}, description.c_str());
-        result.addField("phi_i",       RGLFile::Float32, std::vector<uint>{{kPhiSize}}, phi);
-        result.addField("theta_i",     RGLFile::Float32, std::vector<uint>{{kThetaSize}}, theta);
-        result.addField("sigma",       RGLFile::Float32, std::vector<uint>{{kNDFSize.y, kNDFSize.x}}, sigma);
-        result.addField("ndf",         RGLFile::Float32, std::vector<uint>{{kNDFSize.y, kNDFSize.x}}, ndf);
-        result.addField("vndf",        RGLFile::Float32, std::vector<uint>{{kVNDFSize.x, kVNDFSize.y, kVNDFSize.z, kVNDFSize.w}}, vndf);
-        result.addField("luminance",   RGLFile::Float32, std::vector<uint>{{kLumiSize.x, kLumiSize.y, kLumiSize.z, kLumiSize.w}}, lumi);
-        result.addField("rgb",         RGLFile::Float32, std::vector<uint>{{kLumiSize.x, kLumiSize.y, 3, kLumiSize.z, kLumiSize.w}}, rgb);
-
-        mpThetaBuffer->unmap();
-        mpPhiBuffer  ->unmap();
-        mpSigmaBuffer->unmap();
-        mpNDFBuffer  ->unmap();
-        mpVNDFBuffer ->unmap();
-        mpRGBBuffer  ->unmap();
-        mpLumiBuffer ->unmap();
+        result.addField("phi_i",       RGLFile::Float32, std::vector<uint>{{kPhiSize}}, phi.data());
+        result.addField("theta_i",     RGLFile::Float32, std::vector<uint>{{kThetaSize}}, theta.data());
+        result.addField("sigma",       RGLFile::Float32, std::vector<uint>{{kNDFSize.y, kNDFSize.x}}, sigma.data());
+        result.addField("ndf",         RGLFile::Float32, std::vector<uint>{{kNDFSize.y, kNDFSize.x}}, ndf.data());
+        result.addField("vndf",        RGLFile::Float32, std::vector<uint>{{kVNDFSize.x, kVNDFSize.y, kVNDFSize.z, kVNDFSize.w}}, vndf.data());
+        result.addField("luminance",   RGLFile::Float32, std::vector<uint>{{kLumiSize.x, kLumiSize.y, kLumiSize.z, kLumiSize.w}}, lumi.data());
+        result.addField("rgb",         RGLFile::Float32, std::vector<uint>{{kLumiSize.x, kLumiSize.y, 3, kLumiSize.z, kLumiSize.w}}, rgb.data());
 
         return result;
     }

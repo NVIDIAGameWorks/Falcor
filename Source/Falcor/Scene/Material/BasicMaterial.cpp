@@ -29,7 +29,7 @@
 #include "MaterialSystem.h"
 #include "Core/API/Device.h"
 #include "Core/API/RenderContext.h"
-#include "Core/Program/GraphicsProgram.h"
+#include "Core/Program/Program.h"
 #include "Core/Program/ProgramVars.h"
 #include "Utils/Logger.h"
 #include "Utils/Math/Common.h"
@@ -191,7 +191,6 @@ namespace Falcor
     {
         FALCOR_ASSERT(pOwner);
 
-        auto flags = Material::UpdateFlags::None;
         if (mUpdates != Material::UpdateFlags::None)
         {
             // Adjust material sidedness based on current parameters.
@@ -218,9 +217,13 @@ namespace Falcor
             mData.setDisplacementMaxSamplerID(pOwner->addTextureSampler(mpDisplacementMaxSampler));
             if (mData.flags != prevFlags) mUpdates |= Material::UpdateFlags::DataChanged;
 
-            flags |= mUpdates;
-            mUpdates = Material::UpdateFlags::None;
+            // Assume any update for an emissive materials can change its emissive properties.
+            if (mUpdates != Material::UpdateFlags::None && isEmissive())
+                mUpdates |= Material::UpdateFlags::EmissiveChanged;
         }
+
+        auto flags = mUpdates;
+        mUpdates = Material::UpdateFlags::None;
 
         return flags;
     }
@@ -269,10 +272,10 @@ namespace Falcor
             // Create derived samplers for displacement Min/Max filtering.
             Sampler::Desc desc = pSampler->getDesc();
             desc.setMaxAnisotropy(16); // Set 16x anisotropic filtering for improved min/max precision per triangle.
-            desc.setReductionMode(Sampler::ReductionMode::Min);
-            mpDisplacementMinSampler = Sampler::create(mpDevice, desc);
-            desc.setReductionMode(Sampler::ReductionMode::Max);
-            mpDisplacementMaxSampler = Sampler::create(mpDevice, desc);
+            desc.setReductionMode(TextureReductionMode::Min);
+            mpDisplacementMinSampler = mpDevice->createSampler(desc);
+            desc.setReductionMode(TextureReductionMode::Max);
+            mpDisplacementMaxSampler = mpDevice->createSampler(desc);
 
             markUpdates(UpdateFlags::ResourcesChanged);
         }
@@ -428,7 +431,7 @@ namespace Falcor
             break;
         }
         default:
-            throw ArgumentError("'slot' refers to unexpected texture slot {}", (uint32_t)slot);
+            FALCOR_THROW("'slot' refers to unexpected texture slot {}", (uint32_t)slot);
         }
     }
 
@@ -450,8 +453,8 @@ namespace Falcor
             if (getFormatChannelCount(oldFormat) < 4)
             {
                 Falcor::ResourceFormat newFormat = ResourceFormat::RGBA16Float;
-                Resource::BindFlags bf = pDisplacementMap->getBindFlags() | Resource::BindFlags::UnorderedAccess | Resource::BindFlags::RenderTarget;
-                ref<Texture> newDisplacementTex = Texture::create2D(mpDevice, pDisplacementMap->getWidth(), pDisplacementMap->getHeight(), newFormat, pDisplacementMap->getArraySize(), Resource::kMaxPossible, nullptr, bf);
+                ResourceBindFlags bf = pDisplacementMap->getBindFlags() | ResourceBindFlags::UnorderedAccess | ResourceBindFlags::RenderTarget;
+                ref<Texture> newDisplacementTex = mpDevice->createTexture2D(pDisplacementMap->getWidth(), pDisplacementMap->getHeight(), newFormat, pDisplacementMap->getArraySize(), Resource::kMaxPossible, nullptr, bf);
 
                 // Copy base level.
                 uint32_t arraySize = pDisplacementMap->getArraySize();
@@ -459,9 +462,9 @@ namespace Falcor
                 {
                     auto srv = pDisplacementMap->getSRV(0, 1, a, 1);
                     auto rtv = newDisplacementTex->getRTV(0, a, 1);
-                    const Sampler::ReductionMode redModes[] = { Sampler::ReductionMode::Standard, Sampler::ReductionMode::Standard, Sampler::ReductionMode::Standard, Sampler::ReductionMode::Standard };
+                    const TextureReductionMode redModes[] = { TextureReductionMode::Standard, TextureReductionMode::Standard, TextureReductionMode::Standard, TextureReductionMode::Standard };
                     const float4 componentsTransform[] = { float4(1.0f, 0.0f, 0.0f, 0.0f), float4(1.0f, 0.0f, 0.0f, 0.0f), float4(1.0f, 0.0f, 0.0f, 0.0f), float4(1.0f, 0.0f, 0.0f, 0.0f) };
-                    pRenderContext->blit(srv, rtv, RenderContext::kMaxRect, RenderContext::kMaxRect, Sampler::Filter::Linear, redModes, componentsTransform);
+                    pRenderContext->blit(srv, rtv, RenderContext::kMaxRect, RenderContext::kMaxRect, TextureFilteringMode::Linear, redModes, componentsTransform);
                 }
 
                 pDisplacementMap = newDisplacementTex;
@@ -652,7 +655,7 @@ namespace Falcor
         if (mHeader.isEmissive() != isEmissive)
         {
             mHeader.setEmissive(isEmissive);
-            markUpdates(UpdateFlags::DataChanged);
+            markUpdates(UpdateFlags::DataChanged | UpdateFlags::EmissiveChanged);
         }
     }
 

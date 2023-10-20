@@ -26,16 +26,18 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "GpuFence.h"
+#include "Fence.h"
 #include "Handles.h"
 #include "NativeHandle.h"
 #include "Core/Macros.h"
 
 namespace Falcor
 {
-// TODO(@skallweit): This type should be removed.
-// We only keep it to have LowLevelContextData::getCommandQueue() working as before.
-using CommandQueueHandle = gfx::ICommandQueue*;
+
+namespace cuda_utils
+{
+class ExternalSemaphore;
+}
 
 class FALCOR_API LowLevelContextData
 {
@@ -65,13 +67,16 @@ public:
      */
     NativeHandle getCommandBufferNativeHandle() const;
 
-    // TODO(@skallweit): This should be removed.
-    CommandQueueHandle getCommandQueue() const { return mpGfxCommandQueue; }
-    const ref<GpuFence>& getFence() const { return mpFence; }
+    const ref<Fence>& getFence() const { return mpFence; }
+
+#if FALCOR_HAS_CUDA
+    const ref<Fence>& getCudaFence() const { return mpCudaFence; }
+    const ref<cuda_utils::ExternalSemaphore>& getCudaSemaphore() const { return mpCudaSemaphore; }
+#endif
 
     void closeCommandBuffer();
     void openCommandBuffer();
-    void flush();
+    void submitCommandBuffer();
 
     gfx::IResourceCommandEncoder* getResourceCommandEncoder();
     gfx::IComputeCommandEncoder* getComputeCommandEncoder();
@@ -90,7 +95,12 @@ private:
     Device* mpDevice;
     gfx::ICommandQueue* mpGfxCommandQueue;
     Slang::ComPtr<gfx::ICommandBuffer> mGfxCommandBuffer;
-    ref<GpuFence> mpFence;
+    ref<Fence> mpFence;
+
+#if FALCOR_HAS_CUDA
+    ref<Fence> mpCudaFence;
+    ref<cuda_utils::ExternalSemaphore> mpCudaSemaphore;
+#endif
 
     gfx::ICommandBuffer* mpCommandBuffer = nullptr;
     bool mIsCommandBufferOpen = false;

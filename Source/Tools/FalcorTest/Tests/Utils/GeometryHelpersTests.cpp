@@ -82,9 +82,9 @@ void runBBoxTestComputeShader(GPUUnitTestContext& ctx, const BBoxTestCase* testC
 {
     ref<Device> pDevice = ctx.getDevice();
 
-    ref<Buffer> pOriginBuffer = Buffer::createTyped<float3>(pDevice, nTests);
-    ref<Buffer> pAABBMinBuffer = Buffer::createTyped<float3>(pDevice, nTests);
-    ref<Buffer> pAABBMaxBuffer = Buffer::createTyped<float3>(pDevice, nTests);
+    ref<Buffer> pOriginBuffer = pDevice->createTypedBuffer<float3>(nTests);
+    ref<Buffer> pAABBMinBuffer = pDevice->createTypedBuffer<float3>(nTests);
+    ref<Buffer> pAABBMaxBuffer = pDevice->createTypedBuffer<float3>(nTests);
 
     for (int i = 0; i < nTests; ++i)
     {
@@ -205,7 +205,7 @@ void testRandomBBoxes(GPUUnitTestContext& ctx, const char* entrypoint)
 }
 } // namespace
 
-// This test is currently disabled for Vulkan as the float precision is not exact (Program::CompilerFlags::FloatingPointModePrecise not
+// This test is currently disabled for Vulkan as the float precision is not exact (SlangCompilerFlags::FloatingPointModePrecise not
 // supported?).
 GPU_TEST(ComputeRayOrigin, Device::Type::D3D12)
 {
@@ -226,7 +226,7 @@ GPU_TEST(ComputeRayOrigin, Device::Type::D3D12)
     }
 
     // Setup and run GPU test.
-    ctx.createProgram(kShaderFilename, "testComputeRayOrigin", DefineList(), Program::CompilerFlags::FloatingPointModePrecise);
+    ctx.createProgram(kShaderFilename, "testComputeRayOrigin", DefineList(), SlangCompilerFlags::FloatingPointModePrecise);
     ctx.allocateStructuredBuffer("result", nTests);
     ctx.allocateStructuredBuffer("pos", nTests, testPositions.data(), testPositions.size() * sizeof(float3));
     ctx.allocateStructuredBuffer("normal", nTests, testNormals.data(), testNormals.size() * sizeof(float3));
@@ -288,7 +288,7 @@ GPU_TEST(SphereSubtendedAngle)
     };
     int nTests = sizeof(testCases) / sizeof(testCases[0]);
 
-    ref<Buffer> pTestCaseBuffer = Buffer::createTyped<float4>(pDevice, nTests);
+    ref<Buffer> pTestCaseBuffer = pDevice->createTypedBuffer<float4>(nTests);
 
     for (int i = 0; i < nTests; ++i)
     {
@@ -459,15 +459,15 @@ GPU_TEST(ComputeClippedTriangleArea2D)
             pos.push_back(float3(tests[i].p[2], 0.f));
         }
         FALCOR_ASSERT(pos.size() == 3 * tests.size());
-        return Buffer::createStructured(
-            pDevice, sizeof(float3), (uint32_t)pos.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, pos.data(), false
+        return pDevice->createStructuredBuffer(
+            sizeof(float3), (uint32_t)pos.size(), ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, pos.data(), false
         );
     };
 
     auto createAABBBuffer = [pDevice](const std::vector<AABB2D>& aabb)
     {
-        return Buffer::createStructured(
-            pDevice, sizeof(AABB2D), (uint32_t)aabb.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, aabb.data(), false
+        return pDevice->createStructuredBuffer(
+            sizeof(AABB2D), (uint32_t)aabb.size(), ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, aabb.data(), false
         );
     };
 

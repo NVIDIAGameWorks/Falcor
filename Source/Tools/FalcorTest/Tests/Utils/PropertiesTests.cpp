@@ -101,17 +101,7 @@ void testPropertyType(CPUUnitTestContext& ctx, const T& checkValue, const T& dif
 
     // Test Properties::get<T>(name)
     EXPECT_EQ(props.get<T>("value"), checkValue);
-    {
-        try
-        {
-            props.get<T>("value2");
-            EXPECT(false);
-        }
-        catch (const RuntimeError&)
-        {
-            EXPECT(true);
-        }
-    }
+    EXPECT_THROW(props.get<T>("value2"));
 
     // Test Properties::get<T>(name, def)
     EXPECT_EQ(props.get<T>("value", differentValue), checkValue);

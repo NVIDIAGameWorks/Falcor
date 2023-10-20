@@ -129,7 +129,7 @@ extension PathTracer
         }
 
         // Compute origin for rays traced from this path vertex.
-        path.origin = sd.computeNewRayOrigin();
+        path.origin = sd.computeRayOrigin();
 
         // Hijack pdf that we don't need.
         float primaryHitDist = path.pdf;
@@ -252,7 +252,7 @@ extension PathTracer
         }
 
         // Compute origin for rays traced from this path vertex.
-        path.origin = sd.computeNewRayOrigin();
+        path.origin = sd.computeRayOrigin();
 
         // Set the active lobes only to delta transmission.
         sd.mtl.setActiveLobes((uint)LobeType::DeltaTransmission);

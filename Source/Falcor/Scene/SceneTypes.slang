@@ -162,6 +162,11 @@ struct MeshDesc
     uint materialID;        ///< Material ID.
     uint flags;             ///< See MeshFlags.
 
+    uint getVertexCount() CONST_FUNCTION
+    {
+        return vertexCount;
+    }
+
     uint getTriangleCount() CONST_FUNCTION
     {
         return (indexCount > 0 ? indexCount : vertexCount) / 3;

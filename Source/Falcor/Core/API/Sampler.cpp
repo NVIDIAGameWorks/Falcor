@@ -36,19 +36,19 @@ namespace Falcor
 {
 namespace
 {
-gfx::TextureAddressingMode getGFXAddressMode(Sampler::AddressMode mode)
+gfx::TextureAddressingMode getGFXAddressMode(TextureAddressingMode mode)
 {
     switch (mode)
     {
-    case Sampler::AddressMode::Border:
+    case TextureAddressingMode::Border:
         return gfx::TextureAddressingMode::ClampToBorder;
-    case Sampler::AddressMode::Clamp:
+    case TextureAddressingMode::Clamp:
         return gfx::TextureAddressingMode::ClampToEdge;
-    case Sampler::AddressMode::Mirror:
+    case TextureAddressingMode::Mirror:
         return gfx::TextureAddressingMode::MirrorRepeat;
-    case Sampler::AddressMode::MirrorOnce:
+    case TextureAddressingMode::MirrorOnce:
         return gfx::TextureAddressingMode::MirrorOnce;
-    case Sampler::AddressMode::Wrap:
+    case TextureAddressingMode::Wrap:
         return gfx::TextureAddressingMode::Wrap;
     default:
         FALCOR_UNREACHABLE();
@@ -56,13 +56,13 @@ gfx::TextureAddressingMode getGFXAddressMode(Sampler::AddressMode mode)
     }
 }
 
-gfx::TextureFilteringMode getGFXFilter(Sampler::Filter filter)
+gfx::TextureFilteringMode getGFXFilter(TextureFilteringMode filter)
 {
     switch (filter)
     {
-    case Sampler::Filter::Linear:
+    case TextureFilteringMode::Linear:
         return gfx::TextureFilteringMode::Linear;
-    case Sampler::Filter::Point:
+    case TextureFilteringMode::Point:
         return gfx::TextureFilteringMode::Point;
     default:
         FALCOR_UNREACHABLE();
@@ -70,17 +70,17 @@ gfx::TextureFilteringMode getGFXFilter(Sampler::Filter filter)
     }
 }
 
-gfx::TextureReductionOp getGFXReductionMode(Sampler::ReductionMode mode)
+gfx::TextureReductionOp getGFXReductionMode(TextureReductionMode mode)
 {
     switch (mode)
     {
-    case Falcor::Sampler::ReductionMode::Standard:
+    case Falcor::TextureReductionMode::Standard:
         return gfx::TextureReductionOp::Average;
-    case Falcor::Sampler::ReductionMode::Comparison:
+    case Falcor::TextureReductionMode::Comparison:
         return gfx::TextureReductionOp::Comparison;
-    case Falcor::Sampler::ReductionMode::Min:
+    case Falcor::TextureReductionMode::Min:
         return gfx::TextureReductionOp::Minimum;
-    case Falcor::Sampler::ReductionMode::Max:
+    case Falcor::TextureReductionMode::Max:
         return gfx::TextureReductionOp::Maximum;
     default:
         return gfx::TextureReductionOp::Average;
@@ -91,7 +91,7 @@ gfx::TextureReductionOp getGFXReductionMode(Sampler::ReductionMode mode)
 
 gfx::ComparisonFunc getGFXComparisonFunc(ComparisonFunc func);
 
-Sampler::Sampler(ref<Device> pDevice, const Desc& desc) : mpDevice(pDevice), mDesc(desc)
+Sampler::Sampler(ref<Device> pDevice, const Desc& desc) : mpDevice(std::move(pDevice)), mDesc(desc)
 {
     gfx::ISamplerState::Desc gfxDesc = {};
     gfxDesc.addressU = getGFXAddressMode(desc.addressModeU);
@@ -101,7 +101,7 @@ Sampler::Sampler(ref<Device> pDevice, const Desc& desc) : mpDevice(pDevice), mDe
     static_assert(sizeof(gfxDesc.borderColor) == sizeof(desc.borderColor));
     std::memcpy(gfxDesc.borderColor, &desc.borderColor, sizeof(desc.borderColor));
 
-    gfxDesc.comparisonFunc = getGFXComparisonFunc(desc.comparisonMode);
+    gfxDesc.comparisonFunc = getGFXComparisonFunc(desc.comparisonFunc);
     gfxDesc.magFilter = getGFXFilter(desc.magFilter);
     gfxDesc.maxAnisotropy = desc.maxAnisotropy;
     gfxDesc.maxLOD = desc.maxLod;
@@ -109,8 +109,8 @@ Sampler::Sampler(ref<Device> pDevice, const Desc& desc) : mpDevice(pDevice), mDe
     gfxDesc.minLOD = desc.minLod;
     gfxDesc.mipFilter = getGFXFilter(desc.mipFilter);
     gfxDesc.mipLODBias = desc.lodBias;
-    gfxDesc.reductionOp = (desc.comparisonMode != Sampler::ComparisonMode::Disabled) ? gfx::TextureReductionOp::Comparison
-                                                                                     : getGFXReductionMode(desc.reductionMode);
+    gfxDesc.reductionOp =
+        (desc.comparisonFunc != ComparisonFunc::Disabled) ? gfx::TextureReductionOp::Comparison : getGFXReductionMode(desc.reductionMode);
 
     FALCOR_GFX_CALL(mpDevice->getGfxDevice()->createSamplerState(gfxDesc, mGfxSamplerState.writeRef()));
 }
@@ -118,11 +118,6 @@ Sampler::Sampler(ref<Device> pDevice, const Desc& desc) : mpDevice(pDevice), mDe
 Sampler::~Sampler()
 {
     mpDevice->releaseResource(mGfxSamplerState);
-}
-
-ref<Sampler> Sampler::create(ref<Device> pDevice, const Desc& desc)
-{
-    return ref<Sampler>(new Sampler(pDevice, desc));
 }
 
 NativeHandle Sampler::getNativeHandle() const
@@ -152,6 +147,25 @@ void Sampler::breakStrongReferenceToDevice()
 
 FALCOR_SCRIPT_BINDING(Sampler)
 {
-    pybind11::class_<Sampler, ref<Sampler>>(m, "Sampler");
+    FALCOR_SCRIPT_BINDING_DEPENDENCY(Types)
+
+    pybind11::falcor_enum<TextureFilteringMode>(m, "TextureFilteringMode");
+    pybind11::falcor_enum<TextureAddressingMode>(m, "TextureAddressingMode");
+    pybind11::falcor_enum<TextureReductionMode>(m, "TextureReductionMode");
+
+    pybind11::class_<Sampler, ref<Sampler>> sampler(m, "Sampler");
+    sampler.def_property_readonly("mag_filter", &Sampler::getMagFilter);
+    sampler.def_property_readonly("min_filter", &Sampler::getMinFilter);
+    sampler.def_property_readonly("mip_filter", &Sampler::getMipFilter);
+    sampler.def_property_readonly("max_anisotropy", &Sampler::getMaxAnisotropy);
+    sampler.def_property_readonly("min_lod", &Sampler::getMinLod);
+    sampler.def_property_readonly("max_lod", &Sampler::getMaxLod);
+    sampler.def_property_readonly("lod_bias", &Sampler::getLodBias);
+    sampler.def_property_readonly("comparison_func", &Sampler::getComparisonFunc);
+    sampler.def_property_readonly("reduction_mode", &Sampler::getReductionMode);
+    sampler.def_property_readonly("address_mode_u", &Sampler::getAddressModeU);
+    sampler.def_property_readonly("address_mode_v", &Sampler::getAddressModeV);
+    sampler.def_property_readonly("address_mode_w", &Sampler::getAddressModeW);
+    sampler.def_property_readonly("border_color", &Sampler::getBorderColor);
 }
 } // namespace Falcor

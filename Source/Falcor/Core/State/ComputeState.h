@@ -30,12 +30,12 @@
 #include "Core/Macros.h"
 #include "Core/Object.h"
 #include "Core/API/ComputeStateObject.h"
-#include "Core/Program/ComputeProgram.h"
+#include "Core/Program/Program.h"
 #include <memory>
 
 namespace Falcor
 {
-class ComputeVars;
+class ProgramVars;
 
 /**
  * Compute state.
@@ -58,7 +58,7 @@ public:
     /**
      * Bind a program to the pipeline
      */
-    ComputeState& setProgram(ref<ComputeProgram> pProgram)
+    ComputeState& setProgram(ref<Program> pProgram)
     {
         mpProgram = pProgram;
         return *this;
@@ -67,19 +67,19 @@ public:
     /**
      * Get the currently bound program
      */
-    ref<ComputeProgram> getProgram() const { return mpProgram; }
+    ref<Program> getProgram() const { return mpProgram; }
 
     /**
      * Get the active compute state object
      */
-    ref<ComputeStateObject> getCSO(const ComputeVars* pVars);
+    ref<ComputeStateObject> getCSO(const ProgramVars* pVars);
 
 private:
     ComputeState(ref<Device> pDevice);
 
     ref<Device> mpDevice;
-    ref<ComputeProgram> mpProgram;
-    ComputeStateObject::Desc mDesc;
+    ref<Program> mpProgram;
+    ComputeStateObjectDesc mDesc;
 
     struct CachedData
     {

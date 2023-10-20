@@ -31,8 +31,9 @@
 
 using namespace Falcor;
 
-/** Base class for the different G-buffer passes.
-*/
+/**
+ * Base class for the different G-buffer passes.
+ */
 class GBuffer : public GBufferBase
 {
 protected:

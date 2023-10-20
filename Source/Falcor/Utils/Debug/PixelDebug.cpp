@@ -28,7 +28,7 @@
 #include "PixelDebug.h"
 #include "Core/API/Device.h"
 #include "Core/API/RenderContext.h"
-#include "Core/Program/ComputeProgram.h"
+#include "Core/Program/Program.h"
 #include "Core/Program/ShaderVar.h"
 #include "Utils/Logger.h"
 #include "Utils/UI/InputTypes.h"
@@ -40,81 +40,74 @@ namespace Falcor
 {
 namespace
 {
-static_assert(sizeof(PixelLogValue) % 16 == 0, "PixelLogValue size should be a multiple of 16B");
-
-const char kReflectPixelDebugTypesFile[] = "Utils/Debug/ReflectPixelDebugTypes.cs.slang";
+static_assert(sizeof(PrintRecord) % 16 == 0, "PrintRecord size should be a multiple of 16B");
 } // namespace
 
-PixelDebug::PixelDebug(ref<Device> pDevice, uint32_t logSize) : mpDevice(pDevice), mLogSize(logSize) {}
+PixelDebug::PixelDebug(ref<Device> pDevice, uint32_t printCapacity, uint32_t assertCapacity)
+    : mpDevice(pDevice), mPrintCapacity(printCapacity), mAssertCapacity(assertCapacity)
+{}
 
 void PixelDebug::beginFrame(RenderContext* pRenderContext, const uint2& frameDim)
 {
+    FALCOR_CHECK(!mRunning, "Logging is already running, did you forget to call endFrame()?");
+
     mFrameDim = frameDim;
-    if (mRunning)
-    {
-        throw RuntimeError("PixelDebug::beginFrame() - Logging is already running, did you forget to call endFrame()?");
-    }
     mRunning = true;
 
     // Reset previous data.
-    mPixelLogData.clear();
-    mAssertLogData.clear();
+    mPrintData.clear();
+    mAssertData.clear();
     mDataValid = false;
     mWaitingForData = false;
 
     if (mEnabled)
     {
-        // Prepare log buffers.
-        if (!mpPixelLog || mpPixelLog->getElementCount() != mLogSize)
+        // Prepare buffers.
+        if (!mpPrintBuffer)
         {
-            // Create program for type reflection.
-            if (!mpReflectProgram)
-                mpReflectProgram = ComputeProgram::createFromFile(mpDevice, kReflectPixelDebugTypesFile, "main");
-
             // Allocate GPU buffers.
             const ref<Device>& pDevice = pRenderContext->getDevice();
-            mpPixelLog = Buffer::createStructured(pDevice, mpReflectProgram.get(), "gPixelLog", mLogSize);
-            if (mpPixelLog->getStructSize() != sizeof(PixelLogValue))
-                throw RuntimeError("Struct PixelLogValue size mismatch between CPU/GPU");
+            mpCounterBuffer = pDevice->createBuffer(sizeof(uint32_t) * 2);
+            mpPrintBuffer = pDevice->createStructuredBuffer(sizeof(PrintRecord), mPrintCapacity);
+            mpAssertBuffer = pDevice->createStructuredBuffer(sizeof(AssertRecord), mAssertCapacity);
 
-            mpAssertLog = Buffer::createStructured(pDevice, mpReflectProgram.get(), "gAssertLog", mLogSize);
-            if (mpAssertLog->getStructSize() != sizeof(AssertLogValue))
-                throw RuntimeError("Struct AssertLogValue size mismatch between CPU/GPU");
-
-            // Allocate staging buffers for readback. These are shared, the data is stored consecutively.
-            mpCounterBuffer = Buffer::create(pDevice, 2 * sizeof(uint32_t), ResourceBindFlags::None, Buffer::CpuAccess::Read);
-            mpDataBuffer =
-                Buffer::create(pDevice, mpPixelLog->getSize() + mpAssertLog->getSize(), ResourceBindFlags::None, Buffer::CpuAccess::Read);
+            // Allocate readback buffer. This buffer is shared for copying all the above buffers to the CPU
+            mpReadbackBuffer = pDevice->createBuffer(
+                mpCounterBuffer->getSize() + mpPrintBuffer->getSize() + mpAssertBuffer->getSize(),
+                ResourceBindFlags::None,
+                MemoryType::ReadBack
+            );
         }
 
-        pRenderContext->clearUAVCounter(mpPixelLog, 0);
-        pRenderContext->clearUAVCounter(mpAssertLog, 0);
+        pRenderContext->clearUAV(mpCounterBuffer->getUAV().get(), uint4(0));
     }
 }
 
 void PixelDebug::endFrame(RenderContext* pRenderContext)
 {
-    if (!mRunning)
-    {
-        throw RuntimeError("PixelDebug::endFrame() - Logging is not running, did you forget to call beginFrame()?");
-    }
+    FALCOR_CHECK(mRunning, "Logging is not running, did you forget to call beginFrame()?");
+
     mRunning = false;
 
     if (mEnabled)
     {
         // Copy logged data to staging buffers.
-        pRenderContext->copyBufferRegion(mpCounterBuffer.get(), 0, mpPixelLog->getUAVCounter().get(), 0, 4);
-        pRenderContext->copyBufferRegion(mpCounterBuffer.get(), 4, mpAssertLog->getUAVCounter().get(), 0, 4);
-        pRenderContext->copyBufferRegion(mpDataBuffer.get(), 0, mpPixelLog.get(), 0, mpPixelLog->getSize());
-        pRenderContext->copyBufferRegion(mpDataBuffer.get(), mpPixelLog->getSize(), mpAssertLog.get(), 0, mpAssertLog->getSize());
+        uint32_t dst = 0;
+        pRenderContext->copyBufferRegion(mpReadbackBuffer.get(), dst, mpCounterBuffer.get(), 0, mpCounterBuffer->getSize());
+        dst += mpCounterBuffer->getSize();
+        pRenderContext->copyBufferRegion(mpReadbackBuffer.get(), dst, mpPrintBuffer.get(), 0, mpPrintBuffer->getSize());
+        dst += mpPrintBuffer->getSize();
+        pRenderContext->copyBufferRegion(mpReadbackBuffer.get(), dst, mpAssertBuffer.get(), 0, mpAssertBuffer->getSize());
+        dst += mpAssertBuffer->getSize();
+        FALCOR_ASSERT(dst == mpReadbackBuffer->getSize());
 
         // Create fence first time we need it.
         if (!mpFence)
-            mpFence = GpuFence::create(mpDevice);
+            mpFence = mpDevice->createFence();
 
         // Submit command list and insert signal.
-        pRenderContext->flush(false);
-        mpFence->gpuSignal(pRenderContext->getLowLevelData()->getCommandQueue());
+        pRenderContext->submit(false);
+        pRenderContext->signal(mpFence.get());
 
         mWaitingForData = true;
     }
@@ -122,16 +115,19 @@ void PixelDebug::endFrame(RenderContext* pRenderContext)
 
 void PixelDebug::prepareProgram(const ref<Program>& pProgram, const ShaderVar& var)
 {
-    FALCOR_ASSERT(mRunning);
+    FALCOR_CHECK(mRunning, "Logging is not running, did you forget to call beginFrame()?");
 
     if (mEnabled)
     {
         pProgram->addDefine("_PIXEL_DEBUG_ENABLED");
-        var["gPixelLog"] = mpPixelLog;
-        var["gAssertLog"] = mpAssertLog;
-        var["PixelDebugCB"]["gPixelLogSelected"] = mSelectedPixel;
-        var["PixelDebugCB"]["gPixelLogSize"] = mLogSize;
-        var["PixelDebugCB"]["gAssertLogSize"] = mLogSize;
+
+        ShaderVar pixelDebug = var["gPixelDebug"];
+        pixelDebug["counterBuffer"] = mpCounterBuffer;
+        pixelDebug["printBuffer"] = mpPrintBuffer;
+        pixelDebug["assertBuffer"] = mpAssertBuffer;
+        pixelDebug["printBufferCapacity"] = mPrintCapacity;
+        pixelDebug["assertBufferCapacity"] = mAssertCapacity;
+        pixelDebug["selectedPixel"] = mSelectedPixel;
 
         const auto& hashedStrings = pProgram->getReflector()->getHashedStrings();
         for (const auto& hashedString : hashedStrings)
@@ -147,10 +143,7 @@ void PixelDebug::prepareProgram(const ref<Program>& pProgram, const ShaderVar& v
 
 void PixelDebug::renderUI(Gui::Widgets* widget)
 {
-    if (mRunning)
-    {
-        throw RuntimeError("PixelDebug::renderUI() - Logging is running, call end() before renderUI().");
-    }
+    FALCOR_CHECK(!mRunning, "Logging is running, call endFrame() before renderUI().");
 
     if (widget)
     {
@@ -177,8 +170,8 @@ void PixelDebug::renderUI(Gui::Widgets* widget)
         std::ostringstream oss;
 
         // Print list of printed values.
-        oss << "Pixel log:" << (mPixelLogData.empty() ? " <empty>\n" : "\n");
-        for (auto v : mPixelLogData)
+        oss << "Pixel log:" << (mPrintData.empty() ? " <empty>\n" : "\n");
+        for (auto v : mPrintData)
         {
             // Print message.
             auto it = mHashToString.find(v.msgHash);
@@ -191,18 +184,18 @@ void PixelDebug::renderUI(Gui::Widgets* widget)
             for (uint32_t i = 0; i < v.count; i++)
             {
                 uint32_t bits = v.data[i];
-                switch ((PixelLogValueType)v.type)
+                switch ((PrintValueType)v.type)
                 {
-                case PixelLogValueType::Bool:
+                case PrintValueType::Bool:
                     oss << (bits != 0 ? "true" : "false");
                     break;
-                case PixelLogValueType::Int:
+                case PrintValueType::Int:
                     oss << (int32_t)bits;
                     break;
-                case PixelLogValueType::Uint:
+                case PrintValueType::Uint:
                     oss << bits;
                     break;
-                case PixelLogValueType::Float:
+                case PrintValueType::Float:
                     oss << fstd::bit_cast<float>(bits);
                     break;
                 default:
@@ -218,10 +211,10 @@ void PixelDebug::renderUI(Gui::Widgets* widget)
         }
 
         // Print list of asserts.
-        if (!mAssertLogData.empty())
+        if (!mAssertData.empty())
         {
             oss << "\n";
-            for (auto v : mAssertLogData)
+            for (auto v : mAssertData)
             {
                 oss << "Assert at (" << v.launchIndex.x << ", " << v.launchIndex.y << ", " << v.launchIndex.z << ")";
                 auto it = mHashToString.find(v.msgHash);
@@ -234,7 +227,7 @@ void PixelDebug::renderUI(Gui::Widgets* widget)
         if (widget)
             widget->text(oss.str());
 
-        bool isEmpty = mPixelLogData.empty() && mAssertLogData.empty();
+        bool isEmpty = mPrintData.empty() && mAssertData.empty();
         if (isNewData && !isEmpty)
             logInfo("\n" + oss.str());
     }
@@ -259,30 +252,26 @@ bool PixelDebug::copyDataToCPU()
     if (mWaitingForData)
     {
         // Wait for signal.
-        mpFence->syncCpu();
+        mpFence->wait();
         mWaitingForData = false;
 
         if (mEnabled)
         {
-            // Map counter buffer. This tells us how many print() and assert() calls were made.
-            uint32_t* uavCounters = (uint32_t*)mpCounterBuffer->map(Buffer::MapType::Read);
-            const uint32_t printCount = std::min(mpPixelLog->getElementCount(), uavCounters[0]);
-            const uint32_t assertCount = std::min(mpAssertLog->getElementCount(), uavCounters[1]);
-            mpCounterBuffer->unmap();
+            // Copy data from readback buffer to CPU buffers.
+            const uint8_t* data = reinterpret_cast<const uint8_t*>(mpReadbackBuffer->map(Buffer::MapType::Read));
+            const uint32_t* counterData = reinterpret_cast<const uint32_t*>(data);
+            data += mpCounterBuffer->getSize();
+            const PrintRecord* printData = reinterpret_cast<const PrintRecord*>(data);
+            data += mpPrintBuffer->getSize();
+            const AssertRecord* assertData = reinterpret_cast<const AssertRecord*>(data);
 
-            // Map the data buffer and copy the relevant sections.
-            uint8_t* pLog = (uint8_t*)mpDataBuffer->map(Buffer::MapType::Read);
+            const uint32_t printCount = std::min(mpPrintBuffer->getElementCount(), counterData[0]);
+            const uint32_t assertCount = std::min(mpAssertBuffer->getElementCount(), counterData[1]);
 
-            mPixelLogData.resize(printCount);
-            for (uint32_t i = 0; i < printCount; i++)
-                mPixelLogData[i] = ((PixelLogValue*)pLog)[i];
-            pLog += mpPixelLog->getSize();
+            mPrintData.assign(printData, printData + printCount);
+            mAssertData.assign(assertData, assertData + assertCount);
 
-            mAssertLogData.resize(assertCount);
-            for (uint32_t i = 0; i < assertCount; i++)
-                mAssertLogData[i] = ((AssertLogValue*)pLog)[i];
-
-            mpDataBuffer->unmap();
+            mpReadbackBuffer->unmap();
             mDataValid = true;
             return true;
         }

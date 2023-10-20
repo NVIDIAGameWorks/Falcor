@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -322,7 +322,11 @@ GPU_TEST(FP16RoundingModeGPU, "Disabled due to lacking fp16 library (#391)")
     // The computation of the quantized value using 'y = f16tof32(f32tof16(x))' gets optimized to 'y = x' in the shader, despite the global
     // precise flag.
     ctx.createProgram(
-        "Tests/Utils/HalfUtilsTests.cs.slang", "testFP16RoundingMode", DefineList(), Program::CompilerFlags::FloatingPointModePrecise, "6_2"
+        "Tests/Utils/HalfUtilsTests.cs.slang",
+        "testFP16RoundingMode",
+        DefineList(),
+        SlangCompilerFlags::FloatingPointModePrecise,
+        ShaderModel::SM6_2
     );
     ctx.allocateStructuredBuffer("inputFloat", (uint32_t)input.size(), input.data(), input.size() * sizeof(decltype(input)::value_type));
     ctx.allocateStructuredBuffer("resultFloat", (uint32_t)expected.size());

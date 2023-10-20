@@ -26,7 +26,8 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "AliasTable.h"
-#include "Core/Errors.h"
+#include "Core/Error.h"
+#include "Core/API/Device.h"
 
 namespace Falcor
 {
@@ -48,13 +49,12 @@ AliasTable::AliasTable(ref<Device> pDevice, std::vector<float> weights, std::mt1
 {
     // Use >= since we reserve 0xFFFFFFFFu as an invalid flag marker during construction.
     if (weights.size() >= std::numeric_limits<uint32_t>::max())
-        throw RuntimeError("Too many entries for alias table.");
+        FALCOR_THROW("Too many entries for alias table.");
 
     std::uniform_int_distribution<uint32_t> rngDist;
 
-    mpWeights = Buffer::createStructured(
-        pDevice, sizeof(float), mCount, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, weights.data()
-    );
+    mpWeights =
+        pDevice->createStructuredBuffer(sizeof(float), mCount, ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, weights.data());
 
     // Our working set / intermediate buffers (underweight & overweight); initialize to "invalid"
     std::vector<uint32_t> lowIdx(mCount, 0xFFFFFFFFu);
@@ -133,12 +133,12 @@ AliasTable::AliasTable(ref<Device> pDevice, std::vector<float> weights, std::mt1
     // correct location in the alias table.
 
     // Stash the alias table in our GPU buffer
-    mpItems = Buffer::createStructured(
-        pDevice, sizeof(AliasTable::Item), mCount, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, items.data()
+    mpItems = pDevice->createStructuredBuffer(
+        sizeof(AliasTable::Item), mCount, ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, items.data()
     );
 }
 
-void AliasTable::setShaderData(const ShaderVar& var) const
+void AliasTable::bindShaderData(const ShaderVar& var) const
 {
     var["items"] = mpItems;
     var["weights"] = mpWeights;

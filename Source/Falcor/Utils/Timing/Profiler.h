@@ -29,6 +29,7 @@
 #include "CpuTimer.h"
 #include "Core/Macros.h"
 #include "Core/API/GpuTimer.h"
+#include "Core/API/Fence.h"
 #include <filesystem>
 #include <memory>
 #include <string>
@@ -156,6 +157,8 @@ public:
      */
     Profiler(ref<Device> pDevice);
 
+    const Device* getDevice() const { return mpDevice.get(); }
+
     /**
      * Check if the profiler is enabled.
      * @return Returns true if the profiler is enabled.
@@ -265,7 +268,7 @@ private:
 
     std::shared_ptr<Capture> mpCapture; ///< Currently active capture.
 
-    ref<GpuFence> mpFence;
+    ref<Fence> mpFence;
     uint64_t mFenceValue = uint64_t(-1);
 };
 

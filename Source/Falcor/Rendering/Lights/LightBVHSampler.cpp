@@ -26,8 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "LightBVHSampler.h"
-#include "Core/Assert.h"
-#include "Core/Errors.h"
+#include "Core/Error.h"
 #include "Utils/Timing/Profiler.h"
 #include <algorithm>
 #include <numeric>
@@ -80,11 +79,11 @@ namespace Falcor
         return defines;
     }
 
-    void LightBVHSampler::setShaderData(const ShaderVar& var) const
+    void LightBVHSampler::bindShaderData(const ShaderVar& var) const
     {
         FALCOR_ASSERT(var.isValid());
         FALCOR_ASSERT(mpBVH);
-        mpBVH->setShaderData(var["_lightBVH"]);
+        mpBVH->bindShaderData(var["_lightBVH"]);
     }
 
     bool LightBVHSampler::renderUI(Gui::Widgets& widgets)
@@ -127,6 +126,15 @@ namespace Falcor
         }
 
         return optionsChanged;
+    }
+
+    void LightBVHSampler::setOptions(const Options& options)
+    {
+        if (std::memcmp(&mOptions, &options, sizeof(Options)) != 0)
+        {
+            mOptions = options;
+            mNeedsRebuild = true;
+        }
     }
 
     LightBVHSampler::LightBVHSampler(RenderContext* pRenderContext, ref<Scene> pScene, const Options& options)

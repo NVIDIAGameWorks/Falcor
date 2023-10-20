@@ -27,7 +27,7 @@
  **************************************************************************/
 #include "PathResolving.h"
 
-#include "Core/Assert.h"
+#include "Core/Error.h"
 #include "Utils/StringUtils.h"
 #include "Core/Platform/OS.h"
 

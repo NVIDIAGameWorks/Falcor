@@ -46,6 +46,15 @@ namespace Falcor
     {
         FALCOR_OBJECT(TriangleMesh)
     public:
+        enum class ImportFlags
+        {
+            None = 0x0,
+            GenSmoothNormals = 0x1,
+            JoinIdenticalVertices = 0x2,
+
+            Default = None
+        };
+
         struct Vertex
         {
             float3 position;
@@ -103,7 +112,16 @@ namespace Falcor
         /** Creates a triangle mesh from a file.
             This is using ASSIMP to support a wide variety of asset formats.
             All geometry found in the asset is pre-transformed and merged into the same triangle mesh.
-            \param[in] path File path to load mesh from.
+            \param[in] path File path to load mesh from (absolute or relative to working directory).
+            \param[in] flags Flags controlling ASSIMP mesh import options.
+            \return Returns the triangle mesh or nullptr if the mesh failed to load.
+        */
+        static ref<TriangleMesh> createFromFile(const std::filesystem::path& path, ImportFlags flags);
+
+        /** Creates a triangle mesh from a file.
+            This is using ASSIMP to support a wide variety of asset formats.
+            All geometry found in the asset is pre-transformed and merged into the same triangle mesh.
+            \param[in] path File path to load mesh from (absolute or relative to working directory).
             \param[in] smoothNormals If no normals are defined in the model, generate smooth instead of facet normals.
             \return Returns the triangle mesh or nullptr if the mesh failed to load.
         */
@@ -177,4 +195,6 @@ namespace Falcor
         std::vector<uint32_t> mIndices;
         bool mFrontFaceCW = false;
     };
+
+    FALCOR_ENUM_CLASS_OPERATORS(TriangleMesh::ImportFlags);
 }

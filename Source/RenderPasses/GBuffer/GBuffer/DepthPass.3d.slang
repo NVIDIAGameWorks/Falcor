@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -32,10 +32,11 @@ VSOut vsMain(VSIn vIn)
     return defaultVS(vIn);
 }
 
-void psMain(VSOut vsOut, uint triangleIndex : SV_PrimitiveID) : SV_TARGET
+void psMain(VSOut vsOut, uint triangleIndex: SV_PrimitiveID) : SV_TARGET
 {
 #if USE_ALPHA_TEST
     let lod = ImplicitLodTextureSampler();
-    if (alphaTest(vsOut, triangleIndex, lod)) discard;
+    if (alphaTest(vsOut, triangleIndex, lod))
+        discard;
 #endif
 }

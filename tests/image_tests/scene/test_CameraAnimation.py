@@ -5,7 +5,7 @@ from graphs.SceneDebugger import SceneDebugger as g
 from falcor import *
 
 m.addGraph(g)
-m.loadScene("grey_and_white_room/grey_and_white_room.fbx")
+m.loadScene("test_scenes/grey_and_white_room/grey_and_white_room.fbx")
 
 # default
 render_frames(m, 'default', frames=[1,16,64,128,256])

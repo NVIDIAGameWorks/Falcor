@@ -53,14 +53,23 @@ protected:
     std::unique_ptr<TextRenderer> mpTextRenderer;
 
     // Screen parameters
-    bool mSwapSides = false; // Is the left input on the left side
+
+    /// Is the left input on the left side
+    bool mSwapSides = false;
 
     // Divider parameters
-    float mSplitLoc = -1.0f; // Location of the divider as a fraction of screen width, values < 0 are initialized to 0.5
-    uint32_t mDividerSize = 2; // Size of the divider (in pixels: 2*mDividerSize+1)
+
+    /// Location of the divider as a fraction of screen width, values < 0 are initialized to 0.5
+    float mSplitLoc = -1.0f;
+    /// Size of the divider (in pixels: 2*mDividerSize+1)
+    uint32_t mDividerSize = 2;
 
     // Label Parameters
-    bool mShowLabels = false; // Show text labels for two images?
-    std::string mLeftLabel = "Left side"; // Left label.  Set in Python script with "leftLabel"
-    std::string mRightLabel = "Right side"; // Right label.  Set in Python script with "rightLabel"
+
+    /// Show text labels for two images?
+    bool mShowLabels = false;
+    /// Left label.  Set in Python script with "leftLabel"
+    std::string mLeftLabel = "Left side";
+    /// Right label.  Set in Python script with "rightLabel"
+    std::string mRightLabel = "Right side";
 };

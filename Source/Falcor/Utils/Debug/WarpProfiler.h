@@ -29,7 +29,7 @@
 
 #include "Core/Macros.h"
 #include "Core/API/Buffer.h"
-#include "Core/API/GpuFence.h"
+#include "Core/API/Fence.h"
 
 #include <filesystem>
 #include <vector>
@@ -60,7 +60,7 @@ public:
      * This function must be called before the profiler can be used.
      * @param[in] var Shader vars of the program to set data into.
      */
-    void setShaderData(const ShaderVar& var) const;
+    void bindShaderData(const ShaderVar& var) const;
 
     /**
      * @brief Begin profiling.
@@ -93,7 +93,7 @@ public:
 private:
     void readBackData();
 
-    ref<GpuFence> mpFence;
+    ref<Fence> mpFence;
     ref<Buffer> mpHistogramBuffer;
     ref<Buffer> mpHistogramStagingBuffer;
 

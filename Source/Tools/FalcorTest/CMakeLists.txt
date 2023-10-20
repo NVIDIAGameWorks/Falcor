@@ -5,8 +5,10 @@ target_sources(FalcorTest PRIVATE
 
     Tests/Core/AftermathTests.cpp
     Tests/Core/AftermathTests.cs.slang
+    Tests/Core/AssetResolverTests.cpp
+    Tests/Core/BlitTests.cpp
+    Tests/Core/BlitTests.cs.slang
     Tests/Core/BufferAccessTests.cpp
-    Tests/Core/BufferAccessTests.cs.slang
     Tests/Core/BufferTests.cpp
     Tests/Core/BufferTests.cs.slang
     Tests/Core/ConstantBufferTests.cpp
@@ -36,6 +38,12 @@ target_sources(FalcorTest PRIVATE
     Tests/Core/TextureTests.cs.slang
 
     Tests/DebugPasses/InvalidPixelDetectionTests.cpp
+
+    Tests/DiffRendering/SceneGradientsTest.cpp
+    Tests/DiffRendering/SceneGradientsTest.cs.slang
+
+    Tests/DiffRendering/Material/DiffMaterialTests.cpp
+    Tests/DiffRendering/Material/DiffMaterialTests.cs.slang
 
     Tests/Platform/LockFileTests.cpp
     Tests/Platform/MemoryMappedFileTests.cpp

@@ -153,6 +153,7 @@ namespace Falcor
             SceneDefinesChanged         = 0x2000000,    ///< Scene defines changed. All programs that access the scene must be updated!
             TypeConformancesChanged     = 0x4000000,    ///< Type conformances changed. All programs that access the scene must be updated!
             ShaderCodeChanged           = 0x8000000,    ///< Shader code changed. All programs that access the scene must be updated!
+            EmissiveMaterialsChanged    = 0x10000000,   ///< Emissive materials changed.
 
             /// Flags indicating that programs that access the scene need to be recompiled.
             /// This is needed if defines, type conformances, and/or the shader code has changed.
@@ -468,6 +469,12 @@ namespace Falcor
         */
         const ref<Device>& getDevice() const { return mpDevice; }
 
+        /** Bind the scene to a given shader var.
+            Note that the scene may change between calls to update().
+            The caller should rebind the scene data before executing any program that accesses the scene.
+        */
+        void bindShaderData(const ShaderVar& var) const { var = mpSceneBlock; }
+
         /** Get scene defines.
             These defines must be set on all programs that access the scene.
             If the defines change at runtime, the update flag `SceneDefinesChanged` is set.
@@ -482,14 +489,14 @@ namespace Falcor
             The user is responsible to check for this and update all programs that access the scene.
             \return List of type conformances.
         */
-        Program::TypeConformanceList getTypeConformances() const;
+        TypeConformanceList getTypeConformances() const;
 
         /** Get shader modules required by the scene.
             The shader modules must be added to any program using the scene.
             The update() function must have been called before calling this function.
             \return List of shader modules.
         */
-        Program::ShaderModuleList getShaderModules() const;
+        ProgramDesc::ShaderModuleList getShaderModules() const;
 
         /** Get the current scene statistics.
         */
@@ -541,7 +548,7 @@ namespace Falcor
 
         /** Access the scene's currently selected camera to change properties or to use elsewhere.
         */
-        const ref<Camera>& getCamera() { return mCameras[mSelectedCamera]; }
+        const ref<Camera>& getCamera();
 
         /** Get the camera bounds
         */
@@ -713,6 +720,18 @@ namespace Falcor
         /** Get a mesh desc.
         */
         const MeshDesc& getMesh(MeshID meshID) const { return mMeshDesc[meshID.get()]; }
+
+        /** Get mesh vertex and index data.
+            \param[in] meshID Mesh ID.
+            \param[in] buffers Map of buffers containing mesh data: "triangleIndices", "positions", and "texcrds" are required.
+        */
+        void getMeshVerticesAndIndices(MeshID meshID, const std::map<std::string, ref<Buffer>>& buffers);
+
+        /** Set mesh vertex data and update the acceleration structures.
+            \param[in] meshID Mesh ID.
+            \param[in] buffers Map of buffers containing mesh data: "positions", "normals", "tangents", and "texcrds" are required.
+        */
+        void setMeshVertices(MeshID meshID, const std::map<std::string, ref<Buffer>>& buffers);
 
         /** Get the number of curves.
         */
@@ -954,6 +973,14 @@ namespace Falcor
         */
         UpdateFlags getUpdates() const { return mUpdates; }
 
+        /** Update material and geometry for inverse rendering applications.
+            This is a subset of the update() function.
+            \param[in] pRenderContext The render context.
+            \param[in] isMaterialChanged True if material parameters changed.
+            \param[in] isMeshChanged True if mesh parameters changed.
+        */
+        void updateForInverseRendering(RenderContext* pRenderContext, bool isMaterialChanged, bool isMeshChanged);
+
         /** Render the scene using the rasterizer.
             Note the rasterizer state bound to 'pState' is ignored.
             \param[in] pRenderContext Render context.
@@ -961,7 +988,7 @@ namespace Falcor
             \param[in] pVars Graphics vars.
             \param[in] cullMode Optional rasterizer cull mode. The default is to cull back-facing primitives.
         */
-        void rasterize(RenderContext* pRenderContext, GraphicsState* pState, GraphicsVars* pVars, RasterizerState::CullMode cullMode = RasterizerState::CullMode::Back);
+        void rasterize(RenderContext* pRenderContext, GraphicsState* pState, ProgramVars* pVars, RasterizerState::CullMode cullMode = RasterizerState::CullMode::Back);
 
         /** Render the scene using the rasterizer.
             This overload uses the supplied rasterizer states.
@@ -971,7 +998,7 @@ namespace Falcor
             \param[in] pRasterizerStateCW Rasterizer state for meshes with clockwise triangle winding.
             \param[in] pRasterizerStateCCW Rasterizer state for meshes with counter-clockwise triangle winding. Can be the same as for clockwise.
         */
-        void rasterize(RenderContext* pRenderContext, GraphicsState* pState, GraphicsVars* pVars, const ref<RasterizerState>& pRasterizerStateCW, const ref<RasterizerState>& pRasterizerStateCCW);
+        void rasterize(RenderContext* pRenderContext, GraphicsState* pState, ProgramVars* pVars, const ref<RasterizerState>& pRasterizerStateCW, const ref<RasterizerState>& pRasterizerStateCCW);
 
         /** Get the required raytracing maximum attribute size for this scene.
             Note: This depends on what types of geometry are used in the scene.
@@ -981,7 +1008,7 @@ namespace Falcor
 
         /** Render the scene using raytracing.
         */
-        void raytrace(RenderContext* pRenderContext, RtProgram* pProgram, const ref<RtProgramVars>& pVars, uint3 dispatchDims);
+        void raytrace(RenderContext* pRenderContext, Program* pProgram, const ref<RtProgramVars>& pVars, uint3 dispatchDims);
 
         /** Render the UI.
         */
@@ -1065,10 +1092,6 @@ namespace Falcor
         */
         void toggleAnimations(bool animate);
 
-        /** Get the parameter block with all scene resources.
-        */
-        const ref<ParameterBlock>& getParameterBlock() const { return mpSceneBlock; }
-
         /** Set the scene ray tracing resources into a shader var.
             The acceleration structure is created lazily, which requires the render context.
             \param[in] pRenderContext Render context.
@@ -1093,8 +1116,6 @@ namespace Falcor
             \return Node ID of the parent node, or kInvalidNode if top-level node.
         */
         NodeID getParentNodeID(NodeID nodeID) const;
-
-        static void nullTracePass(RenderContext* pRenderContext, const uint2& dim);
 
         std::string getScript(const std::string& sceneVar);
 
@@ -1125,13 +1146,9 @@ namespace Falcor
         */
         void createParameterBlock();
 
-        /** Uploads scene data to parameter block.
+        /** Uploads geometry data.
         */
-        void uploadResources();
-
-        /** Uploads the currently selected camera.
-        */
-        void uploadSelectedCamera();
+        void uploadGeometry();
 
         /** Update the scene's global bounding box.
         */
@@ -1217,6 +1234,14 @@ namespace Falcor
         void updateLightStats();
         void updateGridVolumeStats();
 
+        void bindGeometry();
+        void bindProceduralPrimitives();
+        void bindGridVolumes();
+        void bindSDFGrids();
+        void bindLights();
+        void bindSelectedCamera();
+        void bindParameterBlock();
+
         Scene(ref<Device> pDevice, SceneData&& sceneData);
 
         ref<Device> mpDevice; ///< GPU device the scene resides on.
@@ -1250,6 +1275,10 @@ namespace Falcor
         std::vector<MeshGroup> mMeshGroups;                         ///< Groups of meshes. Each group maps to a BLAS for ray tracing.
         std::vector<std::string> mMeshNames;                        ///< Mesh names, indxed by mesh ID
         std::vector<Node> mSceneGraph;                              ///< For each index i, the array element indicates the parent node. Indices are in relation to mLocalToWorldMatrices.
+
+        /// For Python bindings of triangle meshes.
+        ref<ComputePass> mpLoadMeshPass;
+        ref<ComputePass> mpUpdateMeshPass;
 
         // Displacement mapping.
         struct
@@ -1313,7 +1342,7 @@ namespace Falcor
         RenderSettings mPrevRenderSettings;
         DefineList mSceneDefines;                           ///< Current list of defines that need to be set on any program accessing the scene.
         DefineList mPrevSceneDefines;                       ///< List of defines for the previous frame.
-        Program::TypeConformanceList mTypeConformances;             ///< Current list of type conformances that need to be set on any program accessing the scene.
+        TypeConformanceList mTypeConformances;             ///< Current list of type conformances that need to be set on any program accessing the scene.
 
         UpdateCallback mUpdateCallback;                             ///< Scene update callback.
 
@@ -1366,7 +1395,6 @@ namespace Falcor
         {
             ref<RtAccelerationStructure> pTlasObject;
             ref<Buffer> pTlasBuffer;
-            ref<Buffer> pInstanceDescs;                     ///< Buffer holding instance descs for the TLAS.
             UpdateMode updateMode = UpdateMode::Rebuild;    ///< Update mode this TLAS was created with.
         };
 

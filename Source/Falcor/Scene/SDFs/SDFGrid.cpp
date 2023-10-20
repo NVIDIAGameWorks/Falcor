@@ -26,12 +26,12 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "SDFGrid.h"
+#include "GlobalState.h"
 #include "NormalizedDenseSDFGrid/NDSDFGrid.h"
 #include "SparseVoxelSet/SDFSVS.h"
 #include "SparseBrickSet/SDFSBS.h"
 #include "SparseVoxelOctree/SDFSVO.h"
-#include "Core/Assert.h"
-#include "Core/Errors.h"
+#include "Core/Error.h"
 #include "Core/API/Device.h"
 #include "Core/API/RenderContext.h"
 #include "Utils/Logger.h"
@@ -149,7 +149,11 @@ namespace Falcor
         j[kPrimitiveInvRotationScaleJSONKey].get_to(primitive.invRotationScale);
     }
 
-    SDFGrid::SDFGrid(ref<Device> pDevice) : mpDevice(pDevice) {}
+    SDFGrid::SDFGrid(ref<Device> pDevice) : mpDevice(pDevice)
+    {
+        if (!mpDevice->isShaderModelSupported(ShaderModel::SM6_5))
+            FALCOR_THROW("SDFGrid requires Shader Model 6.5 support.");
+    }
 
     uint32_t SDFGrid::setPrimitives(const std::vector<SDF3DPrimitive>& primitives, uint32_t gridWidth)
     {
@@ -158,7 +162,7 @@ namespace Falcor
         if (type != Type::SparseBrickSet)
         {
             // TODO: Expand the grid to match a grid size that is a power of 2 instead of throwing an exception.
-            checkArgument(isPowerOf2(gridWidth), "'gridWidth' ({}) must be a power of 2 for SDFGrid type of {}", gridWidth, getTypeName(type));
+            FALCOR_CHECK(isPowerOf2(gridWidth), "'gridWidth' ({}) must be a power of 2 for SDFGrid type of {}", gridWidth, getTypeName(type));
         }
 
         mGridWidth = gridWidth;
@@ -190,7 +194,7 @@ namespace Falcor
         {
             if (!indexSet.insert(index).second)
             {
-                throw RuntimeError("Multiple copies of index {}!", index);
+                FALCOR_THROW("Multiple copies of index {}!", index);
             }
         }
 
@@ -248,7 +252,7 @@ namespace Falcor
         {
             if (!indexSet.insert(index).second)
             {
-                throw RuntimeError("Multiple copies of index {}!", index);
+                FALCOR_THROW("Multiple copies of index {}!", index);
             }
         }
 
@@ -285,7 +289,7 @@ namespace Falcor
         Type type = getType();
         if (type != Type::SparseBrickSet)
         {
-            checkArgument(isPowerOf2(gridWidth), "'gridWidth' ({}) must be a power of 2 for SDFGrid type of {}", gridWidth, getTypeName(type));
+            FALCOR_CHECK(isPowerOf2(gridWidth), "'gridWidth' ({}) must be a power of 2 for SDFGrid type of {}", gridWidth, getTypeName(type));
         }
 
         mGridWidth = gridWidth;
@@ -295,26 +299,22 @@ namespace Falcor
 
     bool SDFGrid::loadValuesFromFile(const std::filesystem::path& path)
     {
-        std::filesystem::path fullPath;
-        if (findFileInDataDirectories(path, fullPath))
+        std::ifstream file(path, std::ios::in | std::ios::binary);
+
+        if (file.is_open())
         {
-            std::ifstream file(fullPath, std::ios::in | std::ios::binary);
+            uint32_t gridWidth;
+            file.read(reinterpret_cast<char*>(&gridWidth), sizeof(uint32_t));
 
-            if (file.is_open())
-            {
-                uint32_t gridWidth;
-                file.read(reinterpret_cast<char*>(&gridWidth), sizeof(uint32_t));
+            uint32_t totalValueCount = (gridWidth + 1) * (gridWidth + 1) * (gridWidth + 1);
+            std::vector<float> cornerValues(totalValueCount, 0.0f);
+            file.read(reinterpret_cast<char*>(cornerValues.data()), totalValueCount * sizeof(float));
 
-                uint32_t totalValueCount = (gridWidth + 1) * (gridWidth + 1) * (gridWidth + 1);
-                std::vector<float> cornerValues(totalValueCount, 0.0f);
-                file.read(reinterpret_cast<char*>(cornerValues.data()), totalValueCount * sizeof(float));
+            file.close();
+            setValues(cornerValues, gridWidth);
 
-                file.close();
-                setValues(cornerValues, gridWidth);
-
-                mInitializedWithPrimitives = false;
-                return true;
-            }
+            mInitializedWithPrimitives = false;
+            return true;
         }
 
         logWarning("SDFGrid::loadValuesFromFile() file '{}' could not be opened!", path);
@@ -383,9 +383,7 @@ namespace Falcor
 
         uint32_t gridWidthInValues = mGridWidth + 1;
         uint32_t valueCount = gridWidthInValues * gridWidthInValues * gridWidthInValues;
-        ref<Buffer> pValuesBuffer = Buffer::createTyped<float>(mpDevice, valueCount);
-        ref<Buffer> pValuesStagingBuffer = Buffer::createTyped<float>(mpDevice, valueCount, Resource::BindFlags::None, Buffer::CpuAccess::Read);
-        ref<GpuFence> pFence = GpuFence::create(mpDevice);
+        ref<Buffer> pValuesBuffer = mpDevice->createTypedBuffer<float>(valueCount);
 
         auto var = mpEvaluatePrimitivesPass->getRootVar();
         var["CB"]["gGridWidth"] = mGridWidth;
@@ -394,45 +392,26 @@ namespace Falcor
         var["gOldValues"] = mHasGridRepresentation ? mpSDFGridTexture : nullptr;
         var["gValues"] = pValuesBuffer;
         mpEvaluatePrimitivesPass->execute(pRenderContext, uint3(gridWidthInValues));
-        pRenderContext->copyResource(pValuesStagingBuffer.get(), pValuesBuffer.get());
-        pRenderContext->flush(false);
-        pFence->gpuSignal(pRenderContext->getLowLevelData()->getCommandQueue());
-        pFence->syncCpu();
-        const float* pValues = reinterpret_cast<const float*>(pValuesStagingBuffer->map(Buffer::MapType::Read));
+        std::vector<float> values = pValuesBuffer->getElements<float>();
 
         std::ofstream file(path, std::ios::out | std::ios::binary);
 
         if (file.is_open())
         {
             file.write(reinterpret_cast<const char*>(&mGridWidth), sizeof(uint32_t));
-            file.write(reinterpret_cast<const char*>(pValues), valueCount * sizeof(float));
+            file.write(reinterpret_cast<const char*>(values.data()), values.size() * sizeof(float));
             file.close();
         }
 
-        pValuesStagingBuffer->unmap();
         return true;
     }
 
-    uint32_t SDFGrid::loadPrimitivesFromFile(const std::filesystem::path& path, uint32_t gridWidth, const std::filesystem::path& dir)
+    uint32_t SDFGrid::loadPrimitivesFromFile(const std::filesystem::path& path, uint32_t gridWidth)
     {
-        std::filesystem::path fullPath;
-        if (dir.empty())
-        {
-            if (!findFileInDataDirectories(path, fullPath))
-            {
-                logWarning("File '{}' could not be found in data directories!", path);
-                return 0;
-            }
-        }
-        else
-        {
-            fullPath = dir / path;
-        }
-
-        std::ifstream ifs(fullPath);
+        std::ifstream ifs(path);
         if (!ifs.good())
         {
-            logWarning("Failed to open SDF grid file '{}' for reading.", fullPath);
+            logWarning("Failed to open SDF grid file '{}' for reading.", path);
             return false;
         }
 
@@ -444,7 +423,7 @@ namespace Falcor
         }
         catch (const std::exception& e)
         {
-            logWarning("Error when deserializing SDF grid from '{}': {}", fullPath, e.what());
+            logWarning("Error when deserializing SDF grid from '{}': {}", path, e.what());
             return 0;
         }
 
@@ -474,7 +453,7 @@ namespace Falcor
     const SDF3DPrimitive& SDFGrid::getPrimitive(uint32_t primitiveID) const
     {
         auto it = mPrimitiveIDToIndex.find(primitiveID);
-        checkArgument(it != mPrimitiveIDToIndex.end(), "'primitiveID' ({}) is invalid.", primitiveID);
+        FALCOR_CHECK(it != mPrimitiveIDToIndex.end(), "'primitiveID' ({}) is invalid.", primitiveID);
         return mPrimitives[it->second];
     }
 
@@ -538,8 +517,14 @@ namespace Falcor
         sdfGrid.def_static("createSVS", [](){ return static_ref_cast<SDFGrid>(SDFSVS::create(accessActivePythonSceneBuilder().getDevice())); }); // PYTHONDEPRECATED
         sdfGrid.def_static("createSBS", createSBS); // PYTHONDEPRECATED
         sdfGrid.def_static("createSVO", [](){ return static_ref_cast<SDFGrid>(SDFSVO::create(accessActivePythonSceneBuilder().getDevice())); }); // PYTHONDEPRECATED
-        sdfGrid.def("loadValuesFromFile", &SDFGrid::loadValuesFromFile, "path"_a);
-        sdfGrid.def("loadPrimitivesFromFile", &SDFGrid::loadPrimitivesFromFile, "path"_a, "gridWidth"_a, "dir"_a = "");
+        sdfGrid.def("loadValuesFromFile",
+            [](SDFGrid& self, const std::filesystem::path& path) { return self.loadValuesFromFile(getActiveAssetResolver().resolvePath(path)); },
+            "path"_a
+        ); // PYTHONDEPRECATED
+        sdfGrid.def("loadPrimitivesFromFile",
+            [](SDFGrid& self, const std::filesystem::path& path, uint32_t gridWidth) { return self.loadPrimitivesFromFile(getActiveAssetResolver().resolvePath(path), gridWidth); },
+            "path"_a, "gridWidth"_a
+        ); // PYTHONDEPRECATED
         sdfGrid.def("generateCheeseValues", &SDFGrid::generateCheeseValues, "gridWidth"_a, "seed"_a);
         sdfGrid.def_property("name", &SDFGrid::getName, &SDFGrid::setName);
     }
@@ -548,8 +533,8 @@ namespace Falcor
     {
         if (!mpEvaluatePrimitivesPass)
         {
-            Program::Desc desc;
-            desc.addShaderLibrary(kEvaluateSDFPrimitivesShaderName).csEntry("main").setShaderModel("6_5");
+            ProgramDesc desc;
+            desc.addShaderLibrary(kEvaluateSDFPrimitivesShaderName).csEntry("main");
             mpEvaluatePrimitivesPass = ComputePass::create(mpDevice, desc);
         }
 
@@ -580,7 +565,7 @@ namespace Falcor
         void* pData = (void*)&mPrimitives[mPrimitivesExcludedFromBuffer];
         if (!mpPrimitivesBuffer || mpPrimitivesBuffer->getElementCount() < count)
         {
-            mpPrimitivesBuffer = Buffer::createStructured(mpDevice, sizeof(SDF3DPrimitive), count, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, pData, false);
+            mpPrimitivesBuffer = mpDevice->createStructuredBuffer(sizeof(SDF3DPrimitive), count, ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, pData, false);
         }
         else
         {

@@ -31,7 +31,7 @@
 #include "Buffer.h"
 #include "GFXAPI.h"
 #include "NativeHandleTraits.h"
-#include "Core/Assert.h"
+#include "Core/Error.h"
 #include "Core/ObjectPython.h"
 #include "Utils/Logger.h"
 #include "Utils/StringUtils.h"
@@ -40,7 +40,7 @@
 namespace Falcor
 {
 
-Resource::Resource(ref<Device> pDevice, Type type, BindFlags bindFlags, uint64_t size)
+Resource::Resource(ref<Device> pDevice, Type type, ResourceBindFlags bindFlags, uint64_t size)
     : mpDevice(pDevice), mType(type), mBindFlags(bindFlags), mSize(size)
 {}
 

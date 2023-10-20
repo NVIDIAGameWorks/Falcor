@@ -32,6 +32,9 @@ __exported import Scene.Material.ShadingUtils;
 __exported import Rendering.Materials.IBSDF; // For kMinCosTheta
 __exported import Rendering.Materials.LobeType;
 __exported import Utils.Sampling.SampleGeneratorInterface;
+__exported import DiffRendering.DiffMaterialData;
+import Rendering.Volumes.PhaseFunction;
+import Scene.Material.VolumeProperties;
 
 /** Hints passed in when creating a material instance.
 */
@@ -150,6 +153,16 @@ interface IMaterialInstance
     */
     float3 eval<S : ISampleGenerator>(const ShadingData sd, const float3 wo, inout S sg);
 
+    /** Evaluates the material instance with auto-diff.
+        \param[in] diffData Differentiable parameters.
+        \param[in] sd Shading data.
+        \param[in] wo Outgoing direction.
+        \param[in,out] sg Sample generator.
+        \return Returns f(wi, wo) * dot(wo, n).
+    */
+    [Differentiable]
+    float3 evalAD<S : ISampleGenerator>(const DiffMaterialData diffData, const ShadingData sd, const float3 wo, inout S sg);
+
     /** Samples the material instance.
         \param[in] sd Shading data.
         \param[in,out] sg Sample generator.
@@ -179,4 +192,34 @@ interface IMaterialInstance
     */
     uint getLobeTypes(const ShadingData sd);
 
+
+    /** Indicates if the volume properties are taken from the material instance or not
+        \return True if the volume properties are textured.
+    */
+    bool hasVolumeProperties();
+
+    /** (Textured) volume properties which are stored on the surface instead of the volume
+        \return Volume properties.
+    */
+    VolumeProperties getVolumeProperties();
 }
+
+[open]
+struct MaterialInstanceBase
+{
+    bool hasVolumeProperties()
+    {
+        return false;
+    }
+
+    VolumeProperties getVolumeProperties()
+    {
+        VolumeProperties result;
+        result.sigmaA = 0.f;
+        result.sigmaS = 0.f;
+        result.phaseFunction = NullPhaseFunction();
+        return result;
+
+    }
+}
+

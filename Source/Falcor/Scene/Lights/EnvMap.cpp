@@ -68,6 +68,14 @@ namespace Falcor
         }
     }
 
+    void EnvMap::setTransform(const float4x4& xform)
+    {
+        float3 rotation;
+        // Extract rotation from the computed transform
+        math::extractEulerAngleXYZ(xform, rotation.x, rotation.y, rotation.z);
+        setRotation(math::degrees(rotation));
+    }
+
     void EnvMap::setIntensity(float intensity)
     {
         mData.intensity = intensity;
@@ -78,7 +86,7 @@ namespace Falcor
         mData.tint = tint;
     }
 
-    void EnvMap::setShaderData(const ShaderVar& var) const
+    void EnvMap::bindShaderData(const ShaderVar& var) const
     {
         FALCOR_ASSERT(var.isValid());
 
@@ -111,17 +119,17 @@ namespace Falcor
     EnvMap::EnvMap(ref<Device> pDevice, const ref<Texture>& pTexture)
         : mpDevice(pDevice)
     {
-        checkArgument(mpDevice != nullptr, "'pDevice' must be a valid device");
-        checkArgument(pTexture != nullptr, "'pTexture' must be a valid texture");
+        FALCOR_CHECK(mpDevice != nullptr, "'pDevice' must be a valid device");
+        FALCOR_CHECK(pTexture != nullptr, "'pTexture' must be a valid texture");
 
         mpEnvMap = pTexture;
 
         // Create sampler.
         // The lat-long map wraps around horizontally, but not vertically. Set the sampler to only wrap in U.
         Sampler::Desc samplerDesc;
-        samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
-        samplerDesc.setAddressingMode(Sampler::AddressMode::Wrap, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
-        mpEnvSampler = Sampler::create(mpDevice, samplerDesc);
+        samplerDesc.setFilterMode(TextureFilteringMode::Linear, TextureFilteringMode::Linear, TextureFilteringMode::Linear);
+        samplerDesc.setAddressingMode(TextureAddressingMode::Wrap, TextureAddressingMode::Clamp, TextureAddressingMode::Clamp);
+        mpEnvSampler = mpDevice->createSampler(samplerDesc);
     }
 
     FALCOR_SCRIPT_BINDING(EnvMap)
@@ -130,7 +138,10 @@ namespace Falcor
 
         pybind11::class_<EnvMap, ref<EnvMap>> envMap(m, "EnvMap");
         auto createFromFile = [](const std::filesystem::path &path) {
-            return EnvMap::createFromFile(accessActivePythonSceneBuilder().getDevice(), path);
+            ref<EnvMap> envMap = EnvMap::createFromFile(accessActivePythonSceneBuilder().getDevice(), getActiveAssetResolver().resolvePath(path));
+            if (!envMap)
+                FALCOR_THROW("Failed to load environment map from '{}'.", path);
+            return envMap;
         };
         envMap.def(pybind11::init(createFromFile), "path"_a); // PYTHONDEPRECATED
         envMap.def_static("createFromFile", createFromFile, "path"_a);

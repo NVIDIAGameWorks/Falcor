@@ -39,9 +39,9 @@ namespace Falcor
 {
 namespace
 {
-void testEnum(GPUUnitTestContext& ctx, const std::string& shaderModel)
+void testEnum(GPUUnitTestContext& ctx, ShaderModel shaderModel)
 {
-    ctx.createProgram("Tests/Slang/SlangTests.cs.slang", "testEnum", DefineList(), Program::CompilerFlags::None, shaderModel);
+    ctx.createProgram("Tests/Slang/SlangTests.cs.slang", "testEnum", DefineList(), SlangCompilerFlags::None, shaderModel);
     ctx.allocateStructuredBuffer("result", 12);
     ctx.runProgram(1, 1, 1);
 
@@ -78,9 +78,9 @@ uint64_t asuint64(double a)
 */
 GPU_TEST(SlangEnum)
 {
-    testEnum(ctx, ""); // Use default shader model for the unit test system
-    testEnum(ctx, "6_0");
-    testEnum(ctx, "6_3");
+    testEnum(ctx, ShaderModel::Unknown); // Use default shader model for the unit test system
+    testEnum(ctx, ShaderModel::SM6_0);
+    testEnum(ctx, ShaderModel::SM6_3);
 }
 
 /** Test fixed-width scalar type support including 16-bit types (shader model 6.2+).
@@ -93,7 +93,7 @@ GPU_TEST(SlangScalarTypes)
 {
     const uint32_t maxTests = 100;
 
-    ctx.createProgram("Tests/Slang/SlangTests.cs.slang", "testScalarTypes", DefineList(), Program::CompilerFlags::None, "6_2");
+    ctx.createProgram("Tests/Slang/SlangTests.cs.slang", "testScalarTypes", DefineList(), SlangCompilerFlags::None, ShaderModel::SM6_2);
     ctx.allocateStructuredBuffer("result", maxTests);
     ctx.runProgram(1, 1, 1);
 
@@ -163,10 +163,10 @@ GPU_TEST(SlangDefaultInitializers)
     const uint32_t maxTests = 100, usedTests = 43;
     std::vector<uint32_t> initData(maxTests, -1);
 
-    auto test = [&](const std::string& shaderModel)
+    auto test = [&](ShaderModel shaderModel)
     {
         ctx.createProgram(
-            "Tests/Slang/SlangTests.cs.slang", "testDefaultInitializers", DefineList(), Program::CompilerFlags::None, shaderModel
+            "Tests/Slang/SlangTests.cs.slang", "testDefaultInitializers", DefineList(), SlangCompilerFlags::None, shaderModel
         );
         ctx.allocateStructuredBuffer("result", maxTests, initData.data(), initData.size() * sizeof(initData[0]));
         ctx.runProgram(1, 1, 1);
@@ -179,20 +179,20 @@ GPU_TEST(SlangDefaultInitializers)
             if (i == 42)
                 expected = (uint32_t)Type3::C;
 
-            EXPECT_EQ(result[i], expected) << "i = " << i << " (sm" << shaderModel << ")";
+            EXPECT_EQ(result[i], expected) << "i = " << i << " (" << enumToString(shaderModel) << ")";
         }
     };
 
     // Test the default shader model, followed by specific models.
-    test("");
-    test("6_0");
-    test("6_1");
-    test("6_2");
-    test("6_3");
-    test("6_5");
+    test(ShaderModel::Unknown);
+    test(ShaderModel::SM6_0);
+    test(ShaderModel::SM6_1);
+    test(ShaderModel::SM6_2);
+    test(ShaderModel::SM6_3);
+    test(ShaderModel::SM6_5);
 #if FALCOR_HAS_D3D12_AGILITY_SDK
     if (ctx.getDevice()->getType() == Device::Type::D3D12)
-        test("6_6");
+        test(ShaderModel::SM6_6);
 #endif
 }
 

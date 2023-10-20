@@ -309,6 +309,55 @@ struct PathTracer
         logSetPixel(path.getPixel());
     }
 
+    /** Compute a set of coherence hints for a given path state.
+        These hints predict the code path taken in the next call to handleHit() with the given path state.
+        They are used by reordering schedulers to extract coherence.
+        \param[in] path Path state.
+        \param[in] isDeltaSpecular Hit material is pure delta specular.
+        \param[in] isEmissive Hit material is emissive.
+        \return Returns a bit mask of coherence hints. MSB is highest priority hint. Currently 4 bits are used.
+    */
+    uint getCoherenceHints(const PathState path, const bool isDeltaSpecular, const bool isEmissive)
+    {
+        bool terminatedByRussianRoulette = {}; ///< handleHit() will be terminated early due to russian roulette.
+        bool terminated = {};                  ///< handleHit() will be terminated early.
+        bool samplesLight = {};                ///< handleHit() will sample a light.
+        bool computesEmissive = {};            ///< handleHit() will compute emission.
+
+        // Determines if handleHit() will return early due to russian roulette.
+        if (kUseRussianRoulette)
+        {
+            // This is under the assumption that the first random number drawn from the sample generator is used for russian roulette.
+            // Keep in sync with handleHit().
+            PathState tmpPath = path;
+            terminatedByRussianRoulette = terminatePathByRussianRoulette(tmpPath, sampleNext1D(tmpPath.sg));
+        }
+
+        // Determines if handleHit() will return early.
+        terminated = hasFinishedSurfaceBounces(path);
+        if (kDisableCaustics && path.getBounces(BounceType::Diffuse) > 0 && isDeltaSpecular)
+            terminated = true;
+
+        // Determines if handleHit() will sample a light.
+        samplesLight = true;
+        if (isDeltaSpecular)
+            samplesLight = false;
+        if (!kUseLightsInDielectricVolumes && path.isInsideDielectricVolume())
+            samplesLight = false;
+
+        // Determines if handleHit() will compute emission.
+        computesEmissive = isEmissive && path.isLightSamplable();
+        if (kUseRTXDI && path.getVertexIndex() == 2 && !isDeltaSpecular)
+            computesEmissive = false;
+
+        // MSB = highest priority hint.
+        return
+            select(computesEmissive, 0x1, 0x0) |
+            select(samplesLight, 0x2, 0x0) |
+            select(terminated, 0x4, 0x0) |
+            select(terminatedByRussianRoulette, 0x8, 0x0);
+    }
+
     /** Update the path throughouput.
         \param[in,out] path Path state.
         \param[in] weight Vertex throughput.
@@ -442,7 +491,7 @@ struct PathTracer
             else
             {
                 // Compute ray origin for next ray segment.
-                path.origin = sd.computeNewRayOrigin(false);
+                path.origin = sd.computeRayOrigin(false);
 
                 // Update interior list and inside volume flag.
                 if (!sd.mtl.isThinSurface())
@@ -707,7 +756,7 @@ struct PathTracer
             {
                 path.rejectedHits++;
                 path.interiorList.handleIntersection(sd.materialID, nestedPriority, sd.frontFacing);
-                path.origin = sd.computeNewRayOrigin(false);
+                path.origin = sd.computeRayOrigin(false);
                 path.decrementVertexIndex();
             }
             else
@@ -889,7 +938,7 @@ struct PathTracer
         }
         else
         {
-            path.origin = sd.computeNewRayOrigin();
+            path.origin = sd.computeRayOrigin();
         }
 
         // Determine if BSDF has non-delta lobes.

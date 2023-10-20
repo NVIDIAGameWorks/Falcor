@@ -44,12 +44,12 @@ namespace Falcor
         mTextureSlotInfo[(uint32_t)TextureSlot::Normal] = { "normal", TextureChannelFlags::RGB, false };
     }
 
-    Program::ShaderModuleList PBRTDielectricMaterial::getShaderModules() const
+    ProgramDesc::ShaderModuleList PBRTDielectricMaterial::getShaderModules() const
     {
-        return { Program::ShaderModule(kShaderFile) };
+        return { ProgramDesc::ShaderModule::fromFile(kShaderFile) };
     }
 
-    Program::TypeConformanceList PBRTDielectricMaterial::getTypeConformances() const
+    TypeConformanceList PBRTDielectricMaterial::getTypeConformances() const
     {
         return { {{"PBRTDielectricMaterial", "IMaterial"}, (uint32_t)MaterialType::PBRTDielectric} };
     }

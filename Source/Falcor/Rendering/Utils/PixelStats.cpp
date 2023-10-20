@@ -82,7 +82,7 @@ namespace Falcor
             if (!mpParallelReduction)
             {
                 mpParallelReduction = std::make_unique<ParallelReduction>(mpDevice);
-                mpReductionResult = Buffer::create(mpDevice, (kRayTypeCount + 3) * sizeof(uint4), ResourceBindFlags::None, Buffer::CpuAccess::Read);
+                mpReductionResult = mpDevice->createBuffer((kRayTypeCount + 3) * sizeof(uint4), ResourceBindFlags::None, MemoryType::ReadBack);
             }
 
             // Prepare stats buffers.
@@ -90,11 +90,11 @@ namespace Falcor
             {
                 for (uint32_t i = 0; i < kRayTypeCount; i++)
                 {
-                    mpStatsRayCount[i] = Texture::create2D(mpDevice, frameDim.x, frameDim.y, ResourceFormat::R32Uint, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
+                    mpStatsRayCount[i] = mpDevice->createTexture2D(frameDim.x, frameDim.y, ResourceFormat::R32Uint, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
                 }
-                mpStatsPathLength = Texture::create2D(mpDevice, frameDim.x, frameDim.y, ResourceFormat::R32Uint, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
-                mpStatsPathVertexCount = Texture::create2D(mpDevice, frameDim.x, frameDim.y, ResourceFormat::R32Uint, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
-                mpStatsVolumeLookupCount = Texture::create2D(mpDevice, frameDim.x, frameDim.y, ResourceFormat::R32Uint, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
+                mpStatsPathLength = mpDevice->createTexture2D(frameDim.x, frameDim.y, ResourceFormat::R32Uint, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
+                mpStatsPathVertexCount = mpDevice->createTexture2D(frameDim.x, frameDim.y, ResourceFormat::R32Uint, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
+                mpStatsVolumeLookupCount = mpDevice->createTexture2D(frameDim.x, frameDim.y, ResourceFormat::R32Uint, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
             }
 
             for (uint32_t i = 0; i < kRayTypeCount; i++)
@@ -115,7 +115,7 @@ namespace Falcor
         if (mEnabled)
         {
             // Create fence first time we need it.
-            if (!mpFence) mpFence = GpuFence::create(mpDevice);
+            if (!mpFence) mpFence = mpDevice->createFence();
 
             // Sum of the per-pixel counters. The results are copied to a GPU buffer.
             for (uint32_t i = 0; i < kRayTypeCount; i++)
@@ -127,8 +127,8 @@ namespace Falcor
             mpParallelReduction->execute<uint4>(pRenderContext, mpStatsVolumeLookupCount, ParallelReduction::Type::Sum, nullptr, mpReductionResult, (kRayTypeCount + 2) * sizeof(uint4));
 
             // Submit command list and insert signal.
-            pRenderContext->flush(false);
-            mpFence->gpuSignal(pRenderContext->getLowLevelData()->getCommandQueue());
+            pRenderContext->submit(false);
+            pRenderContext->signal(mpFence.get());
 
             mStatsBuffersValid = true;
             mWaitingForData = true;
@@ -227,7 +227,7 @@ namespace Falcor
         FALCOR_ASSERT(mStatsBuffersValid);
         if (!mpStatsRayCountTotal || mpStatsRayCountTotal->getWidth() != mFrameDim.x || mpStatsRayCountTotal->getHeight() != mFrameDim.y)
         {
-            mpStatsRayCountTotal = Texture::create2D(mpDevice, mFrameDim.x, mFrameDim.y, ResourceFormat::R32Uint, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
+            mpStatsRayCountTotal = mpDevice->createTexture2D(mFrameDim.x, mFrameDim.y, ResourceFormat::R32Uint, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
         }
 
         auto var = mpComputeRayCount->getRootVar();
@@ -266,7 +266,7 @@ namespace Falcor
         if (mWaitingForData)
         {
             // Wait for signal.
-            mpFence->syncCpu();
+            mpFence->wait();
             mWaitingForData = false;
 
             if (mEnabled)

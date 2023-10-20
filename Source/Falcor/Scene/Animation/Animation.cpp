@@ -214,7 +214,7 @@ namespace Falcor
         }
         else
         {
-            throw ArgumentError("'mode' is unknown interpolation mode");
+            FALCOR_THROW("'mode' is unknown interpolation mode");
         }
     }
 
@@ -300,7 +300,7 @@ namespace Falcor
         {
             if (k.time == time) return k;
         }
-        throw ArgumentError("'time' ({}) does not refer to an existing keyframe", time);
+        FALCOR_THROW("'time' ({}) does not refer to an existing keyframe", time);
     }
 
     bool Animation::doesKeyframeExists(double time) const

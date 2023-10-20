@@ -34,12 +34,14 @@ __exported import Rendering.Materials.IBSDF;
  * Lambertian diffuse reflection.
  * f_r(wi, wo) = albedo / pi
  */
-struct LambertDiffuseBRDF : IBSDF
+struct LambertDiffuseBRDF : IBSDF, IDifferentiable
 {
     float3 albedo; ///< Diffuse albedo.
 
+    [Differentiable]
     __init(float3 albedo) { this.albedo = albedo; }
 
+    [Differentiable]
     float3 eval<S : ISampleGenerator>(const float3 wi, const float3 wo, inout S sg)
     {
         if (min(wi.z, wo.z) < kMinCosTheta)

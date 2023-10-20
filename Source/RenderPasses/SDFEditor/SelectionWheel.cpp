@@ -75,21 +75,46 @@ void Falcor::SelectionWheel::update(const float2& mousePos, const Desc& descript
             // The other sectors.
             float groupSpacing = sectorIndex == 0 ? halfGroupSpacingAngle : -halfGroupSpacingAngle;
             float offset = sectorIndex == 0 ? sectorAngle : 0.0f;
-            addCircleSector(groupAngle * groupIndex + offset, groupAngle - sectorAngle, mDescription.baseColor, borderColor, -groupSpacing, false, sectorIndex == 0 ? ExcludeBorderFlags::Left : ExcludeBorderFlags::Right);
+            addCircleSector(
+                groupAngle * groupIndex + offset,
+                groupAngle - sectorAngle,
+                mDescription.baseColor,
+                borderColor,
+                -groupSpacing,
+                false,
+                sectorIndex == 0 ? ExcludeBorderFlags::Left : ExcludeBorderFlags::Right
+            );
 
             // Highlighted sector.
             addCircleSector(rotation, sectorAngle, mDescription.highlightColor, borderColor, groupSpacing);
         }
-        else // If the selected sector is in the middle, render two circle sectors for the surrounding sectors and one for the selected sector.
+        else // If the selected sector is in the middle, render two circle sectors for the surrounding sectors and one for the selected
+             // sector.
         {
             // Highlighted sector.
             addCircleSector(rotation, sectorAngle, mDescription.highlightColor, borderColor);
 
             // Left sectors.
-            addCircleSector(groupAngle * groupIndex, sectorAngle * sectorIndex, mDescription.baseColor, borderColor, halfGroupSpacingAngle, false, ExcludeBorderFlags::Right);
+            addCircleSector(
+                groupAngle * groupIndex,
+                sectorAngle * sectorIndex,
+                mDescription.baseColor,
+                borderColor,
+                halfGroupSpacingAngle,
+                false,
+                ExcludeBorderFlags::Right
+            );
 
             // Right sectors.
-            addCircleSector(groupAngle * groupIndex + sectorAngle * (sectorIndex + 1), sectorAngle * (lastSectorIndex - sectorIndex), mDescription.baseColor, borderColor, -halfGroupSpacingAngle, false, ExcludeBorderFlags::Left);
+            addCircleSector(
+                groupAngle * groupIndex + sectorAngle * (sectorIndex + 1),
+                sectorAngle * (lastSectorIndex - sectorIndex),
+                mDescription.baseColor,
+                borderColor,
+                -halfGroupSpacingAngle,
+                false,
+                ExcludeBorderFlags::Left
+            );
         }
     }
 
@@ -105,20 +130,21 @@ void Falcor::SelectionWheel::update(const float2& mousePos, const Desc& descript
 
 bool Falcor::SelectionWheel::isMouseOnSector(const float2& mousePos, uint32_t groupIndex, uint32_t sectorIndex)
 {
-    checkArgument(groupIndex < (uint32_t)mDescription.sectorGroups.size(), "'groupIndex' ({}) is out of bounds.", groupIndex);
-    checkArgument(sectorIndex < mDescription.sectorGroups[groupIndex], "'sectorIndex' ({}) is out of bounds.", sectorIndex);
+    FALCOR_CHECK(groupIndex < (uint32_t)mDescription.sectorGroups.size(), "'groupIndex' ({}) is out of bounds.", groupIndex);
+    FALCOR_CHECK(sectorIndex < mDescription.sectorGroups[groupIndex], "'sectorIndex' ({}) is out of bounds.", sectorIndex);
 
     float dirLength, mouseAngle;
     computeMouseAngleAndDirLength(mousePos, mouseAngle, dirLength);
 
     float rotation = getRotationOfSector(groupIndex, sectorIndex);
     float sectorAngle = getAngleOfSectorInGroup(groupIndex);
-    return rotation <= mouseAngle && mouseAngle <= (rotation + sectorAngle) && dirLength >= mDescription.minRadius && dirLength <= mDescription.maxRadius;
+    return rotation <= mouseAngle && mouseAngle <= (rotation + sectorAngle) && dirLength >= mDescription.minRadius &&
+           dirLength <= mDescription.maxRadius;
 }
 
 bool Falcor::SelectionWheel::isMouseOnGroup(const float2& mousePos, uint32_t groupIndex, uint32_t& sectorIndex)
 {
-    checkArgument(groupIndex < (uint32_t)mDescription.sectorGroups.size(), "'groupIndex' ({}) is out of bounds.", groupIndex);
+    FALCOR_CHECK(groupIndex < (uint32_t)mDescription.sectorGroups.size(), "'groupIndex' ({}) is out of bounds.", groupIndex);
 
     float dirLength, mouseAngle;
     computeMouseAngleAndDirLength(mousePos, mouseAngle, dirLength);
@@ -127,7 +153,8 @@ bool Falcor::SelectionWheel::isMouseOnGroup(const float2& mousePos, uint32_t gro
     float sectorAngle = getAngleOfSectorInGroup(groupIndex);
     float maxRotation = minRotation + sectorAngle * mDescription.sectorGroups[groupIndex];
 
-    bool isInGroup = minRotation <= mouseAngle && mouseAngle <= maxRotation && dirLength >= mDescription.minRadius && dirLength <= mDescription.maxRadius;
+    bool isInGroup = minRotation <= mouseAngle && mouseAngle <= maxRotation && dirLength >= mDescription.minRadius &&
+                     dirLength <= mDescription.maxRadius;
 
     if (isInGroup)
     {
@@ -143,8 +170,8 @@ bool Falcor::SelectionWheel::isMouseOnGroup(const float2& mousePos, uint32_t gro
 
 float2 Falcor::SelectionWheel::getCenterPositionOfSector(uint32_t groupIndex, uint32_t sectorIndex)
 {
-    checkArgument(groupIndex < (uint32_t)mDescription.sectorGroups.size(), "'groupIndex' ({}) is out of bounds.", groupIndex);
-    checkArgument(sectorIndex < mDescription.sectorGroups[groupIndex], "'sectorIndex' ({}) is out of bounds.", sectorIndex);
+    FALCOR_CHECK(groupIndex < (uint32_t)mDescription.sectorGroups.size(), "'groupIndex' ({}) is out of bounds.", groupIndex);
+    FALCOR_CHECK(sectorIndex < mDescription.sectorGroups[groupIndex], "'sectorIndex' ({}) is out of bounds.", sectorIndex);
     float rotation = getRotationOfSector(groupIndex, sectorIndex);
     float sectorAngle = getAngleOfSectorInGroup(groupIndex);
     float angle = rotation + sectorAngle * 0.5f;
@@ -154,7 +181,7 @@ float2 Falcor::SelectionWheel::getCenterPositionOfSector(uint32_t groupIndex, ui
 
 float Falcor::SelectionWheel::getAngleOfSectorInGroup(uint32_t groupIndex)
 {
-    checkArgument(groupIndex < (uint32_t)mDescription.sectorGroups.size(), "'groupIndex' ({}) is out of bounds.", groupIndex);
+    FALCOR_CHECK(groupIndex < (uint32_t)mDescription.sectorGroups.size(), "'groupIndex' ({}) is out of bounds.", groupIndex);
     const uint32_t kSectorCount = mDescription.sectorGroups[groupIndex];
     float groupAngle = getGroupAngle();
     return groupAngle / (float)kSectorCount;
@@ -162,8 +189,8 @@ float Falcor::SelectionWheel::getAngleOfSectorInGroup(uint32_t groupIndex)
 
 float Falcor::SelectionWheel::getRotationOfSector(uint32_t groupIndex, uint32_t sectorIndex)
 {
-    checkArgument(groupIndex < (uint32_t)mDescription.sectorGroups.size(), "'groupIndex' ({}) is out of bounds.", groupIndex);
-    checkArgument(sectorIndex < mDescription.sectorGroups[groupIndex], "'sectorIndex' ({}) is out of bounds.", sectorIndex);
+    FALCOR_CHECK(groupIndex < (uint32_t)mDescription.sectorGroups.size(), "'groupIndex' ({}) is out of bounds.", groupIndex);
+    FALCOR_CHECK(sectorIndex < mDescription.sectorGroups[groupIndex], "'sectorIndex' ({}) is out of bounds.", sectorIndex);
     float groupAngle = getGroupAngle();
     float sectorAngle = getAngleOfSectorInGroup(groupIndex);
     return groupAngle * groupIndex + sectorAngle * sectorIndex;
@@ -193,9 +220,26 @@ void Falcor::SelectionWheel::computeGroupAndSectorIndexFromAngle(float angle, ui
     sectorIndex = (uint32_t)std::floor((angle - minRotation) / sectorAngle);
 }
 
-void Falcor::SelectionWheel::addCircleSector(float rotation, float angle, const float4& color, const float4& borderColor, float margin, bool marginOnBothSides, ExcludeBorderFlags excludeBorderFlags)
+void Falcor::SelectionWheel::addCircleSector(
+    float rotation,
+    float angle,
+    const float4& color,
+    const float4& borderColor,
+    float margin,
+    bool marginOnBothSides,
+    ExcludeBorderFlags excludeBorderFlags
+)
 {
     constexpr float kStartOffset = (float)M_PI / 2.f;
-    float rotaion = kStartOffset - rotation - angle*0.5f - (marginOnBothSides ? 0.f : margin*0.5f);
-    mMarker2DSet.addCircleSector(mDescription.position, rotaion, angle - std::fabs(marginOnBothSides ? 2.f * margin : margin), mDescription.minRadius, mDescription.maxRadius, color, borderColor, excludeBorderFlags);
+    float rotaion = kStartOffset - rotation - angle * 0.5f - (marginOnBothSides ? 0.f : margin * 0.5f);
+    mMarker2DSet.addCircleSector(
+        mDescription.position,
+        rotaion,
+        angle - std::fabs(marginOnBothSides ? 2.f * margin : margin),
+        mDescription.minRadius,
+        mDescription.maxRadius,
+        color,
+        borderColor,
+        excludeBorderFlags
+    );
 }

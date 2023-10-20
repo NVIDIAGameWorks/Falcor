@@ -36,11 +36,12 @@ __exported import Rendering.Materials.IBSDF;
  * This is Disney's diffuse BRDF with an ad-hoc normalization factor to ensure energy conservation.
  * Based on https://seblagarde.files.wordpress.com/2015/07/course_notes_moving_frostbite_to_pbr_v32.pdf
  */
-struct FrostbiteDiffuseBRDF : IBSDF
+struct FrostbiteDiffuseBRDF : IBSDF, IDifferentiable
 {
     float3 albedo;   ///< Diffuse albedo.
     float roughness; ///< Roughness before remapping.
 
+    [Differentiable]
     float3 eval<S : ISampleGenerator>(const float3 wi, const float3 wo, inout S sg)
     {
         if (min(wi.z, wo.z) < kMinCosTheta)
@@ -75,6 +76,7 @@ struct FrostbiteDiffuseBRDF : IBSDF
     // private
 
     // Returns f(wi, wo) * pi.
+    [Differentiable]
     float3 evalWeight(float3 wi, float3 wo)
     {
         float3 h = normalize(wi + wo);

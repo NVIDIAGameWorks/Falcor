@@ -36,15 +36,12 @@ void runTest2(GPUUnitTestContext& ctx, DefineList defines)
 {
     ref<Device> pDevice = ctx.getDevice();
 
-    ctx.createProgram(
-        "Tests/Slang/StructuredBufferMatrix.cs.slang", "testStructuredBufferMatrixLoad2", defines,
-        Program::CompilerFlags::DumpIntermediates, "6_5"
-    );
+    ctx.createProgram("Tests/Slang/StructuredBufferMatrix.cs.slang", "testStructuredBufferMatrixLoad2", defines);
     ctx.allocateStructuredBuffer("result", 16);
 
     auto var = ctx.vars().getRootVar();
     auto pData =
-        Buffer::createStructured(pDevice, var["data2"], 1, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+        pDevice->createStructuredBuffer(var["data2"], 1, ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, nullptr, false);
 
     EXPECT_EQ(pData->getElementCount(), 1);
     EXPECT_EQ(pData->getElementSize(), 32);
@@ -71,14 +68,12 @@ GPU_TEST(StructuredBufferMatrixLoad1)
 {
     ref<Device> pDevice = ctx.getDevice();
 
-    ctx.createProgram(
-        "Tests/Slang/StructuredBufferMatrix.cs.slang", "testStructuredBufferMatrixLoad1", DefineList(), Program::CompilerFlags::None, "6_5"
-    );
+    ctx.createProgram("Tests/Slang/StructuredBufferMatrix.cs.slang", "testStructuredBufferMatrixLoad1");
     ctx.allocateStructuredBuffer("result", 32);
 
     auto var = ctx.vars().getRootVar();
     auto pData =
-        Buffer::createStructured(pDevice, var["data1"], 1, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+        pDevice->createStructuredBuffer(var["data1"], 1, ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, nullptr, false);
 
     EXPECT_EQ(pData->getElementCount(), 1);
     EXPECT_EQ(pData->getElementSize(), 100);

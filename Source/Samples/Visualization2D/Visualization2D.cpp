@@ -27,6 +27,8 @@
  **************************************************************************/
 #include "Visualization2D.h"
 
+FALCOR_EXPORT_D3D12_AGILITY_SDK
+
 namespace
 {
 const char kMarkerShaderFile[] = "Samples/Visualization2D/Visualization2d.ps.slang";
@@ -160,7 +162,7 @@ void Visualization2D::createRenderPass()
     }
 }
 
-int main(int argc, char** argv)
+int runMain(int argc, char** argv)
 {
     SampleAppConfig config;
     config.windowDesc.title = "Falcor 2D Visualization";
@@ -171,4 +173,9 @@ int main(int argc, char** argv)
 
     Visualization2D visualization2D(config);
     return visualization2D.run();
+}
+
+int main(int argc, char** argv)
+{
+    return catchAndReportAllExceptions([&]() { return runMain(argc, argv); });
 }

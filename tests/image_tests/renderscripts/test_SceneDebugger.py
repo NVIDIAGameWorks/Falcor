@@ -1,3 +1,7 @@
+IMAGE_TEST = {
+    "device_types": ["d3d12", "vulkan"]
+}
+
 import sys
 sys.path.append('..')
 from falcor import *

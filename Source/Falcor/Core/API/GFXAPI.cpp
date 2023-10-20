@@ -26,7 +26,9 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "GFXAPI.h"
-#include "Core/ErrorHandling.h"
+#include "Aftermath.h"
+#include "Core/Error.h"
+#include "Utils/Logger.h"
 
 #if FALCOR_HAS_D3D12
 #include "dxgi.h"
@@ -34,7 +36,7 @@
 
 namespace Falcor
 {
-void gfxReportError(const char* msg, gfx::Result result)
+void gfxReportError(const char* api, const char* call, gfx::Result result)
 {
     const char* resultStr = nullptr;
 #if FALCOR_HAS_D3D12
@@ -52,9 +54,14 @@ void gfxReportError(const char* msg, gfx::Result result)
     }
 #endif
 
-    if (resultStr)
-        reportFatalError(fmt::format("GFX ERROR: {}\nResult: {} ({})", msg, result, resultStr));
-    else
-        reportFatalError(fmt::format("GFX ERROR: {}\nResult: {}", msg, result));
+#if FALCOR_HAS_AFTERMATH
+    if (!waitForAftermathDumps())
+        logError("Aftermath GPU crash dump generation failed.");
+#endif
+
+    std::string fullMsg = resultStr ? fmt::format("{} call '{}' failed with error {} ({}).", api, call, result, resultStr)
+                                    : fmt::format("{} call '{}' failed with error {}", api, call, result);
+
+    reportFatalErrorAndTerminate(fullMsg);
 }
 } // namespace Falcor

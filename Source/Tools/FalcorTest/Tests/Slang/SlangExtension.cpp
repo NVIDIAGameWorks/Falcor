@@ -33,7 +33,7 @@ GPU_TEST(Slang_Extension)
 {
     ref<Device> pDevice = ctx.getDevice();
 
-    Program::Desc desc;
+    ProgramDesc desc;
     desc.addShaderLibrary("Tests/Slang/SlangExtension.cs.slang").csEntry("main");
     ctx.createProgram(desc, DefineList());
     ctx.allocateStructuredBuffer("result", 6);

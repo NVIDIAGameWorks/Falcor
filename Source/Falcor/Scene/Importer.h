@@ -27,8 +27,9 @@
  **************************************************************************/
 #pragma once
 #include "SceneBuilder.h"
+#include "ImporterError.h"
 #include "Core/Macros.h"
-#include "Core/Errors.h"
+#include "Core/Error.h"
 #include "Core/Plugin.h"
 #include "Core/Platform/OS.h"
 #include <filesystem>
@@ -37,48 +38,8 @@
 #include <string>
 #include <vector>
 
-#include <pybind11/pytypes.h>
-
 namespace Falcor
 {
-    /** Exception thrown during scene import.
-        Holds the path of the imported asset and a description of the exception.
-    */
-    class FALCOR_API ImporterError : public Exception
-    {
-    public:
-        ImporterError() noexcept
-        {}
-
-        ImporterError(const std::filesystem::path& path, const char* what)
-            : Exception(what)
-            , mpPath(std::make_shared<std::filesystem::path>(path))
-        {}
-
-        ImporterError(const std::filesystem::path& path, const std::string& what)
-            : ImporterError(path, what.c_str())
-        {}
-
-        template<typename... Args>
-        explicit ImporterError(const std::filesystem::path& path, fmt::format_string<Args...> format, Args&&... args)
-            : ImporterError(path, fmt::format(format, std::forward<Args>(args)...).c_str())
-        {}
-
-        virtual ~ImporterError() override
-        {}
-
-        ImporterError(const ImporterError& other) noexcept
-        {
-            mpWhat = other.mpWhat;
-            mpPath = other.mpPath;
-        }
-
-        const std::filesystem::path& path() const noexcept { return *mpPath; }
-
-    private:
-        std::shared_ptr<std::filesystem::path> mpPath;
-    };
-
     /** Base class for importers.
         Importers are bound to a set of file extensions. This allows the right importer to
         be called when importing an asset file.
@@ -103,7 +64,7 @@ namespace Falcor
             \param[in] dict Optional dictionary.
             Throws an ImporterError if something went wrong.
         */
-        virtual void importScene(const std::filesystem::path& path, SceneBuilder& builder, const pybind11::dict& dict) = 0;
+        virtual void importScene(const std::filesystem::path& path, SceneBuilder& builder, const std::map<std::string, std::string>& materialToShortName) = 0;
 
         /** Import a scene from memory.
             \param[in] buffer Memory buffer.
@@ -113,7 +74,7 @@ namespace Falcor
             \param[in] dict Optional dictionary.
             Throws an ImporterError if something went wrong.
         */
-        virtual void importSceneFromMemory(const void* buffer, size_t byteSize, std::string_view extension, SceneBuilder& builder, const pybind11::dict& dict);
+        virtual void importSceneFromMemory(const void* buffer, size_t byteSize, std::string_view extension, SceneBuilder& builder, const std::map<std::string, std::string>& materialToShortName);
 
         // Importer factory
 

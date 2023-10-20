@@ -26,7 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "StratifiedSamplePattern.h"
-#include "Core/Assert.h"
+#include "Core/Error.h"
 #include "Utils/Logger.h"
 #include <algorithm>
 

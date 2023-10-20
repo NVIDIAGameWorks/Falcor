@@ -130,14 +130,14 @@ GPU_TEST(TextureAnalyzer)
     std::vector<ref<Texture>> textures(kNumTests);
     for (size_t i = 0; i < kNumTests; i++)
     {
-        std::string fn = "tests/texture" + std::to_string(i + 1) + (i < kNumPNGs ? ".png" : ".exr");
-        textures[i] = Texture::createFromFile(pDevice, fn, false, false);
+        std::filesystem::path path = getRuntimeDirectory() / fmt::format("data/tests/texture{}.{}", i + 1, i < kNumPNGs ? "png" : "exr");
+        textures[i] = Texture::createFromFile(pDevice, path, false, false);
         if (!textures[i])
-            throw RuntimeError("Failed to load {}", fn);
+            FALCOR_THROW("Failed to load {}", path);
     }
 
     // Analyze textures.
-    auto pResult = Buffer::create(pDevice, kNumTests * kResultSize, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
+    auto pResult = pDevice->createBuffer(kNumTests * kResultSize, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
     EXPECT(pResult);
     ctx.getRenderContext()->clearUAV(pResult->getUAV().get(), uint4(0));
 
@@ -149,7 +149,7 @@ GPU_TEST(TextureAnalyzer)
     auto verify = [&ctx](ref<Buffer> pResult)
     {
         // Verify results.
-        const TextureAnalyzer::Result* result = static_cast<const TextureAnalyzer::Result*>(pResult->map(Buffer::MapType::Read));
+        std::vector<TextureAnalyzer::Result> result = pResult->getElements<TextureAnalyzer::Result>();
         for (size_t i = 0; i < kNumTests; i++)
         {
             EXPECT_EQ(result[i].mask, kExpectedResult[i].mask) << "i = " << i;
@@ -179,7 +179,6 @@ GPU_TEST(TextureAnalyzer)
             EXPECT_EQ(result[i].isNaN(TextureChannelFlags::RGBA), (rangeFlags & (uint32_t)TextureAnalyzer::Result::RangeFlags::NaN) != 0)
                 << "i = " << i;
         }
-        pResult->unmap();
     };
 
     verify(pResult);

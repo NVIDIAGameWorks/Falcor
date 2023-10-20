@@ -53,7 +53,7 @@ namespace Falcor
         virtual const ref<Buffer>& getAABBBuffer() const override { return mpVoxelAABBBuffer; }
         virtual uint32_t getAABBCount() const override { return mVoxelCount; }
 
-        virtual void setShaderData(const ShaderVar& var) const override;
+        virtual void bindShaderData(const ShaderVar& var) const override;
 
     protected:
         virtual void setValuesInternal(const std::vector<float>& cornerValues) override;
@@ -72,9 +72,7 @@ namespace Falcor
         ref<ComputePass> mpSDFSVSVoxelizerPass;
 
         // Scratch data used for building.
-        ref<GpuFence> mpReadbackFence;
         ref<Buffer> mpSurfaceVoxelCounter;
-        ref<Buffer> mpSurfaceVoxelCounterStagingBuffer;
         ref<Texture> mpSDFGridTexture;
     };
 }

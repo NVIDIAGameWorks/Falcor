@@ -26,6 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "RenderPassReflection.h"
+#include "Core/Error.h"
 #include "Utils/Logger.h"
 #include <optional>
 
@@ -137,7 +138,7 @@ RenderPassReflection::Field& RenderPassReflection::Field::resourceType(
             logWarning("RenderPassReflection::Field::resourceType - depth, sampleCount for {} must be either 0 or 1.", to_string(type));
         return textureCube(width, height, mipCount, arraySize);
     default:
-        throw RuntimeError("RenderPassReflection::Field::resourceType - {} is not a valid Field type", to_string(type));
+        FALCOR_THROW("RenderPassReflection::Field::resourceType - {} is not a valid Field type", to_string(type));
     }
 }
 
@@ -146,7 +147,7 @@ RenderPassReflection::Field& RenderPassReflection::Field::format(ResourceFormat 
     mFormat = f;
     return *this;
 }
-RenderPassReflection::Field& RenderPassReflection::Field::bindFlags(Resource::BindFlags flags)
+RenderPassReflection::Field& RenderPassReflection::Field::bindFlags(ResourceBindFlags flags)
 {
     mBindFlags = flags;
     return *this;
@@ -176,15 +177,13 @@ bool RenderPassReflection::Field::isValid() const
 {
     if (mSampleCount > 1 && mMipCount > 1)
     {
-        reportError(
-            "Trying to create a multisampled RenderPassReflection::Field '" + mName + "' with mip-count larger than 1. This is illegal."
-        );
+        logError("Trying to create a multisampled RenderPassReflection::Field '{}' with mip-count larger than 1. This is illegal.", mName);
         return false;
     }
 
     if (is_set(mVisibility, Visibility::Internal) && is_set(mFlags, Flags::Optional))
     {
-        reportError("Internal resource can't be optional, since there will never be a graph edge that forces their creation");
+        logError("Internal resource can't be optional, since there will never be a graph edge that forces their creation");
         return false;
     }
 
@@ -207,7 +206,7 @@ RenderPassReflection::Field& RenderPassReflection::addField(const Field& field)
             }
             else if ((existingF.getVisibility() & field.getVisibility()) != field.getVisibility())
             {
-                reportError(
+                logWarning(
                     "Trying to add an existing field '" + field.getName() +
                     "' to RenderPassReflection, but the visibility flags mismatch. Overriding the previous definition"
                 );
@@ -270,7 +269,7 @@ RenderPassReflection::Field& RenderPassReflection::Field::merge(const RenderPass
     auto err = [&](const std::string& msg)
     {
         const std::string s = "Can't merge RenderPassReflection::Fields. base(" + getName() + "), newField(" + other.getName() + "). ";
-        throw RuntimeError(s + msg);
+        FALCOR_THROW(s + msg);
     };
 
     if (mType != other.mType)

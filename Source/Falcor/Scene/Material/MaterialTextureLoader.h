@@ -62,7 +62,7 @@ namespace Falcor
         {
             ref<Material> pMaterial;
             Material::TextureSlot textureSlot;
-            TextureManager::TextureHandle handle;
+            TextureManager::CpuTextureHandle handle;
         };
 
         bool mUseSrgb;

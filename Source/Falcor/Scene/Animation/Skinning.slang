@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -156,7 +156,7 @@ void main(uint3 dispatchThreadID : SV_DispatchThreadID)
 
     s.position = mul(boneMat, float4(s.position, 1.f)).xyz;
     s.tangent.xyz = mul((float3x3) boneMat, s.tangent.xyz);
-    s.normal = mul((float3x3) transpose(invTransposeMat), s.normal);
+    s.normal = mul((float3x3) invTransposeMat, s.normal);
 
     // Copy the previous skinned data
     PrevVertexData prev;

@@ -40,50 +40,30 @@ namespace Falcor
 class D3D12RootSignature;
 #endif
 
+struct ComputeStateObjectDesc
+{
+    ref<const ProgramKernels> pProgramKernels;
+#if FALCOR_HAS_D3D12
+    ref<const D3D12RootSignature> pD3D12RootSignatureOverride;
+#endif
+
+    bool operator==(const ComputeStateObjectDesc& other) const
+    {
+        bool result = true;
+        result = result && (pProgramKernels == other.pProgramKernels);
+#if FALCOR_HAS_D3D12
+        result = result && (pD3D12RootSignatureOverride == other.pD3D12RootSignatureOverride);
+#endif
+        return result;
+    }
+};
+
 class FALCOR_API ComputeStateObject : public Object
 {
     FALCOR_OBJECT(ComputeStateObject)
 public:
-    class FALCOR_API Desc
-    {
-    public:
-        Desc& setProgramKernels(const ref<const ProgramKernels>& pProgram)
-        {
-            mpProgram = pProgram;
-            return *this;
-        }
-
-#if FALCOR_HAS_D3D12
-        /**
-         * Set a D3D12 root signature to use instead of the one that comes with the program kernel.
-         * This function is supported on D3D12 only.
-         * @param[in] pRootSignature An overriding D3D12RootSignature object to use in the compute state.
-         */
-        Desc& setD3D12RootSignatureOverride(const ref<const D3D12RootSignature>& pRootSignature)
-        {
-            mpD3D12RootSignatureOverride = pRootSignature;
-            return *this;
-        }
-#endif
-        ref<const ProgramKernels> getProgramKernels() const { return mpProgram; }
-        bool operator==(const Desc& other) const;
-
-    private:
-        friend class ComputeStateObject;
-        ref<const ProgramKernels> mpProgram;
-#if FALCOR_HAS_D3D12
-        ref<const D3D12RootSignature> mpD3D12RootSignatureOverride;
-#endif
-    };
-
+    ComputeStateObject(ref<Device> pDevice, ComputeStateObjectDesc desc);
     ~ComputeStateObject();
-
-    /**
-     * Create a compute state object.
-     * @param[in] desc State object description.
-     * @return New object, or throws an exception if creation failed.
-     */
-    static ref<ComputeStateObject> create(ref<Device> pDevice, const Desc& desc);
 
     gfx::IPipelineState* getGfxPipelineState() const { return mGfxPipelineState; }
 
@@ -94,13 +74,11 @@ public:
      */
     NativeHandle getNativeHandle() const;
 
-    const Desc& getDesc() const { return mDesc; }
+    const ComputeStateObjectDesc& getDesc() const { return mDesc; }
 
 private:
-    ComputeStateObject(ref<Device> pDevice, const Desc& desc);
-
     ref<Device> mpDevice;
-    Desc mDesc;
+    ComputeStateObjectDesc mDesc;
     Slang::ComPtr<gfx::IPipelineState> mGfxPipelineState;
 };
 } // namespace Falcor

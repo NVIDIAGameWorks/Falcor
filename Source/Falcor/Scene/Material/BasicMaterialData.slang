@@ -77,10 +77,12 @@ struct BasicMaterialData
 
     static constexpr uint kShadingModelBits = 1;
     static constexpr uint kNormalMapTypeBits = 2;
+    static constexpr uint kEntryPointVolumePropertiesBits = 1;
 
     static constexpr uint kShadingModelOffset = 0;
     static constexpr uint kNormalMapTypeOffset = kShadingModelOffset + kShadingModelBits;
-    static constexpr uint kMinSamplerIDOffset = kNormalMapTypeOffset + kNormalMapTypeBits;
+    static constexpr uint kEntryPointVolumePropertiesOffset = kNormalMapTypeOffset + kNormalMapTypeBits;
+    static constexpr uint kMinSamplerIDOffset = kEntryPointVolumePropertiesOffset + kEntryPointVolumePropertiesBits;
     static constexpr uint kMaxSamplerIDOffset = kMinSamplerIDOffset + MaterialHeader::kSamplerIDBits;
 
     static constexpr uint kTotalFlagsBits = kMaxSamplerIDOffset + MaterialHeader::kSamplerIDBits;
@@ -100,6 +102,9 @@ struct BasicMaterialData
     /** Get normal map type.
     */
     NormalMapType getNormalMapType() CONST_FUNCTION { return NormalMapType(EXTRACT_BITS(kNormalMapTypeBits, kNormalMapTypeOffset, flags)); }
+
+    SETTER_DECL void setHasEntryPointVolumeProperties(bool poe) { flags = PACK_BITS(kEntryPointVolumePropertiesBits, kEntryPointVolumePropertiesOffset, flags, (uint)poe); }
+    bool getHasEntryPointVolumeProperties() CONST_FUNCTION { return bool(EXTRACT_BITS(kEntryPointVolumePropertiesBits, kEntryPointVolumePropertiesOffset, flags)); }
 
     /** Set displacement map min/max sampler ID.
     */

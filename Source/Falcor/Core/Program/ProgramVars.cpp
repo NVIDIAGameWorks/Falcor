@@ -26,8 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "ProgramVars.h"
-#include "GraphicsProgram.h"
-#include "ComputeProgram.h"
+#include "Program.h"
 #include "Core/API/Device.h"
 #include "Core/API/ComputeContext.h"
 #include "Core/API/RenderContext.h"
@@ -47,61 +46,28 @@ ProgramVars::ProgramVars(ref<Device> pDevice, const ref<const ProgramReflection>
     FALCOR_ASSERT(pReflector);
 }
 
-GraphicsVars::GraphicsVars(ref<Device> pDevice, const ref<const ProgramReflection>& pReflector) : ProgramVars(pDevice, pReflector) {}
-
-ref<GraphicsVars> GraphicsVars::create(ref<Device> pDevice, const ref<const ProgramReflection>& pReflector)
+ref<ProgramVars> ProgramVars::create(ref<Device> pDevice, const ref<const ProgramReflection>& pReflector)
 {
-    if (pReflector == nullptr)
-        throw ArgumentError("Can't create a GraphicsVars object without a program reflector");
-    return ref<GraphicsVars>(new GraphicsVars(pDevice, pReflector));
+    FALCOR_CHECK(pReflector, "Can't create a ProgramVars object without a program reflector");
+    return ref<ProgramVars>(new ProgramVars(pDevice, pReflector));
 }
 
-ref<GraphicsVars> GraphicsVars::create(ref<Device> pDevice, const GraphicsProgram* pProg)
+ref<ProgramVars> ProgramVars::create(ref<Device> pDevice, const Program* pProg)
 {
-    if (pProg == nullptr)
-        throw ArgumentError("Can't create a GraphicsVars object without a program");
+    FALCOR_CHECK(pProg, "Can't create a ProgramVars object without a program");
     return create(pDevice, pProg->getReflector());
 }
 
-ref<ComputeVars> ComputeVars::create(ref<Device> pDevice, const ref<const ProgramReflection>& pReflector)
-{
-    if (pReflector == nullptr)
-        throw ArgumentError("Can't create a ComputeVars object without a program reflector");
-    return ref<ComputeVars>(new ComputeVars(pDevice, pReflector));
-}
-
-ref<ComputeVars> ComputeVars::create(ref<Device> pDevice, const ComputeProgram* pProg)
-{
-    if (pProg == nullptr)
-        throw ArgumentError("Can't create a ComputeVars object without a program");
-    return create(pDevice, pProg->getReflector());
-}
-
-ComputeVars::ComputeVars(ref<Device> pDevice, const ref<const ProgramReflection>& pReflector) : ProgramVars(pDevice, pReflector) {}
-
-void ComputeVars::dispatchCompute(ComputeContext* pContext, const uint3& threadGroupCount)
-{
-    auto pProgram = dynamic_cast<ComputeProgram*>(getReflection()->getProgramVersion()->getProgram());
-    FALCOR_ASSERT(pProgram);
-    pProgram->dispatchCompute(pContext, this, threadGroupCount);
-}
-
-RtProgramVars::RtProgramVars(ref<Device> pDevice, const ref<RtProgram>& pProgram, const ref<RtBindingTable>& pBindingTable)
+RtProgramVars::RtProgramVars(ref<Device> pDevice, const ref<Program>& pProgram, const ref<RtBindingTable>& pBindingTable)
     : ProgramVars(pDevice, pProgram->getReflector()), mpShaderTable(pDevice)
 {
-    if (pProgram == nullptr)
-    {
-        throw ArgumentError("RtProgramVars must have a raytracing program attached to it");
-    }
-    if (pBindingTable == nullptr || !pBindingTable->getRayGen().isValid())
-    {
-        throw ArgumentError("RtProgramVars must have a raygen program attached to it");
-    }
+    FALCOR_CHECK(pProgram, "RtProgramVars must have a raytracing program attached to it");
+    FALCOR_CHECK(pBindingTable && pBindingTable->getRayGen().isValid(), "RtProgramVars must have a raygen program attached to it");
 
     init(pBindingTable);
 }
 
-ref<RtProgramVars> RtProgramVars::create(ref<Device> pDevice, const ref<RtProgram>& pProgram, const ref<RtBindingTable>& pBindingTable)
+ref<RtProgramVars> RtProgramVars::create(ref<Device> pDevice, const ref<Program>& pProgram, const ref<RtBindingTable>& pBindingTable)
 {
     return ref<RtProgramVars>(new RtProgramVars(pDevice, pProgram, pBindingTable));
 }
@@ -115,11 +81,10 @@ void RtProgramVars::init(const ref<RtBindingTable>& pBindingTable)
     // groups that are used by the supplied binding table.
     //
     FALCOR_ASSERT(mpProgramVersion);
-    auto pProgram = dynamic_cast<RtProgram*>(mpProgramVersion->getProgram());
+    auto pProgram = dynamic_cast<Program*>(mpProgramVersion->getProgram());
     FALCOR_ASSERT(pProgram);
     auto pReflector = mpProgramVersion->getReflector();
 
-    auto& rtDesc = pProgram->getRtDesc();
     std::set<int32_t> entryPointGroupIndices;
 
     // Ray generation and miss programs are easy: we just allocate space

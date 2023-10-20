@@ -26,7 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "EnvMapSampler.h"
-#include "Core/Assert.h"
+#include "Core/Error.h"
 #include "Core/API/RenderContext.h"
 #include "Core/Pass/ComputePass.h"
 
@@ -52,18 +52,18 @@ namespace Falcor
 
         // Create sampler.
         Sampler::Desc samplerDesc;
-        samplerDesc.setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point);
-        samplerDesc.setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
-        mpImportanceSampler = Sampler::create(mpDevice, samplerDesc);
+        samplerDesc.setFilterMode(TextureFilteringMode::Point, TextureFilteringMode::Point, TextureFilteringMode::Point);
+        samplerDesc.setAddressingMode(TextureAddressingMode::Clamp, TextureAddressingMode::Clamp, TextureAddressingMode::Clamp);
+        mpImportanceSampler = mpDevice->createSampler(samplerDesc);
 
         // Create hierarchical importance map for sampling.
         if (!createImportanceMap(mpDevice->getRenderContext(), kDefaultDimension, kDefaultSpp))
         {
-            throw RuntimeError("Failed to create importance map");
+            FALCOR_THROW("Failed to create importance map");
         }
     }
 
-    void EnvMapSampler::setShaderData(const ShaderVar& var) const
+    void EnvMapSampler::bindShaderData(const ShaderVar& var) const
     {
         FALCOR_ASSERT(var.isValid());
 
@@ -88,7 +88,7 @@ namespace Falcor
         FALCOR_ASSERT(mips > 1 && mips <= 12);     // Shader constant limits max resolution, increase if needed.
 
         // Create importance map. We have to set the RTV flag to be able to use generateMips().
-        mpImportanceMap = Texture::create2D(mpDevice, dimension, dimension, ResourceFormat::R32Float, 1, mips, nullptr, Resource::BindFlags::ShaderResource | Resource::BindFlags::RenderTarget | Resource::BindFlags::UnorderedAccess);
+        mpImportanceMap = mpDevice->createTexture2D(dimension, dimension, ResourceFormat::R32Float, 1, mips, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::RenderTarget | ResourceBindFlags::UnorderedAccess);
         FALCOR_ASSERT(mpImportanceMap);
 
         auto var = mpSetupPass->getRootVar();

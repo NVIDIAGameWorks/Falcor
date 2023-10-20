@@ -32,8 +32,7 @@
 // SPDX: Apache-2.0
 
 #include "LoopSubdivide.h"
-#include "Core/Assert.h"
-#include "Core/Errors.h"
+#include "Core/Error.h"
 
 #include <algorithm>
 #include <map>
@@ -88,7 +87,7 @@ struct SDFace
             if (v[i] == vert)
                 return i;
         }
-        throw RuntimeError("Basic logic error in SDFace::vnum().");
+        FALCOR_THROW("Basic logic error in SDFace::vnum().");
     }
 
     SDFace* nextFace(SDVertex* vert) const { return f[vnum(vert)]; }
@@ -102,7 +101,7 @@ struct SDFace
             if (v[i] != v0 && v[i] != v1)
                 return v[i];
         }
-        throw RuntimeError("Basic logic error in SDFace::otherVert()");
+        FALCOR_THROW("Basic logic error in SDFace::otherVert()");
     }
 
     SDVertex* v[3];

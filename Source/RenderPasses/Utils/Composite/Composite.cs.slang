@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,8 +27,9 @@
  **************************************************************************/
 #include "CompositeMode.slangh"
 
-/** Simple composite pass that blends two buffers together.
-*/
+/**
+ * Simple composite pass that blends two buffers together.
+ */
 
 cbuffer CB
 {
@@ -55,20 +56,21 @@ RWTexture2D<int4> output;
 #endif
 
 [numthreads(16, 16, 1)]
-void main(uint3 dispatchThreadId : SV_DispatchThreadID)
+void main(uint3 dispatchThreadId: SV_DispatchThreadID)
 {
     const uint2 pixel = dispatchThreadId.xy;
-    if (any(pixel >= frameDim)) return;
+    if (any(pixel >= frameDim))
+        return;
 
     float4 result = float4(0.f);
 #if !defined(COMPOSITE_MODE)
-    #error COMPOSITE_MODE is undefined
+#error COMPOSITE_MODE is undefined
 #elif COMPOSITE_MODE == COMPOSITE_MODE_ADD
     result = (scaleA * A[pixel]) + (scaleB * B[pixel]);
 #elif COMPOSITE_MODE == COMPOSITE_MODE_MULTIPLY
     result = (scaleA * A[pixel]) * (scaleB * B[pixel]);
 #else
-    #error COMPOSITE_MODE unknown
+#error COMPOSITE_MODE unknown
 #endif
 
 #if OUTPUT_FORMAT != OUTPUT_FORMAT_FLOAT

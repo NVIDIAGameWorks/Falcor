@@ -32,21 +32,25 @@
 
 using namespace Falcor;
 
-/** Minimal path tracer.
-
-    This pass implements a minimal brute-force path tracer. It does purposely
-    not use any importance sampling or other variance reduction techniques.
-    The output is unbiased/consistent ground truth images, against which other
-    renderers can be validated.
-
-    Note that transmission and nested dielectrics are not yet supported.
-*/
+/**
+ * Minimal path tracer.
+ *
+ * This pass implements a minimal brute-force path tracer. It does purposely
+ * not use any importance sampling or other variance reduction techniques.
+ * The output is unbiased/consistent ground truth images, against which other
+ * renderers can be validated.
+ *
+ * Note that transmission and nested dielectrics are not yet supported.
+ */
 class MinimalPathTracer : public RenderPass
 {
 public:
     FALCOR_PLUGIN_CLASS(MinimalPathTracer, "MinimalPathTracer", "Minimal path tracer.");
 
-    static ref<MinimalPathTracer> create(ref<Device> pDevice, const Properties& props) { return make_ref<MinimalPathTracer>(pDevice, props); }
+    static ref<MinimalPathTracer> create(ref<Device> pDevice, const Properties& props)
+    {
+        return make_ref<MinimalPathTracer>(pDevice, props);
+    }
 
     MinimalPathTracer(ref<Device> pDevice, const Properties& props);
 
@@ -63,22 +67,31 @@ private:
     void prepareVars();
 
     // Internal state
-    ref<Scene>                  mpScene;                        ///< Current scene.
-    ref<SampleGenerator>        mpSampleGenerator;              ///< GPU sample generator.
+
+    /// Current scene.
+    ref<Scene> mpScene;
+    /// GPU sample generator.
+    ref<SampleGenerator> mpSampleGenerator;
 
     // Configuration
-    uint                        mMaxBounces = 3;                ///< Max number of indirect bounces (0 = none).
-    bool                        mComputeDirect = true;          ///< Compute direct illumination (otherwise indirect only).
-    bool                        mUseImportanceSampling = true;  ///< Use importance sampling for materials.
+
+    /// Max number of indirect bounces (0 = none).
+    uint mMaxBounces = 3;
+    /// Compute direct illumination (otherwise indirect only).
+    bool mComputeDirect = true;
+    /// Use importance sampling for materials.
+    bool mUseImportanceSampling = true;
 
     // Runtime data
-    uint                        mFrameCount = 0;                ///< Frame count since scene was loaded.
-    bool                        mOptionsChanged = false;
+
+    /// Frame count since scene was loaded.
+    uint mFrameCount = 0;
+    bool mOptionsChanged = false;
 
     // Ray tracing program.
     struct
     {
-        ref<RtProgram> pProgram;
+        ref<Program> pProgram;
         ref<RtBindingTable> pBindingTable;
         ref<RtProgramVars> pVars;
     } mTracer;

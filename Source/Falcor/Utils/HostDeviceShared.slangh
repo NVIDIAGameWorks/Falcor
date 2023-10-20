@@ -47,10 +47,13 @@
 /*******************************************************************
                     CPU declarations
 *******************************************************************/
-#define BEGIN_NAMESPACE_FALCOR \
-    namespace Falcor           \
+#define BEGIN_NAMESPACE(name) \
+    namespace name            \
     {
-#define END_NAMESPACE_FALCOR }
+#define END_NAMESPACE }
+#define BEGIN_NAMESPACE_FALCOR BEGIN_NAMESPACE(Falcor)
+#define END_NAMESPACE_FALCOR END_NAMESPACE
+
 #define SETTER_DECL
 #define CONST_FUNCTION const
 #define STD_NAMESPACE std::
@@ -82,6 +85,8 @@ namespace Falcor
 #define constexpr const
 #define BEGIN_NAMESPACE_FALCOR
 #define END_NAMESPACE_FALCOR
+#define BEGIN_NAMESPACE(name)
+#define END_NAMESPACE
 #define SETTER_DECL [mutating]
 #define CONST_FUNCTION
 #define STD_NAMESPACE

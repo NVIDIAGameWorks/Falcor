@@ -38,7 +38,7 @@ static const char kShaderFilename[] = "Utils/Algorithm/BitonicSort.cs.slang";
 BitonicSort::BitonicSort(ref<Device> pDevice) : mpDevice(pDevice)
 {
 #if !FALCOR_NVAPI_AVAILABLE
-    throw RuntimeError("BitonicSort requires NVAPI. See installation instructions in README.");
+    FALCOR_THROW("BitonicSort requires NVAPI. See installation instructions in README.");
 #endif
     mSort.pState = ComputeState::create(mpDevice);
 
@@ -46,9 +46,9 @@ BitonicSort::BitonicSort(ref<Device> pDevice) : mpDevice(pDevice)
     DefineList defines;
     defines.add("CHUNK_SIZE", "256"); // Dummy values just so we can get reflection data. We'll set the actual values in execute().
     defines.add("GROUP_SIZE", "256");
-    mSort.pProgram = ComputeProgram::createFromFile(mpDevice, kShaderFilename, "main", defines);
+    mSort.pProgram = Program::createCompute(mpDevice, kShaderFilename, "main", defines);
     mSort.pState->setProgram(mSort.pProgram);
-    mSort.pVars = ComputeVars::create(mpDevice, mSort.pProgram.get());
+    mSort.pVars = ProgramVars::create(mpDevice, mSort.pProgram.get());
 }
 
 bool BitonicSort::execute(RenderContext* pRenderContext, ref<Buffer> pData, uint32_t totalSize, uint32_t chunkSize, uint32_t groupSize)
@@ -82,8 +82,7 @@ bool BitonicSort::execute(RenderContext* pRenderContext, ref<Buffer> pData, uint
     var["CB"]["gDispatchX"] = groupsX;
 
     // Bind the data.
-    bool success = mSort.pVars->setBuffer("gData", pData);
-    FALCOR_ASSERT(success);
+    var["gData"] = pData;
 
     // Execute.
     pRenderContext->dispatch(mSort.pState.get(), mSort.pVars.get(), {groupsX, groupsY, 1});

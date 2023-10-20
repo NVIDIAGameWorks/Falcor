@@ -28,6 +28,7 @@
 #pragma once
 
 #include "Core/Macros.h"
+#include "Core/AssetResolver.h"
 #include "Core/API/Device.h"
 #include "Scene/SceneBuilder.h"
 
@@ -46,6 +47,7 @@ namespace Falcor
 
 FALCOR_API void setActivePythonSceneBuilder(SceneBuilder* pSceneBuilder);
 FALCOR_API SceneBuilder& accessActivePythonSceneBuilder();
+FALCOR_API AssetResolver& getActiveAssetResolver();
 
 FALCOR_API void setActivePythonRenderGraphDevice(ref<Device> pDevice);
 FALCOR_API ref<Device> getActivePythonRenderGraphDevice();

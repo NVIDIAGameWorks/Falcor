@@ -61,8 +61,8 @@ def main():
         "--environment",
         type=str,
         action="store",
-        help=f"Environment (default: {config.DEFAULT_ENVIRONMENT})",
-        default=config.DEFAULT_ENVIRONMENT,
+        help=f"Environment",
+        default=None,
     )
     parser.add_argument(
         "--config",

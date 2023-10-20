@@ -35,14 +35,14 @@
 #include "Core/API/RasterizerState.h"
 #include "Core/API/BlendState.h"
 #include "Core/API/GraphicsStateObject.h"
-#include "Core/Program/GraphicsProgram.h"
+#include "Core/Program/Program.h"
 #include <stack>
 #include <vector>
 #include <memory>
 
 namespace Falcor
 {
-class GraphicsVars;
+class ProgramVars;
 
 /**
  * Pipeline state.
@@ -212,7 +212,7 @@ public:
     /**
      * Bind a program to the pipeline.
      */
-    GraphicsState& setProgram(const ref<GraphicsProgram>& pProgram)
+    GraphicsState& setProgram(const ref<Program>& pProgram)
     {
         FALCOR_ASSERT(pProgram);
         mpProgram = pProgram;
@@ -222,7 +222,7 @@ public:
     /**
      * Get the currently bound program.
      */
-    ref<GraphicsProgram> getProgram() const { return mpProgram; }
+    ref<Program> getProgram() const { return mpProgram; }
 
     /**
      * Set a blend-state.
@@ -232,7 +232,7 @@ public:
     /**
      * Get the currently bound blend-state.
      */
-    ref<BlendState> getBlendState() const { return mDesc.getBlendState(); }
+    ref<BlendState> getBlendState() const { return mDesc.pBlendState; }
 
     /**
      * Set a rasterizer-state.
@@ -242,7 +242,7 @@ public:
     /**
      * Get the currently bound rasterizer-state.
      */
-    ref<RasterizerState> getRasterizerState() const { return mDesc.getRasterizerState(); }
+    ref<RasterizerState> getRasterizerState() const { return mDesc.pRasterizerState; }
 
     /**
      * Set a depth-stencil state.
@@ -252,7 +252,7 @@ public:
     /**
      * Get the currently bound depth-stencil state.
      */
-    ref<DepthStencilState> getDepthStencilState() const { return mDesc.getDepthStencilState(); }
+    ref<DepthStencilState> getDepthStencilState() const { return mDesc.pDepthStencilState; }
 
     /**
      * Set the sample mask.
@@ -262,17 +262,17 @@ public:
     /**
      * Get the current sample mask.
      */
-    uint32_t getSampleMask() const { return mDesc.getSampleMask(); }
+    uint32_t getSampleMask() const { return mDesc.sampleMask; }
 
     /**
      * Get the active graphics state object.
      */
-    virtual ref<GraphicsStateObject> getGSO(const GraphicsVars* pVars);
+    virtual ref<GraphicsStateObject> getGSO(const ProgramVars* pVars);
 
     /**
      * Get the desc
      */
-    const GraphicsStateObject::Desc& getDesc() const { return mDesc; }
+    const GraphicsStateObjectDesc& getDesc() const { return mDesc; }
 
     void breakStrongReferenceToDevice();
 
@@ -282,8 +282,8 @@ private:
     BreakableReference<Device> mpDevice;
     ref<Vao> mpVao;
     ref<Fbo> mpFbo;
-    ref<GraphicsProgram> mpProgram;
-    GraphicsStateObject::Desc mDesc;
+    ref<Program> mpProgram;
+    GraphicsStateObjectDesc mDesc;
     uint8_t mStencilRef = 0;
     std::vector<Viewport> mViewports;
     std::vector<Scissor> mScissors;

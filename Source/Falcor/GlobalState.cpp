@@ -26,7 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "GlobalState.h"
-#include "Core/Errors.h"
+#include "Core/Error.h"
 
 namespace Falcor
 {
@@ -42,8 +42,13 @@ void setActivePythonSceneBuilder(SceneBuilder* pSceneBuilder)
 SceneBuilder& accessActivePythonSceneBuilder()
 {
     if (!spActivePythonSceneBuilder)
-        throw RuntimeError("This can only be called in a Python scene building context!");
+        FALCOR_THROW("This can only be called in a Python scene building context!");
     return *spActivePythonSceneBuilder;
+}
+
+AssetResolver& getActiveAssetResolver()
+{
+    return spActivePythonSceneBuilder ? spActivePythonSceneBuilder->getAssetResolver() : AssetResolver::getDefaultResolver();
 }
 
 void setActivePythonRenderGraphDevice(ref<Device> pDevice)
@@ -59,7 +64,7 @@ ref<Device> getActivePythonRenderGraphDevice()
 ref<Device> accessActivePythonRenderGraphDevice()
 {
     if (!spActivePythonRenderGraphDevice)
-        throw RuntimeError("This can only be called from a script executed in Mogwai or when loading a render graph file!");
+        FALCOR_THROW("This can only be called from a script executed in Mogwai or when loading a render graph file!");
     return spActivePythonRenderGraphDevice;
 }
 

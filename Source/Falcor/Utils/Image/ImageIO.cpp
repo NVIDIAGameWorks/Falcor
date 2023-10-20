@@ -26,7 +26,8 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "ImageIO.h"
-#include "Core/Errors.h"
+#include "Core/Error.h"
+#include "Core/API/Device.h"
 #include "Core/API/CopyContext.h"
 #include "Core/API/NativeFormats.h"
 #include "Core/Platform/MemoryMappedFile.h"
@@ -97,7 +98,7 @@ ImageIO::CompressionMode convertFormatToMode(ResourceFormat format)
     case ResourceFormat::BC7UnormSrgb:
         return ImageIO::CompressionMode::BC7;
     default:
-        throw RuntimeError("No corresponding compression mode for the provided ResourceFormat.");
+        FALCOR_THROW("No corresponding compression mode for the provided ResourceFormat.");
     }
 }
 
@@ -123,7 +124,7 @@ nvtt::Format convertModeToNvttFormat(ImageIO::CompressionMode mode)
     case ImageIO::CompressionMode::BC7:
         return nvtt::Format::Format_BC7;
     default:
-        throw RuntimeError("Invalid compression mode.");
+        FALCOR_THROW("Invalid compression mode.");
     }
 }
 
@@ -153,7 +154,7 @@ nvtt::Format convertFormatToNvttFormat(ResourceFormat format)
     case ResourceFormat::BC7UnormSrgb:
         return nvtt::Format::Format_BC7;
     default:
-        throw RuntimeError("No corresponding NVTT compression format for the specified ResourceFormat.");
+        FALCOR_THROW("No corresponding NVTT compression format for the specified ResourceFormat.");
     }
 }
 
@@ -201,7 +202,7 @@ nvtt::InputFormat convertToNvttInputFormat(ResourceFormat format)
             return nvtt::InputFormat::InputFormat_RGBA_32F;
     }
 
-    throw RuntimeError("Image is in an unsupported ResourceFormat.");
+    FALCOR_THROW("Image is in an unsupported ResourceFormat.");
 }
 
 // Check if any of base image dimensions need to be clamped to a multiple of 4.
@@ -313,7 +314,7 @@ void setImage(
         nvtt::Format compressionFormat = convertFormatToNvttFormat(image.format);
         if (!surface.setImage3D(compressionFormat, (int)image.width, (int)image.height, (int)image.depth, modified.data()))
         {
-            throw RuntimeError("Failed to set image data.");
+            FALCOR_THROW("Failed to set image data.");
         }
     }
     else
@@ -321,7 +322,7 @@ void setImage(
         nvtt::InputFormat inputFormat = convertToNvttInputFormat(image.format);
         if (!surface.setImage(inputFormat, (int)image.width, (int)image.height, (int)image.depth, modified.data()))
         {
-            throw RuntimeError("Failed to set image data.");
+            FALCOR_THROW("Failed to set image data.");
         }
     }
 
@@ -367,11 +368,17 @@ void exportDDS(const std::filesystem::path& path, ExportData& image, ImageIO::Co
 
     nvtt::Context context;
     if (!context.outputHeader(
-            image.type, image.width, image.height, image.depth, image.mipLevels, image.images[0].isNormalMap(), compressionOptions,
+            image.type,
+            image.width,
+            image.height,
+            image.depth,
+            image.mipLevels,
+            image.images[0].isNormalMap(),
+            compressionOptions,
             outputOptions
         ))
     {
-        throw RuntimeError("Failed to output file header.");
+        FALCOR_THROW("Failed to output file header.");
     }
 
     for (uint32_t f = 0; f < image.faceCount; ++f)
@@ -380,7 +387,7 @@ void exportDDS(const std::filesystem::path& path, ExportData& image, ImageIO::Co
         nvtt::Surface tmp = image.images[faceIndex];
         if (!context.compress(tmp, f, 0, compressionOptions, outputOptions))
         {
-            throw RuntimeError("Failed to compress file.");
+            FALCOR_THROW("Failed to compress file.");
         }
         for (uint32_t m = 1; m < image.mipLevels; ++m)
         {
@@ -395,7 +402,7 @@ void exportDDS(const std::filesystem::path& path, ExportData& image, ImageIO::Co
 
             if (!context.compress(tmp, f, m, compressionOptions, outputOptions))
             {
-                throw RuntimeError("Failed to compress file.");
+                FALCOR_THROW("Failed to compress file.");
             }
         }
     }
@@ -408,14 +415,14 @@ void readDDSHeader(ImportData& data, const void* pHeaderData, size_t& headerSize
     auto magic = *static_cast<const uint32_t*>(pHeaderData);
     if (magic != DDS_MAGIC)
     {
-        throw RuntimeError("Unexpected magic number for a DDS file.");
+        FALCOR_THROW("Unexpected magic number for a DDS file.");
     }
 
     // Check size fields for both the DDS_HEADER and DDS_PIXELFORMAT structs
     auto pHeader = reinterpret_cast<const DDS_HEADER*>(static_cast<const uint8_t*>(pHeaderData) + sizeof(uint32_t));
     if (pHeader->size != sizeof(DDS_HEADER) || pHeader->ddspf.size != sizeof(DDS_PIXELFORMAT))
     {
-        throw RuntimeError("DDS header size mismatch.");
+        FALCOR_THROW("DDS header size mismatch.");
     }
 
     // Check for the presence of the extended DX10 header and fill in ImportData fields with their corresponding values
@@ -428,14 +435,14 @@ void readDDSHeader(ImportData& data, const void* pHeaderData, size_t& headerSize
         data.hasDX10Header = true;
         if (headerSize != sizeof(uint32_t) + sizeof(DDS_HEADER) + sizeof(DDS_HEADER_DXT10))
         {
-            throw RuntimeError("DX10 header extension size mismatch.");
+            FALCOR_THROW("DX10 header extension size mismatch.");
         }
         auto pDX10Header =
             reinterpret_cast<const DDS_HEADER_DXT10*>(static_cast<const uint8_t*>(pHeaderData) + sizeof(uint32_t) + sizeof(DDS_HEADER));
         data.arraySize = pDX10Header->arraySize;
         if (data.arraySize == 0)
         {
-            throw RuntimeError("Array size cannot be zero.");
+            FALCOR_THROW("Array size cannot be zero.");
         }
         data.format = getResourceFormat(pDX10Header->dxgiFormat);
         switch (pDX10Header->resourceDimension)
@@ -467,7 +474,7 @@ void readDDSHeader(ImportData& data, const void* pHeaderData, size_t& headerSize
             data.type = Resource::Type::Texture3D;
             break;
         default:
-            throw RuntimeError("Unsupported texture dimension.");
+            FALCOR_THROW("Unsupported texture dimension.");
         }
     }
     else
@@ -492,7 +499,7 @@ void readDDSHeader(ImportData& data, const void* pHeaderData, size_t& headerSize
             {
                 if (!(pHeader->caps2 & DDS_CUBEMAP_ALLFACES))
                 {
-                    throw RuntimeError("All six faces must be defined for a legacy D3D9 DDS texture cube.");
+                    FALCOR_THROW("All six faces must be defined for a legacy D3D9 DDS texture cube.");
                 }
                 data.arraySize *= 6;
                 data.type = Resource::Type::TextureCube;
@@ -518,12 +525,12 @@ void loadDDS(const std::filesystem::path& path, bool loadAsSrgb, ImportData& dat
     MemoryMappedFile file(path, MemoryMappedFile::kWholeFile, MemoryMappedFile::AccessHint::SequentialScan);
     if (!file.isOpen())
     {
-        throw RuntimeError("Failed to open file.");
+        FALCOR_THROW("Failed to open file.");
     }
 
     if (file.getSize() < (sizeof(uint32_t) + sizeof(DDS_HEADER)))
     {
-        throw RuntimeError("Failed to read DDS header (file too small).");
+        FALCOR_THROW("Failed to read DDS header (file too small).");
     }
 
     // Read the DDS header
@@ -537,7 +544,7 @@ void loadDDS(const std::filesystem::path& path, bool loadAsSrgb, ImportData& dat
 
     if (file.getSize() <= headerSize)
     {
-        throw RuntimeError("No image data after DDS header.");
+        FALCOR_THROW("No image data after DDS header.");
     }
 
     // Read image data.
@@ -588,17 +595,16 @@ ref<Texture> ImageIO::loadTextureFromDDS(ref<Device> pDevice, const std::filesys
     switch (data.type)
     {
     case Resource::Type::Texture1D:
-        pTex = Texture::create1D(pDevice, data.width, data.format, data.arraySize, data.mipLevels, data.imageData.data());
+        pTex = pDevice->createTexture1D(data.width, data.format, data.arraySize, data.mipLevels, data.imageData.data());
         break;
     case Resource::Type::Texture2D:
-        pTex = Texture::create2D(pDevice, data.width, data.height, data.format, data.arraySize, data.mipLevels, data.imageData.data());
+        pTex = pDevice->createTexture2D(data.width, data.height, data.format, data.arraySize, data.mipLevels, data.imageData.data());
         break;
     case Resource::Type::TextureCube:
-        pTex =
-            Texture::createCube(pDevice, data.width, data.height, data.format, data.arraySize / 6, data.mipLevels, data.imageData.data());
+        pTex = pDevice->createTextureCube(data.width, data.height, data.format, data.arraySize / 6, data.mipLevels, data.imageData.data());
         break;
     case Resource::Type::Texture3D:
-        pTex = Texture::create3D(pDevice, data.width, data.height, data.depth, data.format, data.mipLevels, data.imageData.data());
+        pTex = pDevice->createTexture3D(data.width, data.height, data.depth, data.format, data.mipLevels, data.imageData.data());
         break;
     default:
         logWarning("Failed to load DDS image from '{}': Unrecognized texture type.", path);
@@ -633,7 +639,7 @@ void ImageIO::saveToDDS(const std::filesystem::path& path, const Bitmap& bitmap,
 
         if (getFormatChannelCount(image.format) == 2 && mode != CompressionMode::BC5)
         {
-            throw RuntimeError("Only BC5 compression is supported for two channel images.");
+            FALCOR_THROW("Only BC5 compression is supported for two channel images.");
         }
 
         // The DX spec requires the dimensions of BC encoded textures to be a multiple of 4 at the base resolution.
@@ -685,7 +691,7 @@ void ImageIO::saveToDDS(const std::filesystem::path& path, const Bitmap& bitmap,
     }
     catch (const RuntimeError& e)
     {
-        throw RuntimeError("Failed to save DDS image to '{}': {}", path, e.what());
+        FALCOR_THROW("Failed to save DDS image to '{}': {}", path, e.what());
     }
 }
 
@@ -713,7 +719,7 @@ void ImageIO::saveToDDS(
 
         if (getFormatChannelCount(image.format) == 2 && mode != CompressionMode::BC5)
         {
-            throw RuntimeError("Only BC5 compression is supported for two channel images.");
+            FALCOR_THROW("Only BC5 compression is supported for two channel images.");
         }
 
         // The DX spec requires the dimensions of BC encoded textures to be a multiple of 4 at the base resolution.
@@ -742,7 +748,7 @@ void ImageIO::saveToDDS(
             image.faceCount = 6;
             break;
         default:
-            throw RuntimeError("Invalid texture type. Only 2D, 3D, and Cube are currently supported.");
+            FALCOR_THROW("Invalid texture type. Only 2D, 3D, and Cube are currently supported.");
         }
 
         for (uint32_t f = 0; f < image.faceCount; ++f)
@@ -797,7 +803,7 @@ void ImageIO::saveToDDS(
     }
     catch (const RuntimeError& e)
     {
-        throw RuntimeError("Failed to save DDS image to '{}': {}", path, e.what());
+        FALCOR_THROW("Failed to save DDS image to '{}': {}", path, e.what());
     }
 }
 } // namespace Falcor

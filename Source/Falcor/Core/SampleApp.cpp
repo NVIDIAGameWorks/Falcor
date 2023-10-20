@@ -28,7 +28,9 @@
 #include "SampleApp.h"
 #include "Macros.h"
 #include "Version.h"
+#include "Core/Error.h"
 #include "Core/Plugin.h"
+#include "Core/AssetResolver.h"
 #include "Core/Program/Program.h"
 #include "Core/Program/ProgramManager.h"
 #include "Core/Platform/ProgressBar.h"
@@ -87,32 +89,25 @@ SampleApp::SampleApp(const SampleAppConfig& config)
         if (windowDesc.mode != Window::WindowMode::Minimized)
             mProgressBar.show("Initializing Falcor");
 
-        setShowMessageBoxOnError(true);
+        // When not running headless, we want to show message boxes on error by default.
+        setErrorDiagnosticFlags(getErrorDiagnosticFlags() | ErrorDiagnosticFlags::ShowMessageBoxOnError);
     }
 
     // Create target frame buffer
     uint2 fboSize = mpWindow ? mpWindow->getClientAreaSize() : uint2(config.windowDesc.width, config.windowDesc.height);
     mpTargetFBO = Fbo::create2D(mpDevice, fboSize.x, fboSize.y, config.colorFormat, config.depthFormat);
 
-    // Populate the data search paths from the config file, only adding those that aren't in already
-    auto searchDirectories = getSettings().getSearchDirectories("media");
-    for (auto& it : searchDirectories.get())
-        addDataDirectory(it);
-
-    // Set global shader defines
-    DefineList globalDefines = {
-        {"FALCOR_NVAPI_AVAILABLE", (FALCOR_NVAPI_AVAILABLE && mpDevice->getType() == Device::Type::D3D12) ? "1" : "0"},
-#if FALCOR_NVAPI_AVAILABLE
-        {"NV_SHADER_EXTN_SLOT", "u999"},
-#endif
-    };
-    mpDevice->getProgramManager()->addGlobalDefines(globalDefines);
+    // Setup asset search paths.
+    AssetResolver& resolver = AssetResolver::getDefaultResolver();
+    resolver.addSearchPath(getProjectDirectory() / "media");
+    for (auto& path : Settings::getGlobalSettings().getSearchDirectories("media"))
+        resolver.addSearchPath(path);
 
     mpDevice->getProgramManager()->setGenerateDebugInfoEnabled(config.generateShaderDebugInfo);
     if (config.shaderPreciseFloat)
     {
         mpDevice->getProgramManager()->setForcedCompilerFlags(
-            {Program::CompilerFlags::FloatingPointModePrecise, Program::CompilerFlags::FloatingPointModeFast}
+            {SlangCompilerFlags::FloatingPointModePrecise, SlangCompilerFlags::FloatingPointModeFast}
         );
     }
 
@@ -128,7 +123,7 @@ SampleApp::~SampleApp()
     mpPausedRenderOutput.reset();
     mpProfilerUI.reset();
 
-    mpDevice->flushAndSync();
+    mpDevice->wait();
 
     Threading::shutdown();
     Scripting::shutdown();
@@ -164,17 +159,8 @@ Settings& SampleApp::getSettings()
 
 int SampleApp::run()
 {
-    try
-    {
-        startScripting();
-        runInternal();
-    }
-    catch (const std::exception& e)
-    {
-        reportError("Caught exception:\n\n" + std::string(e.what()));
-        mReturnCode = 1;
-    }
-
+    startScripting();
+    runInternal();
     return mReturnCode;
 }
 
@@ -318,7 +304,12 @@ void SampleApp::runInternal()
 bool screenSizeUI(Gui::Widgets& widget, uint2& screenDims)
 {
     static const uint2 resolutions[] = {
-        {0, 0}, {1280, 720}, {1920, 1080}, {1920, 1200}, {2560, 1440}, {3840, 2160},
+        {0, 0},
+        {1280, 720},
+        {1920, 1080},
+        {1920, 1200},
+        {2560, 1440},
+        {3840, 2160},
     };
 
     static const auto initDropDown = [](const uint2 resolutions[], uint32_t count) -> Gui::DropdownList
@@ -501,7 +492,7 @@ void SampleApp::renderFrame()
         {
             auto srcTexture = mpTargetFBO->getColorTexture(0);
             mpPausedRenderOutput =
-                Texture::create2D(mpDevice, srcTexture->getWidth(), srcTexture->getHeight(), srcTexture->getFormat(), 1, 1);
+                mpDevice->createTexture2D(srcTexture->getWidth(), srcTexture->getHeight(), srcTexture->getFormat(), 1, 1);
             pRenderContext->copyResource(mpPausedRenderOutput.get(), srcTexture.get());
         }
         else
@@ -531,8 +522,7 @@ void SampleApp::renderFrame()
         const Texture* pSwapchainImage = mpSwapchain->getImage(imageIndex).get();
         pRenderContext->copyResource(pSwapchainImage, mpTargetFBO->getColorTexture(0).get());
         pRenderContext->resourceBarrier(pSwapchainImage, Resource::State::Present);
-        pRenderContext->flush();
-        FALCOR_PROFILE_CUSTOM(pRenderContext, "present", Profiler::Flags::Internal);
+        pRenderContext->submit();
         mpSwapchain->present();
     }
 

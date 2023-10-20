@@ -4,6 +4,7 @@
         "ms-vscode.cpptools",
         "ms-vscode.cmake-tools",
         "josetr.cmake-language-support-vscode",
-        "shader-slang.slang-language-extension"
+        "shader-slang.slang-language-extension",
+        "ms-python.python"
     ]
 }

@@ -25,7 +25,7 @@ def build_falcor(env, rebuild=False):
 def main():
     parser = argparse.ArgumentParser(description='Utility for building Falcor.')
     parser.add_argument('-c', '--config', type=str, action='store', help=f'Build configuration')
-    parser.add_argument('-e', '--environment', type=str, action='store', help='Environment', default=config.DEFAULT_ENVIRONMENT)
+    parser.add_argument('-e', '--environment', type=str, action='store', help='Environment', default=None)
     parser.add_argument('--rebuild', action='store_true', help='Force rebuild')
     parser.add_argument('--list-configs', action='store_true', help='List available build configurations.')
     args = parser.parse_args()

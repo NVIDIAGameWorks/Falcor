@@ -52,7 +52,7 @@ namespace Falcor
         /** Bind the environment map sampler to a given shader variable.
             \param[in] var Shader variable.
         */
-        void setShaderData(const ShaderVar& var) const;
+        void bindShaderData(const ShaderVar& var) const;
 
         const ref<EnvMap>& getEnvMap() const { return mpEnvMap; }
 

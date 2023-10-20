@@ -260,7 +260,7 @@ namespace Falcor
         return !isInside;
     }
 
-    void Camera::setShaderData(const ShaderVar& var) const
+    void Camera::bindShaderData(const ShaderVar& var) const
     {
         calculateCameraParameters();
         var["data"].setBlob(mData);

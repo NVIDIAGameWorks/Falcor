@@ -41,6 +41,7 @@
 
 #include <memory>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <variant>
 #include <vector>
@@ -85,6 +86,10 @@ public:
 
     gfx::IShaderObject* getShaderObject() const { return mpShaderObject.get(); }
 
+    //
+    // Uniforms
+    //
+
     /**
      * Set a variable into the block.
      * The function will validate that the value Type matches the declaration in the shader. If there's a mismatch, an error will be logged
@@ -93,9 +98,9 @@ public:
      * @param[in] value Value to set
      */
     template<typename T>
-    bool setVariable(const std::string& name, const T& value)
+    void setVariable(std::string_view name, const T& value)
     {
-        return getRootVar()[name].set(value);
+        getRootVar()[name].set(value);
     }
 
     /**
@@ -106,173 +111,214 @@ public:
      * @param[in] value Value to set
      */
     template<typename T>
-    bool setVariable(UniformShaderVarOffset offset, const T& value);
+    void setVariable(const BindLocation& bindLocation, const T& value);
 
     template<typename T>
-    bool setBlob(UniformShaderVarOffset bindLocation, const T& blob) const
+    void setBlob(const BindLocation& bindLocation, const T& blob) const
     {
-        return setBlob(bindLocation, &blob, sizeof(blob));
+        setBlob(bindLocation, &blob, sizeof(blob));
     }
 
-    bool setBlob(UniformShaderVarOffset offset, const void* pSrc, size_t size) { return setBlob(pSrc, offset, size); }
+    void setBlob(const BindLocation& bindLocation, const void* pSrc, size_t size) { return setBlob(pSrc, bindLocation, size); }
 
-    bool setBlob(const void* pSrc, UniformShaderVarOffset offset, size_t size);
-    bool setBlob(const void* pSrc, size_t offset, size_t size);
+    void setBlob(const void* pSrc, const BindLocation& bindLocation, size_t size);
+    void setBlob(const void* pSrc, size_t offset, size_t size);
+
+    //
+    // Buffer
+    //
 
     /**
-     * Bind a buffer by name.
-     * If the name doesn't exists, the bind flags don't match the shader requirements or the size doesn't match the required size, the call
-     * will fail.
-     * @param[in] name The name of the buffer in the program
-     * @param[in] pBuffer The buffer object
-     * @return false is the call failed, otherwise true
+     * Bind a buffer to a variable by name.
+     * Throws an exception if the variable doesn't exist, there is a type-mismatch or the bind flags don't match the shader requirements.
+     * @param[in] name The name of the variable to bind to.
+     * @param[in] pBuffer The buffer object.
      */
-    bool setBuffer(const std::string& name, const ref<Buffer>& pBuffer);
+    void setBuffer(std::string_view name, const ref<Buffer>& pBuffer);
 
     /**
-     * Bind a buffer object by index
-     * If the no buffer exists in the specified index or the bind flags don't match the shader requirements or the size doesn't match the
-     * required size, the call will fail.
-     * @param[in] bindLocation The bind-location in the block
-     * @param[in] pBuffer The buffer object
-     * @return false is the call failed, otherwise true
+     * Bind a buffer to a variable by bind location.
+     * Throws an exception if the variable doesn't exist, there is a type-mismatch or the bind flags don't match the shader requirements.
+     * @param[in] bindLocation The bind location of the variable to bind to.
+     * @param[in] pBuffer The buffer object.
      */
-    bool setBuffer(const BindLocation& bindLocation, const ref<Buffer>& pBuffer);
+    void setBuffer(const BindLocation& bindLocation, const ref<Buffer>& pBuffer);
 
     /**
-     * Get a buffer
-     * @param[in] name The name of the buffer
-     * @return If the name is valid, a shared pointer to the buffer. Otherwise returns nullptr
+     * Get the buffer bound to a variable by name.
+     * Throws an exception if the variable doesn't exist or there is a type-mismatch.
+     * @param[in] name The name of the variable.
+     * @return The bound buffer or nullptr if none is bound.
      */
-    ref<Buffer> getBuffer(const std::string& name) const;
+    ref<Buffer> getBuffer(std::string_view name) const;
 
     /**
-     * Get a buffer
-     * @param[in] bindLocation The bind location of the buffer
-     * @return If the name is valid, a shared pointer to the buffer. Otherwise returns nullptr
+     * Get the buffer bound to a variable by bind location.
+     * Throws an exception if the variable doesn't exist or there is a type-mismatch.
+     * @param[in] bindLocation The bind location of the variable.
+     * @return The bound buffer or nullptr if none is bound.
      */
     ref<Buffer> getBuffer(const BindLocation& bindLocation) const;
 
-    /**
-     * Bind a parameter block by name.
-     * If the name doesn't exists or the size doesn't match the required size, the call will fail.
-     * @param[in] name The name of the parameter block in the program
-     * @param[in] pBlock The parameter block
-     * @return false is the call failed, otherwise true
-     */
-    bool setParameterBlock(const std::string& name, const ref<ParameterBlock>& pBlock);
+    //
+    // Texture
+    //
 
     /**
-     * Bind a parameter block by index.
-     * If the no parameter block exists in the specified index or the parameter block size doesn't match the required size, the call will
-     * fail.
-     * @param[in] bindLocation The location of the object
-     * @param[in] pBlock The parameter block
-     * @return false is the call failed, otherwise true
+     * Bind a texture to a variable by name.
+     * Throws an exception if the variable doesn't exist, there is a type-mismatch or the bind flags don't match the shader requirements.
+     * @param[in] name The name of the variable to bind to.
+     * @param[in] pTexture The texture object.
      */
-    bool setParameterBlock(const BindLocation& bindLocation, const ref<ParameterBlock>& pBlock);
+    void setTexture(std::string_view name, const ref<Texture>& pTexture);
 
     /**
-     * Get a parameter block.
-     * @param[in] name The name of the parameter block
-     * @return If the name is valid, a shared pointer to the parameter block. Otherwise returns nullptr
+     * Bind a texture to a variable by bind location.
+     * Throws an exception if the variable doesn't exist, there is a type-mismatch or the bind flags don't match the shader requirements.
+     * @param[in] bindLocation The bind location of the variable to bind to.
+     * @param[in] pTexture The texture object.
      */
-    ref<ParameterBlock> getParameterBlock(const std::string& name) const;
+    void setTexture(const BindLocation& bindLocation, const ref<Texture>& pTexture);
 
     /**
-     * Get a parameter block.
-     * @param[in] bindLocation The location of the block
-     * @return If the indices is valid, a shared pointer to the parameter block. Otherwise returns nullptr
+     * Get the texture bound to a variable by name.
+     * Throws an exception if the variable doesn't exist or there is a type-mismatch.
+     * @param[in] name The name of the variable.
+     * @return The bound texture or nullptr if none is bound.
      */
-    ref<ParameterBlock> getParameterBlock(const BindLocation& bindLocation) const;
+    ref<Texture> getTexture(std::string_view name) const;
 
     /**
-     * Bind a texture. Based on the shader reflection, it will be bound as either an SRV or a UAV
-     * @param[in] name The name of the texture object in the shader
-     * @param[in] pTexture The texture object to bind
+     * Get the texture bound to a variable by bind location.
+     * Throws an exception if the variable doesn't exist or there is a type-mismatch.
+     * @param[in] bindLocation The bind location of the variable.
+     * @return The bound texture or nullptr if none is bound.
      */
-    bool setTexture(const std::string& name, const ref<Texture>& pTexture);
-    bool setTexture(const BindLocation& bindLocation, const ref<Texture>& pTexture);
-
-    /**
-     * Get a texture object.
-     * @param[in] name The name of the texture
-     * @return If the name is valid, a shared pointer to the texture object. Otherwise returns nullptr
-     */
-    ref<Texture> getTexture(const std::string& name) const;
     ref<Texture> getTexture(const BindLocation& bindLocation) const;
 
-    /**
-     * Bind an SRV.
-     * @param[in] bindLocation The bind-location in the block
-     * @param[in] pSrv The shader-resource-view object to bind
-     */
-    bool setSrv(const BindLocation& bindLocation, const ref<ShaderResourceView>& pSrv);
+    //
+    // ResourceView
+    //
 
     /**
-     * Bind a UAV.
-     * @param[in] bindLocation The bind-location in the block
-     * @param[in] pSrv The unordered-access-view object to bind
+     * Bind an SRV to a variable by name.
+     * Throws an exception if the variable doesn't exist or there is a type-mismatch.
+     * @param[in] name The name of the variable to bind to.
+     * @param[in] pSrv The shader-resource-view object.
      */
-    bool setUav(const BindLocation& bindLocation, const ref<UnorderedAccessView>& pUav);
+    void setSrv(const BindLocation& bindLocation, const ref<ShaderResourceView>& pSrv);
 
     /**
-     * Bind an acceleration structure.
-     * @param[in] bindLocation The bind-location in the block
-     * @param[in] pAccl The acceleration structure object to bind
-     * @return false if the binding location does not accept an acceleration structure, true otherwise.
-     */
-    bool setAccelerationStructure(const BindLocation& bindLocation, const ref<RtAccelerationStructure>& pAccl);
-
-    /**
-     * Get an SRV object.
-     * @param[in] bindLocation The bind-location in the block
-     * @return If the bind-location is valid, a shared pointer to the SRV. Otherwise returns nullptr
+     * Get the SRV bound to a variable by bind location.
+     * Throws an exception if the variable doesn't exist or there is a type-mismatch.
+     * @param[in] bindLocation The bind location of the variable.
+     * @return The bound SRV or nullptr if none is bound.
      */
     ref<ShaderResourceView> getSrv(const BindLocation& bindLocation) const;
 
     /**
-     * Get a UAV object
-     * @param[in] bindLocation The bind-location in the block
-     * @return If the bind-location is valid, a shared pointer to the UAV. Otherwise returns nullptr
+     * Bind a UAV to a variable by name.
+     * Throws an exception if the variable doesn't exist or there is a type-mismatch.
+     * @param[in] name The name of the variable to bind to.
+     * @param[in] pSrv The unordered-access-view object.
+     */
+    void setUav(const BindLocation& bindLocation, const ref<UnorderedAccessView>& pUav);
+
+    /**
+     * Get the UAV bound to a variable by bind location.
+     * Throws an exception if the variable doesn't exist or there is a type-mismatch.
+     * @param[in] bindLocation The bind location of the variable.
+     * @return The bound UAV or nullptr if none is bound.
      */
     ref<UnorderedAccessView> getUav(const BindLocation& bindLocation) const;
 
     /**
-     * Get an acceleration structure object.
-     * @param[in] bindLocation The bind-location in the block
-     * @return If the bind-location is valid, a shared pointer to the acceleration structure. Otherwise returns nullptr
+     * Bind an acceleration strcture to a variable by name.
+     * Throws an exception if the variable doesn't exist or there is a type-mismatch.
+     * @param[in] name The name of the variable to bind to.
+     * @param[in] pAccel The acceleration structure object.
+     */
+    void setAccelerationStructure(const BindLocation& bindLocation, const ref<RtAccelerationStructure>& pAccl);
+
+    /**
+     * Get the acceleration structure bound to a variable by bind location.
+     * Throws an exception if the variable doesn't exist or there is a type-mismatch.
+     * @param[in] bindLocation The bind location of the variable.
+     * @return The bound acceleration structure or nullptr if none is bound.
      */
     ref<RtAccelerationStructure> getAccelerationStructure(const BindLocation& bindLocation) const;
 
-    /**
-     * Bind a sampler to the program in the global namespace.
-     * @param[in] name The name of the sampler object in the shader
-     * @param[in] pSampler The sampler object to bind
-     * @return false if the sampler was not found in the program, otherwise true
-     */
-    bool setSampler(const std::string& name, const ref<Sampler>& pSampler);
+    //
+    // Sampler
+    //
 
     /**
-     * Bind a sampler to the program in the global namespace.
-     * @param[in] bindLocation The bind-location in the block
-     * @param[in] pSampler The sampler object to bind
-     * @return false if the sampler was not found in the program, otherwise true
+     * Bind a sampler to a variable by name.
+     * Throws an exception if the variable doesn't exist or there is a type-mismatch.
+     * @param[in] name The name of the variable to bind to.
+     * @param[in] pSampler The sampler object.
      */
-    bool setSampler(const BindLocation& bindLocation, const ref<Sampler>& pSampler);
+    void setSampler(std::string_view name, const ref<Sampler>& pSampler);
 
     /**
-     * Gets a sampler object.
-     * @param[in] bindLocation The bind-location in the block
-     * @return If the bind-location is valid, a shared pointer to the sampler. Otherwise returns nullptr
+     * Bind a sampler to a variable by bind location.
+     * Throws an exception if the variable doesn't exist or there is a type-mismatch.
+     * @param[in] bindLocation The bind location of the variable to bind to.
+     * @param[in] pSampler The sampler object.
+     */
+    void setSampler(const BindLocation& bindLocation, const ref<Sampler>& pSampler);
+
+    /**
+     * Get the sampler bound to a variable by bind location.
+     * Throws an exception if the variable doesn't exist or there is a type-mismatch.
+     * @param[in] bindLocation The bind location of the variable.
+     * @return The bound sampler or nullptr if none is bound.
      */
     ref<Sampler> getSampler(const BindLocation& bindLocation) const;
 
     /**
-     * Gets a sampler object.
-     * @return If the name is valid, a shared pointer to the sampler. Otherwise returns nullptr
+     * Get the sampler bound to a variable by name.
+     * Throws an exception if the variable doesn't exist or there is a type-mismatch.
+     * @param[in] name The name of the variable.
+     * @return The bound sampler or nullptr if none is bound.
      */
-    ref<Sampler> getSampler(const std::string& name) const;
+    ref<Sampler> getSampler(std::string_view name) const;
+
+    //
+    // ParameterBlock
+    //
+
+    /**
+     * Bind a parameter block to a variable by name.
+     * Throws an exception if the variable doesn't exist or there is a type-mismatch.
+     * @param[in] name The name of the variable to bind to.
+     * @param[in] pBlock The parameter block.
+     */
+    void setParameterBlock(std::string_view name, const ref<ParameterBlock>& pBlock);
+
+    /**
+     * Bind a parameter block to a variable by bind location.
+     * Throws an exception if the variable doesn't exist or there is a type-mismatch.
+     * @param[in] bindLocation The bind location of the variable to bind to.
+     * @param[in] pBlock The parameter block object.
+     */
+    void setParameterBlock(const BindLocation& bindLocation, const ref<ParameterBlock>& pBlock);
+
+    /**
+     * Get the parameter block bound to a variable by name.
+     * Throws an exception if the variable doesn't exist or there is a type-mismatch.
+     * @param[in] name The name of the variable.
+     * @return The bound parameter block or nullptr if none is bound.
+     */
+    ref<ParameterBlock> getParameterBlock(std::string_view name) const;
+
+    /**
+     * Get the parameter block bound to a variable by bind location.
+     * Throws an exception if the variable doesn't exist or there is a type-mismatch.
+     * @param[in] bindLocation The bind location of the variable.
+     * @return The bound parameter block or nullptr if none is bound.
+     */
+    ref<ParameterBlock> getParameterBlock(const BindLocation& bindLocation) const;
 
     /**
      * Get the parameter block's reflection interface
@@ -292,7 +338,7 @@ public:
     /**
      * Get offset of a uniform variable inside the block, given its name.
      */
-    UniformShaderVarOffset getVariableOffset(const std::string& varName) const;
+    TypedShaderVarOffset getVariableOffset(std::string_view varName) const;
 
     /**
      * Get an initial var to the contents of this block.
@@ -304,7 +350,7 @@ public:
      *
      * Returns an invalid shader var if no such member is found.
      */
-    ShaderVar findMember(const std::string& varName) const;
+    ShaderVar findMember(std::string_view varName) const;
 
     /**
      * Try to find a shader var for a member of the block by index.
@@ -323,23 +369,10 @@ public:
 
     bool prepareDescriptorSets(CopyContext* pCopyContext);
 
-    const ref<ParameterBlock>& getParameterBlock(uint32_t resourceRangeIndex, uint32_t arrayIndex) const;
-
-    // Delete some functions. If they are not deleted, the compiler will try to convert the uints to string, resulting in runtime error
-    ref<Sampler> getSampler(uint32_t) = delete;
-    bool setSampler(uint32_t, ref<Sampler>) = delete;
-
     using SpecializationArgs = std::vector<slang::SpecializationArg>;
     void collectSpecializationArgs(SpecializationArgs& ioArgs) const;
 
     void const* getRawData() const;
-
-    /**
-     * Get the underlying constant buffer that holds the ordinary/uniform data for this block.
-     * Be cautious with the returned buffer as it can be invalidated any time you set/bind something
-     * to the parameter block (or one if its internal sub-blocks).
-     */
-    ref<Buffer> getUnderlyingConstantBuffer() const;
 
 protected:
     ParameterBlock(
@@ -373,8 +406,8 @@ protected:
 };
 
 template<typename T>
-bool ShaderVar::setImpl(const T& val) const
+void ShaderVar::setImpl(const T& val) const
 {
-    return mpBlock->setVariable(mOffset, val);
+    mpBlock->setVariable(mOffset, val);
 }
 } // namespace Falcor

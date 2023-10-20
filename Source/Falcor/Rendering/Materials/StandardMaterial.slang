@@ -27,9 +27,9 @@
  **************************************************************************/
 __exported import Rendering.Materials.IMaterial;
 __exported import Rendering.Materials.StandardMaterialInstance;
+import Scene.Material.StandardMaterialParamLayout;
 import Scene.Material.BasicMaterialData;
 import Scene.Material.ShadingUtils;
-import Scene.Scene;
 
 /** Implementation of Falcor's standard surface material.
 
@@ -94,11 +94,13 @@ struct StandardMaterial : MaterialBase, IMaterial
         }
 #endif
 
+#if defined(SCENE_DIFFUSE_ALBEDO_MULTIPLIER)
         // DEMO21
-        if (Scene::kDiffuseAlbedoMultiplier != 1.f)
+        if (SCENE_DIFFUSE_ALBEDO_MULTIPLIER != 1.f)
         {
-            d.diffuse = saturate(d.diffuse * Scene::kDiffuseAlbedoMultiplier);
+            d.diffuse = saturate(d.diffuse * SCENE_DIFFUSE_ALBEDO_MULTIPLIER);
         }
+#endif
 
         // Compute final shading frame.
         ShadingFrame sf = sd.frame;
@@ -122,12 +124,128 @@ struct StandardMaterial : MaterialBase, IMaterial
             emission = ms.sampleTexture(data.texEmissive, s, sd.uv, float4(data.emissive, 1), lod).rgb * data.emissiveFactor;
         }
 
+        d.volumeAnsiotropy = data.volumeAnisotropy;
+        d.volumeScattering = data.volumeScattering;
+        d.hasEntryPointVolumeProperties = data.getHasEntryPointVolumeProperties();
+        d.hasSigmaSGreaterZero = (any(data.volumeScattering) > 0.f);
+
         return StandardMaterialInstance(sf, d, emission);
     }
 
-    float evalOpacity(const MaterialSystem ms, const VertexData v, const ITextureSampler lod)
+    [Differentiable]
+    StandardMaterialInstance setupDiffMaterialInstance(out DiffMaterialData diffData, const MaterialSystem ms, const ShadingData sd, const ITextureSampler lod, const uint hints)
     {
         SamplerState s = ms.getTextureSampler(header.getDefaultTextureSamplerID());
-        return ms.sampleTexture(data.texBaseColor, s, v.texC, data.baseColor, lod).a;
+
+        StandardBSDFData d = {};
+
+        uint hashIndex = hashFunction(sd.threadID, gSceneGradients.getHashSize(GradientType::Material));
+        GradientIOWrapper gradIO = GradientIOWrapper(GradientType::Material, sd.materialGradOffset, hashIndex);
+
+        float16_t _IoR = no_diff header.getIoR();
+        float IoR = gradIO.getFloat(float(_IoR), StandardMaterialParamLayout.ior);
+        d.eta = sd.frontFacing ? (sd.IoR / IoR) : (IoR / sd.IoR);
+        d.diffuseTransmission = gradIO.getFloat(data.diffuseTransmission, StandardMaterialParamLayout.diffuseTransmission);
+        d.specularTransmission = gradIO.getFloat(data.specularTransmission, StandardMaterialParamLayout.specularTransmission);
+
+        // TODO: Handle texture gradients.
+        if (d.diffuseTransmission > 0.f || d.specularTransmission > 0.f)
+        {
+            float4 _transmission = no_diff ms.sampleTexture(data.texTransmission, s, sd.uv, float4(data.transmission, 0.f), lod);
+            d.transmission = gradIO.getFloat(_transmission.rgb, StandardMaterialParamLayout.transmissionColor);
+        }
+
+        // Calculate the specular reflectance for dielectrics from the IoR, as in the Disney BSDF [Burley 2015].
+        // UE4 uses 0.08 multiplied by a default specular value of 0.5, hence F0=0.04 as default. The default IoR=1.5 gives the same result.
+        float f = (IoR - 1.f) / (IoR + 1.f);
+        float F0 = f * f;
+
+        // Sample base color.
+        const float4 _baseColor = no_diff ms.sampleTexture(data.texBaseColor, s, sd.uv, data.baseColor, lod);
+        float3 baseColor = gradIO.getFloat(_baseColor.rgb, StandardMaterialParamLayout.baseColor);
+
+        // Sample the specular texture.
+        // Depending on the shading model this encodes the material parameters differently.
+        const float4 _spec = no_diff ms.sampleTexture(data.texSpecular, s, sd.uv, data.specular, lod);
+
+#if MATERIAL_SYSTEM_HAS_SPEC_GLOSS_MATERIALS
+        if (data.getShadingModel() == ShadingModel::MetalRough)
+#endif
+        {
+            // G - Roughness; B - Metallic
+            float roughness = gradIO.getFloat(_spec.g, StandardMaterialParamLayout.roughness);
+            float metallic = gradIO.getFloat(_spec.b, StandardMaterialParamLayout.metallic);
+            d.diffuse = lerp(baseColor, float3(0), metallic);
+            d.specular = lerp(float3(F0), baseColor, metallic);
+            d.roughness = roughness;
+            d.metallic = metallic;
+        }
+#if MATERIAL_SYSTEM_HAS_SPEC_GLOSS_MATERIALS
+        else // ShadingModel::SpecGloss
+        {
+            d.diffuse = baseColor;
+            d.specular = _spec.rgb;
+            d.roughness = 1 - _spec.a;
+            d.metallic = getMetallic(d.diffuse, d.specular);
+        }
+#endif
+
+#if defined(SCENE_DIFFUSE_ALBEDO_MULTIPLIER)
+        // DEMO21
+        if (SCENE_DIFFUSE_ALBEDO_MULTIPLIER != 1.f)
+        {
+            d.diffuse = saturate(d.diffuse * SCENE_DIFFUSE_ALBEDO_MULTIPLIER);
+        }
+#endif
+
+        // Compute final shading frame.
+        ShadingFrame sf = sd.frame;
+        if (isNormalMappingEnabled(hints))
+        {
+            float3 encodedNormal = ms.sampleTexture(data.texNormalMap, s, sd.uv, float4(0.f), lod).rgb;
+            // TODO: Allow differentiation here.
+            // We don't support it because differentiating normal maps is harder due to additional discontinuities.
+            sf = no_diff computeShadingFrameFromNormalMap(sd, data.getNormalMapType(), encodedNormal);
+        }
+        flipShadingNormal(sd, sf);
+        if (isAdjustShadingNormalEnabled(hints))
+        {
+            no_diff adjustShadingNormal(sd, sf);
+        }
+
+        // Sample the emissive texture.
+        // The standard material supports uniform emission over the hemisphere.
+        // Note that the material is only emissive on the front-facing side.
+        float3 emission = {};
+        if (sd.frontFacing)
+        {
+            float4 _emission = no_diff ms.sampleTexture(data.texEmissive, s, sd.uv, float4(data.emissive, 1), lod);
+            emission = gradIO.getFloat(_emission.rgb, StandardMaterialParamLayout.emissiveColor);
+            emission *= gradIO.getFloat(data.emissiveFactor, StandardMaterialParamLayout.emissiveFactor);
+        }
+
+        StandardMaterialInstance mi = StandardMaterialInstance(sf, d, emission);
+        diffData.sf = sf;
+
+        // The data layout below follows the `StandardBSDFData` struct, which is different from the layout of `StandardMaterial`.
+        uint offset = 0;
+        // 0--3: diffuse albedo
+        diffData.write(d.diffuse, offset);
+        // 3--6: specular albedo
+        diffData.write(d.specular, offset);
+        // 6--9: roughness, metallic, eta
+        diffData.write(d.roughness, offset);
+        diffData.write(d.metallic, offset);
+        diffData.write(d.eta, offset);
+        // 9--12: transmission
+        diffData.write(d.transmission, offset);
+        // 12: diffuse transmission
+        diffData.write(d.diffuseTransmission, offset);
+        // 13: specular transmission
+        diffData.write(d.specularTransmission, offset);
+        // 14--17: emission
+        diffData.write(emission, offset);
+
+        return mi;
     }
 };

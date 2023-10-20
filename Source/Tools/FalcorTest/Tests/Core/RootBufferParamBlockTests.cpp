@@ -43,18 +43,18 @@ const std::string kGlobalRootBufferName = "globalTestBuffer";
 std::mt19937 rng;
 auto dist = std::uniform_int_distribution<uint32_t>(0, 100);
 
-void testRootBuffer(GPUUnitTestContext& ctx, const std::string& shaderModel, bool useUav)
+void testRootBuffer(GPUUnitTestContext& ctx, ShaderModel shaderModel, bool useUav)
 {
     ref<Device> pDevice = ctx.getDevice();
 
     auto nextRandom = [&]() -> uint32_t { return dist(rng); };
 
     DefineList defines = {{"USE_UAV", useUav ? "1" : "0"}};
-    Program::CompilerFlags compilerFlags = Program::CompilerFlags::None;
+    SlangCompilerFlags compilerFlags = SlangCompilerFlags::None;
 
     // Create parameter block based on reflection of a dummy program.
     // This is to ensure that the register index/space here do not match those of the final program.
-    Program::Desc reflDesc;
+    ProgramDesc reflDesc;
     reflDesc.addShaderLibrary(kReflectionProgram).csEntry("main");
     auto pReflectionProgram = ComputePass::create(ctx.getDevice(), reflDesc, defines);
     EXPECT(pReflectionProgram != nullptr);
@@ -74,9 +74,8 @@ void testRootBuffer(GPUUnitTestContext& ctx, const std::string& shaderModel, boo
         bufA[j].resize(kNumElems);
         for (uint32_t i = 0; i < kNumElems; i++)
             bufA[j][i] = nextRandom();
-        block["bufA"][j] = Buffer::create(
-            pDevice, kNumElems * sizeof(uint32_t), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, bufA[j].data()
-        );
+        block["bufA"][j] =
+            pDevice->createBuffer(kNumElems * sizeof(uint32_t), ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, bufA[j].data());
     }
     std::vector<float> bufB[3];
     for (uint32_t j = 0; j < 3; j++)
@@ -85,7 +84,7 @@ void testRootBuffer(GPUUnitTestContext& ctx, const std::string& shaderModel, boo
         for (uint32_t i = 0; i < kNumElems; i++)
             bufB[j][i] = (float)nextRandom();
         block["bufB"][j] =
-            Buffer::createTyped<float>(pDevice, kNumElems, Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, bufB[j].data());
+            pDevice->createTypedBuffer<float>(kNumElems, ResourceBindFlags::UnorderedAccess, MemoryType::DeviceLocal, bufB[j].data());
     }
     std::vector<uint32_t> bufC[4];
     for (uint32_t j = 0; j < 4; j++)
@@ -94,7 +93,7 @@ void testRootBuffer(GPUUnitTestContext& ctx, const std::string& shaderModel, boo
         for (uint32_t i = 0; i < kNumElems; i++)
             bufC[j][i] = nextRandom();
         block["bufC"][j] =
-            Buffer::createTyped<uint32_t>(pDevice, kNumElems, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, bufC[j].data());
+            pDevice->createTypedBuffer<uint32_t>(kNumElems, ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, bufC[j].data());
     }
 
     // Bind root buffer to the parameter block.
@@ -102,12 +101,13 @@ void testRootBuffer(GPUUnitTestContext& ctx, const std::string& shaderModel, boo
     {
         for (uint32_t i = 0; i < kNumElems; i++)
             testBuffer[i] = nextRandom();
-        auto pTestBuffer = Buffer::create(
-            pDevice, kNumElems * sizeof(uint32_t), useUav ? ResourceBindFlags::UnorderedAccess : ResourceBindFlags::ShaderResource,
-            Buffer::CpuAccess::None, testBuffer.data()
+        auto pTestBuffer = pDevice->createBuffer(
+            kNumElems * sizeof(uint32_t),
+            useUav ? ResourceBindFlags::UnorderedAccess : ResourceBindFlags::ShaderResource,
+            MemoryType::DeviceLocal,
+            testBuffer.data()
         );
-        bool ret = pParamBlock->setBuffer(kRootBufferName, pTestBuffer);
-        EXPECT(ret);
+        pParamBlock->setBuffer(kRootBufferName, pTestBuffer);
 
         ref<Buffer> pBoundBuffer = pParamBlock->getBuffer(kRootBufferName);
         EXPECT_EQ(pBoundBuffer, pTestBuffer);
@@ -126,17 +126,18 @@ void testRootBuffer(GPUUnitTestContext& ctx, const std::string& shaderModel, boo
         globalBufA.resize(kNumElems);
         for (uint32_t i = 0; i < kNumElems; i++)
             globalBufA[i] = nextRandom();
-        var["globalBufA"] = Buffer::createTyped<uint32_t>(
-            pDevice, kNumElems, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, globalBufA.data()
-        );
+        var["globalBufA"] =
+            pDevice->createTypedBuffer<uint32_t>(kNumElems, ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, globalBufA.data());
     }
     std::vector<uint32_t> globalTestBuffer(kNumElems);
     {
         for (uint32_t i = 0; i < kNumElems; i++)
             globalTestBuffer[i] = nextRandom();
-        var[kGlobalRootBufferName] = Buffer::create(
-            pDevice, kNumElems * sizeof(uint32_t), useUav ? ResourceBindFlags::UnorderedAccess : ResourceBindFlags::ShaderResource,
-            Buffer::CpuAccess::None, globalTestBuffer.data()
+        var[kGlobalRootBufferName] = pDevice->createBuffer(
+            kNumElems * sizeof(uint32_t),
+            useUav ? ResourceBindFlags::UnorderedAccess : ResourceBindFlags::ShaderResource,
+            MemoryType::DeviceLocal,
+            globalTestBuffer.data()
         );
     }
 
@@ -167,21 +168,21 @@ void testRootBuffer(GPUUnitTestContext& ctx, const std::string& shaderModel, boo
 
 GPU_TEST(RootBufferParamBlockSRV_6_0)
 {
-    testRootBuffer(ctx, "6_0", false);
+    testRootBuffer(ctx, ShaderModel::SM6_0, false);
 }
 
 GPU_TEST(RootBufferParamBlockUAV_6_0)
 {
-    testRootBuffer(ctx, "6_0", true);
+    testRootBuffer(ctx, ShaderModel::SM6_0, true);
 }
 
 GPU_TEST(RootBufferParamBlockSRV_6_3)
 {
-    testRootBuffer(ctx, "6_3", false);
+    testRootBuffer(ctx, ShaderModel::SM6_3, false);
 }
 
 GPU_TEST(RootBufferParamBlockUAV_6_3)
 {
-    testRootBuffer(ctx, "6_3", true);
+    testRootBuffer(ctx, ShaderModel::SM6_3, true);
 }
 } // namespace Falcor

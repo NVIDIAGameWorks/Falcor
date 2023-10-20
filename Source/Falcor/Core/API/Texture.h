@@ -48,6 +48,53 @@ class FALCOR_API Texture : public Resource
 {
     FALCOR_OBJECT(Texture)
 public:
+    struct SubresourceLayout
+    {
+        /// Size of a single row in bytes (unaligned).
+        size_t rowSize;
+        /// Size of a single row in bytes (aligned to device texture alignment).
+        size_t rowSizeAligned;
+        /// Number of rows.
+        size_t rowCount;
+        /// Number of depth slices.
+        size_t depth;
+
+        /// Get the total size of the subresource in bytes (unaligned).
+        size_t getTotalByteSize() const { return rowSize * rowCount * depth; }
+
+        /// Get the total size of the subresource in bytes (aligned to device texture alignment).
+        size_t getTotalByteSizeAligned() const { return rowSizeAligned * rowCount * depth; }
+    };
+
+    Texture(
+        ref<Device> pDevice,
+        Type type,
+        ResourceFormat format,
+        uint32_t width,
+        uint32_t height,
+        uint32_t depth,
+        uint32_t arraySize,
+        uint32_t mipLevels,
+        uint32_t sampleCount,
+        ResourceBindFlags bindFlags,
+        const void* pInitData
+    );
+
+    Texture(
+        ref<Device> pDevice,
+        gfx::ITextureResource* pResource,
+        Type type,
+        ResourceFormat format,
+        uint32_t width,
+        uint32_t height,
+        uint32_t depth,
+        uint32_t arraySize,
+        uint32_t mipLevels,
+        uint32_t sampleCount,
+        ResourceBindFlags bindFlags,
+        Resource::State initState
+    );
+
     ~Texture();
 
     /**
@@ -105,151 +152,14 @@ public:
     uint32_t getSubresourceIndex(uint32_t arraySlice, uint32_t mipLevel) const { return mipLevel + arraySlice * mMipLevels; }
 
     /**
+     * Get the number of subresources
+     */
+    uint32_t getSubresourceCount() const { return mMipLevels * mArraySize; }
+
+    /**
      * Get the resource format
      */
     ResourceFormat getFormat() const { return mFormat; }
-
-    /**
-     * Create a new texture from an resource.
-     * @param[in] pResource Already allocated resource.
-     * @param[in] type The type of texture.
-     * @param[in] width The width of the texture.
-     * @param[in] height The height of the texture.
-     * @param[in] depth The depth of the texture.
-     * @param[in] format The format of the texture.
-     * @param[in] sampleCount The sample count of the texture.
-     * @param[in] arraySize The array size of the texture.
-     * @param[in] mipLevels The number of mip levels.
-     * @param[in] initState The initial resource state.
-     * @param[in] bindFlags Texture bind flags. Flags must match the bind flags of the original resource.
-     * @return A pointer to a new texture, or throws an exception if creation failed.
-     */
-    static ref<Texture> createFromResource(
-        ref<Device> pDevice,
-        gfx::ITextureResource* pResource,
-        Type type,
-        uint32_t width,
-        uint32_t height,
-        uint32_t depth,
-        ResourceFormat format,
-        uint32_t sampleCount,
-        uint32_t arraySize,
-        uint32_t mipLevels,
-        State initState,
-        BindFlags bindFlags
-    );
-
-    /**
-     * Create a 1D texture.
-     * @param[in] width The width of the texture.
-     * @param[in] format The format of the texture.
-     * @param[in] arraySize The array size of the texture.
-     * @param[in] mipLevels If equal to kMaxPossible then an entire mip chain will be generated from mip level 0. If any other value is
-     * given then the data for at least that number of miplevels must be provided.
-     * @param[in] pInitData If different than nullptr, pointer to a buffer containing data to initialize the texture with.
-     * @param[in] bindFlags The requested bind flags for the resource.
-     * @return A pointer to a new texture, or throws an exception if creation failed.
-     */
-    static ref<Texture> create1D(
-        ref<Device> pDevice,
-        uint32_t width,
-        ResourceFormat format,
-        uint32_t arraySize = 1,
-        uint32_t mipLevels = kMaxPossible,
-        const void* pInitData = nullptr,
-        BindFlags bindFlags = BindFlags::ShaderResource
-    );
-
-    /**
-     * Create a 2D texture.
-     * @param[in] width The width of the texture.
-     * @param[in] height The height of the texture.
-     * @param[in] format The format of the texture.
-     * @param[in] arraySize The array size of the texture.
-     * @param[in] mipLevels If equal to kMaxPossible then an entire mip chain will be generated from mip level 0. If any other value is
-     * given then the data for at least that number of miplevels must be provided.
-     * @param[in] pInitData If different than nullptr, pointer to a buffer containing data to initialize the texture with.
-     * @param[in] bindFlags The requested bind flags for the resource.
-     * @return A pointer to a new texture, or throws an exception if creation failed.
-     */
-    static ref<Texture> create2D(
-        ref<Device> pDevice,
-        uint32_t width,
-        uint32_t height,
-        ResourceFormat format,
-        uint32_t arraySize = 1,
-        uint32_t mipLevels = kMaxPossible,
-        const void* pInitData = nullptr,
-        BindFlags bindFlags = BindFlags::ShaderResource
-    );
-
-    /**
-     * Create a 3D texture.
-     * @param[in] width The width of the texture.
-     * @param[in] height The height of the texture.
-     * @param[in] depth The depth of the texture.
-     * @param[in] format The format of the texture.
-     * @param[in] mipLevels If equal to kMaxPossible then an entire mip chain will be generated from mip level 0. If any other value is
-     * given then the data for at least that number of miplevels must be provided.
-     * @param[in] pInitData If different than nullptr, pointer to a buffer containing data to initialize the texture with.
-     * @param[in] bindFlags The requested bind flags for the resource.
-     * @param[in] isSparse If true, the texture is created using sparse texture options supported by the API.
-     * @return A pointer to a new texture, or throws an exception if creation failed.
-     */
-    static ref<Texture> create3D(
-        ref<Device> pDevice,
-        uint32_t width,
-        uint32_t height,
-        uint32_t depth,
-        ResourceFormat format,
-        uint32_t mipLevels = kMaxPossible,
-        const void* pInitData = nullptr,
-        BindFlags bindFlags = BindFlags::ShaderResource,
-        bool isSparse = false
-    );
-
-    /**
-     * Create a cube texture.
-     * @param[in] width The width of the texture.
-     * @param[in] height The height of the texture.
-     * @param[in] format The format of the texture.
-     * @param[in] arraySize The array size of the texture.
-     * @param[in] mipLevels If equal to kMaxPossible then an entire mip chain will be generated from mip level 0. If any other value is
-     * given then the data for at least that number of miplevels must be provided.
-     * @param[in] pInitData If different than nullptr, pointer to a buffer containing data to initialize the texture with.
-     * @param[in] bindFlags The requested bind flags for the resource.
-     * @return A pointer to a new texture, or throws an exception if creation failed.
-     */
-    static ref<Texture> createCube(
-        ref<Device> pDevice,
-        uint32_t width,
-        uint32_t height,
-        ResourceFormat format,
-        uint32_t arraySize = 1,
-        uint32_t mipLevels = kMaxPossible,
-        const void* pInitData = nullptr,
-        BindFlags bindFlags = BindFlags::ShaderResource
-    );
-
-    /**
-     * Create a multi-sampled 2D texture.
-     * @param[in] width The width of the texture.
-     * @param[in] height The height of the texture.
-     * @param[in] format The format of the texture.
-     * @param[in] sampleCount The sample count of the texture.
-     * @param[in] arraySize The array size of the texture.
-     * @param[in] bindFlags The requested bind flags for the resource.
-     * @return A pointer to a new texture, or throws an exception if creation failed.
-     */
-    static ref<Texture> create2DMS(
-        ref<Device> pDevice,
-        uint32_t width,
-        uint32_t height,
-        ResourceFormat format,
-        uint32_t sampleCount,
-        uint32_t arraySize = 1,
-        BindFlags bindFlags = BindFlags::ShaderResource
-    );
 
     /**
      * Create a new texture object with mips specified explicitly from individual files.
@@ -262,12 +172,12 @@ public:
         ref<Device> pDevice,
         fstd::span<const std::filesystem::path> paths,
         bool loadAsSrgb,
-        Texture::BindFlags bindFlags = BindFlags::ShaderResource
+        ResourceBindFlags bindFlags = ResourceBindFlags::ShaderResource
     );
 
     /**
      * Create a new texture object from a file.
-     * @param[in] path File path of the image. Can also include a full path or relative path from a data directory.
+     * @param[in] path File path of the image (absolute or relative to working directory).
      * @param[in] generateMipLevels Whether the mip-chain should be generated.
      * @param[in] loadAsSrgb Load the texture using sRGB format. Only valid for 3 or 4 component textures.
      * @param[in] bindFlags The bind flags to create the texture with.
@@ -278,7 +188,7 @@ public:
         const std::filesystem::path& path,
         bool generateMipLevels,
         bool loadAsSrgb,
-        BindFlags bindFlags = BindFlags::ShaderResource
+        ResourceBindFlags bindFlags = ResourceBindFlags::ShaderResource
     );
 
     gfx::ITextureResource* getGfxTextureResource() const { return mGfxTextureResource; }
@@ -339,6 +249,28 @@ public:
     ref<UnorderedAccessView> getUAV(uint32_t mipLevel, uint32_t firstArraySlice = 0, uint32_t arraySize = kMaxPossible);
 
     /**
+     * Get the data layout of a subresource.
+     * @param[in] subresource The subresource index.
+     */
+    SubresourceLayout getSubresourceLayout(uint32_t subresource) const;
+
+    /**
+     * Set the data of a subresource.
+     * @param[in] subresource The subresource index.
+     * @param[in] pData The data to write.
+     * @param[in] size The size of the data (must match the actual subresource size).
+     */
+    void setSubresourceBlob(uint32_t subresource, const void* pData, size_t size);
+
+    /**
+     * Get the data of a subresource.
+     * @param[in] subresource The subresource index.
+     * @param[in] pData The data buffer to read to.
+     * @param[in] size The size of the data (must match the actual subresource size).
+     */
+    void getSubresourceBlob(uint32_t subresource, void* pData, size_t size) const;
+
+    /**
      * Capture the texture to an image file.
      * @param[in] mipLevel Requested mip-level
      * @param[in] arraySlice Requested array-slice
@@ -391,19 +323,6 @@ public:
     bool compareDesc(const Texture* pOther) const;
 
 protected:
-    Texture(
-        ref<Device> pDevice,
-        uint32_t width,
-        uint32_t height,
-        uint32_t depth,
-        uint32_t arraySize,
-        uint32_t mipLevels,
-        uint32_t sampleCount,
-        ResourceFormat format,
-        Type Type,
-        BindFlags bindFlags
-    );
-    void apiInit(const void* pData, bool autoGenMips);
     void uploadInitData(RenderContext* pRenderContext, const void* pData, bool autoGenMips);
 
     Slang::ComPtr<gfx::ITextureResource> mGfxTextureResource;
@@ -411,13 +330,13 @@ protected:
     bool mReleaseRtvsAfterGenMips = true;
     std::filesystem::path mSourcePath;
 
+    ResourceFormat mFormat = ResourceFormat::Unknown;
     uint32_t mWidth = 0;
     uint32_t mHeight = 0;
     uint32_t mDepth = 0;
     uint32_t mMipLevels = 0;
-    uint32_t mSampleCount = 0;
     uint32_t mArraySize = 0;
-    ResourceFormat mFormat = ResourceFormat::Unknown;
+    uint32_t mSampleCount = 0;
     bool mIsSparse = false;
     int3 mSparsePageRes = int3(0);
 

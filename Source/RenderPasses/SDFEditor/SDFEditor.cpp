@@ -31,70 +31,69 @@
 
 namespace
 {
-    const std::string kInputColorChannel    = "inputColor";
-    const std::string kInputVBuffer         = "vbuffer";
-    const std::string kInputDepth           = "linearZ";
-    const std::string kOutputChannel        = "output";
+const std::string kInputColorChannel = "inputColor";
+const std::string kInputVBuffer = "vbuffer";
+const std::string kInputDepth = "linearZ";
+const std::string kOutputChannel = "output";
 
-    const Falcor::ChannelList kInputChannels =
+const Falcor::ChannelList kInputChannels = {
+    {kInputVBuffer, "gVBuffer", "Visibility buffer in packed format", false, ResourceFormat::Unknown},
+    {kInputDepth, "gLinearZ", "Linear Z and slope", false, ResourceFormat::RG32Float},
+    {kInputColorChannel, "gInputColor", "The input image (2D GUI will be drawn on top)", false, ResourceFormat::RGBA32Float},
+};
+
+const std::string kGUIPassShaderFilename = "RenderPasses/SDFEditor/GUIPass.ps.slang";
+
+const uint32_t kInvalidPrimitiveID = std::numeric_limits<uint32_t>::max();
+
+const float4 kLineColor = float4(0.585f, 1.0f, 0.0f, 1.0f);
+const float4 kMarkerColor = float4(0.9f, 0.9f, 0.9f, 1.0f);
+const float4 kSelectionColor = float4(1.0f, 1.0f, 1.0f, 0.75f);
+const float4 kCurrentModeBGColor = float4(0.585f, 1.0f, 0.0f, 0.5f);
+
+const float kFadeAwayDuration = 0.25f; // Time (in seconds) when the 2D GUI fades away after the main GUI key has been released.
+
+const float kMarkerSizeFactor = 0.75f;
+const float kMarkerSizeFactorSmoothUnion = 0.6f;
+
+const float kScrollTranslationMultiplier = 0.01f;
+const float kMaxOpSmoothingRadius = 0.01f;
+const float kMinOpSmoothingRadius = 0.0001f;
+
+const float kMinShapeBlobbyness = 0.001f;
+const float kMaxShapeBlobbyness = 0.02f;
+const float kMinOperationSmoothness = 0.01f;
+const float kMaxOperationSmoothness = 0.05f;
+
+const FileDialogFilterVec kSDFFileExtensionFilters = {{"sdf", "SDF Files"}};
+const FileDialogFilterVec kSDFGridFileExtensionFilters = {{"sdfg", "SDF Grid Files"}};
+
+bool isOperationSmooth(SDFOperationType operationType)
+{
+    switch (operationType)
     {
-        { kInputVBuffer,        "gVBuffer",         "Visibility buffer in packed format", false, ResourceFormat::Unknown },
-        { kInputDepth,          "gLinearZ",         "Linear Z and slope", false, ResourceFormat::RG32Float },
-        { kInputColorChannel,   "gInputColor",      "The input image (2D GUI will be drawn on top)", false, ResourceFormat::RGBA32Float },
-    };
-
-    const std::string kGUIPassShaderFilename = "RenderPasses/SDFEditor/GUIPass.ps.slang";
-
-    const uint32_t kInvalidPrimitiveID = std::numeric_limits<uint32_t>::max();
-
-    const float4 kLineColor = float4(0.585f, 1.0f, 0.0f, 1.0f);
-    const float4 kMarkerColor = float4(0.9f, 0.9f, 0.9f, 1.0f);
-    const float4 kSelectionColor = float4(1.0f, 1.0f, 1.0f, 0.75f);
-    const float4 kCurrentModeBGColor = float4(0.585f, 1.0f, 0.0f, 0.5f);
-
-    const float kFadeAwayDuration = 0.25f;   // Time (in seconds) when the 2D GUI fades away after the main GUI key has been released.
-
-    const float kMarkerSizeFactor = 0.75f;
-    const float kMarkerSizeFactorSmoothUnion = 0.6f;
-
-    const float kScrollTranslationMultiplier = 0.01f;
-    const float kMaxOpSmoothingRadius = 0.01f;
-    const float kMinOpSmoothingRadius = 0.0001f;
-
-    const float kMinShapeBlobbyness = 0.001f;
-    const float kMaxShapeBlobbyness = 0.02f;
-    const float kMinOperationSmoothness = 0.01f;
-    const float kMaxOperationSmoothness = 0.05f;
-
-    const FileDialogFilterVec kSDFFileExtensionFilters = { { "sdf", "SDF Files"} };
-    const FileDialogFilterVec kSDFGridFileExtensionFilters = { { "sdfg", "SDF Grid Files"} };
-
-    bool isOperationSmooth(SDFOperationType operationType)
-    {
-        switch (operationType)
-        {
-        case SDFOperationType::SmoothUnion:
-        case SDFOperationType::SmoothSubtraction:
-        case SDFOperationType::SmoothIntersection:
-            return true;
-        }
-
-        return false;
+    case SDFOperationType::SmoothUnion:
+    case SDFOperationType::SmoothSubtraction:
+    case SDFOperationType::SmoothIntersection:
+        return true;
     }
 
-    SDF2DShapeType sdf3DTo2DShape(SDF3DShapeType shapeType)
+    return false;
+}
+
+SDF2DShapeType sdf3DTo2DShape(SDF3DShapeType shapeType)
+{
+    switch (shapeType)
     {
-        switch (shapeType)
-        {
-        case SDF3DShapeType::Sphere:
-            return SDF2DShapeType::Circle;
-        case SDF3DShapeType::Box:
-            return SDF2DShapeType::Square;
-        default:
-            return SDF2DShapeType::Circle;
-        }
+    case SDF3DShapeType::Sphere:
+        return SDF2DShapeType::Circle;
+    case SDF3DShapeType::Box:
+        return SDF2DShapeType::Square;
+    default:
+        return SDF2DShapeType::Circle;
     }
 }
+} // namespace
 
 extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registry)
 {
@@ -107,31 +106,34 @@ void SDFEditor::registerBindings(pybind11::module& m)
     // None at the moment.
 }
 
-SDFEditor::SDFEditor(ref<Device> pDevice, const Properties& props)
-    : RenderPass(pDevice)
+SDFEditor::SDFEditor(ref<Device> pDevice, const Properties& props) : RenderPass(pDevice)
 {
     mpFbo = Fbo::create(mpDevice);
 
-    mpPickingInfo = Buffer::createStructured(mpDevice, sizeof(SDFPickingInfo), 1, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None);
-    mpPickingInfoReadBack = Buffer::createStructured(mpDevice, sizeof(SDFPickingInfo), 1, Resource::BindFlags::None, Buffer::CpuAccess::Read);
-    mpReadbackFence = GpuFence::create(mpDevice);
+    mpPickingInfo = mpDevice->createStructuredBuffer(
+        sizeof(SDFPickingInfo), 1, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, MemoryType::DeviceLocal
+    );
+    mpPickingInfoReadBack = mpDevice->createStructuredBuffer(sizeof(SDFPickingInfo), 1, ResourceBindFlags::None, MemoryType::ReadBack);
+    mpReadbackFence = mpDevice->createFence();
 
     mUI2D.pMarker2DSet = std::make_unique<Marker2DSet>(mpDevice, 100);
     mUI2D.pSelectionWheel = std::make_unique<SelectionWheel>(*mUI2D.pMarker2DSet);
 
-    mpSDFEditingDataBuffer = Buffer::createStructured(mpDevice, sizeof(SDFEditingData), 1);
+    mpSDFEditingDataBuffer = mpDevice->createStructuredBuffer(sizeof(SDFEditingData), 1);
 
     mUI2D.symmetryPlane.normal = float3(1.0f, 0.0f, 0.0f);
     mUI2D.symmetryPlane.rightVector = float3(0.0f, 0.0f, -1.0f);
     mUI2D.symmetryPlane.color = float4(1.0f, 0.75f, 0.8f, 0.5f);
 }
 
-void SDFEditor::setShaderData(const ShaderVar& var, const ref<Texture>& pInputColor, const ref<Texture>& pVBuffer)
+void SDFEditor::bindShaderData(const ShaderVar& var, const ref<Texture>& pInputColor, const ref<Texture>& pVBuffer)
 {
     mGPUEditingData.editing = mEditingKeyDown;
     mGPUEditingData.previewEnabled = mPreviewEnabled;
     mGPUEditingData.instanceID = mCurrentEdit.instanceID;
-    mGPUEditingData.scalingAxis = uint32_t(mPrimitiveTransformationEdit.state != TransformationState::Scaling ? SDFEditorAxis::Count : mPrimitiveTransformationEdit.axis);
+    mGPUEditingData.scalingAxis = uint32_t(
+        mPrimitiveTransformationEdit.state != TransformationState::Scaling ? SDFEditorAxis::Count : mPrimitiveTransformationEdit.axis
+    );
     mGPUEditingData.primitive = mCurrentEdit.primitive;
     mGPUEditingData.primitiveBB = SDF3DPrimitiveFactory::computeAABB(mCurrentEdit.primitive);
     mpSDFEditingDataBuffer->setBlob(&mGPUEditingData, 0, sizeof(SDFEditingData));
@@ -140,7 +142,14 @@ void SDFEditor::setShaderData(const ShaderVar& var, const ref<Texture>& pInputCo
     {
         mGridInstanceCount = mpScene->getSDFGridCount(); // This is safe because the SDF Editor only supports SDFGrid type of SBS for now.
         std::vector<uint32_t> instanceIDs = mpScene->getGeometryInstanceIDsByType(Scene::GeometryType::SDFGrid);
-        mpGridInstanceIDsBuffer = Buffer::createStructured(mpDevice, sizeof(uint32_t), mGridInstanceCount, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None, instanceIDs.data(), false);
+        mpGridInstanceIDsBuffer = mpDevice->createStructuredBuffer(
+            sizeof(uint32_t),
+            mGridInstanceCount,
+            ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess,
+            MemoryType::DeviceLocal,
+            instanceIDs.data(),
+            false
+        );
     }
 
     auto rootVar = mpGUIPass->getRootVar();
@@ -148,7 +157,7 @@ void SDFEditor::setShaderData(const ShaderVar& var, const ref<Texture>& pInputCo
     rootVar["gInputColor"] = pInputColor;
     rootVar["gLinearZ"] = mpEditingLinearZBuffer;
     rootVar["gVBuffer"] = pVBuffer;
-    rootVar["gScene"] = mpScene->getParameterBlock();
+    mpScene->bindShaderData(rootVar["gScene"]);
 
     auto guiPassVar = rootVar["gGUIPass"];
     guiPassVar["resolution"] = mFrameDim;
@@ -161,19 +170,28 @@ void SDFEditor::setShaderData(const ShaderVar& var, const ref<Texture>& pInputCo
     guiPassVar["ui2DActive"] = uint(isMainGUIKeyDown());
     guiPassVar["gridPlane"].setBlob(mUI2D.gridPlane);
     guiPassVar["symmetryPlane"].setBlob(mUI2D.symmetryPlane);
-    mUI2D.pMarker2DSet->setShaderData(guiPassVar["markerSet"]);
+    mUI2D.pMarker2DSet->bindShaderData(guiPassVar["markerSet"]);
 }
 
 void SDFEditor::fetchPreviousVBufferAndZBuffer(RenderContext* pRenderContext, ref<Texture>& pVBuffer, ref<Texture>& pDepth)
 {
     if (!mpEditingVBuffer || mpEditingVBuffer->getWidth() != pVBuffer->getWidth() || mpEditingVBuffer->getHeight() != pVBuffer->getHeight())
     {
-        mpEditingVBuffer = Texture::create2D(mpDevice, pVBuffer->getWidth(), pVBuffer->getHeight(), pVBuffer->getFormat(), 1, 1);
+        mpEditingVBuffer = mpDevice->createTexture2D(pVBuffer->getWidth(), pVBuffer->getHeight(), pVBuffer->getFormat(), 1, 1);
     }
 
-    if (!mpEditingLinearZBuffer || mpEditingLinearZBuffer->getWidth() != pDepth->getWidth() || mpEditingLinearZBuffer->getHeight() != pDepth->getHeight())
+    if (!mpEditingLinearZBuffer || mpEditingLinearZBuffer->getWidth() != pDepth->getWidth() ||
+        mpEditingLinearZBuffer->getHeight() != pDepth->getHeight())
     {
-        mpEditingLinearZBuffer = Texture::create2D(mpDevice, pDepth->getWidth(), pDepth->getHeight(), ResourceFormat::RG32Float, 1, 1, nullptr, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess);
+        mpEditingLinearZBuffer = mpDevice->createTexture2D(
+            pDepth->getWidth(),
+            pDepth->getHeight(),
+            ResourceFormat::RG32Float,
+            1,
+            1,
+            nullptr,
+            ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess
+        );
     }
 
     pRenderContext->copySubresourceRegion(mpEditingVBuffer.get(), 0, pVBuffer.get(), pVBuffer->getSubresourceIndex(0, 0));
@@ -189,10 +207,13 @@ void SDFEditor::setScene(RenderContext* pRenderContext, const ref<Scene>& pScene
 {
     mpScene = pScene;
 
-    if (!mpScene) return;
+    if (!mpScene)
+        return;
 
     mpCamera = mpScene->getCamera();
-    mpGUIPass = FullScreenPass::create(mpDevice, Program::Desc(kGUIPassShaderFilename).psEntry("psMain"), mpScene->getSceneDefines());
+    mpGUIPass = FullScreenPass::create(
+        mpDevice, ProgramDesc().addShaderLibrary(kGUIPassShaderFilename).psEntry("psMain"), mpScene->getSceneDefines()
+    );
 
     // Initialize editing primitive.
     {
@@ -209,7 +230,8 @@ void SDFEditor::setScene(RenderContext* pRenderContext, const ref<Scene>& pScene
         if (mpScene->getSDFGridCount() > 0)
         {
             std::vector<uint32_t> instanceIDs = mpScene->getGeometryInstanceIDsByType(Scene::GeometryType::SDFGrid);
-            if (instanceIDs.empty()) throw RuntimeError("Scene missing SDFGrid object!");
+            if (instanceIDs.empty())
+                FALCOR_THROW("Scene missing SDFGrid object!");
 
             mCurrentEdit.instanceID = instanceIDs[0];
             GeometryInstanceData instance = mpScene->getGeometryInstance(mCurrentEdit.instanceID);
@@ -223,7 +245,8 @@ void SDFEditor::setScene(RenderContext* pRenderContext, const ref<Scene>& pScene
                 kDefaultShapeBlobbing,
                 kDefaultOperationSmoothing,
                 kDefaultOperationType,
-                kDefaultTransform);
+                kDefaultTransform
+            );
 
             const AnimationController* pAnimationController = mpScene->getAnimationController();
             const float4x4& transform = pAnimationController->getGlobalMatrices()[instance.globalMatrixID];
@@ -252,7 +275,8 @@ RenderPassReflection SDFEditor::reflect(const CompileData& compileData)
 bool SDFEditor::isMainGUIKeyDown() const
 {
     bool notTransformingPrimitive = mPrimitiveTransformationEdit.state == TransformationState::None;
-    return mGUIKeyDown && notTransformingPrimitive && !gridPlaneManipulated() && !symmetryPlaneManipulated() && !mUI2D.keyboardButtonsPressed.undo && !mUI2D.keyboardButtonsPressed.redo;
+    return mGUIKeyDown && notTransformingPrimitive && !gridPlaneManipulated() && !symmetryPlaneManipulated() &&
+           !mUI2D.keyboardButtonsPressed.undo && !mUI2D.keyboardButtonsPressed.redo;
 }
 
 void SDFEditor::updateEditShapeType()
@@ -269,7 +293,8 @@ void SDFEditor::updateEditShapeType()
 void SDFEditor::updateEditOperationType()
 {
     mCurrentEdit.primitive.operationType = mUI2D.currentEditingOperator;
-    mCurrentEdit.primitive.operationSmoothing = isOperationSmooth(mUI2D.currentEditingOperator) ? 0.5f * (kMaxOperationSmoothness + kMinOperationSmoothness) : 0.0f;
+    mCurrentEdit.primitive.operationSmoothing =
+        isOperationSmooth(mUI2D.currentEditingOperator) ? 0.5f * (kMaxOperationSmoothness + kMinOperationSmoothness) : 0.0f;
 
     if (mUI2D.symmetryPlane.active)
     {
@@ -286,13 +311,15 @@ void SDFEditor::updateSymmetryPrimitive()
     const float3& instanceLocalPrimitivePos = mCurrentEdit.primitive.translation;
     float3 instanceLocalPlanePosition = transformPoint(invInstanceTransform, mUI2D.symmetryPlane.position);
     float3 instanceLocalPlaneNormal = normalize(transformVector(invInstanceTransform, mUI2D.symmetryPlane.normal));
-    float3 projInstanceLocalPrimitivePos = (instanceLocalPrimitivePos - dot(instanceLocalPrimitivePos, instanceLocalPlaneNormal) * instanceLocalPlaneNormal);
+    float3 projInstanceLocalPrimitivePos =
+        (instanceLocalPrimitivePos - dot(instanceLocalPrimitivePos, instanceLocalPlaneNormal) * instanceLocalPlaneNormal);
     float3 projInstanceLocalPlanePos = dot(instanceLocalPlanePosition, instanceLocalPlaneNormal) * instanceLocalPlaneNormal;
 
     float3 reflectedInstanceLocalPos;
     if (length(projInstanceLocalPrimitivePos) > 0.0f)
     {
-        reflectedInstanceLocalPos = math::reflect(-(instanceLocalPrimitivePos - projInstanceLocalPlanePos), normalize(projInstanceLocalPrimitivePos));
+        reflectedInstanceLocalPos =
+            math::reflect(-(instanceLocalPrimitivePos - projInstanceLocalPlanePos), normalize(projInstanceLocalPrimitivePos));
     }
     else
     {
@@ -309,7 +336,14 @@ void SDFEditor::updateSymmetryPrimitive()
     mCurrentEdit.symmetryPrimitive.invRotationScale = inverse(float3x3(symmetricPrimitiveTransform));
 }
 
-void SDFEditor::setupPrimitiveAndOperation(const float2& center, const float markerSize, SDF3DShapeType editingPrimitive, SDFOperationType editingOperator, const float4& color, const float alpha)
+void SDFEditor::setupPrimitiveAndOperation(
+    const float2& center,
+    const float markerSize,
+    SDF3DShapeType editingPrimitive,
+    SDFOperationType editingOperator,
+    const float4& color,
+    const float alpha
+)
 {
     const float4 dimmedColor = color * float4(0.6f, 0.6f, 0.6f, 1.0f);
     float f = markerSize * 0.25f;
@@ -320,7 +354,17 @@ void SDFEditor::setupPrimitiveAndOperation(const float2& center, const float mar
     float2 pos1 = center - dir;
     float2 pos2 = center + dir;
     float4 fade = float4(1.0f, 1.0f, 1.0f, alpha);
-    mUI2D.pMarker2DSet->addMarkerOpMarker(editingOperator, sdf3DTo2DShape(editingPrimitive), pos1, markerSize, sdf3DTo2DShape(editingPrimitive), pos2, markerSize, color * fade, dimmedColor * fade);
+    mUI2D.pMarker2DSet->addMarkerOpMarker(
+        editingOperator,
+        sdf3DTo2DShape(editingPrimitive),
+        pos1,
+        markerSize,
+        sdf3DTo2DShape(editingPrimitive),
+        pos2,
+        markerSize,
+        color * fade,
+        dimmedColor * fade
+    );
 }
 
 void SDFEditor::setupCurrentModes2D()
@@ -333,15 +377,21 @@ void SDFEditor::setupCurrentModes2D()
     const float2 center = float2(side * 0.5f, mFrameDim.y - side * 0.5f) + float2(cornerOffset, -cornerOffset);
 
     // Setup a rounded box as a background where the selected shape and operation will be displayed.
-    mUI2D.pMarker2DSet->addRoundedBox(center, float2(side, side) * 0.5f, roundedRadius, 0.0f, kCurrentModeBGColor);   // Add the background box, in which we will draw markers.
+    mUI2D.pMarker2DSet->addRoundedBox(center, float2(side, side) * 0.5f, roundedRadius, 0.0f, kCurrentModeBGColor); // Add the background
+                                                                                                                    // box, in which we will
+                                                                                                                    // draw markers.
 
     // Setup the selected shape and operation markers.
     float f = mUI2D.currentEditingOperator == SDFOperationType::SmoothUnion ? kMarkerSizeFactorSmoothUnion : kMarkerSizeFactor;
     setupPrimitiveAndOperation(center, markerSize * f, mUI2D.currentEditingShape, mUI2D.currentEditingOperator, kMarkerColor);
-
 }
 
-void SDFEditor::manipulateGridPlane(SDFGridPlane& gridPlane, SDFGridPlane& previousGridPlane, bool isTranslationKeyDown, bool isConstrainedManipulationKeyDown)
+void SDFEditor::manipulateGridPlane(
+    SDFGridPlane& gridPlane,
+    SDFGridPlane& previousGridPlane,
+    bool isTranslationKeyDown,
+    bool isConstrainedManipulationKeyDown
+)
 {
     float2 diffPrev = mUI2D.currentMousePosition - mUI2D.prevMousePosition;
     float2 diffStart = mUI2D.currentMousePosition - mUI2D.startMousePosition;
@@ -349,29 +399,41 @@ void SDFEditor::manipulateGridPlane(SDFGridPlane& gridPlane, SDFGridPlane& previ
     float3 view = normalize(mpCamera->getTarget() - mpCamera->getPosition());
     float3 right = cross(view, up);
 
-    if (!isTranslationKeyDown)                                  // The user wants rotation of the grid plane.
+    if (!isTranslationKeyDown) // The user wants rotation of the grid plane.
     {
-        if (!isConstrainedManipulationKeyDown)                  // Rotate plane arbitrarily along right and up vectors.
+        if (!isConstrainedManipulationKeyDown) // Rotate plane arbitrarily along right and up vectors.
         {
             // Rotate plane around the right vector.
-            rotateGridPlane(diffPrev.y, right, previousGridPlane.normal, previousGridPlane.rightVector, gridPlane.normal, gridPlane.rightVector);
+            rotateGridPlane(
+                diffPrev.y, right, previousGridPlane.normal, previousGridPlane.rightVector, gridPlane.normal, gridPlane.rightVector
+            );
             // Rotate plane around the up vector.
             rotateGridPlane(diffPrev.x, up, gridPlane.normal, gridPlane.rightVector, gridPlane.normal, gridPlane.rightVector);
             previousGridPlane = gridPlane;
         }
-        else                                                    // Constraind rotation to the axis with most movement since shift was pressed.
+        else // Constraind rotation to the axis with most movement since shift was pressed.
         {
-            if (std::abs(diffStart.y) > std::abs(diffStart.x))  // Rotate plane only around the right vector.
+            if (std::abs(diffStart.y) > std::abs(diffStart.x)) // Rotate plane only around the right vector.
             {
-                rotateGridPlane(diffStart.y, right, previousGridPlane.normal, previousGridPlane.rightVector, gridPlane.normal, gridPlane.rightVector, false);
+                rotateGridPlane(
+                    diffStart.y,
+                    right,
+                    previousGridPlane.normal,
+                    previousGridPlane.rightVector,
+                    gridPlane.normal,
+                    gridPlane.rightVector,
+                    false
+                );
             }
-            else                                                // Rotate plane only around the up vector.
+            else // Rotate plane only around the up vector.
             {
-                rotateGridPlane(diffStart.x, up, previousGridPlane.normal, previousGridPlane.rightVector, gridPlane.normal, gridPlane.rightVector, false);
+                rotateGridPlane(
+                    diffStart.x, up, previousGridPlane.normal, previousGridPlane.rightVector, gridPlane.normal, gridPlane.rightVector, false
+                );
             }
         }
     }
-    else                                                        // The user wants translation of the grid plane.
+    else // The user wants translation of the grid plane.
     {
         if (!isConstrainedManipulationKeyDown)
         {
@@ -381,11 +443,11 @@ void SDFEditor::manipulateGridPlane(SDFGridPlane& gridPlane, SDFGridPlane& previ
         }
         else
         {
-            if (std::abs(diffStart.y) > std::abs(diffStart.x))  // Translate plane only along the right vector.
+            if (std::abs(diffStart.y) > std::abs(diffStart.x)) // Translate plane only along the right vector.
             {
                 translateGridPlane(-diffStart.y, up, previousGridPlane.position, gridPlane.position);
             }
-            else                                                // Translate plane only along the up vector.
+            else // Translate plane only along the up vector.
             {
                 translateGridPlane(diffStart.x, right, previousGridPlane.position, gridPlane.position);
             }
@@ -393,7 +455,15 @@ void SDFEditor::manipulateGridPlane(SDFGridPlane& gridPlane, SDFGridPlane& previ
     }
 }
 
-void SDFEditor::rotateGridPlane(const float mouseDiff, const float3& rotationVector, const float3& inNormal, const float3& inRightVector, float3& outNormal, float3& outRightVector, const bool fromPreviousMouse)
+void SDFEditor::rotateGridPlane(
+    const float mouseDiff,
+    const float3& rotationVector,
+    const float3& inNormal,
+    const float3& inRightVector,
+    float3& outNormal,
+    float3& outRightVector,
+    const bool fromPreviousMouse
+)
 {
     const float diagonal = length(float2(mFrameDim));
     const float maxAngle = float(M_PI) * 0.05f;
@@ -405,7 +475,7 @@ void SDFEditor::rotateGridPlane(const float mouseDiff, const float3& rotationVec
         angle = mouseDiff * std::abs(mouseDiff) * speedFactor;
         angle = std::clamp(angle, -maxAngle, maxAngle);
     }
-    else                // From the start position -- which is better when doing constrained rotation (around a single axis).
+    else // From the start position -- which is better when doing constrained rotation (around a single axis).
     {
         const float speedFactor = 2.0f * float(M_PI) * 0.5f / diagonal;
         angle = mouseDiff * speedFactor;
@@ -420,7 +490,8 @@ void SDFEditor::translateGridPlane(const float mouseDiff, const float3& translat
 {
     const float diagonal = length(float2(mFrameDim));
     const float speedFactor = 0.5f / diagonal;
-    float translation = mouseDiff * std::abs(mouseDiff) * speedFactor;      // Could possibly be improved so that speed depends on scene or size of the grid.
+    float translation = mouseDiff * std::abs(mouseDiff) * speedFactor; // Could possibly be improved so that speed depends on scene or size
+                                                                       // of the grid.
     outPosition = outPosition + translation * translationVector;
 }
 
@@ -472,19 +543,51 @@ void SDFEditor::setup2DGUI()
         swDesc.maxRadius = 0.7f * radius;
         swDesc.baseColor = float4(0.13f, 0.13f, 0.1523f, 0.8f * alpha);
         swDesc.highlightColor = float4(0.4648f, 0.7226f, 0.0f, 0.8f * alpha);
-        swDesc.sectorGroups = { 2, 4 };
+        swDesc.sectorGroups = {2, 4};
         swDesc.lineColor = kLineColor * multColor;
         swDesc.borderWidth = 10.0f;
         mUI2D.pSelectionWheel->update(mUI2D.currentMousePosition, swDesc);
-        mUI2D.pMarker2DSet->addSimpleMarker(SDF2DShapeType::Square, markerSize, mUI2D.pSelectionWheel->getCenterPositionOfSector(0, 0), 0.0f, color);
-        mUI2D.pMarker2DSet->addSimpleMarker(SDF2DShapeType::Circle, markerSize * 0.5f, mUI2D.pSelectionWheel->getCenterPositionOfSector(0, 1), 0.0f, color);
-        setupPrimitiveAndOperation(mUI2D.pSelectionWheel->getCenterPositionOfSector(1, 0), markerSize * kMarkerSizeFactor, mUI2D.currentEditingShape, SDFOperationType::SmoothSubtraction, kMarkerColor, alpha);
-        setupPrimitiveAndOperation(mUI2D.pSelectionWheel->getCenterPositionOfSector(1, 1), markerSize * kMarkerSizeFactor, mUI2D.currentEditingShape, SDFOperationType::Subtraction, kMarkerColor, alpha);
-        setupPrimitiveAndOperation(mUI2D.pSelectionWheel->getCenterPositionOfSector(1, 2), markerSize * kMarkerSizeFactor, mUI2D.currentEditingShape, SDFOperationType::Union, kMarkerColor, alpha);
-        setupPrimitiveAndOperation(mUI2D.pSelectionWheel->getCenterPositionOfSector(1, 3), markerSize * kMarkerSizeFactorSmoothUnion, mUI2D.currentEditingShape, SDFOperationType::SmoothUnion, kMarkerColor, alpha);
+        mUI2D.pMarker2DSet->addSimpleMarker(
+            SDF2DShapeType::Square, markerSize, mUI2D.pSelectionWheel->getCenterPositionOfSector(0, 0), 0.0f, color
+        );
+        mUI2D.pMarker2DSet->addSimpleMarker(
+            SDF2DShapeType::Circle, markerSize * 0.5f, mUI2D.pSelectionWheel->getCenterPositionOfSector(0, 1), 0.0f, color
+        );
+        setupPrimitiveAndOperation(
+            mUI2D.pSelectionWheel->getCenterPositionOfSector(1, 0),
+            markerSize * kMarkerSizeFactor,
+            mUI2D.currentEditingShape,
+            SDFOperationType::SmoothSubtraction,
+            kMarkerColor,
+            alpha
+        );
+        setupPrimitiveAndOperation(
+            mUI2D.pSelectionWheel->getCenterPositionOfSector(1, 1),
+            markerSize * kMarkerSizeFactor,
+            mUI2D.currentEditingShape,
+            SDFOperationType::Subtraction,
+            kMarkerColor,
+            alpha
+        );
+        setupPrimitiveAndOperation(
+            mUI2D.pSelectionWheel->getCenterPositionOfSector(1, 2),
+            markerSize * kMarkerSizeFactor,
+            mUI2D.currentEditingShape,
+            SDFOperationType::Union,
+            kMarkerColor,
+            alpha
+        );
+        setupPrimitiveAndOperation(
+            mUI2D.pSelectionWheel->getCenterPositionOfSector(1, 3),
+            markerSize * kMarkerSizeFactorSmoothUnion,
+            mUI2D.currentEditingShape,
+            SDFOperationType::SmoothUnion,
+            kMarkerColor,
+            alpha
+        );
     }
 
-    auto addMarker = [&](const SDF3DShapeType& type)->void
+    auto addMarker = [&](const SDF3DShapeType& type) -> void
     {
         switch (type)
         {
@@ -500,7 +603,7 @@ void SDFEditor::setup2DGUI()
         }
     };
 
-    auto addOperation = [&](const SDFOperationType& type)->void
+    auto addOperation = [&](const SDFOperationType& type) -> void
     {
         switch (type)
         {
@@ -518,8 +621,9 @@ void SDFEditor::setup2DGUI()
         }
     };
 
-    static constexpr std::array<SDF3DShapeType, 3> kShapeTypes = { SDF3DShapeType::Box, SDF3DShapeType::Sphere };
-    static constexpr std::array<SDFOperationType, 4> kOperationTypes = { SDFOperationType::SmoothSubtraction, SDFOperationType::Subtraction, SDFOperationType::Union, SDFOperationType::SmoothUnion };
+    static constexpr std::array<SDF3DShapeType, 3> kShapeTypes = {SDF3DShapeType::Box, SDF3DShapeType::Sphere};
+    static constexpr std::array<SDFOperationType, 4> kOperationTypes = {
+        SDFOperationType::SmoothSubtraction, SDFOperationType::Subtraction, SDFOperationType::Union, SDFOperationType::SmoothUnion};
 
     // Check if the user pressed on the different sectors of the wheel.
     if (isMainGUIKeyDown() && !mUI2D.recordStartingMousePos && any(mUI2D.startMousePosition != mUI2D.currentMousePosition))
@@ -560,7 +664,8 @@ void SDFEditor::setup2DGUI()
 
 void SDFEditor::handleActions()
 {
-    if (!mpScene) return;
+    if (!mpScene)
+        return;
 
     const AnimationController* pAnimationController = mpScene->getAnimationController();
     const GeometryInstanceData& instance = mpScene->getGeometryInstance(mCurrentEdit.instanceID);
@@ -613,12 +718,15 @@ void SDFEditor::handleActions()
             mInstanceTransformationEdit.startPlanePos = ray.origin + ray.dir * startT;
             mInstanceTransformationEdit.startMousePos = mUI2D.currentMousePosition;
 
-            float3 arbitraryVectorNotOrthToPlane = std::abs(planeNormal.z) < FLT_EPSILON ? float3(0.0f, 0.0f, 1.0f) : float3(1.0f, 0.0f, 0.0f);
-            mInstanceTransformationEdit.referencePlaneDir = normalize(arbitraryVectorNotOrthToPlane - dot(arbitraryVectorNotOrthToPlane, planeNormal) * planeNormal);
+            float3 arbitraryVectorNotOrthToPlane =
+                std::abs(planeNormal.z) < FLT_EPSILON ? float3(0.0f, 0.0f, 1.0f) : float3(1.0f, 0.0f, 0.0f);
+            mInstanceTransformationEdit.referencePlaneDir =
+                normalize(arbitraryVectorNotOrthToPlane - dot(arbitraryVectorNotOrthToPlane, planeNormal) * planeNormal);
         }
 
         // Transform the instance if the mouse was moved or scroll was used.
-        if ((any(mUI2D.currentMousePosition != mUI2D.prevMousePosition) || mInstanceTransformationEdit.prevScrollTotal != mInstanceTransformationEdit.scrollTotal))
+        if ((any(mUI2D.currentMousePosition != mUI2D.prevMousePosition) ||
+             mInstanceTransformationEdit.prevScrollTotal != mInstanceTransformationEdit.scrollTotal))
         {
             const float3& startTranslation = mInstanceTransformationEdit.startTransform.getTranslation();
             float3 deltaCenter = startTranslation - ray.origin;
@@ -642,12 +750,21 @@ void SDFEditor::handleActions()
                 float3 startPlaneDir = normalize(mInstanceTransformationEdit.startPlanePos - startTranslation);
                 float3 currPlaneDir = normalize(p - startTranslation);
 
-                float startAngle = std::atan2(dot(planeNormal, cross(startPlaneDir, mInstanceTransformationEdit.referencePlaneDir)), dot(startPlaneDir, mInstanceTransformationEdit.referencePlaneDir));
-                float currentAngle = std::atan2(dot(planeNormal, cross(currPlaneDir, mInstanceTransformationEdit.referencePlaneDir)), dot(currPlaneDir, mInstanceTransformationEdit.referencePlaneDir));
+                float startAngle = std::atan2(
+                    dot(planeNormal, cross(startPlaneDir, mInstanceTransformationEdit.referencePlaneDir)),
+                    dot(startPlaneDir, mInstanceTransformationEdit.referencePlaneDir)
+                );
+                float currentAngle = std::atan2(
+                    dot(planeNormal, cross(currPlaneDir, mInstanceTransformationEdit.referencePlaneDir)),
+                    dot(currPlaneDir, mInstanceTransformationEdit.referencePlaneDir)
+                );
                 float deltaAngle = startAngle - currentAngle;
-                float3 localPlaneNormal = normalize(transformVector(inverse(mInstanceTransformationEdit.startTransform.getMatrix()), planeNormal));
+                float3 localPlaneNormal =
+                    normalize(transformVector(inverse(mInstanceTransformationEdit.startTransform.getMatrix()), planeNormal));
 
-                finalTranform.setRotation(mul(mInstanceTransformationEdit.startTransform.getRotation(), math::quatFromAngleAxis(deltaAngle, localPlaneNormal)));
+                finalTranform.setRotation(
+                    mul(mInstanceTransformationEdit.startTransform.getRotation(), math::quatFromAngleAxis(deltaAngle, localPlaneNormal))
+                );
             }
             // Handle scaling
             else if (mInstanceTransformationEdit.state == TransformationState::Scaling)
@@ -690,7 +807,8 @@ void SDFEditor::handleActions()
             mPrimitiveTransformationEdit.startPrimitiveTransform.setRotation(primitiveRotation);
             mPrimitiveTransformationEdit.startPrimitiveTransform.setScaling(primitiveScale);
 
-            float3 planeOrigin = transformPoint(mPrimitiveTransformationEdit.startInstanceTransform.getMatrix(), mCurrentEdit.primitive.translation);
+            float3 planeOrigin =
+                transformPoint(mPrimitiveTransformationEdit.startInstanceTransform.getMatrix(), mCurrentEdit.primitive.translation);
             float3 deltaCenter = planeOrigin - ray.origin;
             float3 planeNormal = -normalize(mpScene->getCamera()->getTarget() - mpScene->getCamera()->getPosition());
 
@@ -698,8 +816,10 @@ void SDFEditor::handleActions()
             mPrimitiveTransformationEdit.startPlanePos = ray.origin + ray.dir * startT;
             mPrimitiveTransformationEdit.startMousePos = mUI2D.currentMousePosition;
 
-            float3 arbitraryVectorNotOrthToPlane = std::abs(planeNormal.z) < FLT_EPSILON ? float3(0.0f, 0.0f, 1.0f) : float3(1.0f, 0.0f, 0.0f);
-            mPrimitiveTransformationEdit.referencePlaneDir = normalize(arbitraryVectorNotOrthToPlane - dot(arbitraryVectorNotOrthToPlane, planeNormal) * planeNormal);
+            float3 arbitraryVectorNotOrthToPlane =
+                std::abs(planeNormal.z) < FLT_EPSILON ? float3(0.0f, 0.0f, 1.0f) : float3(1.0f, 0.0f, 0.0f);
+            mPrimitiveTransformationEdit.referencePlaneDir =
+                normalize(arbitraryVectorNotOrthToPlane - dot(arbitraryVectorNotOrthToPlane, planeNormal) * planeNormal);
         }
         // Update starting position if the state or axis has changed.
         else if (mPrimitiveTransformationEdit.state != mPrimitiveTransformationEdit.prevState || mPrimitiveTransformationEdit.axis != mPrimitiveTransformationEdit.prevAxis)
@@ -711,7 +831,8 @@ void SDFEditor::handleActions()
                 updateSymmetryPrimitive();
             }
 
-            float3 planeOrigin = transformPoint(mPrimitiveTransformationEdit.startInstanceTransform.getMatrix(), mCurrentEdit.primitive.translation);
+            float3 planeOrigin =
+                transformPoint(mPrimitiveTransformationEdit.startInstanceTransform.getMatrix(), mCurrentEdit.primitive.translation);
             float3 deltaCenter = planeOrigin - ray.origin;
             float3 planeNormal = -normalize(mpScene->getCamera()->getTarget() - mpScene->getCamera()->getPosition());
 
@@ -719,14 +840,19 @@ void SDFEditor::handleActions()
             mPrimitiveTransformationEdit.startPlanePos = ray.origin + ray.dir * startT;
             mPrimitiveTransformationEdit.startMousePos = mUI2D.currentMousePosition;
 
-            float3 arbitraryVectorNotOrthToPlane = std::abs(planeNormal.z) < FLT_EPSILON ? float3(0.0f, 0.0f, 1.0f) : float3(1.0f, 0.0f, 0.0f);
-            mPrimitiveTransformationEdit.referencePlaneDir = normalize(arbitraryVectorNotOrthToPlane - dot(arbitraryVectorNotOrthToPlane, planeNormal) * planeNormal);
+            float3 arbitraryVectorNotOrthToPlane =
+                std::abs(planeNormal.z) < FLT_EPSILON ? float3(0.0f, 0.0f, 1.0f) : float3(1.0f, 0.0f, 0.0f);
+            mPrimitiveTransformationEdit.referencePlaneDir =
+                normalize(arbitraryVectorNotOrthToPlane - dot(arbitraryVectorNotOrthToPlane, planeNormal) * planeNormal);
         }
 
         // Transform the primitive if the mouse has moved.
         if (any(mUI2D.currentMousePosition != mUI2D.prevMousePosition))
         {
-            float3 planeOrigin = transformPoint(mPrimitiveTransformationEdit.startInstanceTransform.getMatrix(), mPrimitiveTransformationEdit.startPrimitiveTransform.getTranslation());
+            float3 planeOrigin = transformPoint(
+                mPrimitiveTransformationEdit.startInstanceTransform.getMatrix(),
+                mPrimitiveTransformationEdit.startPrimitiveTransform.getTranslation()
+            );
 
             float3 deltaCenter = planeOrigin - ray.origin;
             float3 planeNormal = -normalize(mpScene->getCamera()->getTarget() - mpScene->getCamera()->getPosition());
@@ -747,12 +873,22 @@ void SDFEditor::handleActions()
                     startPlaneDir = normalize(startPlaneDir);
                     currPlaneDir = normalize(currPlaneDir);
 
-                    float startAngle = std::atan2(dot(planeNormal, cross(startPlaneDir, mPrimitiveTransformationEdit.referencePlaneDir)), dot(startPlaneDir, mPrimitiveTransformationEdit.referencePlaneDir));
-                    float currentAngle = std::atan2(dot(planeNormal, cross(currPlaneDir, mPrimitiveTransformationEdit.referencePlaneDir)), dot(currPlaneDir, mPrimitiveTransformationEdit.referencePlaneDir));
+                    float startAngle = std::atan2(
+                        dot(planeNormal, cross(startPlaneDir, mPrimitiveTransformationEdit.referencePlaneDir)),
+                        dot(startPlaneDir, mPrimitiveTransformationEdit.referencePlaneDir)
+                    );
+                    float currentAngle = std::atan2(
+                        dot(planeNormal, cross(currPlaneDir, mPrimitiveTransformationEdit.referencePlaneDir)),
+                        dot(currPlaneDir, mPrimitiveTransformationEdit.referencePlaneDir)
+                    );
                     float deltaAngle = currentAngle - startAngle;
-                    float3 localPlaneNormal = normalize(transformVector(inverse(mPrimitiveTransformationEdit.startInstanceTransform.getMatrix()), planeNormal));
+                    float3 localPlaneNormal =
+                        normalize(transformVector(inverse(mPrimitiveTransformationEdit.startInstanceTransform.getMatrix()), planeNormal));
 
-                    finalPrimitiveTransform.setRotation(mul(mPrimitiveTransformationEdit.startPrimitiveTransform.getRotation(), math::quatFromAngleAxis(-deltaAngle, localPlaneNormal)));
+                    finalPrimitiveTransform.setRotation(
+                        mul(mPrimitiveTransformationEdit.startPrimitiveTransform.getRotation(),
+                            math::quatFromAngleAxis(-deltaAngle, localPlaneNormal))
+                    );
 
                     mCurrentEdit.primitive.invRotationScale = transpose(inverse(float3x3(finalPrimitiveTransform.getMatrix())));
                 }
@@ -767,12 +903,13 @@ void SDFEditor::handleActions()
                 if (mPrimitiveTransformationEdit.axis == SDFEditorAxis::All)
                 {
                     float3x3 scaleMatrix = matrixFromDiagonal(float3(scale));
-                    mCurrentEdit.primitive.invRotationScale = transpose(inverse(mul(float3x3(mPrimitiveTransformationEdit.startPrimitiveTransform.getMatrix()), scaleMatrix)));
-
+                    mCurrentEdit.primitive.invRotationScale =
+                        transpose(inverse(mul(float3x3(mPrimitiveTransformationEdit.startPrimitiveTransform.getMatrix()), scaleMatrix)));
                 }
                 else if (mPrimitiveTransformationEdit.axis == SDFEditorAxis::OpSmoothing)
                 {
-                    float finalScaling = std::clamp(startPrimitive.operationSmoothing * scale, kMinOpSmoothingRadius, kMaxOpSmoothingRadius);
+                    float finalScaling =
+                        std::clamp(startPrimitive.operationSmoothing * scale, kMinOpSmoothingRadius, kMaxOpSmoothingRadius);
                     mCurrentEdit.primitive.operationSmoothing = finalScaling;
                 }
                 else
@@ -780,7 +917,8 @@ void SDFEditor::handleActions()
                     uint32_t axis = uint32_t(mPrimitiveTransformationEdit.axis);
                     float3x3 scaleMtx = float3x3::identity();
                     scaleMtx[axis][axis] = scale;
-                    mCurrentEdit.primitive.invRotationScale = transpose(inverse(mul(float3x3(mPrimitiveTransformationEdit.startPrimitiveTransform.getMatrix()), scaleMtx)));
+                    mCurrentEdit.primitive.invRotationScale =
+                        transpose(inverse(mul(float3x3(mPrimitiveTransformationEdit.startPrimitiveTransform.getMatrix()), scaleMtx)));
                 }
             }
 
@@ -806,12 +944,12 @@ void SDFEditor::handleToggleSymmetryPlane()
         if (mUI2D.symmetryPlane.active)
         {
             uint32_t basePrimitiveID;
-            basePrimitiveID = mCurrentEdit.pSDFGrid->addPrimitives({ mCurrentEdit.symmetryPrimitive });
+            basePrimitiveID = mCurrentEdit.pSDFGrid->addPrimitives({mCurrentEdit.symmetryPrimitive});
             mCurrentEdit.symmetryPrimitiveID = basePrimitiveID;
         }
         else if (mCurrentEdit.primitiveID != kInvalidPrimitiveID)
         {
-            mCurrentEdit.pSDFGrid->removePrimitives({ mCurrentEdit.symmetryPrimitiveID });
+            mCurrentEdit.pSDFGrid->removePrimitives({mCurrentEdit.symmetryPrimitiveID});
             mCurrentEdit.symmetryPrimitiveID = kInvalidPrimitiveID;
         }
     }
@@ -913,7 +1051,7 @@ void SDFEditor::addEditPrimitive(bool addToCurrentEdit, bool addToHistory)
     if (mUI2D.symmetryPlane.active)
     {
         updateSymmetryPrimitive();
-        basePrimitiveID = mCurrentEdit.pSDFGrid->addPrimitives({ mCurrentEdit.primitive, mCurrentEdit.symmetryPrimitive });
+        basePrimitiveID = mCurrentEdit.pSDFGrid->addPrimitives({mCurrentEdit.primitive, mCurrentEdit.symmetryPrimitive});
 
         if (addToCurrentEdit)
         {
@@ -939,7 +1077,7 @@ void SDFEditor::addEditPrimitive(bool addToCurrentEdit, bool addToHistory)
     }
     else
     {
-        basePrimitiveID = mCurrentEdit.pSDFGrid->addPrimitives({ mCurrentEdit.primitive });
+        basePrimitiveID = mCurrentEdit.pSDFGrid->addPrimitives({mCurrentEdit.primitive});
 
         if (addToCurrentEdit)
         {
@@ -964,7 +1102,7 @@ void SDFEditor::removeEditPrimitives()
     {
         if (mCurrentEdit.primitiveID != kInvalidPrimitiveID && mCurrentEdit.symmetryPrimitiveID != kInvalidPrimitiveID)
         {
-            mCurrentEdit.pSDFGrid->removePrimitives({ mCurrentEdit.primitiveID, mCurrentEdit.symmetryPrimitiveID });
+            mCurrentEdit.pSDFGrid->removePrimitives({mCurrentEdit.primitiveID, mCurrentEdit.symmetryPrimitiveID});
             mCurrentEdit.primitiveID = kInvalidPrimitiveID;
             mCurrentEdit.symmetryPrimitiveID = kInvalidPrimitiveID;
             mNonBakedPrimitiveCount -= 2;
@@ -974,7 +1112,7 @@ void SDFEditor::removeEditPrimitives()
     {
         if (mCurrentEdit.primitiveID != kInvalidPrimitiveID)
         {
-            mCurrentEdit.pSDFGrid->removePrimitives({ mCurrentEdit.primitiveID });
+            mCurrentEdit.pSDFGrid->removePrimitives({mCurrentEdit.primitiveID});
             mCurrentEdit.primitiveID = kInvalidPrimitiveID;
             mNonBakedPrimitiveCount--;
         }
@@ -983,11 +1121,11 @@ void SDFEditor::removeEditPrimitives()
 
 void SDFEditor::updateEditPrimitives()
 {
-    mCurrentEdit.pSDFGrid->updatePrimitives({ {mCurrentEdit.primitiveID, mCurrentEdit.primitive} });
+    mCurrentEdit.pSDFGrid->updatePrimitives({{mCurrentEdit.primitiveID, mCurrentEdit.primitive}});
     if (mUI2D.symmetryPlane.active)
     {
         updateSymmetryPrimitive();
-        mCurrentEdit.pSDFGrid->updatePrimitives({ {mCurrentEdit.symmetryPrimitiveID, mCurrentEdit.symmetryPrimitive} });
+        mCurrentEdit.pSDFGrid->updatePrimitives({{mCurrentEdit.symmetryPrimitiveID, mCurrentEdit.symmetryPrimitive}});
     }
 }
 
@@ -996,7 +1134,8 @@ void SDFEditor::handleToggleEditing()
     // Toggle the primitive preview by adding a primitive to the current edit or removing it depending on if the editing mode is active.
     if (mEditingKeyDown)
     {
-        if (!handlePicking(mUI2D.currentMousePosition, mCurrentEdit.primitive.translation)) return;
+        if (!handlePicking(mUI2D.currentMousePosition, mCurrentEdit.primitive.translation))
+            return;
         addEditPrimitive(true, false);
     }
     else
@@ -1008,7 +1147,8 @@ void SDFEditor::handleToggleEditing()
 void SDFEditor::handleEditMovement()
 {
     // Update the current primitive to the current mouse position projected onto the surface.
-    if (!handlePicking(mUI2D.currentMousePosition, mCurrentEdit.primitive.translation)) return;
+    if (!handlePicking(mUI2D.currentMousePosition, mCurrentEdit.primitive.translation))
+        return;
 
     if (mCurrentEdit.primitiveID != kInvalidPrimitiveID)
     {
@@ -1020,7 +1160,8 @@ void SDFEditor::handleAddPrimitive()
 {
     // Add a primitive on the current mouse position projected onto the surface.
     float3 localPos;
-    if (!handlePicking(mUI2D.currentMousePosition, localPos)) return;
+    if (!handlePicking(mUI2D.currentMousePosition, localPos))
+        return;
 
     mCurrentEdit.primitive.translation = localPos;
     updateEditPrimitives();
@@ -1034,7 +1175,8 @@ void SDFEditor::handleAddPrimitive()
 
 bool SDFEditor::handlePicking(const float2& currentMousePos, float3& localPos)
 {
-    if (!mpScene) return false;
+    if (!mpScene)
+        return false;
 
     // Create picking ray.
     float3 rayOrigin = mpCamera->getPosition();
@@ -1067,7 +1209,8 @@ bool SDFEditor::handlePicking(const float2& currentMousePos, float3& localPos)
 
 void SDFEditor::execute(RenderContext* pRenderContext, const RenderData& renderData)
 {
-    if (!mpScene || !mpGUIPass) return;
+    if (!mpScene || !mpGUIPass)
+        return;
 
     auto pOutput = renderData.getTexture(kOutputChannel);
     auto pInputColor = renderData.getTexture(kInputColorChannel);
@@ -1089,7 +1232,7 @@ void SDFEditor::execute(RenderContext* pRenderContext, const RenderData& renderD
     }
 
     // Wait for the picking info from the previous frame.
-    mpReadbackFence->syncCpu();
+    mpReadbackFence->wait();
     mPickingInfo = *reinterpret_cast<const SDFPickingInfo*>(mpPickingInfoReadBack->map(Buffer::MapType::Read));
     mpPickingInfoReadBack->unmap();
 
@@ -1098,14 +1241,14 @@ void SDFEditor::execute(RenderContext* pRenderContext, const RenderData& renderD
 
     // Set shader data.
     auto rootVar = mpGUIPass->getRootVar();
-    setShaderData(rootVar, pInputColor, pVBuffer);
+    bindShaderData(rootVar, pInputColor, pVBuffer);
 
     mpGUIPass->execute(pRenderContext, mpFbo);
 
     // Copy picking info into a staging buffer.
     pRenderContext->copyResource(mpPickingInfoReadBack.get(), mpPickingInfo.get());
-    pRenderContext->flush(false);
-    mpReadbackFence->gpuSignal(pRenderContext->getLowLevelData()->getCommandQueue());
+    pRenderContext->submit(false);
+    pRenderContext->signal(mpReadbackFence.get());
 
     // Prepare next frame.
     {
@@ -1126,7 +1269,8 @@ void SDFEditor::renderUI(RenderContext* pRenderContext, Gui::Widgets& widget)
     widget.tooltip(
         "Abbreviations: Prim=Primitive, Op=Operation, MB = mouse button, LMB = left MB, RMB = right MB, MMB = middle MB\n"
         "\n"
-        "To create an SDF from an empty grid, use either the grid plane to place the SDF on, or intersect the grid instance with other geometry and toggle Editing on Other surfaces by pressing 'C'.\n"
+        "To create an SDF from an empty grid, use either the grid plane to place the SDF on, or intersect the grid instance with other "
+        "geometry and toggle Editing on Other surfaces by pressing 'C'.\n"
         "\n"
         "* Bring up prim type / op selection: Hold Tab\n"
         "* Select prim type / op in selection : LMB\n"
@@ -1196,12 +1340,13 @@ void SDFEditor::renderUI(RenderContext* pRenderContext, Gui::Widgets& widget)
 
         if (mUI2D.gridPlane.active)
         {
-            widget.var("Plane center", mUI2D.gridPlane.position, -10.0f, 10.0f, 0.05f);                    // TODO: The limits should ideally be dependent on scene/camera.
+            // TODO: The limits should ideally be dependent on scene/camera.
+            widget.var("Plane center", mUI2D.gridPlane.position, -10.0f, 10.0f, 0.05f);
             widget.direction("Plane normal", mUI2D.gridPlane.normal);
             widget.direction("Plane right vector", mUI2D.gridPlane.rightVector);
-            widget.slider("Plane size", mUI2D.gridPlane.planeSize, 0.01f, 2.0f, false, "%2.2f");           // TODO: The limits should ideally be dependent on scene/camera.
-            widget.slider("Grid line width", mUI2D.gridPlane.gridLineWidth, 0.01f, 0.1f, false, "%2.2f");  // TODO: The limits should ideally be dependent on scene/camera.
-            widget.slider("Grid scale", mUI2D.gridPlane.gridScale, 0.01f, 50.0f, false, "%2.2f");          // TODO: The limits should ideally be dependent on scene/camera.
+            widget.slider("Plane size", mUI2D.gridPlane.planeSize, 0.01f, 2.0f, false, "%2.2f");
+            widget.slider("Grid line width", mUI2D.gridPlane.gridLineWidth, 0.01f, 0.1f, false, "%2.2f");
+            widget.slider("Grid scale", mUI2D.gridPlane.gridScale, 0.01f, 50.0f, false, "%2.2f");
 
             widget.rgbaColor("Grid color", mUI2D.gridPlane.color);
         }
@@ -1209,8 +1354,7 @@ void SDFEditor::renderUI(RenderContext* pRenderContext, Gui::Widgets& widget)
 
     if (auto nodeGroup = widget.group("Bounding Boxes", true))
     {
-        static Gui::DropdownList sdfBoundingBoxRenderModes =
-        {
+        static Gui::DropdownList sdfBoundingBoxRenderModes = {
             {uint32_t(SDFBBRenderMode::Disabled), "Disabled"},
             {uint32_t(SDFBBRenderMode::RenderAll), "Render All"},
             {uint32_t(SDFBBRenderMode::RenderSelectedOnly), "Render Selected"},
@@ -1363,28 +1507,32 @@ bool SDFEditor::onKeyEvent(const KeyboardEvent& keyEvent)
         case Input::Key::Key1:
             if (mPrimitiveTransformationEdit.state == TransformationState::Scaling)
             {
-                mPrimitiveTransformationEdit.axis = mPrimitiveTransformationEdit.axis == SDFEditorAxis::X ? SDFEditorAxis::All : SDFEditorAxis::X;
+                mPrimitiveTransformationEdit.axis =
+                    mPrimitiveTransformationEdit.axis == SDFEditorAxis::X ? SDFEditorAxis::All : SDFEditorAxis::X;
                 return true;
             }
             break;
         case Input::Key::Key2:
             if (mPrimitiveTransformationEdit.state == TransformationState::Scaling)
             {
-                mPrimitiveTransformationEdit.axis = mPrimitiveTransformationEdit.axis == SDFEditorAxis::Y ? SDFEditorAxis::All : SDFEditorAxis::Y;
+                mPrimitiveTransformationEdit.axis =
+                    mPrimitiveTransformationEdit.axis == SDFEditorAxis::Y ? SDFEditorAxis::All : SDFEditorAxis::Y;
                 return true;
             }
             break;
         case Input::Key::Key3:
             if (mPrimitiveTransformationEdit.state == TransformationState::Scaling)
             {
-                mPrimitiveTransformationEdit.axis = mPrimitiveTransformationEdit.axis == SDFEditorAxis::Z ? SDFEditorAxis::All : SDFEditorAxis::Z;
+                mPrimitiveTransformationEdit.axis =
+                    mPrimitiveTransformationEdit.axis == SDFEditorAxis::Z ? SDFEditorAxis::All : SDFEditorAxis::Z;
                 return true;
             }
             break;
         case Input::Key::Key4:
             if (mPrimitiveTransformationEdit.state == TransformationState::Scaling)
             {
-                mPrimitiveTransformationEdit.axis = mPrimitiveTransformationEdit.axis == SDFEditorAxis::OpSmoothing ? SDFEditorAxis::All : SDFEditorAxis::OpSmoothing;
+                mPrimitiveTransformationEdit.axis =
+                    mPrimitiveTransformationEdit.axis == SDFEditorAxis::OpSmoothing ? SDFEditorAxis::All : SDFEditorAxis::OpSmoothing;
                 return true;
             }
             break;
@@ -1527,7 +1675,9 @@ bool SDFEditor::onMouseEvent(const MouseEvent& mouseEvent)
                 mUI2D.previousGridPlane = mUI2D.gridPlane;
             }
 
-            manipulateGridPlane(mUI2D.gridPlane, mUI2D.previousGridPlane, mUI2D.keyboardButtonsPressed.shift, mUI2D.keyboardButtonsPressed.control);
+            manipulateGridPlane(
+                mUI2D.gridPlane, mUI2D.previousGridPlane, mUI2D.keyboardButtonsPressed.shift, mUI2D.keyboardButtonsPressed.control
+            );
         }
     }
     else if (symmetryPlaneManipulated())
@@ -1551,7 +1701,9 @@ bool SDFEditor::onMouseEvent(const MouseEvent& mouseEvent)
                 mUI2D.previousSymmetryPlane = mUI2D.symmetryPlane;
             }
 
-            manipulateGridPlane(mUI2D.symmetryPlane, mUI2D.previousSymmetryPlane, mUI2D.keyboardButtonsPressed.shift, mUI2D.keyboardButtonsPressed.control);
+            manipulateGridPlane(
+                mUI2D.symmetryPlane, mUI2D.previousSymmetryPlane, mUI2D.keyboardButtonsPressed.shift, mUI2D.keyboardButtonsPressed.control
+            );
         }
     }
 
@@ -1560,11 +1712,13 @@ bool SDFEditor::onMouseEvent(const MouseEvent& mouseEvent)
         mInstanceTransformationEdit.state = TransformationState::None;
         mPrimitiveTransformationEdit.state = TransformationState::None;
     }
-    else if (mouseEvent.type == MouseEvent::Type::ButtonUp && mouseEvent.button == Input::MouseButton::Right) // Released right mouse right now.
+    else if (mouseEvent.type == MouseEvent::Type::ButtonUp && mouseEvent.button == Input::MouseButton::Right) // Released right mouse right
+                                                                                                              // now.
     {
         mUI2D.previousGridPlane = mUI2D.gridPlane;
     }
-    else if (mouseEvent.type == MouseEvent::Type::ButtonUp && mouseEvent.button == Input::MouseButton::Middle) // Released middle mouse right now.
+    else if (mouseEvent.type == MouseEvent::Type::ButtonUp && mouseEvent.button == Input::MouseButton::Middle) // Released middle mouse
+                                                                                                               // right now.
     {
         mUI2D.previousSymmetryPlane = mUI2D.symmetryPlane;
     }

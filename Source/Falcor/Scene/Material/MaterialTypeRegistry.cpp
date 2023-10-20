@@ -28,6 +28,14 @@
 #include "MaterialTypeRegistry.h"
 #include "MaterialData.slang"
 
+// Include parameter layouts.
+#include "Scene/Material/StandardMaterial.h"
+#include "Scene/Material/StandardMaterialParamLayout.slang"
+#include "Scene/Material/PBRT/PBRTDiffuseMaterial.h"
+#include "Scene/Material/PBRT/PBRTDiffuseMaterialParamLayout.slang"
+#include "Scene/Material/PBRT/PBRTConductorMaterial.h"
+#include "Scene/Material/PBRT/PBRTConductorMaterialParamLayout.slang"
+
 #include <mutex>
 #include <map>
 
@@ -59,7 +67,7 @@ public:
         FALCOR_ASSERT_LT(mNextMaterialTypeID, 1u << MaterialHeader::kMaterialTypeBits);
         if (mNextMaterialTypeID >= (1u << MaterialHeader::kMaterialTypeBits))
         {
-            throw ArgumentError("Registered material {} would receive MaterialType {}, exceeding the maximum limit {} (given by MaterialHeader::kMaterialTypeBits)",
+            FALCOR_THROW("Registered material {} would receive MaterialType {}, exceeding the maximum limit {} (given by MaterialHeader::kMaterialTypeBits)",
                 typeName, mNextMaterialTypeID, (1u << MaterialHeader::kMaterialTypeBits));
         }
 
@@ -76,7 +84,7 @@ public:
         auto it = mMaterialType2Name.find(type);
         if (it != mMaterialType2Name.end())
             return it->second;
-        throw ArgumentError(fmt::format("Invalid material type: {}", int(type)));
+        FALCOR_THROW("Invalid material type: {}", int(type));
     }
 
     size_t getTypeCount() const
@@ -84,6 +92,21 @@ public:
         std::lock_guard<std::mutex> l(mMaterialTypeNameMutex);
         return mNextMaterialTypeID;
     }
+
+    MaterialParamLayout getMaterialParamLayout(MaterialType type) const
+    {
+        switch (type)
+        {
+        case MaterialType::Standard:
+            return StandardMaterialParamLayout::layout();
+        case MaterialType::PBRTDiffuse:
+            return PBRTDiffuseMaterialParamLayout::layout();
+        case MaterialType::PBRTConductor:
+            return PBRTConductorMaterialParamLayout::layout();
+        }
+        return {};
+    }
+
 private:
     MaterialTypeRegistry()
     {
@@ -108,7 +131,7 @@ private:
         {
             mMaterialName2Type[name] = type;
         }
-        checkInvariant(mMaterialType2Name.size() == mMaterialName2Type.size(), "Material type names must be unique.");
+        FALCOR_CHECK(mMaterialType2Name.size() == mMaterialName2Type.size(), "Material type names must be unique.");
     }
 
     mutable std::mutex mMaterialTypeNameMutex; ///< Mutex to registering new material types
@@ -134,4 +157,9 @@ size_t getMaterialTypeCount()
     return MaterialTypeRegistry::get().getTypeCount();
 }
 
+MaterialParamLayout getMaterialParamLayout(MaterialType type)
+{
+    return MaterialTypeRegistry::get().getMaterialParamLayout(type);
 }
+
+} // namespace Falcor

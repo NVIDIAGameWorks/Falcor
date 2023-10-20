@@ -31,7 +31,10 @@
 #include "Core/Macros.h"
 #include "Core/Object.h"
 #include "Core/API/fwd.h"
-#include "Core/API/ShaderType.h"
+#include "Core/API/Types.h"
+#include "Core/API/Raytracing.h"
+#include "Core/API/RtStateObject.h"
+#include "Core/State/StateGraph.h"
 #include <filesystem>
 #include <memory>
 #include <string_view>
@@ -39,9 +42,523 @@
 #include <map>
 #include <unordered_map>
 #include <vector>
+#include <tuple>
 
 namespace Falcor
 {
+
+class RtStateObject;
+class RtProgramVars;
+
+/**
+ * Representing a shader implementation of an interface.
+ * When linked into a `ProgramVersion`, the specialized shader will contain
+ * the implementation of the specified type in a dynamic dispatch function.
+ */
+struct TypeConformance
+{
+    std::string typeName;
+    std::string interfaceName;
+    TypeConformance() = default;
+    TypeConformance(const std::string& typeName_, const std::string& interfaceName_) : typeName(typeName_), interfaceName(interfaceName_) {}
+    bool operator<(const TypeConformance& other) const
+    {
+        return typeName < other.typeName || (typeName == other.typeName && interfaceName < other.interfaceName);
+    }
+    bool operator==(const TypeConformance& other) const { return typeName == other.typeName && interfaceName == other.interfaceName; }
+    struct HashFunction
+    {
+        size_t operator()(const TypeConformance& conformance) const
+        {
+            size_t hash = std::hash<std::string>()(conformance.typeName);
+            hash = hash ^ std::hash<std::string>()(conformance.interfaceName);
+            return hash;
+        }
+    };
+};
+
+class TypeConformanceList : public std::map<TypeConformance, uint32_t>
+{
+public:
+    /**
+     * Adds a type conformance. If the type conformance exists, it will be replaced.
+     * @param[in] typeName The name of the implementation type.
+     * @param[in] interfaceName The name of the interface type.
+     * @param[in] id Optional. The id representing the implementation type for this interface. If it is -1, Slang will automatically
+     * assign a unique Id for the type.
+     * @return The updated list of type conformances.
+     */
+    TypeConformanceList& add(const std::string& typeName, const std::string& interfaceName, uint32_t id = -1)
+    {
+        (*this)[TypeConformance(typeName, interfaceName)] = id;
+        return *this;
+    }
+
+    /**
+     * Removes a type conformance. If the type conformance doesn't exist, the call will be silently ignored.
+     * @param[in] typeName The name of the implementation type.
+     * @param[in] interfaceName The name of the interface type.
+     * @return The updated list of type conformances.
+     */
+    TypeConformanceList& remove(const std::string& typeName, const std::string& interfaceName)
+    {
+        (*this).erase(TypeConformance(typeName, interfaceName));
+        return *this;
+    }
+
+    /**
+     * Add a type conformance list to the current list
+     */
+    TypeConformanceList& add(const TypeConformanceList& cl)
+    {
+        for (const auto& p : cl)
+            add(p.first.typeName, p.first.interfaceName, p.second);
+        return *this;
+    }
+
+    /**
+     * Remove a type conformance list from the current list
+     */
+    TypeConformanceList& remove(const TypeConformanceList& cl)
+    {
+        for (const auto& p : cl)
+            remove(p.first.typeName, p.first.interfaceName);
+        return *this;
+    }
+
+    TypeConformanceList() = default;
+    TypeConformanceList(std::initializer_list<std::pair<const TypeConformance, uint32_t>> il) : std::map<TypeConformance, uint32_t>(il) {}
+};
+
+enum class SlangCompilerFlags
+{
+    None = 0x0,
+    TreatWarningsAsErrors = 0x1,
+    /// Enable dumping of intermediate artifacts during compilation.
+    /// Note that if a shader is cached no artifacts are being produced.
+    /// Delete the `.shadercache` directory in the build directory before dumping.
+    DumpIntermediates = 0x2,
+    FloatingPointModeFast = 0x4,
+    FloatingPointModePrecise = 0x8,
+    GenerateDebugInfo = 0x10,
+    MatrixLayoutColumnMajor = 0x20, // Falcor is using row-major, use this only to compile stand-alone external shaders.
+};
+FALCOR_ENUM_CLASS_OPERATORS(SlangCompilerFlags);
+
+/**
+ * Description of a program to be created.
+ * This includes the following:
+ * - shader sources organized into shader modules (each module is compiled as a separate translation unit)
+ * - entry points organized into entry point groups
+ * - type conformances (global and per entry point group)
+ * - compiler options (shader model, flags, etc.)
+ */
+struct ProgramDesc
+{
+    struct ShaderID
+    {
+        int32_t groupIndex = -1; ///< Entry point group index.
+        bool isValid() const { return groupIndex >= 0; }
+    };
+
+    /// Represents a single piece of shader source code.
+    /// This can either be a file or a string.
+    struct ShaderSource
+    {
+        enum class Type
+        {
+            File,
+            String
+        };
+
+        /// Type of the shader source.
+        Type type{Type::File};
+
+        /// Shader source file path.
+        /// For Type::File this is the actual path to the file.
+        /// For Type::String this is an optional virtual path used for diagnostics purposes.
+        std::filesystem::path path;
+
+        /// Shader source string if type == Type::String.
+        std::string string;
+
+        bool operator==(const ShaderSource& rhs) const { return type == rhs.type && path == rhs.path && string == rhs.string; }
+    };
+
+    /// Represents a single shader module made up from a list of sources (files/strings).
+    /// A shader module corresponds to a single translation unit.
+    struct ShaderModule
+    {
+        /// The name of the shader module.
+        /// This is the name used by other modules to import this module.
+        /// If left empty, a name based on a hash from the module sources will be generated.
+        std::string name;
+
+        /// List of shader sources.
+        std::vector<ShaderSource> sources;
+
+        ShaderModule() = default;
+        explicit ShaderModule(std::string name_) : name(std::move(name_)) {}
+
+        /// Create a shader module description containing a single file.
+        static ShaderModule fromFile(std::filesystem::path path)
+        {
+            ShaderModule sm;
+            sm.addFile(std::move(path));
+            return sm;
+        }
+
+        /// Create a shader module description containing a single string.
+        static ShaderModule fromString(std::string string, std::filesystem::path path = {}, std::string moduleName = {})
+        {
+            ShaderModule sm(std::move(moduleName));
+            sm.addString(std::move(string), std::move(path));
+            return sm;
+        }
+
+        /// Add a source file to the shader module.
+        ShaderModule& addFile(std::filesystem::path path)
+        {
+            sources.push_back({ShaderSource::Type::File, std::move(path), {}});
+            return *this;
+        }
+
+        /// Add a source string to the shader module.
+        /// The path is optional and only used for diagnostic purposes.
+        ShaderModule& addString(std::string string, std::filesystem::path path = {})
+        {
+            sources.push_back({ShaderSource::Type::String, std::move(path), std::move(string)});
+            return *this;
+        }
+
+        bool operator==(const ShaderModule& rhs) const { return name == rhs.name && sources == rhs.sources; }
+    };
+
+    /// Represents a single entry point.
+    struct EntryPoint
+    {
+        /// Shader type (compute, vertex, pixel, etc.).
+        ShaderType type;
+        /// The name of the entry point in the shader source.
+        std::string name;
+        /// The name of the entry point in the generated code.
+        std::string exportName;
+
+        /// Global linear entry point index. This is computed when creating the program.
+        /// TODO we should look into eventally removing this.
+        uint32_t globalIndex;
+    };
+
+    /// Represents a group of entry points.
+    /// This is mostly used for grouping raytracing hitgroup entry points.
+    struct EntryPointGroup
+    {
+        uint32_t shaderModuleIndex;
+        TypeConformanceList typeConformances;
+        std::vector<EntryPoint> entryPoints;
+
+        /// Set the type conformances used for this entry point group.
+        EntryPointGroup& setTypeConformances(TypeConformanceList conformances)
+        {
+            typeConformances = std::move(conformances);
+            return *this;
+        }
+
+        /// Add type conformances used for this entry point group.
+        EntryPointGroup& addTypeConformances(const TypeConformanceList& conformances)
+        {
+            typeConformances.add(conformances);
+            return *this;
+        }
+
+        /// Add an entry point to the group.
+        EntryPointGroup& addEntryPoint(ShaderType type, std::string_view name, std::string_view exportName = "")
+        {
+            if (exportName.empty())
+                exportName = name;
+            entryPoints.push_back({type, std::string(name), std::string(exportName)});
+            return *this;
+        }
+    };
+
+    using ShaderModuleList = std::vector<ShaderModule>;
+
+    /// List of shader modules used by the program.
+    ShaderModuleList shaderModules;
+
+    /// List of entry point groups.
+    std::vector<EntryPointGroup> entryPointGroups;
+
+    /// Global type conformances.
+    TypeConformanceList typeConformances;
+
+    /// Shader model.
+    /// If not specified, the most recent supported shader model is used.
+    ShaderModel shaderModel{ShaderModel::Unknown};
+
+    /// Compiler flags.
+    SlangCompilerFlags compilerFlags{SlangCompilerFlags::None};
+
+    /// List of compiler arguments (as set on the compiler command line).
+    std::vector<std::string> compilerArguments;
+
+    /// Max trace recursion depth (only used for raytracing programs).
+    uint32_t maxTraceRecursionDepth = uint32_t(-1);
+
+    /// Max ray payload size in bytes (only used for raytracing programs).
+    uint32_t maxPayloadSize = uint32_t(-1);
+
+    /// Max attribute size in bytes (only used for raytracing programs).
+    uint32_t maxAttributeSize = getRaytracingMaxAttributeSize();
+
+    /// Raytracing pipeline flags (only used for raytracing programs).
+    RtPipelineFlags rtPipelineFlags = RtPipelineFlags::None;
+
+    /// Add a new empty shader module description.
+    /// @param[in] name Optional name of the shader module.
+    /// @return Returns a reference to the newly created shader module for adding sources.
+    ShaderModule& addShaderModule(std::string name = {})
+    {
+        shaderModules.push_back(ShaderModule(std::move(name)));
+        return shaderModules.back();
+    }
+
+    /// Add an existing shader module description.
+    ProgramDesc& addShaderModule(ShaderModule shaderModule)
+    {
+        shaderModules.push_back(std::move(shaderModule));
+        return *this;
+    }
+
+    /// Add a list of existing shader module descriptions.
+    ProgramDesc& addShaderModules(const ShaderModuleList& modules)
+    {
+        shaderModules.insert(shaderModules.end(), modules.begin(), modules.end());
+        return *this;
+    }
+
+    /// Helper to add a shader module made from a single file.
+    ProgramDesc& addShaderLibrary(std::filesystem::path path)
+    {
+        addShaderModule().addFile(std::move(path));
+        return *this;
+    }
+
+    /// Add a new entry point group.
+    /// If no `shaderModuleIndex` is not specified, the last shader module added to the program will be used.
+    /// @param shaderModuleIndex The index of the shader module to use for this entry point group.
+    /// @return Returns a reference to the newly created entry point group for adding entry points.
+    EntryPointGroup& addEntryPointGroup(uint32_t shaderModuleIndex = uint32_t(-1))
+    {
+        if (shaderModules.empty())
+            FALCOR_THROW("Can't add entry point group without a shader module");
+        if (shaderModuleIndex == uint32_t(-1))
+            shaderModuleIndex = uint32_t(shaderModules.size()) - 1;
+        if (shaderModuleIndex >= shaderModules.size())
+            FALCOR_THROW("Invalid shader module index");
+        entryPointGroups.push_back({shaderModuleIndex});
+        return entryPointGroups.back();
+    }
+
+    /// Helper for adding an entry point defined in the most recent added shader module.
+    ProgramDesc& addEntryPoint(ShaderType shaderType, std::string_view name)
+    {
+        if (entryPointGroups.empty() || entryPointGroups.back().shaderModuleIndex != shaderModules.size() - 1)
+            addEntryPointGroup();
+        entryPointGroups.back().addEntryPoint(shaderType, name);
+        return *this;
+    }
+
+    ProgramDesc& vsEntry(const std::string& name) { return addEntryPoint(ShaderType::Vertex, name); }
+    ProgramDesc& hsEntry(const std::string& name) { return addEntryPoint(ShaderType::Hull, name); }
+    ProgramDesc& dsEntry(const std::string& name) { return addEntryPoint(ShaderType::Domain, name); }
+    ProgramDesc& gsEntry(const std::string& name) { return addEntryPoint(ShaderType::Geometry, name); }
+    ProgramDesc& psEntry(const std::string& name) { return addEntryPoint(ShaderType::Pixel, name); }
+    ProgramDesc& csEntry(const std::string& name) { return addEntryPoint(ShaderType::Compute, name); }
+
+    /// Checks if the program description has at least one entry point of a given type.
+    bool hasEntryPoint(ShaderType stage) const
+    {
+        for (const auto& group : entryPointGroups)
+            for (const auto& entryPoint : group.entryPoints)
+                if (entryPoint.type == stage)
+                    return true;
+        return false;
+    }
+
+    /// Set the global type conformances.
+    ProgramDesc& setTypeConformances(TypeConformanceList conformances)
+    {
+        typeConformances = std::move(conformances);
+        return *this;
+    }
+
+    /// Add global type conformances.
+    ProgramDesc& addTypeConformances(const TypeConformanceList& conformances)
+    {
+        typeConformances.add(conformances);
+        return *this;
+    }
+
+    /// Set the shader model.
+    ProgramDesc& setShaderModel(ShaderModel shaderModel_)
+    {
+        shaderModel = shaderModel_;
+        return *this;
+    }
+
+    /// Set the compiler flags.
+    ProgramDesc& setCompilerFlags(SlangCompilerFlags flags)
+    {
+        compilerFlags = flags;
+        return *this;
+    }
+
+    /// Set the compiler arguments (as set on the compiler command line).
+    ProgramDesc& setCompilerArguments(std::vector<std::string> args)
+    {
+        compilerArguments = std::move(args);
+        return *this;
+    }
+
+    /// Add compiler arguments (as set on the compiler command line).
+    ProgramDesc& addCompilerArguments(const std::vector<std::string>& args)
+    {
+        compilerArguments.insert(compilerArguments.end(), args.begin(), args.end());
+        return *this;
+    }
+
+    //
+    // Compatibility functions
+    //
+
+    /**
+     * Add a raygen shader.
+     * @param[in] raygen Entry point for the raygen shader.
+     * @param[in] typeConformances Optional list of type conformances for the raygen shader.
+     * @param[in] entryPointNameSuffix Optional suffix added to the entry point names in the generated code.
+     * @return Shader ID for raygen shader. This is used when building the binding table.
+     */
+    ShaderID addRayGen(
+        const std::string& raygen,
+        const TypeConformanceList& typeConformances_ = TypeConformanceList(),
+        const std::string& entryPointNameSuffix = ""
+    )
+    {
+        FALCOR_CHECK(!raygen.empty(), "'raygen' entry point name must not be empty");
+
+        auto& group = addEntryPointGroup();
+        group.setTypeConformances(typeConformances_);
+        group.addEntryPoint(ShaderType::RayGeneration, raygen, raygen + entryPointNameSuffix);
+
+        return ShaderID{int32_t(entryPointGroups.size() - 1)};
+    }
+
+    /**
+     * Add a miss shader.
+     * @param[in] miss Entry point for the miss shader.
+     * @param[in] typeConformances Optional list of type conformances for the miss shader.
+     * @param[in] entryPointNameSuffix Optional suffix added to the entry point names in the generated code.
+     * @return Shader ID for miss shader. This is used when building the binding table.
+     */
+    ShaderID addMiss(
+        const std::string& miss,
+        const TypeConformanceList& typeConformances_ = TypeConformanceList(),
+        const std::string& entryPointNameSuffix = ""
+    )
+    {
+        FALCOR_CHECK(!miss.empty(), "'miss' entry point name must not be empty");
+
+        auto& group = addEntryPointGroup();
+        group.setTypeConformances(typeConformances_);
+        group.addEntryPoint(ShaderType::Miss, miss, miss + entryPointNameSuffix);
+
+        return ShaderID{int32_t(entryPointGroups.size() - 1)};
+    }
+
+    /**
+     * Add a hit group.
+     * A hit group consists of any combination of closest hit, any hit, and intersection shaders.
+     * Note that a hit group that contains an intersection shader only be used with procedural geometry.
+     * A hit group that does not contain an intersection shader can only be used with triangle geometry.
+     * It is valid to create a hit group entirely without entry points. Geometry using it will act
+     * as an occluder blocking miss shader exuection, but hits will not spawn any shader executions.
+     * @param[in] closestHit Entry point for the closest hit shader.
+     * @param[in] anyHit Entry point for the any hit shader.
+     * @param[in] intersection Entry point for the intersection shader.
+     * @param[in] typeConformances Optional list of type conformances for the hit group.
+     * @param[in] entryPointNameSuffix Optional suffix added to the entry point names in the generated code.
+     * @return Shader ID for hit group. This is used when building the binding table.
+     */
+    ShaderID addHitGroup(
+        const std::string& closestHit,
+        const std::string& anyHit = "",
+        const std::string& intersection = "",
+        const TypeConformanceList& typeConformances_ = TypeConformanceList(),
+        const std::string& entryPointNameSuffix = ""
+    )
+    {
+        FALCOR_CHECK(
+            !(closestHit.empty() && anyHit.empty() && intersection.empty()),
+            "At least one of 'closestHit', 'anyHit' or 'intersection' entry point names must not be empty"
+        );
+
+        auto& group = addEntryPointGroup();
+        group.setTypeConformances(typeConformances_);
+        if (!closestHit.empty())
+            group.addEntryPoint(ShaderType::ClosestHit, closestHit, closestHit + entryPointNameSuffix);
+        if (!anyHit.empty())
+            group.addEntryPoint(ShaderType::AnyHit, anyHit, anyHit + entryPointNameSuffix);
+        if (!intersection.empty())
+            group.addEntryPoint(ShaderType::Intersection, intersection, intersection + entryPointNameSuffix);
+
+        return ShaderID{int32_t(entryPointGroups.size() - 1)};
+    }
+
+    /**
+     * Set the max recursion depth.
+     * @param[in] maxDepth The maximum ray recursion depth (0 = raygen).
+     */
+    ProgramDesc& setMaxTraceRecursionDepth(uint32_t maxDepth)
+    {
+        maxTraceRecursionDepth = maxDepth;
+        return *this;
+    }
+
+    /**
+     * Set the max payload size.
+     */
+    ProgramDesc& setMaxPayloadSize(uint32_t maxPayloadSize_)
+    {
+        maxPayloadSize = maxPayloadSize_;
+        return *this;
+    }
+
+    /**
+     * Set the max attribute size.
+     * @param[in] maxAttributeSize The maximum attribute size in bytes.
+     */
+    ProgramDesc& setMaxAttributeSize(uint32_t maxAttributeSize_)
+    {
+        maxAttributeSize = maxAttributeSize_;
+        return *this;
+    }
+
+    /**
+     * Set raytracing pipeline flags.
+     * These flags are added to any TraceRay() call within this pipeline, and may be used to
+     * optimize the pipeline for particular primitives types. Requires Tier 1.1 support.
+     * @param[in] flags Pipeline flags.
+     */
+    ProgramDesc& setRtPipelineFlags(RtPipelineFlags flags)
+    {
+        rtPipelineFlags = flags;
+        return *this;
+    }
+
+    void finalize();
+};
+
 /**
  * High-level abstraction of a program class.
  * This class manages different versions of the same program. Different versions means same shader files, different macro definitions.
@@ -51,324 +568,81 @@ class FALCOR_API Program : public Object
 {
     FALCOR_OBJECT(Program)
 public:
-    using ArgumentList = std::vector<std::string>;
-
-    enum class CompilerFlags
-    {
-        None = 0x0,
-        TreatWarningsAsErrors = 0x1,
-        DumpIntermediates = 0x2,
-        FloatingPointModeFast = 0x4,
-        FloatingPointModePrecise = 0x8,
-        GenerateDebugInfo = 0x10,
-        MatrixLayoutColumnMajor = 0x20, // Falcor is using row-major, use this only to compile stand-alone external shaders.
-    };
+    Program(ref<Device> pDevice, ProgramDesc desc, DefineList programDefines);
+    virtual ~Program() override;
 
     /**
-     * Representing a shader implementation of an interface.
-     * When linked into a `ProgramVersion`, the specialized shader will contain
-     * the implementation of the specified type in a dynamic dispatch function.
+     * Create a new program.
+     * Note that this call merely creates a program object. The actual compilation and link happens at a later time.
+     * @param[in] pDevice GPU device.
+     * @param[in] desc The program description.
+     * @param[in] programDefines Optional list of macro definitions to set into the program.
+     * @return A new object, or an exception is thrown if creation failed.
      */
-    struct TypeConformance
+    static ref<Program> create(ref<Device> pDevice, ProgramDesc desc, DefineList programDefines = {})
     {
-        std::string mTypeName;
-        std::string mInterfaceName;
-        TypeConformance() = default;
-        TypeConformance(const std::string& typeName, const std::string& interfaceName) : mTypeName(typeName), mInterfaceName(interfaceName)
-        {}
-        bool operator<(const TypeConformance& other) const
-        {
-            return mTypeName < other.mTypeName || (mTypeName == other.mTypeName && mInterfaceName < other.mInterfaceName);
-        }
-        bool operator==(const TypeConformance& other) const
-        {
-            return mTypeName == other.mTypeName && mInterfaceName == other.mInterfaceName;
-        }
-        struct HashFunction
-        {
-            size_t operator()(const TypeConformance& conformance) const
-            {
-                size_t hash = std::hash<std::string>()(conformance.mTypeName);
-                hash = hash ^ std::hash<std::string>()(conformance.mInterfaceName);
-                return hash;
-            }
-        };
-    };
-
-    class TypeConformanceList : public std::map<TypeConformance, uint32_t>
-    {
-    public:
-        /**
-         * Adds a type conformance. If the type conformance exists, it will be replaced.
-         * @param[in] typeName The name of the implementation type.
-         * @param[in] interfaceName The name of the interface type.
-         * @param[in] id Optional. The id representing the implementation type for this interface. If it is -1, Slang will automatically
-         * assign a unique Id for the type.
-         * @return The updated list of type conformances.
-         */
-        TypeConformanceList& add(const std::string& typeName, const std::string& interfaceName, uint32_t id = -1)
-        {
-            (*this)[TypeConformance(typeName, interfaceName)] = id;
-            return *this;
-        }
-
-        /**
-         * Removes a type conformance. If the type conformance doesn't exist, the call will be silently ignored.
-         * @param[in] typeName The name of the implementation type.
-         * @param[in] interfaceName The name of the interface type.
-         * @return The updated list of type conformances.
-         */
-        TypeConformanceList& remove(const std::string& typeName, const std::string& interfaceName)
-        {
-            (*this).erase(TypeConformance(typeName, interfaceName));
-            return *this;
-        }
-
-        /**
-         * Add a type conformance list to the current list
-         */
-        TypeConformanceList& add(const TypeConformanceList& cl)
-        {
-            for (const auto& p : cl)
-                add(p.first.mTypeName, p.first.mInterfaceName, p.second);
-            return *this;
-        }
-
-        /**
-         * Remove a type conformance list from the current list
-         */
-        TypeConformanceList& remove(const TypeConformanceList& cl)
-        {
-            for (const auto& p : cl)
-                remove(p.first.mTypeName, p.first.mInterfaceName);
-            return *this;
-        }
-
-        TypeConformanceList() = default;
-        TypeConformanceList(std::initializer_list<std::pair<const TypeConformance, uint32_t>> il) : std::map<TypeConformance, uint32_t>(il)
-        {}
-    };
+        return make_ref<Program>(std::move(pDevice), std::move(desc), std::move(programDefines));
+    }
 
     /**
-     * Shader module stored as a string or file.
+     * Create a new compute program from file.
+     * Note that this call merely creates a program object. The actual compilation and link happens at a later time.
+     * @param[in] pDevice GPU device.
+     * @param[in] path Compute program file path.
+     * @param[in] csEntry Name of the entry point in the program.
+     * @param[in] programDefines Optional list of macro definitions to set into the program.
+     * @param[in] flags Optional program compilation flags.
+     * @param[in] shaderModel Optional shader model.
+     * @return A new object, or an exception is thrown if creation failed.
      */
-    struct FALCOR_API ShaderModule
+    static ref<Program> createCompute(
+        ref<Device> pDevice,
+        const std::filesystem::path& path,
+        const std::string& csEntry,
+        DefineList programDefines = {},
+        SlangCompilerFlags flags = SlangCompilerFlags::None,
+        ShaderModel shaderModel = ShaderModel::Unknown
+    )
     {
-        enum class Type
-        {
-            String,
-            File
-        };
-
-        ShaderModule(const std::filesystem::path& path, bool createTranslationUnit = true)
-            : type(Type::File), filePath(path), createTranslationUnit(createTranslationUnit){};
-        ShaderModule(
-            const std::string_view str,
-            const std::string_view moduleName,
-            const std::string_view modulePath = "",
-            bool createTranslationUnit = true
-        )
-            : type(Type::String), str(str), moduleName(moduleName), modulePath(modulePath), createTranslationUnit(createTranslationUnit){};
-
-        Type type;
-        std::filesystem::path filePath; ///< File path to shader source.
-        std::string str;                ///< String of shader source.
-        std::string moduleName; ///< Slang module name for module created from string. If not creating a new translation unit, this can be
-                                ///< left empty.
-        std::string modulePath; ///< Virtual file path to module created from string. This is just used for diagnostics purposesand can be
-                                ///< left empty.
-        bool createTranslationUnit; ///< Create new Slang translation unit for the module.
-    };
-
-    using ShaderModuleList = std::vector<ShaderModule>;
+        ProgramDesc d;
+        d.addShaderLibrary(path);
+        if (shaderModel != ShaderModel::Unknown)
+            d.setShaderModel(shaderModel);
+        d.setCompilerFlags(flags);
+        d.csEntry(csEntry);
+        return create(std::move(pDevice), std::move(d), std::move(programDefines));
+    }
 
     /**
-     * Description of a program to be created.
+     * Create a new graphics program from file.
+     * @param[in] pDevice GPU device.
+     * @param[in] path Graphics program file path.
+     * @param[in] vsEntry Vertex shader entry point. If this string is empty (""), it will use a default vertex shader, which transforms and
+     * outputs all default vertex attributes.
+     * @param[in] psEntry Pixel shader entry point
+     * @param[in] programDefines Optional list of macro definitions to set into the program.
+     * @param[in] flags Optional program compilation flags.
+     * @param[in] shaderModel Optional shader model.
+     * @return A new object, or an exception is thrown if creation failed.
      */
-    class FALCOR_API Desc
+    static ref<Program> createGraphics(
+        ref<Device> pDevice,
+        const std::filesystem::path& path,
+        const std::string& vsEntry,
+        const std::string& psEntry,
+        DefineList programDefines = {},
+        SlangCompilerFlags flags = SlangCompilerFlags::None,
+        ShaderModel shaderModel = ShaderModel::Unknown
+    )
     {
-    public:
-        /**
-         * Begin building a description, that initially has no source files or entry points.
-         */
-        Desc();
-
-        /**
-         * Begin building a description, based on a single path for source code.
-         * This is equivalent to: `Desc().addShaderLibrary(path)`
-         * @param[in] path Path to the source code.
-         */
-        explicit Desc(const std::filesystem::path& path);
-
-        /**
-         * Add a language specific (e.g. HLSL, GLSL) prelude to the shader.
-         * @param[in] prelude Source string.
-         */
-        Desc& setLanguagePrelude(const std::string_view prelude);
-
-        /**
-         * Add a file of source code to use.
-         * This also sets the given file as the "active" source for subsequent entry points.
-         * @param[in] path Path to the source code.
-         * @param[in] createTranslationUnit Whether a new Slang translation unit should be created, otherwise the source is added to the
-         * previous translation unit.
-         */
-        Desc& addShaderLibrary(const std::filesystem::path& path, bool createTranslationUnit = true)
-        {
-            return addShaderModule(ShaderModule(path, createTranslationUnit));
-        }
-
-        /**
-         * Add a string of source code to use.
-         * This also sets the given string as the "active" source for subsequent entry points.
-         * If `createTranslationUnit` is false, the source is directly visible to the previously added source.
-         * If true, a new translation unit is created and the source has to be imported using the supplied `moduleName`.
-         * Note that the source string has to be added *before* any source that imports it.
-         * @param[in] shader Source code.
-         * @param[in] moduleName Slang module name. If not creating a new translation unit, this can be left empty.
-         * @param[in] modulePath Virtual file path to module created from string. This is just used for diagnostics purposes and can be left
-         * empty.
-         * @param[in] createTranslationUnit Whether a new Slang translation unit should be created, otherwise the source is added to the
-         * previous translation unit.
-         */
-        Desc& addShaderString(
-            const std::string_view shader,
-            const std::string_view moduleName,
-            const std::string_view modulePath = "",
-            bool createTranslationUnit = true
-        )
-        {
-            return addShaderModule(ShaderModule(shader, moduleName, modulePath, createTranslationUnit));
-        }
-
-        /**
-         * Add a shader module.
-         * This also sets the given module as "active" for subsequent entry points.
-         * Note that the module has to be added *before* any module that imports it.
-         */
-        Desc& addShaderModule(const ShaderModule& module);
-
-        /**
-         * Add a list of shader modules.
-         * Note that the modules have to be added *before* any module that imports them.
-         */
-        Desc& addShaderModules(const ShaderModuleList& modules);
-
-        /**
-         * Adds an entry point based on the "active" source.
-         */
-        Desc& entryPoint(ShaderType shaderType, const std::string& name);
-
-        bool hasEntryPoint(ShaderType stage) const;
-
-        Desc& vsEntry(const std::string& name) { return entryPoint(ShaderType::Vertex, name); }
-        Desc& hsEntry(const std::string& name) { return entryPoint(ShaderType::Hull, name); }
-        Desc& dsEntry(const std::string& name) { return entryPoint(ShaderType::Domain, name); }
-        Desc& gsEntry(const std::string& name) { return entryPoint(ShaderType::Geometry, name); }
-        Desc& psEntry(const std::string& name) { return entryPoint(ShaderType::Pixel, name); }
-        Desc& csEntry(const std::string& name) { return entryPoint(ShaderType::Compute, name); }
-
-        /**
-         * Adds a list of type conformances.
-         * The type conformances are linked into all shaders in the program.
-         */
-        Desc& addTypeConformances(const TypeConformanceList& typeConformances)
-        {
-            mTypeConformances.add(typeConformances);
-            return *this;
-        }
-
-        /**
-         * Set the shader model string.
-         * This should be `6_0`, `6_1`, `6_2`, `6_3`, `6_4`, or `6_5`. The default is `6_3`.
-         */
-        Desc& setShaderModel(const std::string& sm);
-
-        /**
-         * Get the compiler flags.
-         */
-        CompilerFlags getCompilerFlags() const { return mShaderFlags; }
-
-        /**
-         * Set the compiler flags. Replaces any previously set flags.
-         */
-        Desc& setCompilerFlags(CompilerFlags flags)
-        {
-            mShaderFlags = flags;
-            return *this;
-        }
-
-        /**
-         * Get additional compiler arguments.
-         */
-        const ArgumentList& getCompilerArguments() const { return mCompilerArguments; }
-
-        /**
-         * Set additional compiler arguments. Replaces any previously set arguments.
-         */
-        Desc& setCompilerArguments(const ArgumentList& arguments)
-        {
-            mCompilerArguments = arguments;
-            return *this;
-        }
-
-        /**
-         * Add additional compiler arguments. Appended to previously set arguments.
-         */
-        Desc& addCompilerArguments(const ArgumentList& arguments)
-        {
-            mCompilerArguments.insert(mCompilerArguments.end(), arguments.begin(), arguments.end());
-            return *this;
-        }
-
-    protected:
-        friend class Program;
-        friend class RtProgram;
-        friend class ProgramManager;
-
-        Desc& beginEntryPointGroup(const std::string& entryPointNameSuffix = "");
-        Desc& addTypeConformancesToGroup(const TypeConformanceList& typeConformances);
-        uint32_t declareEntryPoint(ShaderType type, const std::string& name);
-
-        struct SourceEntryPoints
-        {
-            SourceEntryPoints(const ShaderModule& src) : source(src) {}
-            ShaderModule::Type getType() const { return source.type; }
-
-            ShaderModule source;               ///< Shader module source stored as a string or file.
-            std::vector<uint32_t> entryPoints; ///< Indices into `mEntryPoints` for all entry points in the module.
-        };
-
-        struct EntryPointGroup
-        {
-            std::vector<uint32_t> entryPoints;    ///< Indices into `mEntryPoints` for all entry points in the group.
-            TypeConformanceList typeConformances; ///< Type conformances linked into all shaders in the group.
-            std::string nameSuffix;               ///< Suffix added to the entry point names by Slang's code generation.
-        };
-
-        struct EntryPoint
-        {
-            std::string name;       ///< Name of the entry point in the shader source.
-            std::string exportName; ///< Name of the entry point in the generated code.
-            ShaderType stage;
-            int32_t sourceIndex;
-            int32_t groupIndex; ///< Entry point group index.
-        };
-
-        std::vector<SourceEntryPoints> mSources;
-        std::vector<EntryPointGroup> mGroups;
-        std::vector<EntryPoint> mEntryPoints;
-        TypeConformanceList mTypeConformances; ///< Type conformances linked into all shaders in the program.
-
-        int32_t mActiveSource = -1; ///< Current source index.
-        int32_t mActiveGroup = -1;  ///< Current entry point index.
-        CompilerFlags mShaderFlags = CompilerFlags::None;
-        ArgumentList mCompilerArguments;
-        std::string mShaderModel = "6_3";
-        std::string mLanguagePrelude;
-    };
-
-    virtual ~Program() = 0;
+        ProgramDesc d;
+        d.addShaderLibrary(path);
+        if (shaderModel != ShaderModel::Unknown)
+            d.setShaderModel(shaderModel);
+        d.setCompilerFlags(flags);
+        d.vsEntry(vsEntry).psEntry(psEntry);
+        return create(std::move(pDevice), std::move(d), std::move(programDefines));
+    }
 
     /**
      * Get the API handle of the active program.
@@ -423,6 +697,9 @@ public:
      */
     bool setDefines(const DefineList& dl);
 
+    /// Get current macro definitions.
+    const DefineList& getDefines() const { return mDefineList; }
+
     /**
      * Add a type conformance to the program.
      * @param[in] typeName The name of the implementation shader type.
@@ -447,10 +724,15 @@ public:
      */
     bool setTypeConformances(const TypeConformanceList& conformances);
 
+    /// Get current type conformances.
+    const TypeConformanceList& getTypeConformances() const { return mTypeConformanceList; }
+
     /**
      * Get the macro definition list of the active program version.
      */
     const DefineList& getDefineList() const { return mDefineList; }
+
+    const ProgramDesc& getDesc() const { return mDesc; }
 
     /**
      * Get the program reflection for the active program.
@@ -458,21 +740,21 @@ public:
      */
     const ref<const ProgramReflection>& getReflector() const { return getActiveVersion()->getReflector(); }
 
-    uint32_t getEntryPointGroupCount() const { return uint32_t(mDesc.mGroups.size()); }
-    uint32_t getGroupEntryPointCount(uint32_t groupIndex) const { return (uint32_t)mDesc.mGroups[groupIndex].entryPoints.size(); }
+    uint32_t getEntryPointGroupCount() const { return uint32_t(mDesc.entryPointGroups.size()); }
+    uint32_t getGroupEntryPointCount(uint32_t groupIndex) const { return (uint32_t)mDesc.entryPointGroups[groupIndex].entryPoints.size(); }
     uint32_t getGroupEntryPointIndex(uint32_t groupIndex, uint32_t entryPointIndexInGroup) const
     {
-        return mDesc.mGroups[groupIndex].entryPoints[entryPointIndexInGroup];
+        return mDesc.entryPointGroups[groupIndex].entryPoints[entryPointIndexInGroup].globalIndex;
     }
 
     void breakStrongReferenceToDevice();
+
+    ref<RtStateObject> getRtso(RtProgramVars* pVars);
 
 protected:
     friend class ProgramManager;
     friend class ProgramVersion;
     friend class ParameterBlockReflection;
-
-    Program(ref<Device> pDevice, const Desc& desc, const DefineList& programDefines);
 
     void validateEntryPoints() const;
     bool link() const;
@@ -480,7 +762,8 @@ protected:
     BreakableReference<Device> mpDevice;
 
     // The description used to create this program
-    const Desc mDesc;
+    // TODO we should make this const again
+    ProgramDesc mDesc;
 
     DefineList mDefineList;
     TypeConformanceList mTypeConformanceList;
@@ -509,8 +792,9 @@ protected:
 
     bool checkIfFilesChanged();
     void reset();
-};
 
-FALCOR_ENUM_CLASS_OPERATORS(Program::CompilerFlags);
+    using StateGraph = Falcor::StateGraph<ref<RtStateObject>, void*>;
+    StateGraph mRtsoGraph;
+};
 
 } // namespace Falcor

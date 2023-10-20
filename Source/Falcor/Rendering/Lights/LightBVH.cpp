@@ -26,7 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "LightBVH.h"
-#include "Core/Assert.h"
+#include "Core/Error.h"
 #include "Core/API/RenderContext.h"
 #include "Utils/Timing/Profiler.h"
 
@@ -55,8 +55,8 @@ namespace Falcor
         // Update all leaf nodes.
         {
             auto var = mLeafUpdater->getRootVar()["CB"];
-            mpLightCollection->setShaderData(var["gLights"]);
-            setShaderData(var["gLightBVH"]);
+            mpLightCollection->bindShaderData(var["gLights"]);
+            bindShaderData(var["gLightBVH"]);
             var["gNodeIndices"] = mpNodeIndicesBuffer;
 
             const uint32_t nodeCount = mPerDepthRefitEntryInfo.back().count;
@@ -70,8 +70,8 @@ namespace Falcor
         // Update all internal nodes.
         {
             auto var = mInternalUpdater->getRootVar()["CB"];
-            mpLightCollection->setShaderData(var["gLights"]);
-            setShaderData(var["gLightBVH"]);
+            mpLightCollection->bindShaderData(var["gLights"]);
+            bindShaderData(var["gLightBVH"]);
             var["gNodeIndices"] = mpNodeIndicesBuffer;
 
             // Note that mBVHStats.treeHeight may be 0, in which case there is a single leaf and no internal nodes.
@@ -262,7 +262,7 @@ namespace Falcor
 
         if (!mpNodeIndicesBuffer || mpNodeIndicesBuffer->getElementCount() < mNodeIndices.size())
         {
-            mpNodeIndicesBuffer = Buffer::createStructured(mpDevice, sizeof(uint32_t), (uint32_t)mNodeIndices.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+            mpNodeIndicesBuffer = mpDevice->createStructuredBuffer(sizeof(uint32_t), (uint32_t)mNodeIndices.size(), ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, nullptr, false);
             mpNodeIndicesBuffer->setName("LightBVH::mpNodeIndicesBuffer");
         }
 
@@ -275,17 +275,17 @@ namespace Falcor
         auto var = mLeafUpdater->getRootVar()["CB"]["gLightBVH"];
         if (!mpBVHNodesBuffer || mpBVHNodesBuffer->getElementCount() < mNodes.size())
         {
-            mpBVHNodesBuffer = Buffer::createStructured(mpDevice, var["nodes"], (uint32_t)mNodes.size(), Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr, false);
+            mpBVHNodesBuffer = mpDevice->createStructuredBuffer(var["nodes"], (uint32_t)mNodes.size(), ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, MemoryType::DeviceLocal, nullptr, false);
             mpBVHNodesBuffer->setName("LightBVH::mpBVHNodesBuffer");
         }
         if (!mpTriangleIndicesBuffer || mpTriangleIndicesBuffer->getElementCount() < triangleIndices.size())
         {
-            mpTriangleIndicesBuffer = Buffer::createStructured(mpDevice, var["triangleIndices"], (uint32_t)triangleIndices.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+            mpTriangleIndicesBuffer = mpDevice->createStructuredBuffer(var["triangleIndices"], (uint32_t)triangleIndices.size(), ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, nullptr, false);
             mpTriangleIndicesBuffer->setName("LightBVH::mpTriangleIndicesBuffer");
         }
         if (!mpTriangleBitmasksBuffer || mpTriangleBitmasksBuffer->getElementCount() < triangleBitmasks.size())
         {
-            mpTriangleBitmasksBuffer = Buffer::createStructured(mpDevice, var["triangleBitmasks"], (uint32_t)triangleBitmasks.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+            mpTriangleBitmasksBuffer = mpDevice->createStructuredBuffer(var["triangleBitmasks"], (uint32_t)triangleBitmasks.size(), ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, nullptr, false);
             mpTriangleBitmasksBuffer->setName("LightBVH::mpTriangleBitmasksBuffer");
         }
 
@@ -309,14 +309,12 @@ namespace Falcor
 
         // TODO: This is slow because of the flush. We should copy to a staging buffer
         // after the data is updated on the GPU and map the staging buffer here instead.
-        const void* const ptr = mpBVHNodesBuffer->map(Buffer::MapType::Read);
         FALCOR_ASSERT(mNodes.size() > 0 && mNodes.size() <= mpBVHNodesBuffer->getElementCount());
-        std::memcpy(mNodes.data(), ptr, mNodes.size() * sizeof(mNodes[0]));
-        mpBVHNodesBuffer->unmap();
+        mpBVHNodesBuffer->getBlob(mNodes.data(), 0, mNodes.size() * sizeof(PackedNode));;
         mIsCpuDataValid = true;
     }
 
-    void LightBVH::setShaderData(const ShaderVar& var) const
+    void LightBVH::bindShaderData(const ShaderVar& var) const
     {
         if (isValid())
         {

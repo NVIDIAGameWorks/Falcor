@@ -64,7 +64,7 @@ GPU_TEST(BitInterleave)
         it = r();
 
     ref<Buffer> pTestDataBuffer =
-        Buffer::create(pDevice, n * sizeof(uint32_t), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, testData.data());
+        pDevice->createBuffer(n * sizeof(uint32_t), ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, testData.data());
 
     // Setup and run GPU test.
     ctx.createProgram("Tests/Utils/BitTricksTests.cs.slang", "testBitInterleave");

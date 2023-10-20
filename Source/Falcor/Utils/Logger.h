@@ -27,7 +27,6 @@
  **************************************************************************/
 #pragma once
 #include "Core/Macros.h"
-#include "Core/FalcorConfig.h"
 #include "Utils/StringFormatters.h"
 #include <fmt/core.h>
 #include <string_view>
@@ -37,7 +36,6 @@ namespace Falcor
 {
 /**
  * Container class for logging messages.
- * To enable log messages, make sure FALCOR_ENABLE_LOGGER is set to `1` in FalcorConfig.h.
  * Messages are only printed to the selected outputs if they match the verbosity level.
  */
 class FALCOR_API Logger
@@ -110,11 +108,6 @@ public:
      * @return Returns the path of the logfile.
      */
     static std::filesystem::path getLogFilePath();
-
-    /**
-     * Check if the logger is enabled.
-     */
-    static constexpr bool enabled() { return FALCOR_ENABLE_LOGGER != 0; }
 
     /**
      * Log a message.
@@ -209,4 +202,11 @@ inline void logFatal(fmt::format_string<Args...> format, Args&&... args)
 {
     Logger::log(Logger::Level::Fatal, fmt::format(format, std::forward<Args>(args)...));
 }
+
 } // namespace Falcor
+
+#define FALCOR_PRINT(x)                      \
+    do                                       \
+    {                                        \
+        ::Falcor::logInfo("{} = {}", #x, x); \
+    } while (0)

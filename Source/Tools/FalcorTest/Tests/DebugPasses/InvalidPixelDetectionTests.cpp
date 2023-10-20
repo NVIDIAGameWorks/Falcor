@@ -50,11 +50,11 @@ GPU_TEST(InvalidPixelDetectionPass)
 
     RenderContext* pRenderContext = ctx.getRenderContext();
     ref<Fbo> pTargetFbo = Fbo::create2D(pDevice, 2, 4, ResourceFormat::BGRA8UnormSrgb);
-    ref<Texture> pInput = Texture::create2D(pDevice, 2, 4, ResourceFormat::R32Float, 1, Resource::kMaxPossible, pInitData);
+    ref<Texture> pInput = pDevice->createTexture2D(2, 4, ResourceFormat::R32Float, 1, Resource::kMaxPossible, pInitData);
     ref<RenderGraph> pGraph = RenderGraph::create(ctx.getDevice(), "Invalid Pixel Detection");
     ref<RenderPass> pPass = RenderPass::create("InvalidPixelDetectionPass", ctx.getDevice());
     if (!pPass)
-        throw RuntimeError("Could not create render pass 'InvalidPixelDetectionPass'");
+        FALCOR_THROW("Could not create render pass 'InvalidPixelDetectionPass'");
     pGraph->addPass(pPass, "InvalidPixelDetectionPass");
     pGraph->setInput("InvalidPixelDetectionPass.src", pInput);
     pGraph->markOutput("InvalidPixelDetectionPass.dst");

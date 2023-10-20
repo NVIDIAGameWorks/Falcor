@@ -31,7 +31,7 @@ def main():
 
     parser = argparse.ArgumentParser(description=__doc__, add_help=False)
     parser.add_argument('-h', '--help', action='store_true', help='Show this help message and exit')
-    parser.add_argument('--environment', type=str, action='store', help=f'Environment (default: {config.DEFAULT_ENVIRONMENT})', default=config.DEFAULT_ENVIRONMENT)
+    parser.add_argument('--environment', type=str, action='store', help=f'Environment', default=None)
     parser.add_argument('--config', type=str, action='store', help=f'Build configuration (default: {default_config})', default=default_config)
     parser.add_argument('--list-configs', action='store_true', help='List available build configurations')
     args, passthrough_args = parser.parse_known_args()

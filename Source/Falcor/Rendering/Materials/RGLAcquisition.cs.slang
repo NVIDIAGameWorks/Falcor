@@ -42,7 +42,7 @@ struct RGLAcquisition
     uint2 ndfSize;
     uint4 vndfSize;
     uint4 lumiSize;
-    
+
     RWStructuredBuffer<float3> ndfDirections;  // Size ndfSize.x * ndfSize.y
     RWStructuredBuffer<float> retroReflection; // Size ndfSize.x * ndfSize.y
     RWStructuredBuffer<float> ndfKernel;       // Size (ndfSize.x * ndfSize.y) ^ 2
@@ -52,16 +52,16 @@ struct RGLAcquisition
     RWStructuredBuffer<float> thetas;          // Size thetaSize
     RWStructuredBuffer<float> phis;            // Size phiSize
     RWStructuredBuffer<float> vndf;            // Size phiSize * thetaSize * vndfSize.z * vndfSize.w (vndfSize.xy == phiSize, thetaSize)
-    
+
     ByteAddressBuffer vndfBuf;                 // Size phiSize * thetaSize * vndfSize.z * vndfSize.w
     ByteAddressBuffer vndfMarginalBuf;         // Size phiSize * thetaSize * vndfSize.z * vndfSize.w
     ByteAddressBuffer vndfConditionalBuf;      // Size phiSize * thetaSize * vndfSize.z * vndfSize.w
-    
+
     RWBuffer<float> lumi; // Size phiSize * thetaSize * lumiSize.z * lumiSize.w (lumiSize.xy == phiSize, thetaSize)
     RWBuffer<float> rgb;  // Size phiSize * thetaSize * lumiSize.z * lumiSize.w
 
     static const uint2 kSampleCount = {8, 8};
-    
+
     ShadingData buildShadingData(float3 wi)
     {
         ShadingData sd = {};
@@ -71,10 +71,9 @@ struct RGLAcquisition
 
         sd.mtl = gScene.materials.getMaterialHeader(materialID);
         sd.materialID = materialID;
-        sd.opacity = 1.0f;
         sd.IoR = 1.0f;
         sd.V = wi;
-        
+
         return sd;
     }
 
@@ -84,23 +83,23 @@ struct RGLAcquisition
     {
         return normalize(float3(x.xy, max(x.z, kMinCosTheta * 2.0f)));
     }
-    
+
     void measureRetroreflection(const uint2 threadID)
     {
         float2 unitI = float2(threadID) / float2(ndfSize - 1);
         float3 wi = clampDirection(fromSpherical(unitToSpherical(unitI)));
-        
+
         ShadingData sd = buildShadingData(wi);
-        
+
         let lod = ExplicitLodTextureSampler(0.f);
         let mi = gScene.materials.getMaterialInstance(sd, lod);
-        
+
         // TODO: We should probably take multiple samples if eval is actually probabilistic.
         // No way currently to find out if eval is deterministic or not.
         UniformSampleGenerator sg = UniformSampleGenerator(threadID, 0);
         // The paper measures at lambda=532nm. Just grab the green channel to approximate this.
         float retro = mi.eval(sd, wi, sg).g;
-        
+
         uint idx = threadID.x + threadID.y * ndfSize.x;
         ndfDirections[idx] = wi;
         retroReflection[idx] = retro;
@@ -110,7 +109,7 @@ struct RGLAcquisition
     {
         float3 wj = ndfDirections[threadID.y];
         float3 wk = ndfDirections[threadID.x];
-        
+
         uint N = ndfSize.x * ndfSize.y;
         ndfKernel[threadID.x + threadID.y * N] = (1.0f / N) * retroReflection[threadID.y] * saturate(dot(wk, wj));
     }
@@ -119,7 +118,7 @@ struct RGLAcquisition
     {
         uint N = ndfSize.x * ndfSize.y;
         uint idx = threadID.x + threadID.y * ndfSize.x;
-        
+
         float result = 0.0f;
         for (int i = 0; i < N; ++i)
         {
@@ -127,25 +126,25 @@ struct RGLAcquisition
         }
         ndfTmp[idx] = result;
     }
-    
+
     float interpolate(RWStructuredBuffer<float> buf, float2 uv, uint2 size)
     {
         uv *= size - 1;
         int2 xy = clamp(int2(uv), int2(0), size - 2);
         uv -= xy;
-        
+
         float v00 = buf[(xy.x + 0) + (xy.y + 0) * size.x];
         float v10 = buf[(xy.x + 1) + (xy.y + 0) * size.x];
         float v01 = buf[(xy.x + 0) + (xy.y + 1) * size.x];
         float v11 = buf[(xy.x + 1) + (xy.y + 1) * size.x];
-        
+
         return lerp(lerp(v00, v10, uv.x), lerp(v01, v11, uv.x), uv.y);
     }
 
     float evalNDF  (float2 uv) { return interpolate(ndf,   uv, ndfSize); }
 
     float evalSigma(float2 uv) { return interpolate(sigma, uv, ndfSize); }
-    
+
     void integrateSigma(const uint3 threadID)
     {
         uint N = ndfSize.x * ndfSize.y;
@@ -172,7 +171,7 @@ struct RGLAcquisition
             }
         }
         binIntegral *= 1.0f / (kSampleCount.x * kSampleCount.y);
-        
+
         float partialSum = WaveActiveSum(binIntegral / WaveGetLaneCount());
         if (WaveIsFirstLane())
         {
@@ -186,7 +185,7 @@ struct RGLAcquisition
         uint N = ndfSize.x * ndfSize.y;
         uint M = sigmaIntegrationGrid.x * sigmaIntegrationGrid.y / WaveGetLaneCount();
         uint base = threadID.x + threadID.y * ndfSize.x;
-        
+
         float sum = 0.0f;
         for (int i = 0; i < M; ++i)
         {
@@ -194,7 +193,7 @@ struct RGLAcquisition
         }
         sigma[base] = sum / M;
     }
-    
+
     // TODO: Only works for the isotropic case. It's not entirely clear from the paper how
     // to compute the incident parametrization in the anisotropic case.
     // Only support isotropic measurements for now. Will have to contact authors if anisotropy
@@ -217,7 +216,7 @@ struct RGLAcquisition
         float b = sigma[i - 1];
         float u = a == b ? 0.0f : (x - a) / (b - a);
         u = threadID == 0 ? 0.0f : (i - u) / (ndfSize.x - 1);
-        
+
         thetas[threadID] = unitToSpherical(float2(u, 0.0f)).x;
     }
 
@@ -225,55 +224,55 @@ struct RGLAcquisition
     {
         float2 sphericalI = float2(thetas[threadID.y], phis[threadID.x]);
         float2 unitI = sphericalToUnit(sphericalI);
-        
+
         uint2 idxH = uint2(threadID.z % vndfSize.z, threadID.z / vndfSize.z);
         float2 unitH = float2(idxH) / float2(vndfSize.zw - 1);
-        
+
         float3 wi = fromSpherical(sphericalI);
         float3 h  = fromSpherical(unitToSpherical(unitH));
-        
+
         uint vndfIdx = (threadID.x * vndfSize.y + threadID.y) * vndfSize.z * vndfSize.w + threadID.z;
 
         float jacobian = (2.0f * M_PI * M_PI * unitH.x * length(h.xy));
         vndf[vndfIdx] = jacobian * saturate(dot(wi, h)) * evalNDF(unitH) / evalSigma(unitI);
     }
-    
+
     void acquireBRDF(const uint3 threadID)
     {
         uint2 idxI = threadID.xy;
         uint2 idxH = uint2(threadID.z % lumiSize.z, threadID.z / lumiSize.z);
-        
+
         float2 slice = float2(idxI);
         float2 xi = float2(idxH) / float2(lumiSize.zw - 1);
-        
+
         let vndf = InterpolatedDistribution2D(vndfSize, vndfMarginalBuf, vndfConditionalBuf, vndfBuf);
-        
+
         float3 unitHPdf = vndf.sample(slice, xi);
         float2 unitH = unitHPdf.xy;
-        
+
         float2 sphericalI = float2(thetas[idxI.y], phis[idxI.x]);
         float2 sphericalH = unitToSpherical(unitH);
-        
+
         float2 unitI = sphericalToUnit(sphericalI);
-        
+
         float3 wi = fromSpherical(sphericalI);
         float3 h  = fromSpherical(sphericalH);
         float3 wo = h * 2.0f * dot(h, wi) - wi;
-        
+
         float3 fr;
         if (wo.z > 0.0f)
         {
             wi = clampDirection(wi);
             wo = clampDirection(wo);
             ShadingData sd = buildShadingData(wi);
-            
+
             let lod = ExplicitLodTextureSampler(0.0f);
             let mi = gScene.materials.getMaterialInstance(sd, lod);
-            
+
             // TODO: We should probably take multiple samples if eval is actually probabilistic.
             // No way currently to find out if eval is deterministic or not.
             UniformSampleGenerator sg = UniformSampleGenerator(uint2(threadID.x * lumiSize.y + threadID.y, threadID.z), 0);
-            
+
             fr = mi.eval(sd, wo, sg);
         }
         else
@@ -282,11 +281,11 @@ struct RGLAcquisition
         }
 
         fr *= 4.0f * evalSigma(unitI) / evalNDF(unitH);
-        
+
         uint sliceSize = lumiSize.z * lumiSize.w;
         uint lumiBase = (threadID.x * lumiSize.y + threadID.y) * sliceSize     + threadID.z;
         uint  rgbBase = (threadID.x * lumiSize.y + threadID.y) * sliceSize * 3 + threadID.z;
-        
+
         lumi[lumiBase] = luminance(fr);
         rgb[rgbBase + sliceSize * 0] = fr.x;
         rgb[rgbBase + sliceSize * 1] = fr.y;
@@ -301,7 +300,7 @@ ParameterBlock<RGLAcquisition> gAcquisition;
 void measureRetroreflection(uint3 threadID : SV_DispatchThreadID)
 {
     if (any(threadID.xy >= gAcquisition.ndfSize)) return;
-    
+
     gAcquisition.measureRetroreflection(threadID.xy);
 }
 
@@ -310,7 +309,7 @@ void buildPowerIterationKernel(uint3 threadID : SV_DispatchThreadID)
 {
     int N = gAcquisition.ndfSize.x * gAcquisition.ndfSize.y;
     if (any(threadID >= N)) return;
-    
+
     gAcquisition.buildPowerIterationKernel(threadID.xy);
 }
 
@@ -318,7 +317,7 @@ void buildPowerIterationKernel(uint3 threadID : SV_DispatchThreadID)
 void powerIteration(uint3 threadID : SV_DispatchThreadID)
 {
     if (any(threadID.xy >= gAcquisition.ndfSize)) return;
-    
+
     gAcquisition.powerIteration(threadID.xy);
 }
 
@@ -327,7 +326,7 @@ void integrateSigma(uint3 threadID : SV_DispatchThreadID)
 {
     int N = gAcquisition.ndfSize.x * gAcquisition.ndfSize.y;
     if (any(threadID >= int3(gAcquisition.sigmaIntegrationGrid, N))) return;
-    
+
     gAcquisition.integrateSigma(threadID);
 }
 
@@ -335,7 +334,7 @@ void integrateSigma(uint3 threadID : SV_DispatchThreadID)
 void sumSigma(uint3 threadID : SV_DispatchThreadID)
 {
     if (any(threadID.xy >= gAcquisition.ndfSize)) return;
-    
+
     gAcquisition.sumSigma(threadID.xy);
 }
 
@@ -343,7 +342,7 @@ void sumSigma(uint3 threadID : SV_DispatchThreadID)
 void computeTheta(uint3 threadID : SV_DispatchThreadID)
 {
     if (threadID.x >= gAcquisition.thetaSize) return;
-    
+
     gAcquisition.computeTheta(threadID.x);
 }
 
@@ -352,7 +351,7 @@ void computeVNDF(uint3 threadID : SV_DispatchThreadID)
 {
     int N = gAcquisition.vndfSize.z * gAcquisition.vndfSize.w;
     if (any(threadID >= int3(gAcquisition.vndfSize.xy, N))) return;
-    
+
     gAcquisition.computeVNDF(threadID);
 }
 
@@ -361,6 +360,6 @@ void acquireBRDF(uint3 threadID : SV_DispatchThreadID)
 {
     int N = gAcquisition.lumiSize.z * gAcquisition.lumiSize.w;
     if (any(threadID >= int3(gAcquisition.lumiSize.xy, N))) return;
-    
+
     gAcquisition.acquireBRDF(threadID);
 }

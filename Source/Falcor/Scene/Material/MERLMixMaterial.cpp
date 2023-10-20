@@ -49,7 +49,7 @@ namespace Falcor
     MERLMixMaterial::MERLMixMaterial(ref<Device> pDevice, const std::string& name, const std::vector<std::filesystem::path>& paths)
         : Material(pDevice, name, MaterialType::MERLMix)
     {
-        checkArgument(!paths.empty(), "MERLMixMaterial: Expected at least one path.");
+        FALCOR_CHECK(!paths.empty(), "MERLMixMaterial: Expected at least one path.");
 
         // Setup texture slots.
         mTextureSlotInfo[(uint32_t)TextureSlot::Normal] = { "normal", TextureChannelFlags::RGB, false };
@@ -65,7 +65,7 @@ namespace Falcor
         for (size_t i = 0; i < paths.size(); i++)
         {
             if (!merlFile.loadBRDF(paths[i]))
-                throw RuntimeError("MERLMixMaterial: Failed to load BRDF from '{}'.", paths[i]);
+                FALCOR_THROW("MERLMixMaterial: Failed to load BRDF from '{}'.", paths[i]);
 
             auto& desc = mBRDFs[i];
             desc.path = merlFile.getDesc().path;
@@ -74,14 +74,14 @@ namespace Falcor
 
             // Copy BRDF samples into shared data buffer.
             const auto& brdf = merlFile.getData();
-            checkInvariant(!brdf.empty() && sizeof(brdf[0]) == sizeof(float3), "Expected BRDF data in float3 format.");
+            FALCOR_CHECK(!brdf.empty() && sizeof(brdf[0]) == sizeof(float3), "Expected BRDF data in float3 format.");
             desc.byteSize = brdf.size() * sizeof(brdf[0]);
             desc.byteOffset = buffer.allocate(desc.byteSize);
             buffer.setBlob(brdf.data(), desc.byteOffset, desc.byteSize);
 
             // Copy albedo LUT into shared table.
             const auto& lut = merlFile.prepareAlbedoLUT(mpDevice);
-            checkInvariant(lut.size() == MERLMixMaterialData::kAlbedoLUTSize, "MERLMixMaterial: Unexpected albedo LUT size.");
+            FALCOR_CHECK(lut.size() == MERLMixMaterialData::kAlbedoLUTSize, "MERLMixMaterial: Unexpected albedo LUT size.");
             albedoLut.insert(albedoLut.end(), lut.begin(), lut.end());
         }
 
@@ -89,7 +89,7 @@ namespace Falcor
         mData.byteStride = mBRDFs.size() > 1 ? mBRDFs[1].byteOffset : 0;
         for (size_t i = 0; i < mBRDFs.size(); i++)
         {
-            checkInvariant(mBRDFs[i].byteOffset == i * mData.byteStride, "MERLMixMaterial: Unexpected stride.");
+            FALCOR_CHECK(mBRDFs[i].byteOffset == i * mData.byteStride, "MERLMixMaterial: Unexpected stride.");
         }
 
         // Upload extra data for sampling.
@@ -104,24 +104,24 @@ namespace Falcor
         mpBRDFData = buffer.getGPUBuffer(mpDevice);
 
         // Create albedo LUT as 2D texture parameterization over (cosTehta, brdfIndex).
-        mpAlbedoLUT = Texture::create2D(mpDevice, MERLMixMaterialData::kAlbedoLUTSize, mData.brdfCount, MERLFile::kAlbedoLUTFormat, 1, 1, albedoLut.data(), ResourceBindFlags::ShaderResource);
+        mpAlbedoLUT = mpDevice->createTexture2D(MERLMixMaterialData::kAlbedoLUTSize, mData.brdfCount, MERLFile::kAlbedoLUTFormat, 1, 1, albedoLut.data(), ResourceBindFlags::ShaderResource);
 
         // Create sampler for albedo LUT.
         {
             Sampler::Desc desc;
-            desc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Point, Sampler::Filter::Point);
-            desc.setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
+            desc.setFilterMode(TextureFilteringMode::Linear, TextureFilteringMode::Point, TextureFilteringMode::Point);
+            desc.setAddressingMode(TextureAddressingMode::Clamp, TextureAddressingMode::Clamp, TextureAddressingMode::Clamp);
             desc.setMaxAnisotropy(1);
-            mpLUTSampler = Sampler::create(mpDevice, desc);
+            mpLUTSampler = mpDevice->createSampler(desc);
         }
 
         // Create sampler for index map. Using point sampling as indices are not interpolatable.
         {
             Sampler::Desc desc;
-            desc.setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point);
-            desc.setAddressingMode(Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap, Sampler::AddressMode::Wrap);
+            desc.setFilterMode(TextureFilteringMode::Point, TextureFilteringMode::Point, TextureFilteringMode::Point);
+            desc.setAddressingMode(TextureAddressingMode::Wrap, TextureAddressingMode::Wrap, TextureAddressingMode::Wrap);
             desc.setMaxAnisotropy(1);
-            mpIndexSampler = Sampler::create(mpDevice, desc);
+            mpIndexSampler = mpDevice->createSampler(desc);
         }
 
         updateNormalMapType();
@@ -235,12 +235,12 @@ namespace Falcor
         return true;
     }
 
-    Program::ShaderModuleList MERLMixMaterial::getShaderModules() const
+    ProgramDesc::ShaderModuleList MERLMixMaterial::getShaderModules() const
     {
-        return { Program::ShaderModule(kShaderFile) };
+        return { ProgramDesc::ShaderModule::fromFile(kShaderFile) };
     }
 
-    Program::TypeConformanceList MERLMixMaterial::getTypeConformances() const
+    TypeConformanceList MERLMixMaterial::getTypeConformances() const
     {
         return { {{"MERLMixMaterial", "IMaterial"}, (uint32_t)MaterialType::MERLMix} };
     }
@@ -292,7 +292,7 @@ namespace Falcor
             // Verify that index map is in uncompressed 8-bit unorm format.
             // The shader requires this because the BRDF index is computed by scaling the unorm value by 255.
             ResourceFormat format = tex->getFormat();
-            checkInvariant(!isSrgbFormat(format), "MERLMixMaterial: Index map must not be in SRGB format.");
+            FALCOR_CHECK(!isSrgbFormat(format), "MERLMixMaterial: Index map must not be in SRGB format.");
 
             switch (format)
             {
@@ -303,7 +303,7 @@ namespace Falcor
             case ResourceFormat::BGRX8Unorm:
                 break;
             default:
-                throw RuntimeError(fmt::format("MERLMixMaterial: Index map unsupported format ({}).", to_string(format)));
+                FALCOR_THROW(fmt::format("MERLMixMaterial: Index map unsupported format ({}).", to_string(format)));
             }
         }
     }

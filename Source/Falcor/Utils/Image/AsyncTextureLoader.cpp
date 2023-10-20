@@ -45,13 +45,13 @@ AsyncTextureLoader::~AsyncTextureLoader()
 {
     terminateWorkers();
 
-    mpDevice->flushAndSync();
+    mpDevice->wait();
 }
 
 std::future<ref<Texture>> AsyncTextureLoader::loadMippedFromFiles(
     fstd::span<const std::filesystem::path> paths,
     bool loadAsSrgb,
-    Resource::BindFlags bindFlags,
+    ResourceBindFlags bindFlags,
     LoadCallback callback
 )
 {
@@ -65,7 +65,7 @@ std::future<ref<Texture>> AsyncTextureLoader::loadFromFile(
     const std::filesystem::path& path,
     bool generateMipLevels,
     bool loadAsSrgb,
-    Resource::BindFlags bindFlags,
+    ResourceBindFlags bindFlags,
     LoadCallback callback
 )
 {
@@ -82,7 +82,7 @@ void AsyncTextureLoader::runWorkers(size_t threadCount)
         threadCount,
         [&]()
         {
-            mpDevice->flushAndSync();
+            mpDevice->wait();
             mFlushPending = false;
             mUploadCounter = 0;
         }

@@ -55,7 +55,7 @@ namespace Falcor
         virtual void createResources(RenderContext* pRenderContext, bool deleteScratchData = true) override;
         virtual const ref<Buffer>& getAABBBuffer() const override;
         virtual uint32_t getAABBCount() const override { return 1; }
-        virtual void setShaderData(const ShaderVar& var) const override;
+        virtual void bindShaderData(const ShaderVar& var) const override;
 
     protected:
         virtual void setValuesInternal(const std::vector<float>& cornerValues) override;

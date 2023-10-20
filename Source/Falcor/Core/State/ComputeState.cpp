@@ -43,7 +43,7 @@ ComputeState::ComputeState(ref<Device> pDevice) : mpDevice(pDevice)
     mpCsoGraph = std::make_unique<ComputeStateGraph>();
 }
 
-ref<ComputeStateObject> ComputeState::getCSO(const ComputeVars* pVars)
+ref<ComputeStateObject> ComputeState::getCSO(const ProgramVars* pVars)
 {
     auto pProgramKernels = mpProgram ? mpProgram->getActiveVersion()->getKernels(mpDevice.get(), pVars) : nullptr;
     bool newProgram = (pProgramKernels.get() != mCachedData.pProgramKernels);
@@ -57,7 +57,7 @@ ref<ComputeStateObject> ComputeState::getCSO(const ComputeVars* pVars)
 
     if (pCso == nullptr)
     {
-        mDesc.setProgramKernels(pProgramKernels);
+        mDesc.pProgramKernels = pProgramKernels;
 
         ComputeStateGraph::CompareFunc cmpFunc = [&desc = mDesc](ref<ComputeStateObject> pCso) -> bool
         { return pCso && (desc == pCso->getDesc()); };
@@ -68,7 +68,7 @@ ref<ComputeStateObject> ComputeState::getCSO(const ComputeVars* pVars)
         }
         else
         {
-            pCso = ComputeStateObject::create(mpDevice, mDesc);
+            pCso = mpDevice->createComputeStateObject(mDesc);
             mpCsoGraph->setCurrentNodeData(pCso);
         }
     }

@@ -36,6 +36,7 @@
 #include "Material/MaterialTextureLoader.h"
 
 #include "Core/Macros.h"
+#include "Core/AssetResolver.h"
 #include "Core/API/VAO.h"
 #include "Utils/Math/AABB.h"
 #include "Utils/Math/Vector.h"
@@ -123,6 +124,7 @@ namespace Falcor
             Attribute<float4> boneWeights;              ///< Array of bone weights. This field is optional. If it's set, that means that the mesh is animated, in which case boneIDs is required.
 
             bool isFrontFaceCW = false;                 ///< Indicate whether front-facing side has clockwise winding in object space.
+            bool isAnimated = false;                    ///< True if the mesh vertices can be modified during rendering (e.g., skinning or inverse rendering).
             bool useOriginalTangentSpace = false;       ///< Indicate whether to use the original tangent space that was loaded with the mesh. By default, we will ignore it and use MikkTSpace to generate the tangent space.
             bool mergeDuplicateVertices = true;         ///< Indicate whether to merge identical vertices and adjust indices.
             NodeID skeletonNodeId{ NodeID::Invalid() }; ///< For skinned meshes, the node ID of the skeleton's world transform. If invalid, the skeleton is based on the mesh's own world position (Assimp behavior pre-multiplies instance transform).
@@ -140,8 +142,8 @@ namespace Falcor
                     return pIndices[face * 3 + vert];
                 case AttributeFrequency::FaceVarying:
                     return face * 3 + vert;
-                default:
-                    FALCOR_UNREACHABLE();
+                case AttributeFrequency::None:
+                    return Scene::kInvalidAttributeIndex;
                 }
                 return Scene::kInvalidAttributeIndex;
             }
@@ -179,8 +181,8 @@ namespace Falcor
                     return vertexCount;
                 case AttributeFrequency::FaceVarying:
                     return 3 * faceCount;
-                default:
-                    FALCOR_UNREACHABLE();
+                case AttributeFrequency::None:
+                    return 0;
                 }
                 return 0;
             }
@@ -272,6 +274,7 @@ namespace Falcor
             uint64_t indexCount = 0;            ///< Number of indices, or zero if non-indexed.
             bool use16BitIndices = false;       ///< True if the indices are in 16-bit format.
             bool isFrontFaceCW = false;         ///< Indicate whether front-facing side has clockwise winding in object space.
+            bool isAnimated = false;            ///< True if the mesh vertices can be modified during rendering (e.g., skinning or inverse rendering).
             std::vector<uint32_t> indexData;    ///< Vertex indices in either 32-bit or 16-bit format packed tightly, or empty if non-indexed.
             std::vector<StaticVertexData> staticData;
             std::vector<SkinningVertexData> skinningData;
@@ -355,6 +358,15 @@ namespace Falcor
         */
         void importFromMemory(const void* buffer, size_t byteSize, std::string_view extension, const pybind11::dict& dict = pybind11::dict());
 
+        /// Access the current asset resolver (on top of the stack).
+        AssetResolver& getAssetResolver() { return mAssetResolver; }
+
+        /// Push the state of the asset resolver to the stack.
+        void pushAssetResolver();
+
+        /// Pop the state of the asset resolver from the stack.
+        void popAssetResolver();
+
         /** Get the scene. Make sure to add all the objects before calling this function
             \return nullptr if something went wrong, otherwise a new Scene object
         */
@@ -405,23 +417,25 @@ namespace Falcor
         /** Add a triangle mesh.
             \param The triangle mesh to add.
             \param pMaterial The material to use for the mesh.
+            \param isAnimated True if the mesh vertices can be modified during rendering (e.g., skinning or inverse rendering).
             \return The ID of the mesh in the scene.
         */
-        MeshID addTriangleMesh(const ref<TriangleMesh>& pTriangleMesh, const ref<Material>& pMaterial);
+        MeshID addTriangleMesh(const ref<TriangleMesh>& pTriangleMesh, const ref<Material>& pMaterial, bool isAnimated = false);
 
         /** Pre-process a mesh into the data format that is used in the global scene buffers.
             Throws an exception if something went wrong.
             \param mesh The mesh to pre-process.
             \param pAttributeIndices Optional. If specified, the attribute indices used to create the final mesh vertices will be saved here.
+            \param pTangents Optional. When specified and processMesh creates tangents for the mesh, the tangents are also stored in this parameter.
             \return The pre-processed mesh.
         */
-        ProcessedMesh processMesh(const Mesh& mesh, MeshAttributeIndices* pAttributeIndices = nullptr) const;
+        ProcessedMesh processMesh(const Mesh& mesh, MeshAttributeIndices* pAttributeIndices = nullptr, std::vector<float4>* pTangents = nullptr) const;
 
         /** Generate tangents for a mesh.
             \param mesh The mesh to generate tangents for. If successful, the tangent attribute on the mesh will be set to the output vector.
             \param tangents Output for generated tangents.
         */
-        void generateTangents(Mesh& mesh, std::vector<float4>& tangents) const;
+        static void generateTangents(Mesh& mesh, std::vector<float4>& tangents);
 
         /** Add a pre-processed mesh.
             \param mesh The pre-processed mesh.
@@ -429,10 +443,11 @@ namespace Falcor
         */
         MeshID addProcessedMesh(const ProcessedMesh& mesh);
 
-        /** Set mesh vertex cache for animation.
+        /** Add mesh vertex cache for animation.
             \param[in] cachedCurves The mesh vertex cache data (will be moved from).
         */
-        void setCachedMeshes(std::vector<CachedMesh>&& cachedMeshes);
+        void addCachedMeshes(std::vector<CachedMesh>&& cachedMeshes);
+        void addCachedMesh(CachedMesh&& cachedMesh);
 
         // Custom primitives
 
@@ -467,7 +482,8 @@ namespace Falcor
         /** Set curve vertex cache for animation.
             \param[in] cachedCurves The dynamic curve vertex cache data.
         */
-        void setCachedCurves(std::vector<CachedCurve>&& cachedCurves) { mSceneData.cachedCurves = std::move(cachedCurves); }
+        void addCachedCurves(std::vector<CachedCurve>&& cachedCurves);
+        void addCachedCurve(CachedCurve&& cachedCurves);
 
         // SDFs
 
@@ -687,7 +703,7 @@ namespace Falcor
             bool isStatic = false;                  ///< True if mesh is non-instanced and static (not dynamic or animated).
             bool isFrontFaceCW = false;             ///< Indicate whether front-facing side has clockwise winding in object space.
             bool isDisplaced = false;               ///< True if mesh has displacement map.
-            bool isAnimated = false;                ///< True if mesh has vertex animations.
+            bool isAnimated = false;                ///< True if the mesh vertices can be modified during rendering (e.g., skinning or inverse rendering).
             AABB boundingBox;                       ///< Mesh bounding-box in object space.
             std::set<NodeID> instances;             ///< IDs of all nodes that instantiate this mesh.
 
@@ -750,6 +766,9 @@ namespace Falcor
         Settings mSettings;
         const Flags mFlags;
 
+        AssetResolver mAssetResolver;
+        std::vector<AssetResolver> mAssetResolverStack;
+
         Scene::SceneData mSceneData;
         ref<Scene> mpScene;
         SceneCache::Key mSceneCacheKey;
@@ -763,7 +782,6 @@ namespace Falcor
         CurveList mCurves;
 
         std::unique_ptr<MaterialTextureLoader> mpMaterialTextureLoader;
-        ref<GpuFence> mpFence;
 
         // Helpers
         bool doesNodeHaveAnimation(NodeID nodeID) const;
@@ -820,6 +838,7 @@ namespace Falcor
         void calculateCurveBoundingBoxes();
 
         friend class SceneCache;
+        friend class SceneBuilderDump;
     };
 
     FALCOR_ENUM_CLASS_OPERATORS(SceneBuilder::Flags);

@@ -120,7 +120,7 @@ AABB SDF3DPrimitiveFactory::computeAABB(const SDF3DPrimitive& primitive)
     }
     break;
     default:
-        throw RuntimeError("SDF Primitive has unknown primitive type");
+        FALCOR_THROW("SDF Primitive has unknown primitive type");
     }
 
     float4x4 translate = math::matrixFromTranslation(primitive.translation);

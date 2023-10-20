@@ -392,7 +392,7 @@ def catch_all(path):
 
 def main():
     parser = argparse.ArgumentParser(description="Utility for viewing results of image tests.")
-    parser.add_argument('-e', '--environment', type=str, action='store', help='Environment', default=config.DEFAULT_ENVIRONMENT)
+    parser.add_argument('-e', '--environment', type=str, action='store', help='Environment', default=None)
     parser.add_argument('--host', type=str, action='store', help='Server hostname', default='localhost')
     parser.add_argument('--port', type=int, action='store', help='Server port', default=8080)
     parser.add_argument('--debug', action='store_true', help='Debug mode')

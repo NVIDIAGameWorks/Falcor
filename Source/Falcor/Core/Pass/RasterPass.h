@@ -64,7 +64,7 @@ public:
      * stages.
      * @return A new object, or throws an exception if creation failed.
      */
-    static ref<RasterPass> create(ref<Device> pDevice, const Program::Desc& desc, const DefineList& defines = DefineList());
+    static ref<RasterPass> create(ref<Device> pDevice, const ProgramDesc& desc, const DefineList& defines = DefineList());
 
     /**
      * Ordered draw call.
@@ -82,6 +82,6 @@ public:
     void drawIndexed(RenderContext* pRenderContext, uint32_t indexCount, uint32_t startIndexLocation, int32_t baseVertexLocation);
 
 protected:
-    RasterPass(ref<Device> pDevice, const Program::Desc& progDesc, const DefineList& programDefines);
+    RasterPass(ref<Device> pDevice, const ProgramDesc& progDesc, const DefineList& programDefines);
 };
 } // namespace Falcor

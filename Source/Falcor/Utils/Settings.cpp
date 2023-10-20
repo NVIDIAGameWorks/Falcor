@@ -130,10 +130,13 @@ void Settings::updateSearchPaths(const nlohmann::json& update)
 
             if (searchKind == "standardsearchpath")
             {
-                std::vector<std::filesystem::path>& current = mStandardSearchDirectories[std::string(category)].get();
+                std::vector<std::filesystem::path>& current = mStandardSearchDirectories[std::string(category)];
                 ResolvedPaths result = resolveSearchPaths(current, pathUpdates, std::vector<std::filesystem::path>());
-                FALCOR_CHECK_ARG_MSG(
-                    result.invalid.empty(), "While processing {}:{}, found invalid paths: {}", searchKind, category,
+                FALCOR_CHECK(
+                    result.invalid.empty(),
+                    "While processing {}:{}, found invalid paths: {}",
+                    searchKind,
+                    category,
                     joinStrings(result.invalid, ", ")
                 );
                 current = std::move(result.resolved);
@@ -142,16 +145,19 @@ void Settings::updateSearchPaths(const nlohmann::json& update)
 
             if (searchKind == "searchpath")
             {
-                std::vector<std::filesystem::path>& current = mSearchDirectories[std::string(category)].get();
+                std::vector<std::filesystem::path>& current = mSearchDirectories[std::string(category)];
                 auto it = mStandardSearchDirectories.find(std::string(category));
 
                 ResolvedPaths result;
                 if (it == mStandardSearchDirectories.end())
                     result = resolveSearchPaths(current, pathUpdates, std::vector<std::filesystem::path>());
                 else
-                    result = resolveSearchPaths(current, pathUpdates, it->second.get());
-                FALCOR_CHECK_ARG_MSG(
-                    result.invalid.empty(), "While processing {}:{}, found invalid paths: {}", searchKind, category,
+                    result = resolveSearchPaths(current, pathUpdates, it->second);
+                FALCOR_CHECK(
+                    result.invalid.empty(),
+                    "While processing {}:{}, found invalid paths: {}",
+                    searchKind,
+                    category,
                     joinStrings(result.invalid, ", ")
                 );
                 current = std::move(result.resolved);

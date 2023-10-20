@@ -26,12 +26,13 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "USDImporter.h"
-#include "USDHelpers.h"
 #include "ImporterContext.h"
 #include "Core/Platform/OS.h"
 #include "Utils/Timing/TimeReport.h"
 #include "Utils/Settings.h"
 #include "Scene/Importer.h"
+
+#include "USDUtils/USDHelpers.h"
 
 #include <pybind11/pybind11.h>
 
@@ -307,7 +308,7 @@ namespace Falcor
         return std::make_unique<USDImporter>();
     }
 
-    void USDImporter::importScene(const std::filesystem::path& path, SceneBuilder& builder, const pybind11::dict& dict)
+    void USDImporter::importScene(const std::filesystem::path& path, SceneBuilder& builder, const std::map<std::string, std::string>& materialToShortName)
     {
         if (!path.is_absolute())
             throw ImporterError(path, "Expected absolute path.");
@@ -332,8 +333,11 @@ namespace Falcor
 
         timeReport.measure("Open stage");
 
-        Falcor::addDataDirectory(path.parent_path());
-        ImporterContext ctx(path, pStage, builder, dict, timeReport);
+        // Add base directory to search paths.
+        builder.pushAssetResolver();
+        builder.getAssetResolver().addSearchPath(path.parent_path(), SearchPathPriority::First);
+
+        ImporterContext ctx(path, pStage, builder, materialToShortName, timeReport);
 
         // Falcor uses meter scene unit; scale if necessary. Note that Omniverse uses cm by default.
         ctx.metersPerUnit = float(UsdGeomGetStageMetersPerUnit(pStage));
@@ -420,6 +424,8 @@ namespace Falcor
         }
 
         timeReport.printToLog();
+
+        builder.popAssetResolver();
     }
 
     extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registry)

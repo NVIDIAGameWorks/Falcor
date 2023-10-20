@@ -87,7 +87,11 @@ void PixelZoom::render(RenderContext* pCtx, Fbo* backBuffer)
         float4 srcRect = float4(srcPix.x - offset, srcPix.y - offset, srcPix.x + offset, srcPix.y + offset);
         float4 dstRect = float4(0, 0, mDstZoomSize, mDstZoomSize);
         pCtx->blit(
-            mpSrcBlitFbo->getColorTexture(0)->getSRV(), mpDstBlitFbo->getColorTexture(0)->getRTV(), srcRect, dstRect, Sampler::Filter::Point
+            mpSrcBlitFbo->getColorTexture(0)->getSRV(),
+            mpDstBlitFbo->getColorTexture(0)->getRTV(),
+            srcRect,
+            dstRect,
+            TextureFilteringMode::Point
         );
 
         // blit dst blt fbo into back buffer
@@ -96,7 +100,11 @@ void PixelZoom::render(RenderContext* pCtx, Fbo* backBuffer)
         srcRect = dstRect;
         dstRect = float4(srcPix.x - offset, srcPix.y - offset, srcPix.x + offset, srcPix.y + offset);
         pCtx->blit(
-            mpDstBlitFbo->getColorTexture(0)->getSRV(), backBuffer->getColorTexture(0)->getRTV(), srcRect, dstRect, Sampler::Filter::Point
+            mpDstBlitFbo->getColorTexture(0)->getSRV(),
+            backBuffer->getColorTexture(0)->getRTV(),
+            srcRect,
+            dstRect,
+            TextureFilteringMode::Point
         );
     }
 }

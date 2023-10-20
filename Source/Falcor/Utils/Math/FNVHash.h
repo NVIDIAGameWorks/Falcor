@@ -28,7 +28,7 @@
 #pragma once
 
 #include "Core/Macros.h"
-#include "Core/Assert.h"
+#include "Core/Error.h"
 
 #include <cstdint>
 
@@ -99,6 +99,18 @@ public:
     }
 
     T get() const { return mHash; }
+
+    constexpr bool operator==(const FNVHash& rhs) { return get() == rhs.get(); }
+
+    constexpr bool operator!=(const FNVHash& rhs) { return get() != rhs.get(); }
+
+    constexpr bool operator<=(const FNVHash& rhs) { return get() <= rhs.get(); }
+
+    constexpr bool operator>=(const FNVHash& rhs) { return get() >= rhs.get(); }
+
+    constexpr bool operator<(const FNVHash& rhs) { return get() < rhs.get(); }
+
+    constexpr bool operator>(const FNVHash& rhs) { return get() > rhs.get(); }
 
 private:
     T mHash = kOffsetBasis;

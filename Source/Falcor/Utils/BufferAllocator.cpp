@@ -26,6 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "BufferAllocator.h"
+#include "Core/API/Device.h"
 #include "Utils/Math/Common.h"
 
 namespace Falcor
@@ -35,9 +36,9 @@ BufferAllocator::BufferAllocator(size_t alignment, size_t elementSize, size_t ca
 {
     // Check the different alignment requirements.
     // Some of these are stricter than they need be and can be relaxed in the future.
-    checkArgument(alignment == 0 || isPowerOf2(alignment), "Alignment must be a power of two.");
-    checkArgument(cacheLineSize == 0 || isPowerOf2(cacheLineSize), "Cache line size must be a power of two.");
-    checkArgument(cacheLineSize == 0 || alignment <= cacheLineSize, "Alignment must be smaller or equal to the cache line size.");
+    FALCOR_CHECK(alignment == 0 || isPowerOf2(alignment), "Alignment must be a power of two.");
+    FALCOR_CHECK(cacheLineSize == 0 || isPowerOf2(cacheLineSize), "Cache line size must be a power of two.");
+    FALCOR_CHECK(cacheLineSize == 0 || alignment <= cacheLineSize, "Alignment must be smaller or equal to the cache line size.");
 
     // Check requirements on element size for structured buffers.
     // The alignment can be smaller or larger than the element size, but they need to be integer multiples.
@@ -45,7 +46,7 @@ BufferAllocator::BufferAllocator(size_t alignment, size_t elementSize, size_t ca
     {
         size_t a = std::max(alignment, elementSize);
         size_t b = std::min(alignment, elementSize);
-        checkArgument(a % b == 0, "Alignment and element size needs to be integer multiples.");
+        FALCOR_CHECK(a % b == 0, "Alignment and element size needs to be integer multiples.");
     }
 }
 
@@ -57,15 +58,15 @@ size_t BufferAllocator::allocate(size_t byteSize)
 
 void BufferAllocator::setBlob(const void* pData, size_t byteOffset, size_t byteSize)
 {
-    checkArgument(pData != nullptr, "Invalid pointer.");
-    checkArgument(byteOffset + byteSize <= mBuffer.size(), "Memory region is out of range.");
+    FALCOR_CHECK(pData != nullptr, "Invalid pointer.");
+    FALCOR_CHECK(byteOffset + byteSize <= mBuffer.size(), "Memory region is out of range.");
     std::memcpy(mBuffer.data() + byteOffset, pData, byteSize);
     markAsDirty(byteOffset, byteSize);
 }
 
 void BufferAllocator::modified(size_t byteOffset, size_t byteSize)
 {
-    checkArgument(byteOffset + byteSize <= mBuffer.size(), "Memory region is out of range.");
+    FALCOR_CHECK(byteOffset + byteSize <= mBuffer.size(), "Memory region is out of range.");
     markAsDirty(byteOffset, byteSize);
 }
 
@@ -94,13 +95,13 @@ ref<Buffer> BufferAllocator::getGPUBuffer(ref<Device> pDevice)
         {
             size_t elemCount = bufSize / mElementSize;
             FALCOR_ASSERT(elemCount * mElementSize == bufSize);
-            mpGpuBuffer = Buffer::createStructured(
-                pDevice, mElementSize, elemCount, mBindFlags, Buffer::CpuAccess::None, nullptr, false /* no UAV counter */
+            mpGpuBuffer = pDevice->createStructuredBuffer(
+                mElementSize, elemCount, mBindFlags, MemoryType::DeviceLocal, nullptr, false /* no UAV counter */
             );
         }
         else
         {
-            mpGpuBuffer = Buffer::create(pDevice, bufSize, mBindFlags, Buffer::CpuAccess::None, nullptr);
+            mpGpuBuffer = pDevice->createBuffer(bufSize, mBindFlags, MemoryType::DeviceLocal, nullptr);
         }
 
         mDirty = Range(0, mBuffer.size()); // Mark entire buffer as dirty so the data gets uploaded.

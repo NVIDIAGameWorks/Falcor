@@ -51,8 +51,8 @@ namespace Falcor
         Material::UpdateFlags update(MaterialSystem* pOwner) override;
         bool isEqual(const ref<Material>& pOther) const override;
         MaterialDataBlob getDataBlob() const override { return prepareDataBlob(mData); }
-        Program::ShaderModuleList getShaderModules() const override;
-        Program::TypeConformanceList getTypeConformances() const override;
+        ProgramDesc::ShaderModuleList getShaderModules() const override;
+        TypeConformanceList getTypeConformances() const override;
 
         virtual size_t getMaxBufferCount() const override { return 12; }
 
@@ -63,7 +63,7 @@ namespace Falcor
         void prepareAlbedoLUT(RenderContext* pRenderContext);
         void computeAlbedoLUT(RenderContext* pRenderContext);
 
-        std::filesystem::path mFilePath;    ///< Full path to the BRDF loaded.
+        std::filesystem::path mPath;        ///< Full path to the BRDF loaded.
         std::string mBRDFName;              ///< This is the file basename without extension.
         std::string mBRDFDescription;       ///< Description of the BRDF given in the BRDF file.
 

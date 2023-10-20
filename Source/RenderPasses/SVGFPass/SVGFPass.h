@@ -51,27 +51,30 @@ private:
     void allocateFbos(uint2 dim, RenderContext* pRenderContext);
     void clearBuffers(RenderContext* pRenderContext, const RenderData& renderData);
 
-    void computeLinearZAndNormal(RenderContext* pRenderContext, ref<Texture> pLinearZTexture,
-                                 ref<Texture> pWorldNormalTexture);
-    void computeReprojection(RenderContext* pRenderContext, ref<Texture> pAlbedoTexture,
-                             ref<Texture> pColorTexture, ref<Texture> pEmissionTexture,
-                             ref<Texture> pMotionVectorTexture,
-                             ref<Texture> pPositionNormalFwidthTexture,
-                             ref<Texture> pPrevLinearZAndNormalTexture);
+    void computeLinearZAndNormal(RenderContext* pRenderContext, ref<Texture> pLinearZTexture, ref<Texture> pWorldNormalTexture);
+    void computeReprojection(
+        RenderContext* pRenderContext,
+        ref<Texture> pAlbedoTexture,
+        ref<Texture> pColorTexture,
+        ref<Texture> pEmissionTexture,
+        ref<Texture> pMotionVectorTexture,
+        ref<Texture> pPositionNormalFwidthTexture,
+        ref<Texture> pPrevLinearZAndNormalTexture
+    );
     void computeFilteredMoments(RenderContext* pRenderContext);
     void computeAtrousDecomposition(RenderContext* pRenderContext, ref<Texture> pAlbedoTexture);
 
     bool mBuffersNeedClear = false;
 
     // SVGF parameters
-    bool    mFilterEnabled       = true;
-    int32_t mFilterIterations    = 4;
-    int32_t mFeedbackTap         = 1;
-    float   mVarainceEpsilon     = 1e-4f;
-    float   mPhiColor            = 10.0f;
-    float   mPhiNormal           = 128.0f;
-    float   mAlpha               = 0.05f;
-    float   mMomentsAlpha        = 0.2f;
+    bool mFilterEnabled = true;
+    int32_t mFilterIterations = 4;
+    int32_t mFeedbackTap = 1;
+    float mVarainceEpsilon = 1e-4f;
+    float mPhiColor = 10.0f;
+    float mPhiNormal = 128.0f;
+    float mAlpha = 0.05f;
+    float mMomentsAlpha = 0.2f;
 
     // SVGF passes
     ref<FullScreenPass> mpPackLinearZAndNormal;

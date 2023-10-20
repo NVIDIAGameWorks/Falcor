@@ -32,7 +32,7 @@ void Falcor::Marker2DSet::addMarker(const Marker2DDataBlob& newMarker)
 {
     if (mMarkers.size() >= mMaxMarkerCount)
     {
-        throw RuntimeError("Number of markers exceeds the maximum number allowed!");
+        FALCOR_THROW("Number of markers exceeds the maximum number allowed!");
     }
 
     mMarkers.push_back(newMarker);
@@ -45,9 +45,16 @@ void Falcor::Marker2DSet::clear()
     mDirtyBuffer = true;
 }
 
-void Falcor::Marker2DSet::addSimpleMarker(const SDF2DShapeType markerType, const float size, const float2& pos, const float rotation, const float4& color)
+void Falcor::Marker2DSet::addSimpleMarker(
+    const SDF2DShapeType markerType,
+    const float size,
+    const float2& pos,
+    const float rotation,
+    const float4& color
+)
 {
-    Marker2DDataBlob markerBlob;;
+    Marker2DDataBlob markerBlob;
+    ;
     markerBlob.type = markerType;
     SimpleMarker2DData* pSimpleMarker = reinterpret_cast<SimpleMarker2DData*>(markerBlob.payload.data);
     pSimpleMarker->transform.scale = size;
@@ -69,7 +76,13 @@ void Falcor::Marker2DSet::addRoundedLine(const float2& posA, const float2& posB,
     addMarker(markerBlob);
 }
 
-void Falcor::Marker2DSet::addVector(const float2& posA, const float2& posB, const float lineWidth, const float arrowHeight, const float4& color)
+void Falcor::Marker2DSet::addVector(
+    const float2& posA,
+    const float2& posB,
+    const float lineWidth,
+    const float arrowHeight,
+    const float4& color
+)
 {
     Marker2DDataBlob markerBlob;
     markerBlob.type = SDF2DShapeType::Vector;
@@ -94,7 +107,13 @@ void Falcor::Marker2DSet::addTriangle(const float2& posA, const float2& posB, co
     addMarker(markerBlob);
 }
 
-void Falcor::Marker2DSet::addRoundedBox(const float2& pos, const float2& halfSides, const float radius, const float rotation, const float4& color)
+void Falcor::Marker2DSet::addRoundedBox(
+    const float2& pos,
+    const float2& halfSides,
+    const float radius,
+    const float rotation,
+    const float4& color
+)
 {
     Marker2DDataBlob markerBlob;
     markerBlob.type = SDF2DShapeType::RoundedBox;
@@ -107,7 +126,17 @@ void Falcor::Marker2DSet::addRoundedBox(const float2& pos, const float2& halfSid
     addMarker(markerBlob);
 }
 
-void Falcor::Marker2DSet::addMarkerOpMarker(const SDFOperationType op, const SDF2DShapeType typeA, const float2& posA, const float markerSizeA, const SDF2DShapeType typeB, const float2& posB, const float markerSizeB, const float4& color, const float4 dimmedColor)
+void Falcor::Marker2DSet::addMarkerOpMarker(
+    const SDFOperationType op,
+    const SDF2DShapeType typeA,
+    const float2& posA,
+    const float markerSizeA,
+    const SDF2DShapeType typeB,
+    const float2& posB,
+    const float markerSizeB,
+    const float4& color,
+    const float4 dimmedColor
+)
 {
     Marker2DDataBlob markerBlob;
     markerBlob.type = SDF2DShapeType::MarkerOpMarker;
@@ -124,7 +153,14 @@ void Falcor::Marker2DSet::addMarkerOpMarker(const SDFOperationType op, const SDF
     addMarker(markerBlob);
 }
 
-void Falcor::Marker2DSet::addArrowFromTwoTris(const float2& startPos, const float2& endPos, const float headLength, const float headWidth, const float shaftWidth, const float4& color)
+void Falcor::Marker2DSet::addArrowFromTwoTris(
+    const float2& startPos,
+    const float2& endPos,
+    const float headLength,
+    const float headWidth,
+    const float shaftWidth,
+    const float4& color
+)
 {
     Marker2DDataBlob markerBlob;
     markerBlob.type = SDF2DShapeType::ArrowFromTwoTris;
@@ -138,7 +174,16 @@ void Falcor::Marker2DSet::addArrowFromTwoTris(const float2& startPos, const floa
     addMarker(markerBlob);
 }
 
-void Falcor::Marker2DSet::addCircleSector(const float2& pos, const float rotation, const float angle, const float minRadius, const float maxRadius, const float4& color, const float4& borderColorXYZThicknessW, ExcludeBorderFlags excludeBorderFlags)
+void Falcor::Marker2DSet::addCircleSector(
+    const float2& pos,
+    const float rotation,
+    const float angle,
+    const float minRadius,
+    const float maxRadius,
+    const float4& color,
+    const float4& borderColorXYZThicknessW,
+    ExcludeBorderFlags excludeBorderFlags
+)
 {
     Marker2DDataBlob markerBlob;
     markerBlob.type = SDF2DShapeType::CircleSector;
@@ -154,7 +199,7 @@ void Falcor::Marker2DSet::addCircleSector(const float2& pos, const float rotatio
     addMarker(markerBlob);
 }
 
-void Falcor::Marker2DSet::setShaderData(const ShaderVar& var)
+void Falcor::Marker2DSet::bindShaderData(const ShaderVar& var)
 {
     updateBuffer();
 
@@ -176,7 +221,14 @@ void Falcor::Marker2DSet::updateBuffer()
         // Create a new buffer if it does not exist or if the size is too small for the markers.
         else if (!mpMarkerBuffer || mpMarkerBuffer->getElementCount() < (uint32_t)mMarkers.size())
         {
-            mpMarkerBuffer = Buffer::createStructured(mpDevice, sizeof(Marker2DDataBlob), (uint32_t)mMarkers.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, mMarkers.data(), false);
+            mpMarkerBuffer = mpDevice->createStructuredBuffer(
+                sizeof(Marker2DDataBlob),
+                (uint32_t)mMarkers.size(),
+                ResourceBindFlags::ShaderResource,
+                MemoryType::DeviceLocal,
+                mMarkers.data(),
+                false
+            );
             mpMarkerBuffer->setName("Marker2DSet::mpMarkerBuffer");
         }
         // Else update the existing buffer.

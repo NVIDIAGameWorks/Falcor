@@ -57,7 +57,7 @@ namespace Falcor
 
         /** Create a new environment map from file.
             \param[in] pDevice GPU device.
-            \param[in] path The environment map texture file path.
+            \param[in] path The environment map texture file path (absolute or relative to working directory).
             \return A new object, or nullptr if the environment map failed to load.
         */
         static ref<EnvMap> createFromFile(ref<Device> pDevice, const std::filesystem::path& path);
@@ -73,6 +73,7 @@ namespace Falcor
             \param[in] degreesXYZ Rotation angles in degrees for XYZ.
         */
         void setRotation(float3 degreesXYZ);
+        void setTransform(const float4x4& matrix);
 
         /** Get rotation angles.
         */
@@ -104,7 +105,7 @@ namespace Falcor
         /** Bind the environment map to a given shader variable.
             \param[in] var Shader variable.
         */
-        void setShaderData(const ShaderVar& var) const;
+        void bindShaderData(const ShaderVar& var) const;
 
         enum class Changes
         {

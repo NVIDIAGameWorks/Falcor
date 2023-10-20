@@ -93,6 +93,7 @@ namespace Mogwai
         if (mpScene)
         {
             s += "# Scene\n";
+            // In the past we did try to find a relative path to the asset search directories, for now we skip this.
             s += ScriptWriter::makeMemberFunc(kRendererVar, kLoadScene, ScriptWriter::getPathString(mpScene->getPath()));
             const std::string sceneVar = kRendererVar + "." + kScene;
             s += mpScene->getScript(sceneVar);

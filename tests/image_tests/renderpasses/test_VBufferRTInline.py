@@ -1,4 +1,5 @@
 IMAGE_TEST = {
+    "device_types": ["d3d12", "vulkan"],
     'tolerance': 5e-7
 }
 

@@ -39,7 +39,6 @@ Texture2D gTexMotionVec;
 Texture2D gTexPrevColor;
 SamplerState gSampler;
 
-
 // Catmull-Rom filtering code from http://vec3.ca/bicubic-filtering-in-fewer-taps/
 float3 bicubicSampleCatmullRom(Texture2D tex, SamplerState samp, float2 samplePos, float2 texDim)
 {
@@ -60,6 +59,7 @@ float3 bicubicSampleCatmullRom(Texture2D tex, SamplerState samp, float2 samplePo
     float2 tc12 = (tc + w2 / w12) * invTextureSize;
     float2 tc3 = (tc + 2.f) * invTextureSize;
 
+    // clang-format off
     float3 result =
         tex.SampleLevel(samp, float2(tc0.x,  tc0.y), 0.f).rgb  * (w0.x  * w0.y) +
         tex.SampleLevel(samp, float2(tc0.x,  tc12.y), 0.f).rgb * (w0.x  * w12.y) +
@@ -70,17 +70,22 @@ float3 bicubicSampleCatmullRom(Texture2D tex, SamplerState samp, float2 samplePo
         tex.SampleLevel(samp, float2(tc3.x,  tc0.y), 0.f).rgb  * (w3.x  * w0.y) +
         tex.SampleLevel(samp, float2(tc3.x,  tc12.y), 0.f).rgb * (w3.x  * w12.y) +
         tex.SampleLevel(samp, float2(tc3.x,  tc3.y), 0.f).rgb  * (w3.x  * w3.y);
-
+    // clang-format on
     return result;
 }
 
-
-float4 main(float2 texC : TEXCOORD) : SV_TARGET0
+float4 main(float2 texC: TEXCOORD) : SV_TARGET0
 {
-    const int2 offset[8] = { int2(-1, -1), int2(-1,  1),
-                              int2( 1, -1), int2( 1,  1),
-                              int2( 1,  0), int2( 0, -1),
-                              int2( 0,  1), int2(-1,  0), };
+    const int2 offset[8] = {
+        int2(-1, -1),
+        int2(-1, 1),
+        int2(1, -1),
+        int2(1, 1),
+        int2(1, 0),
+        int2(0, -1),
+        int2(0, 1),
+        int2(-1, 0),
+    };
 
     uint2 texDim;
     uint levels;

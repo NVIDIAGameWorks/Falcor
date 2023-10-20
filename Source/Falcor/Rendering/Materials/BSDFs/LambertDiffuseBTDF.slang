@@ -33,10 +33,11 @@ __exported import Rendering.Materials.IBSDF;
 /**
  * Lambertian diffuse transmission.
  */
-struct LambertDiffuseBTDF : IBSDF
+struct LambertDiffuseBTDF : IBSDF, IDifferentiable
 {
     float3 albedo; ///< Diffuse albedo.
 
+    [Differentiable]
     float3 eval<S : ISampleGenerator>(const float3 wi, const float3 wo, inout S sg)
     {
         if (min(wi.z, -wo.z) < kMinCosTheta)

@@ -26,6 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
+#include "Utils/fast_vector.h"
 #include <vector>
 #include <cstdint>
 
@@ -188,6 +189,6 @@ private:
     {
         T a, b, c, d;
     };
-    std::vector<CubicCoeff> mCoefficient;
+    fast_vector<CubicCoeff> mCoefficient;
 };
 } // namespace Falcor

@@ -105,7 +105,7 @@ namespace Falcor
         /** Bind the light sampler data to a given shader variable.
             \param[in] var Shader variable.
         */
-        virtual void setShaderData(const ShaderVar& var) const override;
+        virtual void bindShaderData(const ShaderVar& var) const override;
 
         /** Render the GUI.
             \return True if setting the refresh flag is needed, false otherwise.
@@ -115,6 +115,8 @@ namespace Falcor
         /** Returns the current configuration.
         */
         const Options& getOptions() const { return mOptions; }
+
+        void setOptions(const Options& options);
 
     protected:
         /// Configuration options.

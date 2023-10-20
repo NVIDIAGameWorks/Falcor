@@ -30,31 +30,36 @@
 
 namespace
 {
-    const std::string kShaderFile("RenderPasses/Utils/CrossFade/CrossFade.cs.slang");
+const std::string kShaderFile("RenderPasses/Utils/CrossFade/CrossFade.cs.slang");
 
-    const std::string kInputA = "A";
-    const std::string kInputB = "B";
-    const std::string kOutput = "out";
+const std::string kInputA = "A";
+const std::string kInputB = "B";
+const std::string kOutput = "out";
 
-    const std::string kOutputFormat = "outputFormat";
-    const std::string kEnableAutoFade = "enableAutoFade";
-    const std::string kWaitFrameCount = "waitFrameCount";
-    const std::string kFadeFrameCount = "fadeFrameCount";
-    const std::string kFadeFactor = "fadeFactor";
-}
+const std::string kOutputFormat = "outputFormat";
+const std::string kEnableAutoFade = "enableAutoFade";
+const std::string kWaitFrameCount = "waitFrameCount";
+const std::string kFadeFrameCount = "fadeFrameCount";
+const std::string kFadeFactor = "fadeFactor";
+} // namespace
 
-CrossFade::CrossFade(ref<Device> pDevice, const Properties& props)
-    : RenderPass(pDevice)
+CrossFade::CrossFade(ref<Device> pDevice, const Properties& props) : RenderPass(pDevice)
 {
     // Parse dictionary.
     for (const auto& [key, value] : props)
     {
-        if (key == kOutputFormat) mOutputFormat = value;
-        else if (key == kEnableAutoFade) mEnableAutoFade = value;
-        else if (key == kWaitFrameCount) mWaitFrameCount = value;
-        else if (key == kFadeFrameCount) mFadeFrameCount = value;
-        else if (key == kFadeFactor) mFadeFactor = value;
-        else logWarning("Unknown property '{}' in CrossFade pass properties.", key);
+        if (key == kOutputFormat)
+            mOutputFormat = value;
+        else if (key == kEnableAutoFade)
+            mEnableAutoFade = value;
+        else if (key == kWaitFrameCount)
+            mWaitFrameCount = value;
+        else if (key == kFadeFrameCount)
+            mFadeFrameCount = value;
+        else if (key == kFadeFactor)
+            mFadeFactor = value;
+        else
+            logWarning("Unknown property '{}' in CrossFade pass properties.", key);
     }
 
     // Create resources.
@@ -64,7 +69,8 @@ CrossFade::CrossFade(ref<Device> pDevice, const Properties& props)
 Properties CrossFade::getProperties() const
 {
     Properties props;
-    if (mOutputFormat != ResourceFormat::Unknown) props[kOutputFormat] = mOutputFormat;
+    if (mOutputFormat != ResourceFormat::Unknown)
+        props[kOutputFormat] = mOutputFormat;
     props[kEnableAutoFade] = mEnableAutoFade;
     props[kWaitFrameCount] = mWaitFrameCount;
     props[kFadeFrameCount] = mFadeFrameCount;
@@ -100,7 +106,8 @@ void CrossFade::execute(RenderContext* pRenderContext, const RenderData& renderD
     auto refreshFlags = dict.getValue(kRenderPassRefreshFlags, RenderPassRefreshFlags::None);
 
     // If any refresh flag is set, we reset frame accumulation.
-    if (refreshFlags != RenderPassRefreshFlags::None) shouldReset = true;
+    if (refreshFlags != RenderPassRefreshFlags::None)
+        shouldReset = true;
 
     // Reset accumulation upon all scene changes, except camera jitter and history changes.
     // TODO: Add UI options to select which changes should trigger reset
@@ -115,7 +122,8 @@ void CrossFade::execute(RenderContext* pRenderContext, const RenderData& renderD
         {
             auto excluded = Camera::Changes::Jitter | Camera::Changes::History;
             auto cameraChanges = mpScene->getCamera()->getChanges();
-            if ((cameraChanges & ~excluded) != Camera::Changes::None) shouldReset = true;
+            if ((cameraChanges & ~excluded) != Camera::Changes::None)
+                shouldReset = true;
         }
         if (is_set(sceneUpdates, Scene::UpdateFlags::SDFGeometryChanged))
         {
@@ -132,9 +140,8 @@ void CrossFade::execute(RenderContext* pRenderContext, const RenderData& renderD
         mMixFrame++;
     }
 
-    float mix = mEnableAutoFade ?
-        math::clamp((float(mMixFrame) - mWaitFrameCount) / mFadeFrameCount, 0.f, 1.f) :
-        math::clamp(mFadeFactor, 0.f, 1.f);
+    float mix = mEnableAutoFade ? math::clamp((float(mMixFrame) - mWaitFrameCount) / mFadeFrameCount, 0.f, 1.f)
+                                : math::clamp(mFadeFactor, 0.f, 1.f);
 
     mScaleA = 1.f - mix;
     mScaleB = mix;
@@ -143,7 +150,7 @@ void CrossFade::execute(RenderContext* pRenderContext, const RenderData& renderD
     const auto& pOutput = renderData.getTexture(kOutput);
     FALCOR_ASSERT(pOutput);
     mOutputFormat = pOutput->getFormat();
-    checkInvariant(!isIntegerFormat(mOutputFormat), "Output cannot be an integer format.");
+    FALCOR_CHECK(!isIntegerFormat(mOutputFormat), "Output cannot be an integer format.");
 
     // Bind resources.
     auto var = mpFadePass->getRootVar();

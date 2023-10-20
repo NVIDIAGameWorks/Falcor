@@ -36,8 +36,8 @@ GPU_TEST(TransientHeapRecycling)
 
     size_t M = 1024 * 1024 * 1024;
     std::vector<uint8_t> cpuBuf(M, 0);
-    ref<Buffer> A = Buffer::create(pDevice, M, ResourceBindFlags::None, Buffer::CpuAccess::Read, cpuBuf.data());
-    ref<Buffer> B = Buffer::create(pDevice, 4, ResourceBindFlags::None, Buffer::CpuAccess::None);
+    ref<Buffer> A = pDevice->createBuffer(M, ResourceBindFlags::None, MemoryType::DeviceLocal, cpuBuf.data());
+    ref<Buffer> B = pDevice->createBuffer(4, ResourceBindFlags::None, MemoryType::DeviceLocal);
 
     // Progress through N frames (and transient heaps), ending up using the
     // same transient heap as is used for uploading the data to buffer A.
@@ -49,8 +49,8 @@ GPU_TEST(TransientHeapRecycling)
     // The following commands will trigger a TDR even if the validation error
     // is missed.
     pRenderContext->copyBufferRegion(B.get(), 0, A.get(), 0, 4);
-    pRenderContext->flush(true);
-    A->map(Buffer::MapType::Read);
-    A->unmap();
+    pRenderContext->submit(true);
+    // A->map(Buffer::MapType::Read);
+    // A->unmap();
 }
 } // namespace Falcor

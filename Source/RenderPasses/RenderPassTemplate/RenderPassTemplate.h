@@ -36,7 +36,10 @@ class RenderPassTemplate : public RenderPass
 public:
     FALCOR_PLUGIN_CLASS(RenderPassTemplate, "RenderPassTemplate", "Insert pass description here.");
 
-    static ref<RenderPassTemplate> create(ref<Device> pDevice, const Properties& props) { return make_ref<RenderPassTemplate>(pDevice, props); }
+    static ref<RenderPassTemplate> create(ref<Device> pDevice, const Properties& props)
+    {
+        return make_ref<RenderPassTemplate>(pDevice, props);
+    }
 
     RenderPassTemplate(ref<Device> pDevice, const Properties& props);
 

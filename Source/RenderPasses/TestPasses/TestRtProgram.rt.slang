@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -88,13 +88,14 @@ void miss1(inout RayData rayData)
 #if MODE == 0
 
 [shader("anyhit")]
-void anyHit(inout RayData rayData : SV_RayPayload, BuiltInTriangleIntersectionAttributes attribs : SV_IntersectionAttributes)
+void anyHit(inout RayData rayData: SV_RayPayload, BuiltInTriangleIntersectionAttributes attribs: SV_IntersectionAttributes)
 {
     // Alpha test for non-opaque geometry.
     GeometryInstanceID instanceID = getGeometryInstanceID();
     VertexData v = getVertexData(instanceID, PrimitiveIndex(), attribs);
     uint materialID = gScene.getMaterialID(instanceID);
-    if (gScene.materials.alphaTest(v, materialID, 0.f)) IgnoreHit();
+    if (gScene.materials.alphaTest(v, materialID, 0.f))
+        IgnoreHit();
 }
 
 [shader("closesthit")]
@@ -140,45 +141,27 @@ interface IMtl
 
 struct Mtl0 : IMtl
 {
-    float3 getColor()
-    {
-        return float3(1, 0, 0);
-    }
+    float3 getColor() { return float3(1, 0, 0); }
 
-    bool alphaTest(uint2 pixel)
-    {
-        return pixel.x % 8 == 0;
-    }
+    bool alphaTest(uint2 pixel) { return pixel.x % 8 == 0; }
 }
 
 struct Mtl1 : IMtl
 {
-    float3 getColor()
-    {
-        return float3(0, 1, 0);
-    }
+    float3 getColor() { return float3(0, 1, 0); }
 
-    bool alphaTest(uint2 pixel)
-    {
-        return pixel.y % 8 == 0;
-    }
+    bool alphaTest(uint2 pixel) { return pixel.y % 8 == 0; }
 }
 
 struct Mtl2 : IMtl
 {
-    float3 getColor()
-    {
-        return float3(0, 0, 1);
-    }
+    float3 getColor() { return float3(0, 0, 1); }
 
-    bool alphaTest(uint2 pixel)
-    {
-        return (pixel.x + pixel.y) % 8 == 0;
-    }
+    bool alphaTest(uint2 pixel) { return (pixel.x + pixel.y) % 8 == 0; }
 }
 
 [shader("anyhit")]
-void anyHit(inout RayData rayData : SV_RayPayload, BuiltInTriangleIntersectionAttributes attribs : SV_IntersectionAttributes)
+void anyHit(inout RayData rayData: SV_RayPayload, BuiltInTriangleIntersectionAttributes attribs: SV_IntersectionAttributes)
 {
     GeometryInstanceID instanceID = getGeometryInstanceID();
     uint geometryID = gScene.getGeometryInstance(instanceID).geometryID;
@@ -192,7 +175,8 @@ void anyHit(inout RayData rayData : SV_RayPayload, BuiltInTriangleIntersectionAt
     let mtl = createDynamicObject<IMtl, int>(int(type), dummyData);
 
     // Depending on which type was created we'll get a different pattern of discarded pixels.
-    if (mtl.alphaTest(DispatchRaysIndex().xy)) IgnoreHit();
+    if (mtl.alphaTest(DispatchRaysIndex().xy))
+        IgnoreHit();
 }
 
 [shader("closesthit")]

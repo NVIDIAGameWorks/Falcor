@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -35,7 +35,8 @@ ConstantBuffer<GBufferRT> gGBufferRT;
 
 struct RayData
 {
-    int dummy; // TODO: Passing in an empty payload struct doesn't work. Declare a dummy variable so that the compiler doesn't remove the declaration.
+    // TODO: Passing in an empty payload struct doesn't work. Declare a dummy variable so that the compiler doesn't remove the declaration.
+    int dummy;
 };
 
 //
@@ -63,7 +64,8 @@ void anyHit(inout RayData rayData, BuiltInTriangleIntersectionAttributes attribs
         GeometryInstanceID instanceID = getGeometryInstanceID();
         VertexData v = getVertexData(instanceID, PrimitiveIndex(), attribs);
         const uint materialID = gScene.getMaterialID(instanceID);
-        if (gScene.materials.alphaTest(v, materialID, 0.f)) IgnoreHit();
+        if (gScene.materials.alphaTest(v, materialID, 0.f))
+            IgnoreHit();
     }
 }
 
@@ -184,7 +186,16 @@ void rayGen()
     // Trace ray.
     const Ray ray = gGBufferRT.generateRay(launchIndex);
     RayData rayData;
-    TraceRay(gScene.rtAccel, GBufferRT::kRayFlags, 0xff /* instanceInclusionMask */, 0 /* hitIdx */, rayTypeCount, 0 /* missIdx */, ray.toRayDesc(), rayData);
+    TraceRay(
+        gScene.rtAccel,
+        GBufferRT::kRayFlags,
+        0xff /* instanceInclusionMask */,
+        0 /* hitIdx */,
+        rayTypeCount,
+        0 /* missIdx */,
+        ray.toRayDesc(),
+        rayData
+    );
 
     gGBufferRT.writeAux(launchIndex, ray);
 
