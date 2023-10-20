@@ -92,3 +92,16 @@ float3 transformVector(xform3x4 aFromB, float3 vectorB)
 {
     return mul(aFromB.xform, float4(vectorB, 0.f)).xyz;
 }
+
+__generic<T : __BuiltinFloatingPointType, let N : int> extension matrix<T, N, N>
+{
+    // Create an identity matrix of size N and type T
+    static matrix<T, N, N> identity()
+    {
+        static matrix<T, N, N> m = matrix<T, N, N>((T)0);
+        [ForceUnroll]
+        for (int i = 0; i < N; i++)
+            m[i][i] = (T)1;
+        return m;
+    }
+}

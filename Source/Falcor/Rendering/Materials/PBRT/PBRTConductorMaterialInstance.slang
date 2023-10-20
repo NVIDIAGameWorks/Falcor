@@ -27,14 +27,27 @@
  **************************************************************************/
 __exported import Rendering.Materials.IMaterialInstance;
 __exported import Rendering.Materials.AnisotropicGGX;
+__exported import DiffRendering.SceneGradients;
+__exported import DiffRendering.GradientIOWrapper;
 import Rendering.Materials.Fresnel;
 
-struct PBRTConductorBSDF : IBSDF
+struct PBRTConductorBSDF : IBSDF, IDifferentiable
 {
     AnisotropicGGX D;
     float3 eta;
     float3 k;
 
+    [Differentiable]
+    __init(const DiffMaterialData diffData)
+    {
+        uint offset = 0;
+        diffData.read(eta, offset);
+        diffData.read(k, offset);
+        float2 roughness = diffData.read<2>(offset);
+        D = AnisotropicGGX(roughness);
+    }
+
+    [Differentiable]
     float3 eval<S : ISampleGenerator>(const float3 wiLocal, const float3 woLocal, inout S sg)
     {
         if (D.isSingular() || min(wiLocal.z, woLocal.z) < 0.0f) return float3(0.0f);
@@ -100,7 +113,7 @@ struct PBRTConductorBSDF : IBSDF
     }
 };
 
-struct PBRTConductorMaterialInstance : IMaterialInstance
+struct PBRTConductorMaterialInstance : MaterialInstanceBase, IMaterialInstance
 {
     ShadingFrame sf;            ///< Shading frame in world space.
     PBRTConductorBSDF bsdf;
@@ -113,6 +126,18 @@ struct PBRTConductorMaterialInstance : IMaterialInstance
         if (!isValidHemisphereReflection(sd, sf, wiLocal, woLocal, wo)) return float3(0.f);
 
         return bsdf.eval(wiLocal, woLocal, sg);
+    }
+
+    [Differentiable]
+    float3 evalAD<S : ISampleGenerator>(const DiffMaterialData diffData, const ShadingData sd, const float3 wo, inout S sg)
+    {
+        float3 wiLocal = diffData.sf.toLocal(sd.V);
+        float3 woLocal = diffData.sf.toLocal(wo);
+
+        if (!isValidHemisphereReflection(sd, sf, wiLocal, woLocal, wo)) return float3(0.f);
+
+        PBRTConductorBSDF bsdfAD = PBRTConductorBSDF(diffData);
+        return bsdfAD.eval(wiLocal, woLocal, sg);
     }
 
     bool sample<S : ISampleGenerator>(const ShadingData sd, inout S sg, out BSDFSample result, bool useImportanceSampling = true)

@@ -27,7 +27,7 @@
  **************************************************************************/
 #pragma once
 
-#include "Core/Assert.h"
+#include "Core/Error.h"
 
 #include <cstdint>
 

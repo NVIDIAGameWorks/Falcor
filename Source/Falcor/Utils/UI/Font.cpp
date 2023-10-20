@@ -26,7 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "Font.h"
-#include "Core/Errors.h"
+#include "Core/Error.h"
 #include "Core/API/Texture.h"
 #include <fstream>
 
@@ -59,7 +59,7 @@ struct FontCharData
 Font::Font(ref<Device> pDevice, const std::filesystem::path& path)
 {
     if (!loadFromFile(pDevice, path))
-        throw RuntimeError("Failed to create font resource");
+        FALCOR_THROW("Failed to create font resource");
 }
 
 Font::~Font() = default;

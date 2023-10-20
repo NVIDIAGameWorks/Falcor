@@ -46,9 +46,9 @@ public:
         mpComputePass = ComputePass::create(mpDevice, "plugins/importers/PBRTImporter/EnvMapConverter.cs.slang");
 
         Sampler::Desc desc;
-        desc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
-        desc.setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
-        mpSampler = Sampler::create(mpDevice, desc);
+        desc.setFilterMode(TextureFilteringMode::Linear, TextureFilteringMode::Linear, TextureFilteringMode::Linear);
+        desc.setAddressingMode(TextureAddressingMode::Clamp, TextureAddressingMode::Clamp, TextureAddressingMode::Clamp);
+        mpSampler = mpDevice->createSampler(desc);
     }
 
     /**
@@ -65,9 +65,14 @@ public:
 
         uint2 dstDim{pSrcTexture->getWidth() * 2, pSrcTexture->getHeight()};
 
-        ref<Texture> pDstTexture = Texture::create2D(
-            mpDevice, dstDim.x, dstDim.y, ResourceFormat::RGBA32Float, 1, 1, nullptr,
-            Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess
+        ref<Texture> pDstTexture = mpDevice->createTexture2D(
+            dstDim.x,
+            dstDim.y,
+            ResourceFormat::RGBA32Float,
+            1,
+            1,
+            nullptr,
+            ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess
         );
 
         auto vars = mpComputePass->getRootVar()["gEnvMapConverter"];

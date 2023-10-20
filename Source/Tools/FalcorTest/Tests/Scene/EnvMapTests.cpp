@@ -26,6 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "Testing/UnitTest.h"
+#include "Core/AssetResolver.h"
 #include "Scene/Lights/EnvMap.h"
 #include "Rendering/Lights/EnvMapSampler.h"
 
@@ -33,8 +34,8 @@ namespace Falcor
 {
 namespace
 {
-// This file is located in the media/ directory fetched by packman.
-const char kEnvMapFile[] = "test_scenes/envmaps/20050806-03_hd.hdr";
+// TODO: This is not ideal, we should only access files in the runtime directory.
+const std::filesystem::path kEnvMapPath = getProjectDirectory() / "media/test_scenes/envmaps/20050806-03_hd.hdr";
 } // namespace
 
 GPU_TEST(EnvMap)
@@ -42,7 +43,7 @@ GPU_TEST(EnvMap)
     // Test loading a light probe.
     // This call runs setup code on the GPU to precompute the importance map.
     // If it succeeds, we at least know the code compiles and run.
-    ref<EnvMap> pEnvMap = EnvMap::createFromFile(ctx.getDevice(), kEnvMapFile);
+    ref<EnvMap> pEnvMap = EnvMap::createFromFile(ctx.getDevice(), kEnvMapPath);
     EXPECT_NE(pEnvMap, nullptr);
     if (pEnvMap == nullptr)
         return;

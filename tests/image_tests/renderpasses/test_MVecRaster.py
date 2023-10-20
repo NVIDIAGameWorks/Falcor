@@ -4,7 +4,7 @@ from helpers import render_frames
 from graphs.MVecRaster import MVecRaster as g
 from falcor import *
 
-sceneFile = 'Cerberus/Standard/Cerberus.pyscene'
+sceneFile = 'test_scenes/cesium_man/CesiumMan.pyscene'
 
 m.addGraph(g)
 m.loadScene(sceneFile)

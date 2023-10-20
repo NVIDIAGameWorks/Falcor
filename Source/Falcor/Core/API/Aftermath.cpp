@@ -81,12 +81,12 @@ static std::string getResultString(GFSDK_Aftermath_Result result)
 
 // Helper macro for checking Nsight Aftermath results and throwing exception
 // in case of a failure.
-#define AFTERMATH_CHECK_ERROR(FC)                         \
-    do                                                    \
-    {                                                     \
-        GFSDK_Aftermath_Result _result = FC;              \
-        if (!GFSDK_Aftermath_SUCCEED(_result))            \
-            throw RuntimeError(getResultString(_result)); \
+#define AFTERMATH_CHECK_ERROR(FC)                   \
+    do                                              \
+    {                                               \
+        GFSDK_Aftermath_Result _result = FC;        \
+        if (!GFSDK_Aftermath_SUCCEED(_result))      \
+            FALCOR_THROW(getResultString(_result)); \
     } while (0)
 
 static std::mutex sMutex;
@@ -157,8 +157,14 @@ static void writeGpuCrashDumpToFile(const void* pGpuCrashDump, const uint32_t gp
     // Step 1: Generate the JSON and get the size.
     uint32_t jsonSize = 0;
     AFTERMATH_CHECK_ERROR(GFSDK_Aftermath_GpuCrashDump_GenerateJSON(
-        decoder, GFSDK_Aftermath_GpuCrashDumpDecoderFlags_ALL_INFO, GFSDK_Aftermath_GpuCrashDumpFormatterFlags_NONE,
-        shaderDebugInfoLookupCallback, shaderLookupCallback, shaderSourceDebugInfoLookupCallback, nullptr, &jsonSize
+        decoder,
+        GFSDK_Aftermath_GpuCrashDumpDecoderFlags_ALL_INFO,
+        GFSDK_Aftermath_GpuCrashDumpFormatterFlags_NONE,
+        shaderDebugInfoLookupCallback,
+        shaderLookupCallback,
+        shaderSourceDebugInfoLookupCallback,
+        nullptr,
+        &jsonSize
     ));
     // Step 2: Allocate a buffer and fetch the generated JSON.
     std::vector<char> json(jsonSize);
@@ -331,7 +337,9 @@ void enableAftermath()
         // Let the Nsight Aftermath library cache shader debug information
         GFSDK_Aftermath_GpuCrashDumpFeatureFlags_DeferDebugInfoCallbacks,
         // Callbacks
-        gpuCrashDumpCallback, shaderDebugInfoCallback, crashDumpDescriptionCallback,
+        gpuCrashDumpCallback,
+        shaderDebugInfoCallback,
+        crashDumpDescriptionCallback,
         // Do not resolve markers for now (they are embedded with string data)
         nullptr /* resolveMarkerCallback */,
         // User data

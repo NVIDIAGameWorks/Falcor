@@ -27,7 +27,7 @@
  **************************************************************************/
 #pragma once
 #include "Core/Macros.h"
-#include "Core/Assert.h"
+#include "Core/Error.h"
 #include <algorithm>
 #include <codecvt>
 #include <iomanip>

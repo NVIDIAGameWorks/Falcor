@@ -69,7 +69,7 @@ public:
 
     /// Resizes the back buffers of this swapchain. All render target views and framebuffers
     /// referencing the back buffer images must be freed before calling this method.
-    /// Note: This method calls Device::flushAndSync().
+    /// Note: This method calls Device::wait().
     void resize(uint32_t width, uint32_t height);
 
     /// Check if the window is occluded.

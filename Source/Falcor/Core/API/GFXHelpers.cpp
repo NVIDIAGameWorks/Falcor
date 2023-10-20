@@ -231,51 +231,51 @@ gfx::ResourceState getGFXResourceState(Resource::State state)
     }
 }
 
-void getGFXResourceState(Resource::BindFlags flags, gfx::ResourceState& defaultState, gfx::ResourceStateSet& allowedStates)
+void getGFXResourceState(ResourceBindFlags flags, gfx::ResourceState& defaultState, gfx::ResourceStateSet& allowedStates)
 {
     defaultState = gfx::ResourceState::General;
     allowedStates = gfx::ResourceStateSet(defaultState);
 
     // setting up the following flags requires Slang gfx resourece states to have integral type
-    if (is_set(flags, Resource::BindFlags::UnorderedAccess))
+    if (is_set(flags, ResourceBindFlags::UnorderedAccess))
     {
         allowedStates.add(gfx::ResourceState::UnorderedAccess);
     }
 
-    if (is_set(flags, Resource::BindFlags::ShaderResource))
+    if (is_set(flags, ResourceBindFlags::ShaderResource))
     {
         allowedStates.add(gfx::ResourceState::ShaderResource);
     }
 
-    if (is_set(flags, Resource::BindFlags::RenderTarget))
+    if (is_set(flags, ResourceBindFlags::RenderTarget))
     {
         allowedStates.add(gfx::ResourceState::RenderTarget);
     }
 
-    if (is_set(flags, Resource::BindFlags::DepthStencil))
+    if (is_set(flags, ResourceBindFlags::DepthStencil))
     {
         allowedStates.add(gfx::ResourceState::DepthWrite);
     }
 
-    if (is_set(flags, Resource::BindFlags::Vertex))
+    if (is_set(flags, ResourceBindFlags::Vertex))
     {
         allowedStates.add(gfx::ResourceState::VertexBuffer);
         allowedStates.add(gfx::ResourceState::AccelerationStructureBuildInput);
     }
-    if (is_set(flags, Resource::BindFlags::Index))
+    if (is_set(flags, ResourceBindFlags::Index))
     {
         allowedStates.add(gfx::ResourceState::IndexBuffer);
         allowedStates.add(gfx::ResourceState::AccelerationStructureBuildInput);
     }
-    if (is_set(flags, Resource::BindFlags::IndirectArg))
+    if (is_set(flags, ResourceBindFlags::IndirectArg))
     {
         allowedStates.add(gfx::ResourceState::IndirectArgument);
     }
-    if (is_set(flags, Resource::BindFlags::Constant))
+    if (is_set(flags, ResourceBindFlags::Constant))
     {
         allowedStates.add(gfx::ResourceState::ConstantBuffer);
     }
-    if (is_set(flags, Resource::BindFlags::AccelerationStructure))
+    if (is_set(flags, ResourceBindFlags::AccelerationStructure))
     {
         allowedStates.add(gfx::ResourceState::AccelerationStructure);
         allowedStates.add(gfx::ResourceState::ShaderResource);

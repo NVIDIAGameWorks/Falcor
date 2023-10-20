@@ -35,9 +35,16 @@ using namespace Falcor;
 class InvalidPixelDetectionPass : public RenderPass
 {
 public:
-    FALCOR_PLUGIN_CLASS(InvalidPixelDetectionPass, "InvalidPixelDetectionPass", "Pass that marks all NaN pixels red and Inf pixels green in an image.");
+    FALCOR_PLUGIN_CLASS(
+        InvalidPixelDetectionPass,
+        "InvalidPixelDetectionPass",
+        "Pass that marks all NaN pixels red and Inf pixels green in an image."
+    );
 
-    static ref<InvalidPixelDetectionPass> create(ref<Device> pDevice, const Properties& props) { return make_ref<InvalidPixelDetectionPass>(pDevice, props); }
+    static ref<InvalidPixelDetectionPass> create(ref<Device> pDevice, const Properties& props)
+    {
+        return make_ref<InvalidPixelDetectionPass>(pDevice, props);
+    }
 
     InvalidPixelDetectionPass(ref<Device> pDevice, const Properties& props);
 

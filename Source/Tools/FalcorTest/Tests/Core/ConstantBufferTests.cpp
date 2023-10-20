@@ -36,7 +36,7 @@ GPU_TEST(BuiltinConstantBuffer1)
     ctx.createProgram("Tests/Core/ConstantBufferTests.cs.slang", "testCbuffer1");
     ctx.allocateStructuredBuffer("result", 3);
     ctx["CB"]["params1"]["a"] = 1;
-    ctx["CB"]["params1"]["b"] = 3;
+    ctx["CB"]["params1"]["b"] = 3u;
     ctx["CB"]["params1"]["c"] = 5.5f;
     ctx.runProgram(1, 1, 1);
 
@@ -53,7 +53,7 @@ GPU_TEST(BuiltinConstantBuffer2)
     ctx.createProgram("Tests/Core/ConstantBufferTests.cs.slang", "testCbuffer2");
     ctx.allocateStructuredBuffer("result", 3);
     ctx["params2"]["a"] = 1;
-    ctx["params2"]["b"] = 3;
+    ctx["params2"]["b"] = 3u;
     ctx["params2"]["c"] = 5.5f;
     ctx.runProgram(1, 1, 1);
 

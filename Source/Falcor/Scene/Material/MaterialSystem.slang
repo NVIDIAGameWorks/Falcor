@@ -27,6 +27,7 @@
  **************************************************************************/
 import Scene.Material.TextureHandle;
 import Scene.Material.TextureSampler;
+import Scene.Material.AlphaTest;
 import Rendering.Volumes.PhaseFunction;
 import Utils.SlangUtils;
 __exported import Scene.SceneTypes;
@@ -352,6 +353,39 @@ struct MaterialSystem
         displacementData.samplerState = materialSamplers[samplerID];
         displacementData.samplerStateMin = materialSamplers[displacementMinSamplerID];
         displacementData.samplerStateMax = materialSamplers[displacementMaxSamplerID];
+    }
+
+    /** Perform alpha test at a hit point and return the result.
+        \param[in] v Interpolated vertex data.
+        \param[in] materialID Material ID at the hit.
+        \param[in] lod Method for computing texture level-of-detail, must implement the `ITextureSampler` interface.
+        \return True if hit should be ignored/discarded.
+    */
+    bool alphaTest<L : ITextureSampler>(const VertexData v, const uint materialID, L lod)
+    {
+        // Load the material header first and early out if alpha test not supported.
+        const MaterialHeader header = materialData[materialID].header;
+
+        if (header.getAlphaMode() != AlphaMode::Mask) return false;
+
+        SamplerState s = getTextureSampler(header.getDefaultTextureSamplerID());
+        float alpha = sampleTexture(header.getAlphaTextureHandle(), s, v.texC, float4(1.f), lod).a;
+        float alphaThreshold = header.getAlphaThreshold();
+
+        return evalAlphaTest(alpha, alphaThreshold, v.posW);
+    }
+
+    /** Perform alpha test at a hit point and return the result.
+        This version samples alpha at a fixed level of detail.
+        \param[in] v Interpolated vertex data.
+        \param[in] materialID Material ID at the hit.
+        \param[in] lod Fixed texture level of detail.
+        \return True if hit should be ignored/discarded.
+    */
+    bool alphaTest(const VertexData v, const uint materialID, const float lod)
+    {
+        ExplicitLodTextureSampler explicitLOD = { lod };
+        return alphaTest(v, materialID, explicitLOD);
     }
 };
 

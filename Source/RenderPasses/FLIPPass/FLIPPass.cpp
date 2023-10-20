@@ -30,38 +30,40 @@
 
 namespace
 {
-    const char kFLIPShaderFile[] = "RenderPasses/FLIPPass/FLIPPass.cs.slang";
-    const char kComputeLuminanceShaderFile[] = "RenderPasses/FLIPPass/ComputeLuminance.cs.slang";
+const char kFLIPShaderFile[] = "RenderPasses/FLIPPass/FLIPPass.cs.slang";
+const char kComputeLuminanceShaderFile[] = "RenderPasses/FLIPPass/ComputeLuminance.cs.slang";
 
-    const char kTestImageInput[] = "testImage";
-    const char kReferenceImageInput[] = "referenceImage";
-    const char kErrorMapOutput[] = "errorMap"; // High-precision FLIP error map - use for computations (not display).
-    const char kErrorMapDisplayOutput[] = "errorMapDisplay"; // Low-precision FLIP error map - use for display / analysis (not computations).
-    const char kExposureMapDisplayOutput[] = "exposureMapDisplay"; // Low-precision HDR-FLIP exposure map.
+const char kTestImageInput[] = "testImage";
+const char kReferenceImageInput[] = "referenceImage";
+// High-precision FLIP error map - use for computations (not display).
+const char kErrorMapOutput[] = "errorMap";
+// Low-precision FLIP error map - use for display / analysis (not computations).
+const char kErrorMapDisplayOutput[] = "errorMapDisplay";
+// Low-precision HDR-FLIP exposure map.
+const char kExposureMapDisplayOutput[] = "exposureMapDisplay";
 
-    const char kEnabled[] = "enabled";
-    const char kIsHDR[] = "isHDR";
-    const char kToneMapper[] = "toneMapper";
-    const char kUseCustomExposureParameters[] = "useCustomExposureParameters";
-    const char kStartExposure[] = "startExposure";
-    const char kStopExposure[] = "stopExposure";
-    const char kNumExposures[] = "numExposures";
-    const char kUseMagma[] = "useMagma";
-    const char kClampInput[] = "clampInput";
-    const char kMonitorWidthPixels[] = "monitorWidthPixels";
-    const char kMonitorWidthMeters[] = "monitorWidthMeters";
-    const char kMonitorDistance[] = "monitorDistanceMeters";
-    const char kComputePooledFLIPValues[] = "computePooledFLIPValues";
-    const char kUseRealMonitorInfo[] = "useRealMonitorInfo";
-}
+const char kEnabled[] = "enabled";
+const char kIsHDR[] = "isHDR";
+const char kToneMapper[] = "toneMapper";
+const char kUseCustomExposureParameters[] = "useCustomExposureParameters";
+const char kStartExposure[] = "startExposure";
+const char kStopExposure[] = "stopExposure";
+const char kNumExposures[] = "numExposures";
+const char kUseMagma[] = "useMagma";
+const char kClampInput[] = "clampInput";
+const char kMonitorWidthPixels[] = "monitorWidthPixels";
+const char kMonitorWidthMeters[] = "monitorWidthMeters";
+const char kMonitorDistance[] = "monitorDistanceMeters";
+const char kComputePooledFLIPValues[] = "computePooledFLIPValues";
+const char kUseRealMonitorInfo[] = "useRealMonitorInfo";
+} // namespace
 
 extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registry)
 {
     registry.registerClass<RenderPass, FLIPPass>();
 }
 
-FLIPPass::FLIPPass(ref<Device> pDevice, const Properties& props)
-    : RenderPass(pDevice)
+FLIPPass::FLIPPass(ref<Device> pDevice, const Properties& props) : RenderPass(pDevice)
 {
     parseProperties(props);
 
@@ -87,8 +89,10 @@ FLIPPass::FLIPPass(ref<Device> pDevice, const Properties& props)
     {
         // Assume first monitor is used.
         size_t monitorIndex = 0;
-        if (monitorDescs[monitorIndex].resolution.x > 0) mMonitorWidthPixels = monitorDescs[0].resolution.x;
-        if (monitorDescs[monitorIndex].physicalSize.x > 0) mMonitorWidthMeters = monitorDescs[0].physicalSize.x * 0.0254f; //< Convert from inches to meters
+        if (monitorDescs[monitorIndex].resolution.x > 0)
+            mMonitorWidthPixels = monitorDescs[0].resolution.x;
+        if (monitorDescs[monitorIndex].physicalSize.x > 0)
+            mMonitorWidthMeters = monitorDescs[0].physicalSize.x * 0.0254f; //< Convert from inches to meters
     }
 }
 
@@ -117,33 +121,56 @@ void FLIPPass::parseProperties(const Properties& props)
     // Read settings.
     for (const auto& [key, value] : props)
     {
-        if (key == kEnabled) mEnabled = value;
-        else if (key == kIsHDR) mIsHDR = value;
-        else if (key == kToneMapper) mToneMapper = value;
-        else if (key == kUseCustomExposureParameters) mUseCustomExposureParameters = value;
-        else if (key == kStartExposure) mStartExposure = value;
-        else if (key == kStopExposure) mStopExposure = value;
-        else if (key == kNumExposures) mNumExposures = value;
-        else if (key == kUseMagma) mUseMagma = value;
-        else if (key == kClampInput) mClampInput = value;
-        else if (key == kMonitorWidthPixels) mMonitorWidthPixels = value;
-        else if (key == kMonitorWidthMeters) mMonitorWidthMeters = value;
-        else if (key == kMonitorDistance) mMonitorDistanceMeters = value;
-        else if (key == kComputePooledFLIPValues) mComputePooledFLIPValues = value;
-        else if (key == kUseRealMonitorInfo) mUseRealMonitorInfo = value;
-        else logWarning("Unknown property '{}' in a FLIPPass properties.", key);
+        if (key == kEnabled)
+            mEnabled = value;
+        else if (key == kIsHDR)
+            mIsHDR = value;
+        else if (key == kToneMapper)
+            mToneMapper = value;
+        else if (key == kUseCustomExposureParameters)
+            mUseCustomExposureParameters = value;
+        else if (key == kStartExposure)
+            mStartExposure = value;
+        else if (key == kStopExposure)
+            mStopExposure = value;
+        else if (key == kNumExposures)
+            mNumExposures = value;
+        else if (key == kUseMagma)
+            mUseMagma = value;
+        else if (key == kClampInput)
+            mClampInput = value;
+        else if (key == kMonitorWidthPixels)
+            mMonitorWidthPixels = value;
+        else if (key == kMonitorWidthMeters)
+            mMonitorWidthMeters = value;
+        else if (key == kMonitorDistance)
+            mMonitorDistanceMeters = value;
+        else if (key == kComputePooledFLIPValues)
+            mComputePooledFLIPValues = value;
+        else if (key == kUseRealMonitorInfo)
+            mUseRealMonitorInfo = value;
+        else
+            logWarning("Unknown property '{}' in a FLIPPass properties.", key);
     }
 }
-
 
 RenderPassReflection FLIPPass::reflect(const CompileData& compileData)
 {
     RenderPassReflection reflector;
-    reflector.addInput(kTestImageInput, "Test image").bindFlags(Falcor::Resource::BindFlags::ShaderResource).texture2D(0, 0);
-    reflector.addInput(kReferenceImageInput, "Reference image").bindFlags(Falcor::Resource::BindFlags::ShaderResource).texture2D(0, 0);
-    reflector.addOutput(kErrorMapOutput, "FLIP error map for computations").format(ResourceFormat::RGBA32Float).bindFlags(Falcor::Resource::BindFlags::UnorderedAccess | Falcor::Resource::BindFlags::ShaderResource).texture2D(0, 0);
-    reflector.addOutput(kErrorMapDisplayOutput, "FLIP error map for display").format(ResourceFormat::RGBA8UnormSrgb).bindFlags(Falcor::Resource::BindFlags::RenderTarget).texture2D(0, 0);
-    reflector.addOutput(kExposureMapDisplayOutput, "HDR-FLIP exposure map for display").format(ResourceFormat::RGBA8UnormSrgb).bindFlags(Falcor::Resource::BindFlags::RenderTarget).texture2D(0, 0);
+    reflector.addInput(kTestImageInput, "Test image").bindFlags(Falcor::ResourceBindFlags::ShaderResource).texture2D(0, 0);
+    reflector.addInput(kReferenceImageInput, "Reference image").bindFlags(Falcor::ResourceBindFlags::ShaderResource).texture2D(0, 0);
+    reflector.addOutput(kErrorMapOutput, "FLIP error map for computations")
+        .format(ResourceFormat::RGBA32Float)
+        .bindFlags(Falcor::ResourceBindFlags::UnorderedAccess | Falcor::ResourceBindFlags::ShaderResource)
+        .texture2D(0, 0);
+    reflector.addOutput(kErrorMapDisplayOutput, "FLIP error map for display")
+        .format(ResourceFormat::RGBA8UnormSrgb)
+        .bindFlags(Falcor::ResourceBindFlags::RenderTarget)
+        .texture2D(0, 0);
+    reflector.addOutput(kExposureMapDisplayOutput, "HDR-FLIP exposure map for display")
+        .format(ResourceFormat::RGBA8UnormSrgb)
+        .bindFlags(Falcor::ResourceBindFlags::RenderTarget)
+        .texture2D(0, 0);
     return reflector;
 }
 
@@ -183,11 +210,11 @@ static void computeMedianMax(const float* values, const uint32_t numValues, floa
 {
     std::vector<float> sortedValues(values, values + numValues);
     std::sort(sortedValues.begin(), sortedValues.end());
-    if (numValues & 1)      // Odd number of values.
+    if (numValues & 1) // Odd number of values.
     {
         median = sortedValues[numValues / 2];
     }
-    else                    // Even number of values.
+    else // Even number of values.
     {
         uint32_t medianLocation = numValues / 2 - 1;
         median = (sortedValues[medianLocation] + sortedValues[medianLocation + 1]) * 0.5f;
@@ -200,15 +227,16 @@ void FLIPPass::computeExposureParameters(const float Ymedian, const float Ymax)
     std::vector<float> tmCoefficients;
     if (mToneMapper == FLIPToneMapperType::Reinhard)
     {
-        tmCoefficients = { 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f };
+        tmCoefficients = {0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f};
     }
     else if (mToneMapper == FLIPToneMapperType::ACES)
     {
-        tmCoefficients = { 0.6f * 0.6f * 2.51f, 0.6f * 0.03f, 0.0f, 0.6f * 0.6f * 2.43f, 0.6f * 0.59f, 0.14f };  // 0.6 is pre-exposure cancellation.
+        // 0.6 is pre-exposure cancellation.
+        tmCoefficients = {0.6f * 0.6f * 2.51f, 0.6f * 0.03f, 0.0f, 0.6f * 0.6f * 2.43f, 0.6f * 0.59f, 0.14f};
     }
     else if (mToneMapper == FLIPToneMapperType::Hable)
     {
-        tmCoefficients = { 0.231683f, 0.013791f, 0.0f, 0.18f, 0.3f, 0.018f };
+        tmCoefficients = {0.231683f, 0.013791f, 0.0f, 0.18f, 0.3f, 0.018f};
     }
     else
     {
@@ -233,7 +261,8 @@ void FLIPPass::computeExposureParameters(const float Ymedian, const float Ymax)
 
 void FLIPPass::execute(RenderContext* pRenderContext, const RenderData& renderData)
 {
-    if (!mEnabled) return;
+    if (!mEnabled)
+        return;
 
     // Pick up resources from render graph.
     const auto& pTestImageInput = renderData.getTexture(kTestImageInput);
@@ -253,15 +282,34 @@ void FLIPPass::execute(RenderContext* pRenderContext, const RenderData& renderDa
 
     // Refresh internal high precision buffer for FLIP results.
     uint2 outputResolution = uint2(pReferenceImageInput->getWidth(), pReferenceImageInput->getHeight());
-    if (!mpFLIPErrorMapDisplay || !mpExposureMapDisplay || mpFLIPErrorMapDisplay->getWidth() != outputResolution.x || mpFLIPErrorMapDisplay->getHeight() != outputResolution.y)
+    if (!mpFLIPErrorMapDisplay || !mpExposureMapDisplay || mpFLIPErrorMapDisplay->getWidth() != outputResolution.x ||
+        mpFLIPErrorMapDisplay->getHeight() != outputResolution.y)
     {
-        mpFLIPErrorMapDisplay = Texture::create2D(mpDevice, outputResolution.x, outputResolution.y, ResourceFormat::RGBA32Float, 1, 1, nullptr, Resource::BindFlags::UnorderedAccess | Resource::BindFlags::ShaderResource);
-        mpExposureMapDisplay = Texture::create2D(mpDevice, outputResolution.x, outputResolution.y, ResourceFormat::RGBA32Float, 1, 1, nullptr, Resource::BindFlags::UnorderedAccess | Resource::BindFlags::ShaderResource);
+        mpFLIPErrorMapDisplay = mpDevice->createTexture2D(
+            outputResolution.x,
+            outputResolution.y,
+            ResourceFormat::RGBA32Float,
+            1,
+            1,
+            nullptr,
+            ResourceBindFlags::UnorderedAccess | ResourceBindFlags::ShaderResource
+        );
+        mpExposureMapDisplay = mpDevice->createTexture2D(
+            outputResolution.x,
+            outputResolution.y,
+            ResourceFormat::RGBA32Float,
+            1,
+            1,
+            nullptr,
+            ResourceBindFlags::UnorderedAccess | ResourceBindFlags::ShaderResource
+        );
     }
 
     if (!mpLuminance)
     {
-        mpLuminance = Buffer::create(mpDevice, outputResolution.x * outputResolution.y * sizeof(float), ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None);
+        mpLuminance = mpDevice->createBuffer(
+            outputResolution.x * outputResolution.y * sizeof(float), ResourceBindFlags::UnorderedAccess, MemoryType::DeviceLocal
+        );
     }
 
     {
@@ -298,12 +346,11 @@ void FLIPPass::execute(RenderContext* pRenderContext, const RenderData& renderDa
         rootVar["PerFrameCB"]["gResolution"] = outputResolution;
         // Compute luminance of the reference image.
         mpComputeLuminancePass->execute(pRenderContext, uint3(outputResolution.x, outputResolution.y, 1u));
-        pRenderContext->flush(true);
+        pRenderContext->submit(true);
 
         float Ymedian, Ymax;
-        const float* luminanceValues = (float*)mpLuminance->map(Buffer::MapType::Read);
-        computeMedianMax(luminanceValues, outputResolution.x * outputResolution.y, Ymedian, Ymax);
-        mpLuminance->unmap();
+        std::vector<float> luminanceValues = mpLuminance->getElements<float>(0, outputResolution.x * outputResolution.y);
+        computeMedianMax(luminanceValues.data(), luminanceValues.size(), Ymedian, Ymax);
 
         computeExposureParameters(Ymedian, Ymax);
     }
@@ -321,7 +368,7 @@ void FLIPPass::execute(RenderContext* pRenderContext, const RenderData& renderDa
         float4 FLIPSum, FLIPMinMax[2];
         mpParallelReduction->execute<float4>(pRenderContext, pErrorMapOutput, ParallelReduction::Type::Sum, &FLIPSum);
         mpParallelReduction->execute<float4>(pRenderContext, pErrorMapOutput, ParallelReduction::Type::MinMax, &FLIPMinMax[0]);
-        pRenderContext->flush(true);
+        pRenderContext->submit(true);
 
         // Extract metrics from readback values. RGB channels contain magma mapping, and the alpa channel contains FLIP value.
         mAverageFLIP = FLIPSum.a / (outputResolution.x * outputResolution.y);
@@ -340,7 +387,10 @@ void FLIPPass::renderUI(Gui::Widgets& widget)
     dirty |= widget.checkbox("Clamp input", mClampInput);
     widget.tooltip("Clamp FLIP input to the expected range ([0,1] for LDR-FLIP and [0, inf) for HDR-FLIP).");
     dirty |= widget.checkbox("Input is HDR", mIsHDR);
-    widget.tooltip("If input has high dynamic range, use HDR-FLIP instead of the default (LDR-FLIP) which only works for low dynamic range input.");
+    widget.tooltip(
+        "If input has high dynamic range, use HDR-FLIP instead of the default (LDR-FLIP) "
+        "which only works for low dynamic range input."
+    );
 
     if (mIsHDR)
     {

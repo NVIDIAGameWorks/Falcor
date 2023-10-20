@@ -33,7 +33,7 @@
 
 #include "Builder.h"
 #include "Helpers.h"
-#include "Core/Assert.h"
+#include "Core/Error.h"
 #include "Utils/Logger.h"
 
 namespace Falcor::pbrt
@@ -141,7 +141,7 @@ const MaterialSceneEntity& BasicScene::getMaterial(const MaterialRef& materialRe
     }
     else
     {
-        throw RuntimeError("Expected valid material reference (index or name).");
+        FALCOR_THROW("Expected valid material reference (index or name).");
     }
 }
 
@@ -382,8 +382,15 @@ void BasicSceneBuilder::onShape(const std::string& name, ParsedParameterVector p
     }
 
     ShapeSceneEntity shape(
-        name, std::move(dict), loc, getTransform(), mGraphicsState.reverseOrientation, mGraphicsState.currentMaterial, areaLightIndex,
-        mGraphicsState.currentInsideMedium, mGraphicsState.currentOutsideMedium
+        name,
+        std::move(dict),
+        loc,
+        getTransform(),
+        mGraphicsState.reverseOrientation,
+        mGraphicsState.currentMaterial,
+        areaLightIndex,
+        mGraphicsState.currentInsideMedium,
+        mGraphicsState.currentOutsideMedium
     );
 
     if (mpActiveInstanceDefinition)

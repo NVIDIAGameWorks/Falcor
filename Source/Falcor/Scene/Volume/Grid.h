@@ -83,7 +83,7 @@ namespace Falcor
         /** Create a grid from a file.
             Currently only OpenVDB and NanoVDB grids of type float are supported.
             \param[in] pDevice GPU device.
-            \param[in] path File path of the grid. Can also include a full path or relative path from a data directory.
+            \param[in] path File path of the grid (absolute or relative to working directory).
             \param[in] gridname Name of the grid to load.
             \return A new grid, or nullptr if the grid failed to load.
         */
@@ -96,7 +96,7 @@ namespace Falcor
         /** Bind the grid to a given shader var.
             \param[in] var The shader variable to set the data into.
         */
-        void setShaderData(const ShaderVar& var);
+        void bindShaderData(const ShaderVar& var);
 
         /** Get the minimum index stored in the grid.
         */

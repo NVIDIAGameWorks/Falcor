@@ -75,7 +75,7 @@ public:
     std::future<ref<Texture>> loadMippedFromFiles(
         fstd::span<const std::filesystem::path> paths,
         bool loadAsSRGB,
-        Resource::BindFlags bindFlags = Resource::BindFlags::ShaderResource,
+        ResourceBindFlags bindFlags = ResourceBindFlags::ShaderResource,
         LoadCallback callback = {}
     );
 
@@ -92,7 +92,7 @@ public:
         const std::filesystem::path& path,
         bool generateMipLevels,
         bool loadAsSRGB,
-        Resource::BindFlags bindFlags = Resource::BindFlags::ShaderResource,
+        ResourceBindFlags bindFlags = ResourceBindFlags::ShaderResource,
         LoadCallback callback = {}
     );
 
@@ -106,7 +106,7 @@ private:
         std::vector<std::filesystem::path> paths;
         bool generateMipLevels;
         bool loadAsSRGB;
-        Resource::BindFlags bindFlags;
+        ResourceBindFlags bindFlags;
         LoadCallback callback;
         std::promise<ref<Texture>> promise;
     };

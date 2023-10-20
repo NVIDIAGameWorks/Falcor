@@ -20,8 +20,3 @@ camera.position = float3(1, 1, 1)
 camera.target = float3(0, 0, 0)
 camera.up = float3(0, 1, 0)
 sceneBuilder.addCamera(camera)
-
-# Setup envmap
-
-sceneBuilder.envMap = EnvMap("Arcade/BlueSky.png")
-sceneBuilder.envMap.intensity = 1

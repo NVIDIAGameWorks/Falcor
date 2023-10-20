@@ -28,7 +28,7 @@
 #pragma once
 
 #include "Core/Macros.h"
-#include "Core/API/ShaderType.h"
+#include "Core/API/Types.h"
 #include "Core/API/ShaderResourceType.h"
 
 #include <vector>

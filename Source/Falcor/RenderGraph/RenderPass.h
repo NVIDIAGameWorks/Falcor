@@ -35,7 +35,7 @@
 #include "Core/API/Texture.h"
 #include "Scene/Scene.h"
 #include "Utils/Properties.h"
-#include "Utils/InternalDictionary.h"
+#include "Utils/Dictionary.h"
 #include "Utils/Scripting/ScriptBindings.h"
 #include "Utils/UI/Gui.h"
 #include <functional>
@@ -75,7 +75,7 @@ public:
     /**
      * Get the global dictionary. You can use it to pass data between different passes
      */
-    InternalDictionary& getDictionary() const { return mDictionary; }
+    Dictionary& getDictionary() const { return mDictionary; }
 
     /**
      * Get the default dimensions used for Texture2Ds (when `0` is specified as the dimensions in `RenderPassReflection`)
@@ -91,14 +91,14 @@ protected:
     RenderData(
         const std::string& passName,
         ResourceCache& resources,
-        InternalDictionary& dictionary,
+        Dictionary& dictionary,
         const uint2& defaultTexDims,
         ResourceFormat defaultTexFormat
     );
 
     const std::string& mName;
     ResourceCache& mResources;
-    InternalDictionary& mDictionary;
+    Dictionary& mDictionary;
     uint2 mDefaultTexDims;
     ResourceFormat mDefaultTexFormat;
 

@@ -38,7 +38,12 @@ BEGIN_NAMESPACE_FALCOR
  * Returns a relative luminance of an input linear RGB color in the ITU-R BT.709 color space
  * @param RGBColor linear HDR RGB color in the ITU-R BT.709 color space
  */
+#ifdef HOST_CODE
 inline float luminance(float3 rgb)
+#else
+[Differentiable]
+float luminance(float3 rgb)
+#endif
 {
     return dot(rgb, float3(0.2126f, 0.7152f, 0.0722f));
 }
@@ -51,9 +56,11 @@ inline float luminance(float3 rgb)
 float3 RGBtoXYZ_Rec709(float3 c)
 {
     static const float3x3 M = {
+        // clang-format off
         0.4123907992659595, 0.3575843393838780, 0.1804807884018343, // row 0
         0.2126390058715104, 0.7151686787677559, 0.0721923153607337, // row 1
         0.0193308187155918, 0.1191947797946259, 0.9505321522496608, // row 2
+        // clang-format off
     };
     return mul(M, c);
 }
@@ -64,9 +71,11 @@ float3 RGBtoXYZ_Rec709(float3 c)
 float3 XYZtoRGB_Rec709(float3 c)
 {
     static const float3x3 M = {
+        // clang-format off
         3.240969941904522,   -1.537383177570094,  -0.4986107602930032, // row 0
         -0.9692436362808803, 1.875967501507721,   0.04155505740717569, // row 1
         0.05563007969699373, -0.2039769588889765, 1.056971514242878,   // row 2
+        // clang-format on
     };
     return mul(M, c);
 }

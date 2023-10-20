@@ -44,11 +44,11 @@
 #include <cstdio>
 #include <cstdarg>
 
-#define THROW_IF_FAILED(call)                                                           \
-    {                                                                                   \
-        NVSDK_NGX_Result result_ = call;                                                \
-        if (NVSDK_NGX_FAILED(result_))                                                  \
-            throw RuntimeError(#call " failed with error {}", resultToString(result_)); \
+#define THROW_IF_FAILED(call)                                                     \
+    {                                                                             \
+        NVSDK_NGX_Result result_ = call;                                          \
+        if (NVSDK_NGX_FAILED(result_))                                            \
+            FALCOR_THROW(#call " failed with error {}", resultToString(result_)); \
     }
 
 namespace Falcor
@@ -122,8 +122,14 @@ void NGXWrapper::initializeNGX(const std::filesystem::path& applicationDataPath,
     case Device::Type::Vulkan:
 #if FALCOR_HAS_VULKAN
         result = NVSDK_NGX_VULKAN_Init(
-            kAppID, applicationDataPath.c_str(), mpDevice->getNativeHandle(0).as<VkInstance>(),
-            mpDevice->getNativeHandle(1).as<VkPhysicalDevice>(), mpDevice->getNativeHandle(2).as<VkDevice>(), nullptr, nullptr, &featureInfo
+            kAppID,
+            applicationDataPath.c_str(),
+            mpDevice->getNativeHandle(0).as<VkInstance>(),
+            mpDevice->getNativeHandle(1).as<VkPhysicalDevice>(),
+            mpDevice->getNativeHandle(2).as<VkDevice>(),
+            nullptr,
+            nullptr,
+            &featureInfo
         );
 #endif
         break;
@@ -133,11 +139,11 @@ void NGXWrapper::initializeNGX(const std::filesystem::path& applicationDataPath,
     {
         if (result == NVSDK_NGX_Result_FAIL_FeatureNotSupported || result == NVSDK_NGX_Result_FAIL_PlatformError)
         {
-            throw RuntimeError("NVIDIA NGX is not available on this hardware/platform " + resultToString(result));
+            FALCOR_THROW("NVIDIA NGX is not available on this hardware/platform " + resultToString(result));
         }
         else
         {
-            throw RuntimeError("Failed to initialize NGX " + resultToString(result));
+            FALCOR_THROW("Failed to initialize NGX " + resultToString(result));
         }
     }
 
@@ -176,7 +182,7 @@ void NGXWrapper::initializeNGX(const std::filesystem::path& applicationDataPath,
         {
             message += fmt::format("\nMinimum driver version required: {}.{}", majorVersion, minorVersion);
         }
-        throw RuntimeError(message);
+        FALCOR_THROW(message);
     }
 #endif
 
@@ -184,7 +190,7 @@ void NGXWrapper::initializeNGX(const std::filesystem::path& applicationDataPath,
     result = mpParameters->Get(NVSDK_NGX_Parameter_SuperSampling_Available, &dlssAvailable);
     if (NVSDK_NGX_FAILED(result) || !dlssAvailable)
     {
-        throw RuntimeError("NVIDIA DLSS not available on this hardward/platform " + resultToString(result));
+        FALCOR_THROW("NVIDIA DLSS not available on this hardward/platform " + resultToString(result));
     }
 }
 
@@ -192,7 +198,7 @@ void NGXWrapper::shutdownNGX()
 {
     if (mInitialized)
     {
-        mpDevice->flushAndSync();
+        mpDevice->wait();
 
         if (mpFeature != nullptr)
             releaseDLSS();
@@ -250,24 +256,24 @@ void NGXWrapper::initializeDLSS(
     case Device::Type::D3D12:
     {
 #if FALCOR_HAS_D3D12
-        pRenderContext->flush();
+        pRenderContext->submit();
         ID3D12GraphicsCommandList* pCommandList =
             pRenderContext->getLowLevelData()->getCommandBufferNativeHandle().as<ID3D12GraphicsCommandList*>();
         THROW_IF_FAILED(NGX_D3D12_CREATE_DLSS_EXT(pCommandList, creationNodeMask, visibilityNodeMask, &mpFeature, mpParameters, &dlssParams)
         );
-        pRenderContext->flush();
+        pRenderContext->submit();
 #endif
         break;
     }
     case Device::Type::Vulkan:
     {
 #if FALCOR_HAS_VULKAN
-        pRenderContext->flush();
+        pRenderContext->submit();
         VkCommandBuffer vkCommandBuffer = pRenderContext->getLowLevelData()->getCommandBufferNativeHandle().as<VkCommandBuffer>();
         THROW_IF_FAILED(
             NGX_VULKAN_CREATE_DLSS_EXT(vkCommandBuffer, creationNodeMask, visibilityNodeMask, &mpFeature, mpParameters, &dlssParams)
         );
-        pRenderContext->flush();
+        pRenderContext->submit();
 #endif
         break;
     }
@@ -278,7 +284,7 @@ void NGXWrapper::releaseDLSS()
 {
     if (mpFeature)
     {
-        mpDevice->flushAndSync();
+        mpDevice->wait();
 
         switch (mpDevice->getType())
         {
@@ -302,8 +308,17 @@ NGXWrapper::OptimalSettings NGXWrapper::queryOptimalSettings(uint2 displaySize, 
     OptimalSettings settings;
 
     THROW_IF_FAILED(NGX_DLSS_GET_OPTIMAL_SETTINGS(
-        mpParameters, displaySize.x, displaySize.y, perfQuality, &settings.optimalRenderSize.x, &settings.optimalRenderSize.y,
-        &settings.maxRenderSize.x, &settings.maxRenderSize.y, &settings.minRenderSize.x, &settings.minRenderSize.y, &settings.sharpness
+        mpParameters,
+        displaySize.x,
+        displaySize.y,
+        perfQuality,
+        &settings.optimalRenderSize.x,
+        &settings.optimalRenderSize.y,
+        &settings.maxRenderSize.x,
+        &settings.maxRenderSize.y,
+        &settings.minRenderSize.x,
+        &settings.minRenderSize.y,
+        &settings.sharpness
     ));
 
     // Depending on what version of DLSS DLL is being used, a sharpness of > 1.f was possible.
@@ -377,7 +392,7 @@ bool NGXWrapper::evaluateDLSS(
         pRenderContext->setPendingCommands(true);
         pRenderContext->uavBarrier(pResolvedColor);
         // TODO: Get rid of the flush
-        pRenderContext->flush();
+        pRenderContext->submit();
 #endif // FALCOR_HAS_D3D12
         break;
     }
@@ -442,7 +457,7 @@ bool NGXWrapper::evaluateDLSS(
         pRenderContext->setPendingCommands(true);
         pRenderContext->uavBarrier(pResolvedColor);
         // TODO: Get rid of the flush
-        pRenderContext->flush();
+        pRenderContext->submit();
 #endif
         break;
     }

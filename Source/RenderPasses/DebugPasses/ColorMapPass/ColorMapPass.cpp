@@ -29,29 +29,34 @@
 
 namespace
 {
-    const std::string kShaderFile = "RenderPasses/DebugPasses/ColorMapPass/ColorMapPass.ps.slang";
+const std::string kShaderFile = "RenderPasses/DebugPasses/ColorMapPass/ColorMapPass.ps.slang";
 
-    const std::string kInput = "input";
-    const std::string kOutput = "output";
+const std::string kInput = "input";
+const std::string kOutput = "output";
 
-    const std::string kColorMap = "colorMap";
-    const std::string kChannel = "channel";
-    const std::string kAutoRange = "autoRange";
-    const std::string kMinValue = "minValue";
-    const std::string kMaxValue = "maxValue";
-}
+const std::string kColorMap = "colorMap";
+const std::string kChannel = "channel";
+const std::string kAutoRange = "autoRange";
+const std::string kMinValue = "minValue";
+const std::string kMaxValue = "maxValue";
+} // namespace
 
-ColorMapPass::ColorMapPass(ref<Device> pDevice, const Properties& props)
-    : RenderPass(pDevice)
+ColorMapPass::ColorMapPass(ref<Device> pDevice, const Properties& props) : RenderPass(pDevice)
 {
     for (const auto& [key, value] : props)
     {
-        if (key == kColorMap) mColorMap = value;
-        else if (key == kChannel) mChannel = value;
-        else if (key == kAutoRange) mAutoRange = value;
-        else if (key == kMinValue) mMinValue = value;
-        else if (key == kMaxValue) mMaxValue = value;
-        else logWarning("Unknown property '{}' in a ColorMapPass properties.", key);
+        if (key == kColorMap)
+            mColorMap = value;
+        else if (key == kChannel)
+            mChannel = value;
+        else if (key == kAutoRange)
+            mAutoRange = value;
+        else if (key == kMinValue)
+            mMinValue = value;
+        else if (key == kMaxValue)
+            mMaxValue = value;
+        else
+            logWarning("Unknown property '{}' in a ColorMapPass properties.", key);
     }
 
     mpFbo = Fbo::create(mpDevice);
@@ -71,8 +76,8 @@ Properties ColorMapPass::getProperties() const
 RenderPassReflection ColorMapPass::reflect(const CompileData& compileData)
 {
     RenderPassReflection r;
-    r.addInput(kInput, "Input image").bindFlags(Falcor::Resource::BindFlags::ShaderResource).texture2D(0, 0);
-    r.addOutput(kOutput, "Output image").bindFlags(Falcor::Resource::BindFlags::RenderTarget).texture2D(0, 0);
+    r.addInput(kInput, "Input image").bindFlags(Falcor::ResourceBindFlags::ShaderResource).texture2D(0, 0);
+    r.addOutput(kOutput, "Output image").bindFlags(Falcor::ResourceBindFlags::RenderTarget).texture2D(0, 0);
     return r;
 }
 
@@ -85,7 +90,8 @@ void ColorMapPass::execute(RenderContext* pRenderContext, const RenderData& rend
 
     if (mAutoRange && inputTexture)
     {
-        if (!mpAutoRanging) mpAutoRanging = std::make_unique<AutoRanging>(mpDevice);
+        if (!mpAutoRanging)
+            mpAutoRanging = std::make_unique<AutoRanging>(mpDevice);
 
         if (auto minMax = mpAutoRanging->getMinMax(pRenderContext, inputTexture, mChannel))
         {
@@ -120,15 +126,15 @@ void ColorMapPass::execute(RenderContext* pRenderContext, const RenderData& rend
 
     switch (inputType)
     {
-        case FormatType::Uint:
-            defines.add("_FORMAT", "FORMAT_UINT");
-            break;
-        case FormatType::Sint:
-            defines.add("_FORMAT", "FORMAT_SINT");
-            break;
-        default:
-            defines.add("_FORMAT", "FORMAT_FLOAT");
-            break;
+    case FormatType::Uint:
+        defines.add("_FORMAT", "FORMAT_UINT");
+        break;
+    case FormatType::Sint:
+        defines.add("_FORMAT", "FORMAT_SINT");
+        break;
+    default:
+        defines.add("_FORMAT", "FORMAT_FLOAT");
+        break;
     }
 
     if (!mpColorMapPass || mRecompile)
@@ -161,11 +167,15 @@ void ColorMapPass::renderUI(Gui::Widgets& widget)
 ColorMapPass::AutoRanging::AutoRanging(ref<Device> pDevice)
 {
     mpParallelReduction = std::make_unique<ParallelReduction>(pDevice);
-    mpReductionResult = Buffer::create(pDevice, 32, ResourceBindFlags::None, Buffer::CpuAccess::Read);
-    mpFence = GpuFence::create(pDevice);
+    mpReductionResult = pDevice->createBuffer(32, ResourceBindFlags::None, MemoryType::ReadBack);
+    mpFence = pDevice->createFence();
 }
 
-std::optional<std::pair<double, double>> ColorMapPass::AutoRanging::getMinMax(RenderContext* pRenderContext, const ref<Texture>& texture, uint32_t channel)
+std::optional<std::pair<double, double>> ColorMapPass::AutoRanging::getMinMax(
+    RenderContext* pRenderContext,
+    const ref<Texture>& texture,
+    uint32_t channel
+)
 {
     FALCOR_ASSERT(pRenderContext);
     FALCOR_ASSERT(texture);
@@ -177,20 +187,20 @@ std::optional<std::pair<double, double>> ColorMapPass::AutoRanging::getMinMax(Re
 
     if (mReductionAvailable)
     {
-        mpFence->syncCpu();
+        mpFence->wait();
 
         const void* values = mpReductionResult->map(Buffer::MapType::Read);
 
         switch (formatType)
         {
         case FormatType::Uint:
-            result = { reinterpret_cast<const uint4*>(values)[0][channel], reinterpret_cast<const uint4*>(values)[1][channel] };
+            result = {reinterpret_cast<const uint4*>(values)[0][channel], reinterpret_cast<const uint4*>(values)[1][channel]};
             break;
         case FormatType::Sint:
-            result = { reinterpret_cast<const int4*>(values)[0][channel], reinterpret_cast<const int4*>(values)[1][channel] };
+            result = {reinterpret_cast<const int4*>(values)[0][channel], reinterpret_cast<const int4*>(values)[1][channel]};
             break;
         default:
-            result = { reinterpret_cast<const float4*>(values)[0][channel], reinterpret_cast<const float4*>(values)[1][channel] };
+            result = {reinterpret_cast<const float4*>(values)[0][channel], reinterpret_cast<const float4*>(values)[1][channel]};
             break;
         }
 
@@ -212,7 +222,7 @@ std::optional<std::pair<double, double>> ColorMapPass::AutoRanging::getMinMax(Re
         break;
     }
 
-    mpFence->gpuSignal(pRenderContext->getLowLevelData()->getCommandQueue());
+    pRenderContext->signal(mpFence.get());
     mReductionAvailable = true;
 
     return result;

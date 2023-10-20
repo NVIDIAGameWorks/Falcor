@@ -26,8 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "Core/Assert.h"
-#include "Core/Errors.h"
+#include "Core/Error.h"
 #include "Utils/Math/Common.h"
 #include "Utils/Math/Vector.h"
 #include <type_traits>
@@ -68,8 +67,8 @@ public:
      */
     SampledSpectrum(float lambdaStart, float lambdaEnd, size_t sampleCount) : mLambdaStart(lambdaStart), mLambdaEnd(lambdaEnd)
     {
-        checkArgument(lambdaEnd > lambdaStart, "'lambdaEnd' must be larger than 'lambdaStart'.");
-        checkArgument(sampleCount > 0, "'sampleCount' must be at least one.");
+        FALCOR_CHECK(lambdaEnd > lambdaStart, "'lambdaEnd' must be larger than 'lambdaStart'.");
+        FALCOR_CHECK(sampleCount > 0, "'sampleCount' must be at least one.");
         mSamples.resize(sampleCount, value_type(0));
     }
 
@@ -93,8 +92,8 @@ public:
      */
     void set(const size_t sampleCount, const value_type* pSamples)
     {
-        checkArgument(pSamples != nullptr, "'pSamples' is nullptr.");
-        checkArgument(sampleCount == mSamples.size(), "Sample count mismatch.");
+        FALCOR_CHECK(pSamples != nullptr, "'pSamples' is nullptr.");
+        FALCOR_CHECK(sampleCount == mSamples.size(), "Sample count mismatch.");
         mSamples.assign(pSamples, pSamples + sampleCount);
     }
 
@@ -104,7 +103,7 @@ public:
      */
     void set(const std::vector<value_type>& samples)
     {
-        checkArgument(samples.size() == mSamples.size(), "Sample count mismatch.");
+        FALCOR_CHECK(samples.size() == mSamples.size(), "Sample count mismatch.");
         mSamples = samples;
     }
 
@@ -117,7 +116,7 @@ public:
      */
     void set(const size_t sampleCount, const value_type* pSamples, const float* pLambdas)
     {
-        checkArgument(pSamples != nullptr && pLambdas != nullptr, "'pSamples' or 'pLambdas' is nullptr.");
+        FALCOR_CHECK(pSamples != nullptr && pLambdas != nullptr, "'pSamples' or 'pLambdas' is nullptr.");
         FALCOR_UNIMPLEMENTED();
     }
 
@@ -129,7 +128,7 @@ public:
      */
     void set(const std::vector<value_type>& samples, const std::vector<float>& lambdas)
     {
-        checkArgument(
+        FALCOR_CHECK(
             !samples.empty() && samples.size() == lambdas.size(), "'samples' and 'lambdas' must be non-empty and of equal length."
         );
         set(samples.size(), samples.data(), lambdas.data());
@@ -200,7 +199,7 @@ float3 SampledSpectrum<T>::toXYZ_CIE1931() const
 template<typename T>
 T SampledSpectrum<T>::eval(const float lambda, const SpectrumInterpolation interpolationType) const
 {
-    checkInvariant(interpolationType == SpectrumInterpolation::Linear, "Interpolation type must be 'Linear'");
+    FALCOR_CHECK(interpolationType == SpectrumInterpolation::Linear, "Interpolation type must be 'Linear'");
     if (lambda < mLambdaStart || lambda > mLambdaEnd)
         return T(0);
     float x = ((lambda - mLambdaStart) / (mLambdaEnd - mLambdaStart)) * (size() - 1.0f);

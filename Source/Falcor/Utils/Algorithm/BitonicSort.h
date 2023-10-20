@@ -28,7 +28,7 @@
 #pragma once
 #include "Core/Macros.h"
 #include "Core/State/ComputeState.h"
-#include "Core/Program/ComputeProgram.h"
+#include "Core/Program/Program.h"
 #include "Core/Program/ProgramVars.h"
 #include <memory>
 
@@ -70,8 +70,8 @@ private:
     struct
     {
         ref<ComputeState> pState;
-        ref<ComputeProgram> pProgram;
-        ref<ComputeVars> pVars;
+        ref<Program> pProgram;
+        ref<ProgramVars> pVars;
     } mSort;
 };
 } // namespace Falcor

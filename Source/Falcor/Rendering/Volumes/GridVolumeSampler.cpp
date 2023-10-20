@@ -26,7 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "GridVolumeSampler.h"
-#include "Core/Assert.h"
+#include "Core/Error.h"
 
 namespace Falcor
 {
@@ -46,7 +46,7 @@ namespace Falcor
         return defines;
     }
 
-    void GridVolumeSampler::setShaderData(const ShaderVar& var) const
+    void GridVolumeSampler::bindShaderData(const ShaderVar& var) const
     {
         FALCOR_ASSERT(var.isValid());
     }

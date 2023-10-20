@@ -370,7 +370,8 @@ static PyObject* dlpack_from_buffer_protocol(PyObject* o)
     mt->dltensor.strides = strides.release();
 
     return PyCapsule_New(
-        mt.release(), "dltensor",
+        mt.release(),
+        "dltensor",
         [](PyObject* o)
         {
             error_scope scope; // temporarily save any existing errors
@@ -906,12 +907,16 @@ FALCOR_SCRIPT_BINDING(ndarray)
                 printf("ndarray stride    [%zu] : %zd\n", i, ndarray.stride(i));
             }
             printf(
-                "Device ID = %u (cpu=%i, cuda=%i)\n", ndarray.device_id(), int(ndarray.device_type() == pybind11::device::cpu::value),
+                "Device ID = %u (cpu=%i, cuda=%i)\n",
+                ndarray.device_id(),
+                int(ndarray.device_type() == pybind11::device::cpu::value),
                 int(ndarray.device_type() == pybind11::device::cuda::value)
             );
             printf(
-                "ndarray dtype: int16=%i, uint32=%i, float32=%i\n", ndarray.dtype() == pybind11::dtype<int16_t>(),
-                ndarray.dtype() == pybind11::dtype<uint32_t>(), ndarray.dtype() == pybind11::dtype<float>()
+                "ndarray dtype: int16=%i, uint32=%i, float32=%i\n",
+                ndarray.dtype() == pybind11::dtype<int16_t>(),
+                ndarray.dtype() == pybind11::dtype<uint32_t>(),
+                ndarray.dtype() == pybind11::dtype<float>()
             );
         }
     );

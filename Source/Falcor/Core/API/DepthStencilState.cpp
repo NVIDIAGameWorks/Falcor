@@ -26,7 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "DepthStencilState.h"
-#include "Core/Assert.h"
+#include "Core/Error.h"
 #include "Core/ObjectPython.h"
 #include "Utils/Scripting/ScriptBindings.h"
 
@@ -51,7 +51,7 @@ DepthStencilState::Desc& DepthStencilState::Desc::setStencilReadMask(uint8_t mas
     return *this;
 }
 
-DepthStencilState::Desc& DepthStencilState::Desc::setStencilFunc(Face face, Func func)
+DepthStencilState::Desc& DepthStencilState::Desc::setStencilFunc(Face face, ComparisonFunc func)
 {
     if (face == Face::FrontAndBack)
     {

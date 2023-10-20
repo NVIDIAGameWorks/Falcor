@@ -38,9 +38,8 @@ GPU_TEST(BufferAliasing_Read)
     std::vector<float> initData(N);
     for (size_t i = 0; i < initData.size(); i++)
         initData[i] = (float)i;
-    auto pBuffer = Buffer::create(
-        pDevice, initData.size() * sizeof(float), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, initData.data()
-    );
+    auto pBuffer =
+        pDevice->createBuffer(initData.size() * sizeof(float), ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, initData.data());
 
     ctx.createProgram("Tests/Core/ResourceAliasing.cs.slang", "testRead");
     ctx.allocateStructuredBuffer("result", N * 3);
@@ -70,9 +69,11 @@ GPU_TEST(BufferAliasing_ReadWrite)
     std::vector<float> initData(N * 3);
     for (size_t i = 0; i < initData.size(); i++)
         initData[i] = (float)i;
-    auto pBuffer = Buffer::create(
-        pDevice, initData.size() * sizeof(float), Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess,
-        Buffer::CpuAccess::None, initData.data()
+    auto pBuffer = pDevice->createBuffer(
+        initData.size() * sizeof(float),
+        ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess,
+        MemoryType::DeviceLocal,
+        initData.data()
     );
 
     ctx.createProgram("Tests/Core/ResourceAliasing.cs.slang", "testReadWrite");
@@ -84,14 +85,13 @@ GPU_TEST(BufferAliasing_ReadWrite)
 
     ctx.runProgram(N, 1, 1);
 
-    const float* result = reinterpret_cast<const float*>(pBuffer->map(Buffer::MapType::Read));
+    std::vector<float> result = pBuffer->getElements<float>();
     for (size_t i = 0; i < N; i++)
     {
         EXPECT_EQ(result[i], (float)(N - i)) << "i = " << i;
         EXPECT_EQ(result[i + N], (float)(N - i)) << "i = " << i;
         EXPECT_EQ(result[i + 2 * N], (float)(N - i)) << "i = " << i;
     }
-    pBuffer->unmap();
 }
 
 GPU_TEST(BufferAliasing_StructRead, "Disabled because <uint> version fails")
@@ -103,8 +103,8 @@ GPU_TEST(BufferAliasing_StructRead, "Disabled because <uint> version fails")
     std::vector<float> initData(N);
     for (size_t i = 0; i < initData.size(); i++)
         initData[i] = (float)i;
-    auto pBuffer = Buffer::createStructured(
-        pDevice, initData.size() * sizeof(float), 1, Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, initData.data(), false
+    auto pBuffer = pDevice->createStructuredBuffer(
+        initData.size() * sizeof(float), 1, ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, initData.data(), false
     );
 
     ctx.createProgram("Tests/Core/ResourceAliasing.cs.slang", "testStructRead");

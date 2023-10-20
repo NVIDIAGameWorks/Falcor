@@ -31,8 +31,9 @@ __exported import Scene.HitInfo;
 import Scene.Material.ShadingUtils;
 import Utils.Math.MathHelpers;
 
-/** Determine hints to use when creating the material instance.
-*/
+/**
+ * Determine hints to use when creating the material instance.
+ */
 uint getMaterialInstanceHints()
 {
     uint hints = 0;
@@ -42,16 +43,24 @@ uint getMaterialInstanceHints()
     return hints;
 }
 
-/** Helper for setting up the ShadingData struct based on loaded data.
-    \param[in] pixel Current pixel coordinates.
-    \param[in] frameDim Frame dimensions in pixel.
-    \param[in] camera Current camera.
-    \param[in] vbuffer VBuffer texture.
-    \param[in] lod Method for computing texture level-of-detail.
-    \param[out] sd ShadingData struct.
-    \return True if the pixel has valid data (not a background pixel). Note sd.V is always valid.
-*/
-bool loadShadingData(const uint2 pixel, const uint2 frameDim, const Camera camera, Texture2D<PackedHitInfo> vbuffer, const ITextureSampler lod, out ShadingData sd)
+/**
+ * Helper for setting up the ShadingData struct based on loaded data.
+ * @param[in] pixel Current pixel coordinates.
+ * @param[in] frameDim Frame dimensions in pixel.
+ * @param[in] camera Current camera.
+ * @param[in] vbuffer VBuffer texture.
+ * @param[in] lod Method for computing texture level-of-detail.
+ * @param[out] sd ShadingData struct.
+ * @return True if the pixel has valid data (not a background pixel). Note sd.V is always valid.
+ */
+bool loadShadingData(
+    const uint2 pixel,
+    const uint2 frameDim,
+    const Camera camera,
+    Texture2D<PackedHitInfo> vbuffer,
+    const ITextureSampler lod,
+    out ShadingData sd
+)
 {
     sd = {};
 

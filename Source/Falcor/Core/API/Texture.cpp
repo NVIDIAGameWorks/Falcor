@@ -31,17 +31,16 @@
 #include "RenderContext.h"
 #include "GFXHelpers.h"
 #include "GFXAPI.h"
-#include "Core/Assert.h"
-#include "Core/Errors.h"
+#include "PythonHelpers.h"
+#include "Core/Error.h"
 #include "Core/ObjectPython.h"
 #include "Utils/Logger.h"
 #include "Utils/Threading.h"
 #include "Utils/Math/Common.h"
 #include "Utils/Image/ImageIO.h"
 #include "Utils/Scripting/ScriptBindings.h"
+#include "Utils/Scripting/ndarray.h"
 #include "Core/Pass/FullScreenPass.h"
-
-#include <pybind11/numpy.h>
 
 #include <mutex>
 
@@ -51,51 +50,184 @@ namespace
 {
 static constexpr bool kTopDown = true; // Memory layout when loading from file
 
-Texture::BindFlags updateBindFlags(
-    ref<Device> pDevice,
-    Texture::BindFlags flags,
-    bool hasInitData,
-    uint32_t mipLevels,
-    ResourceFormat format,
-    const std::string& texType
-)
+gfx::IResource::Type getGfxResourceType(Texture::Type type)
 {
-    if ((mipLevels == Texture::kMaxPossible) && hasInitData)
+    switch (type)
     {
-        flags |= Texture::BindFlags::RenderTarget;
+    case Texture::Type::Texture1D:
+        return gfx::IResource::Type::Texture1D;
+    case Texture::Type::Texture2D:
+    case Texture::Type::Texture2DMultisample:
+        return gfx::IResource::Type::Texture2D;
+    case Texture::Type::TextureCube:
+        return gfx::IResource::Type::TextureCube;
+    case Texture::Type::Texture3D:
+        return gfx::IResource::Type::Texture3D;
+    default:
+        FALCOR_UNREACHABLE();
+        return gfx::IResource::Type::Unknown;
     }
-
-    Texture::BindFlags supported = pDevice->getFormatBindFlags(format);
-    supported |= ResourceBindFlags::Shared;
-    if ((flags & supported) != flags)
-    {
-        throw RuntimeError(
-            "Error when creating {} of format {}. The requested bind-flags are not supported. Requested = ({}), supported = ({}).", texType,
-            to_string(format), to_string(flags), to_string(supported)
-        );
-        flags = flags & supported;
-    }
-
-    return flags;
 }
+
 } // namespace
 
-ref<Texture> Texture::createFromResource(
+Texture::Texture(
     ref<Device> pDevice,
-    gfx::ITextureResource* pResource,
     Type type,
+    ResourceFormat format,
     uint32_t width,
     uint32_t height,
     uint32_t depth,
-    ResourceFormat format,
-    uint32_t sampleCount,
     uint32_t arraySize,
     uint32_t mipLevels,
-    State initState,
-    BindFlags bindFlags
+    uint32_t sampleCount,
+    ResourceBindFlags bindFlags,
+    const void* pInitData
 )
+    : Resource(std::move(pDevice), type, bindFlags, 0)
+    , mFormat(format)
+    , mWidth(width)
+    , mHeight(height)
+    , mDepth(depth)
+    , mMipLevels(mipLevels)
+    , mArraySize(arraySize)
+    , mSampleCount(sampleCount)
+{
+    FALCOR_ASSERT(mType != Type::Buffer);
+    FALCOR_ASSERT(mFormat != ResourceFormat::Unknown);
+    FALCOR_ASSERT(mWidth > 0 && mHeight > 0 && mDepth > 0);
+    switch (mType)
+    {
+    case Resource::Type::Texture1D:
+        FALCOR_ASSERT(mHeight == 1 && mDepth == 1 && mSampleCount == 1);
+        break;
+    case Resource::Type::Texture2D:
+        FALCOR_ASSERT(mDepth == 1 && mSampleCount == 1);
+        break;
+    case Resource::Type::Texture2DMultisample:
+        FALCOR_ASSERT(mDepth == 1);
+        break;
+    case Resource::Type::Texture3D:
+        FALCOR_ASSERT(mSampleCount == 1);
+        break;
+    case Resource::Type::TextureCube:
+        FALCOR_ASSERT(mDepth == 1 && mSampleCount == 1);
+        break;
+    default:
+        FALCOR_UNREACHABLE();
+        break;
+    }
+
+    FALCOR_ASSERT(mArraySize > 0 && mMipLevels > 0 && mSampleCount > 0);
+
+    bool autoGenerateMips = pInitData && (mMipLevels == Texture::kMaxPossible);
+
+    if (autoGenerateMips)
+        mBindFlags |= ResourceBindFlags::RenderTarget;
+
+    if (mMipLevels == kMaxPossible)
+    {
+        uint32_t dims = width | height | depth;
+        mMipLevels = bitScanReverse(dims) + 1;
+    }
+
+    mState.perSubresource.resize(mMipLevels * mArraySize, mState.global);
+
+    ResourceBindFlags supported = mpDevice->getFormatBindFlags(mFormat);
+    supported |= ResourceBindFlags::Shared;
+    if ((mBindFlags & supported) != mBindFlags)
+    {
+        FALCOR_THROW(
+            "Error when creating {} of format {}. The requested bind-flags are not supported. Requested = ({}), supported = ({}).",
+            to_string(mType),
+            to_string(mFormat),
+            to_string(mBindFlags),
+            to_string(supported)
+        );
+    }
+
+    gfx::ITextureResource::Desc desc = {};
+
+    desc.type = getGfxResourceType(mType);
+
+    // Default state and allowed states.
+    gfx::ResourceState defaultState;
+    getGFXResourceState(mBindFlags, defaultState, desc.allowedStates);
+
+    // Always set texture to general(common) state upon creation.
+    desc.defaultState = gfx::ResourceState::General;
+
+    desc.memoryType = gfx::MemoryType::DeviceLocal;
+
+    desc.size.width = align_to(getFormatWidthCompressionRatio(mFormat), mWidth);
+    desc.size.height = align_to(getFormatHeightCompressionRatio(mFormat), mHeight);
+    desc.size.depth = mDepth;
+
+    desc.arraySize = mType == Texture::Type::TextureCube ? mArraySize * 6 : mArraySize;
+    desc.numMipLevels = mMipLevels;
+
+    desc.format = getGFXFormat(mFormat); // lookup can result in Unknown / unsupported format
+
+    desc.sampleDesc.numSamples = mSampleCount;
+    desc.sampleDesc.quality = 0;
+
+    // Clear value.
+    gfx::ClearValue clearValue;
+    if ((mBindFlags & (ResourceBindFlags::RenderTarget | ResourceBindFlags::DepthStencil)) != ResourceBindFlags::None)
+    {
+        if ((mBindFlags & ResourceBindFlags::DepthStencil) != ResourceBindFlags::None)
+        {
+            clearValue.depthStencil.depth = 1.0f;
+        }
+        desc.optimalClearValue = &clearValue;
+    }
+
+    // Shared resource.
+    if (is_set(mBindFlags, ResourceBindFlags::Shared))
+    {
+        desc.isShared = true;
+    }
+
+    // Validate description.
+    FALCOR_ASSERT(desc.size.width > 0 && desc.size.height > 0);
+    FALCOR_ASSERT(desc.numMipLevels > 0 && desc.size.depth > 0 && desc.arraySize > 0 && desc.sampleDesc.numSamples > 0);
+
+    // Create & upload resource.
+    {
+        // WARNING: This is a hack to allow parallel texture loading in TextureManager.
+        std::lock_guard<std::mutex> lock(mpDevice->getGlobalGfxMutex());
+
+        FALCOR_GFX_CALL(mpDevice->getGfxDevice()->createTextureResource(desc, nullptr, mGfxTextureResource.writeRef()));
+        FALCOR_ASSERT(mGfxTextureResource);
+
+        if (pInitData)
+        {
+            // Prevent the texture from being destroyed while uploading the data.
+            incRef();
+            uploadInitData(mpDevice->getRenderContext(), pInitData, autoGenerateMips);
+            decRef(false);
+        }
+    }
+}
+
+Texture::Texture(
+    ref<Device> pDevice,
+    gfx::ITextureResource* pResource,
+    Type type,
+    ResourceFormat format,
+    uint32_t width,
+    uint32_t height,
+    uint32_t depth,
+    uint32_t arraySize,
+    uint32_t mipLevels,
+    uint32_t sampleCount,
+    ResourceBindFlags bindFlags,
+    Resource::State initState
+)
+    : Texture(std::move(pDevice), type, format, width, height, depth, arraySize, mipLevels, sampleCount, bindFlags, nullptr)
 {
     FALCOR_ASSERT(pResource);
+
     switch (type)
     {
     case Resource::Type::Texture1D:
@@ -117,106 +249,22 @@ ref<Texture> Texture::createFromResource(
         FALCOR_UNREACHABLE();
         break;
     }
-    ref<Texture> pTexture =
-        ref<Texture>(new Texture(pDevice, width, height, depth, arraySize, mipLevels, sampleCount, format, type, bindFlags));
-    pTexture->mGfxTextureResource = pResource;
-    pTexture->mState.global = initState;
-    pTexture->mState.isGlobal = true;
-    return pTexture;
+
+    mGfxTextureResource = pResource;
+    mState.global = initState;
+    mState.isGlobal = true;
 }
 
-ref<Texture> Texture::create1D(
-    ref<Device> pDevice,
-    uint32_t width,
-    ResourceFormat format,
-    uint32_t arraySize,
-    uint32_t mipLevels,
-    const void* pData,
-    BindFlags bindFlags
-)
+Texture::~Texture()
 {
-    bindFlags = updateBindFlags(pDevice, bindFlags, pData != nullptr, mipLevels, format, "Texture1D");
-    ref<Texture> pTexture = ref<Texture>(new Texture(pDevice, width, 1, 1, arraySize, mipLevels, 1, format, Type::Texture1D, bindFlags));
-    pTexture->apiInit(pData, (mipLevels == kMaxPossible));
-    return pTexture;
-}
-
-ref<Texture> Texture::create2D(
-    ref<Device> pDevice,
-    uint32_t width,
-    uint32_t height,
-    ResourceFormat format,
-    uint32_t arraySize,
-    uint32_t mipLevels,
-    const void* pData,
-    BindFlags bindFlags
-)
-{
-    bindFlags = updateBindFlags(pDevice, bindFlags, pData != nullptr, mipLevels, format, "Texture2D");
-    ref<Texture> pTexture =
-        ref<Texture>(new Texture(pDevice, width, height, 1, arraySize, mipLevels, 1, format, Type::Texture2D, bindFlags));
-    pTexture->apiInit(pData, (mipLevels == kMaxPossible));
-    return pTexture;
-}
-
-ref<Texture> Texture::create3D(
-    ref<Device> pDevice,
-    uint32_t width,
-    uint32_t height,
-    uint32_t depth,
-    ResourceFormat format,
-    uint32_t mipLevels,
-    const void* pData,
-    BindFlags bindFlags,
-    bool isSparse
-)
-{
-    bindFlags = updateBindFlags(pDevice, bindFlags, pData != nullptr, mipLevels, format, "Texture3D");
-    ref<Texture> pTexture = ref<Texture>(new Texture(pDevice, width, height, depth, 1, mipLevels, 1, format, Type::Texture3D, bindFlags));
-    pTexture->apiInit(pData, (mipLevels == kMaxPossible));
-    return pTexture;
-}
-
-ref<Texture> Texture::createCube(
-    ref<Device> pDevice,
-    uint32_t width,
-    uint32_t height,
-    ResourceFormat format,
-    uint32_t arraySize,
-    uint32_t mipLevels,
-    const void* pData,
-    BindFlags bindFlags
-)
-{
-    bindFlags = updateBindFlags(pDevice, bindFlags, pData != nullptr, mipLevels, format, "TextureCube");
-    ref<Texture> pTexture =
-        ref<Texture>(new Texture(pDevice, width, height, 1, arraySize, mipLevels, 1, format, Type::TextureCube, bindFlags));
-    pTexture->apiInit(pData, (mipLevels == kMaxPossible));
-    return pTexture;
-}
-
-ref<Texture> Texture::create2DMS(
-    ref<Device> pDevice,
-    uint32_t width,
-    uint32_t height,
-    ResourceFormat format,
-    uint32_t sampleCount,
-    uint32_t arraySize,
-    BindFlags bindFlags
-)
-{
-    bindFlags = updateBindFlags(pDevice, bindFlags, false, 1, format, "Texture2DMultisample");
-    ref<Texture> pTexture =
-        ref<Texture>(new Texture(pDevice, width, height, 1, arraySize, 1, sampleCount, format, Type::Texture2DMultisample, bindFlags));
-    pTexture->apiInit(nullptr, false);
-    return pTexture;
+    mpDevice->releaseResource(mGfxTextureResource);
 }
 
 ref<Texture> Texture::createMippedFromFiles(
     ref<Device> pDevice,
     fstd::span<const std::filesystem::path> paths,
     bool loadAsSrgb,
-    Texture::BindFlags bindFlags
+    ResourceBindFlags bindFlags
 )
 {
     std::vector<Bitmap::UniqueConstPtr> mips;
@@ -252,8 +300,13 @@ ref<Texture> Texture::createMippedFromFiles(
                 std::max(mips.back()->getHeight() / 2, 1u) != pBitmap->getHeight())
             {
                 logWarning(
-                    "Error loading mip {} from file {}. Image resolution must decrease by half. ({}, {}) != ({}, {})/2", mips.size(), path,
-                    pBitmap->getWidth(), pBitmap->getHeight(), mips.back()->getWidth(), mips.back()->getHeight()
+                    "Error loading mip {} from file {}. Image resolution must decrease by half. ({}, {}) != ({}, {})/2",
+                    mips.size(),
+                    path,
+                    pBitmap->getWidth(),
+                    pBitmap->getHeight(),
+                    mips.back()->getWidth(),
+                    mips.back()->getHeight()
                 );
                 break;
             }
@@ -284,7 +337,7 @@ ref<Texture> Texture::createMippedFromFiles(
 
         // Create mip mapped latent texture
         pTex =
-            Texture::create2D(pDevice, mips[0]->getWidth(), mips[0]->getHeight(), texFormat, 1, mips.size(), combinedData.get(), bindFlags);
+            pDevice->createTexture2D(mips[0]->getWidth(), mips[0]->getHeight(), texFormat, 1, mips.size(), combinedData.get(), bindFlags);
     }
 
     if (pTex != nullptr)
@@ -293,8 +346,12 @@ ref<Texture> Texture::createMippedFromFiles(
 
         // Log debug info.
         std::string str = fmt::format(
-            "Loaded texture: size={}x{} mips={} format={} path={}", pTex->getWidth(), pTex->getHeight(), pTex->getMipCount(),
-            to_string(pTex->getFormat()), fullPathMip0
+            "Loaded texture: size={}x{} mips={} format={} path={}",
+            pTex->getWidth(),
+            pTex->getHeight(),
+            pTex->getMipCount(),
+            to_string(pTex->getFormat()),
+            fullPathMip0
         );
         logDebug(str);
     }
@@ -307,31 +364,30 @@ ref<Texture> Texture::createFromFile(
     const std::filesystem::path& path,
     bool generateMipLevels,
     bool loadAsSrgb,
-    Texture::BindFlags bindFlags
+    ResourceBindFlags bindFlags
 )
 {
-    std::filesystem::path fullPath;
-    if (!findFileInDataDirectories(path, fullPath))
+    if (!std::filesystem::exists(path))
     {
-        logWarning("Error when loading image file. Can't find image file '{}'.", path);
+        logWarning("Error when loading image file. File '{}' does not exist.", path);
         return nullptr;
     }
 
     ref<Texture> pTex;
-    if (hasExtension(fullPath, "dds"))
+    if (hasExtension(path, "dds"))
     {
         try
         {
-            pTex = ImageIO::loadTextureFromDDS(pDevice, fullPath, loadAsSrgb);
+            pTex = ImageIO::loadTextureFromDDS(pDevice, path, loadAsSrgb);
         }
         catch (const std::exception& e)
         {
-            logWarning("Error loading '{}': {}", fullPath, e.what());
+            logWarning("Error loading '{}': {}", path, e.what());
         }
     }
     else
     {
-        Bitmap::UniqueConstPtr pBitmap = Bitmap::createFromFile(fullPath, kTopDown);
+        Bitmap::UniqueConstPtr pBitmap = Bitmap::createFromFile(path, kTopDown);
         if (pBitmap)
         {
             ResourceFormat texFormat = pBitmap->getFormat();
@@ -340,59 +396,35 @@ ref<Texture> Texture::createFromFile(
                 texFormat = linearToSrgbFormat(texFormat);
             }
 
-            pTex = Texture::create2D(
-                pDevice, pBitmap->getWidth(), pBitmap->getHeight(), texFormat, 1, generateMipLevels ? Texture::kMaxPossible : 1,
-                pBitmap->getData(), bindFlags
+            pTex = pDevice->createTexture2D(
+                pBitmap->getWidth(),
+                pBitmap->getHeight(),
+                texFormat,
+                1,
+                generateMipLevels ? Texture::kMaxPossible : 1,
+                pBitmap->getData(),
+                bindFlags
             );
         }
     }
 
     if (pTex != nullptr)
     {
-        pTex->setSourcePath(fullPath);
+        pTex->setSourcePath(path);
 
         // Log debug info.
         std::string str = fmt::format(
-            "Loaded texture: size={}x{} mips={} format={} path={}", pTex->getWidth(), pTex->getHeight(), pTex->getMipCount(),
-            to_string(pTex->getFormat()), fullPath
+            "Loaded texture: size={}x{} mips={} format={} path={}",
+            pTex->getWidth(),
+            pTex->getHeight(),
+            pTex->getMipCount(),
+            to_string(pTex->getFormat()),
+            path
         );
         logDebug(str);
     }
 
     return pTex;
-}
-
-Texture::Texture(
-    ref<Device> pDevice,
-    uint32_t width,
-    uint32_t height,
-    uint32_t depth,
-    uint32_t arraySize,
-    uint32_t mipLevels,
-    uint32_t sampleCount,
-    ResourceFormat format,
-    Type type,
-    BindFlags bindFlags
-)
-    : Resource(pDevice, type, bindFlags, 0)
-    , mWidth(width)
-    , mHeight(height)
-    , mDepth(depth)
-    , mMipLevels(mipLevels)
-    , mSampleCount(sampleCount)
-    , mArraySize(arraySize)
-    , mFormat(format)
-{
-    FALCOR_ASSERT(width > 0 && height > 0 && depth > 0);
-    FALCOR_ASSERT(arraySize > 0 && mipLevels > 0 && sampleCount > 0);
-    FALCOR_ASSERT(format != ResourceFormat::Unknown);
-
-    if (mMipLevels == kMaxPossible)
-    {
-        uint32_t dims = width | height | depth;
-        mMipLevels = bitScanReverse(dims) + 1;
-    }
-    mState.perSubresource.resize(mMipLevels * mArraySize, mState.global);
 }
 
 gfx::IResource* Texture::getGfxResource() const
@@ -505,6 +537,48 @@ ref<ShaderResourceView> Texture::getSRV(uint32_t mostDetailedMip, uint32_t mipCo
     return findViewCommon<ShaderResourceView>(this, mostDetailedMip, mipCount, firstArraySlice, arraySize, mSrvs, createFunc);
 }
 
+Texture::SubresourceLayout Texture::getSubresourceLayout(uint32_t subresource) const
+{
+    FALCOR_CHECK(subresource < getSubresourceCount(), "subresource out of range");
+
+    gfx::ITextureResource* gfxTexture = getGfxTextureResource();
+    gfx::FormatInfo gfxFormatInfo;
+    FALCOR_GFX_CALL(gfx::gfxGetFormatInfo(gfxTexture->getDesc()->format, &gfxFormatInfo));
+
+    SubresourceLayout layout;
+    uint32_t mipLevel = getSubresourceMipLevel(subresource);
+    layout.rowSize = div_round_up(getWidth(mipLevel), uint32_t(gfxFormatInfo.blockWidth)) * gfxFormatInfo.blockSizeInBytes;
+    layout.rowSizeAligned = align_to(mpDevice->getTextureRowAlignment(), layout.rowSize);
+    layout.rowCount = div_round_up(getHeight(mipLevel), uint32_t(gfxFormatInfo.blockHeight));
+    layout.depth = getDepth();
+
+    return layout;
+}
+
+void Texture::setSubresourceBlob(uint32_t subresource, const void* pData, size_t size)
+{
+    FALCOR_CHECK(subresource < getSubresourceCount(), "'subresource' ({}) is out of range ({})", subresource, getSubresourceCount());
+    SubresourceLayout layout = getSubresourceLayout(subresource);
+    FALCOR_CHECK(
+        size == layout.getTotalByteSize(), "'size' ({}) does not match the subresource size ({})", size, layout.getTotalByteSize()
+    );
+
+    mpDevice->getRenderContext()->updateSubresourceData(this, subresource, pData);
+}
+
+void Texture::getSubresourceBlob(uint32_t subresource, void* pData, size_t size) const
+{
+    FALCOR_CHECK(subresource < getSubresourceCount(), "'subresource' ({}) is out of range ({})", subresource, getSubresourceCount());
+    SubresourceLayout layout = getSubresourceLayout(subresource);
+    FALCOR_CHECK(
+        size == layout.getTotalByteSize(), "'size' ({}) does not match the subresource size ({})", size, layout.getTotalByteSize()
+    );
+
+    auto data = mpDevice->getRenderContext()->readTextureSubresource(this, subresource);
+    FALCOR_ASSERT(data.size() == size);
+    std::memcpy(pData, data.data(), data.size());
+}
+
 void Texture::captureToFile(
     uint32_t mipLevel,
     uint32_t arraySlice,
@@ -516,11 +590,11 @@ void Texture::captureToFile(
 {
     if (format == Bitmap::FileFormat::DdsFile)
     {
-        throw RuntimeError("Texture::captureToFile does not yet support saving to DDS.");
+        FALCOR_THROW("Texture::captureToFile does not yet support saving to DDS.");
     }
 
     if (mType != Type::Texture2D)
-        throw RuntimeError("Texture::captureToFile only supported for 2D textures.");
+        FALCOR_THROW("Texture::captureToFile only supported for 2D textures.");
 
     RenderContext* pContext = mpDevice->getRenderContext();
 
@@ -532,8 +606,13 @@ void Texture::captureToFile(
 
     if (type == FormatType::Float && channels < 3)
     {
-        ref<Texture> pOther = Texture::create2D(
-            mpDevice, getWidth(mipLevel), getHeight(mipLevel), ResourceFormat::RGBA32Float, 1, 1, nullptr,
+        ref<Texture> pOther = mpDevice->createTexture2D(
+            getWidth(mipLevel),
+            getHeight(mipLevel),
+            ResourceFormat::RGBA32Float,
+            1,
+            1,
+            nullptr,
             ResourceBindFlags::RenderTarget | ResourceBindFlags::ShaderResource
         );
         pContext->blit(getSRV(mipLevel, 1, arraySlice, 1), pOther->getRTV(0, 0, 1));
@@ -600,18 +679,24 @@ void Texture::generateMips(RenderContext* pContext, bool minMaxMips)
             auto rtv = getRTV(m + 1, a, 1);
             if (!minMaxMips)
             {
-                pContext->blit(srv, rtv, RenderContext::kMaxRect, RenderContext::kMaxRect, Sampler::Filter::Linear);
+                pContext->blit(srv, rtv, RenderContext::kMaxRect, RenderContext::kMaxRect, TextureFilteringMode::Linear);
             }
             else
             {
-                const Sampler::ReductionMode redModes[] = {
-                    Sampler::ReductionMode::Standard, Sampler::ReductionMode::Min, Sampler::ReductionMode::Max,
-                    Sampler::ReductionMode::Standard};
+                const TextureReductionMode redModes[] = {
+                    TextureReductionMode::Standard,
+                    TextureReductionMode::Min,
+                    TextureReductionMode::Max,
+                    TextureReductionMode::Standard,
+                };
                 const float4 componentsTransform[] = {
-                    float4(1.0f, 0.0f, 0.0f, 0.0f), float4(0.0f, 1.0f, 0.0f, 0.0f), float4(0.0f, 0.0f, 1.0f, 0.0f),
-                    float4(0.0f, 0.0f, 0.0f, 1.0f)};
+                    float4(1.0f, 0.0f, 0.0f, 0.0f),
+                    float4(0.0f, 1.0f, 0.0f, 0.0f),
+                    float4(0.0f, 0.0f, 1.0f, 0.0f),
+                    float4(0.0f, 0.0f, 0.0f, 1.0f),
+                };
                 pContext->blit(
-                    srv, rtv, RenderContext::kMaxRect, RenderContext::kMaxRect, Sampler::Filter::Linear, redModes, componentsTransform
+                    srv, rtv, RenderContext::kMaxRect, RenderContext::kMaxRect, TextureFilteringMode::Linear, redModes, componentsTransform
                 );
             }
         }
@@ -648,25 +733,6 @@ bool Texture::compareDesc(const Texture* pOther) const
            mIsSparse == pOther->mIsSparse && all(mSparsePageRes == pOther->mSparsePageRes);
 }
 
-gfx::IResource::Type getResourceType(Texture::Type type)
-{
-    switch (type)
-    {
-    case Texture::Type::Texture1D:
-        return gfx::IResource::Type::Texture1D;
-    case Texture::Type::Texture2D:
-    case Texture::Type::Texture2DMultisample:
-        return gfx::IResource::Type::Texture2D;
-    case Texture::Type::TextureCube:
-        return gfx::IResource::Type::TextureCube;
-    case Texture::Type::Texture3D:
-        return gfx::IResource::Type::Texture3D;
-    default:
-        FALCOR_UNREACHABLE();
-        return gfx::IResource::Type::Unknown;
-    }
-}
-
 uint64_t Texture::getTextureSizeInBytes() const
 {
     // get allocation info for resource description
@@ -680,181 +746,80 @@ uint64_t Texture::getTextureSizeInBytes() const
     return outSizeBytes;
 }
 
-void Texture::apiInit(const void* pData, bool autoGenMips)
-{
-    // WARNING: This is a hack to allow parallel texture loading in TextureManager.
-    std::lock_guard<std::mutex> lock(mpDevice->getGlobalGfxMutex());
-
-    // create resource description
-    gfx::ITextureResource::Desc desc = {};
-
-    // base description
-
-    // type
-    desc.type = getResourceType(mType); // same as resource dimension in D3D12
-
-    // default state and allowed states
-    gfx::ResourceState defaultState;
-    getGFXResourceState(mBindFlags, defaultState, desc.allowedStates);
-
-    // Always set texture to general(common) state upon creation.
-    desc.defaultState = gfx::ResourceState::General;
-
-    desc.memoryType = gfx::MemoryType::DeviceLocal;
-    // texture resource specific description attributes
-
-    // size
-    desc.size.width = align_to(getFormatWidthCompressionRatio(mFormat), mWidth);
-    desc.size.height = align_to(getFormatHeightCompressionRatio(mFormat), mHeight);
-    desc.size.depth = mDepth; // relevant for Texture3D
-
-    // array size
-    if (mType == Texture::Type::TextureCube)
-    {
-        desc.arraySize = mArraySize * 6;
-    }
-    else
-    {
-        desc.arraySize = mArraySize;
-    }
-
-    // mip map levels
-    desc.numMipLevels = mMipLevels;
-
-    // format
-    desc.format = getGFXFormat(mFormat); // lookup can result in Unknown / unsupported format
-
-    // sample description
-    desc.sampleDesc.numSamples = mSampleCount;
-    desc.sampleDesc.quality = 0;
-
-    // clear value
-    gfx::ClearValue clearValue;
-    if ((mBindFlags & (Texture::BindFlags::RenderTarget | Texture::BindFlags::DepthStencil)) != Texture::BindFlags::None)
-    {
-        if ((mBindFlags & Texture::BindFlags::DepthStencil) != Texture::BindFlags::None)
-        {
-            clearValue.depthStencil.depth = 1.0f;
-        }
-        desc.optimalClearValue = &clearValue;
-    }
-
-    // shared resource
-    if (is_set(mBindFlags, Resource::BindFlags::Shared))
-    {
-        desc.isShared = true;
-    }
-
-    // validate description
-    FALCOR_ASSERT(desc.size.width > 0 && desc.size.height > 0);
-    FALCOR_ASSERT(desc.numMipLevels > 0 && desc.size.depth > 0 && desc.arraySize > 0 && desc.sampleDesc.numSamples > 0);
-
-    // create resource
-    FALCOR_GFX_CALL(mpDevice->getGfxDevice()->createTextureResource(desc, nullptr, mGfxTextureResource.writeRef()));
-    FALCOR_ASSERT(mGfxTextureResource);
-
-    // upload init data through texture class
-    if (pData)
-    {
-        uploadInitData(mpDevice->getRenderContext(), pData, autoGenMips);
-    }
-}
-
-Texture::~Texture()
-{
-    mpDevice->releaseResource(mGfxTextureResource);
-}
-
 /**
  * Python binding wrapper for returning the content of a texture as a numpy array.
  */
-pybind11::array pyTextureGetImage(const Texture& texture, uint32_t mipLevel = 0, uint32_t arraySlice = 0)
+inline pybind11::ndarray<pybind11::numpy> texture_to_numpy(const Texture& self, uint32_t mip_level, uint32_t array_slice)
 {
-    checkArgument(
-        mipLevel < texture.getMipCount(), "'mipLevel' ({}) is out of bounds. Only {} level(s) available.", mipLevel, texture.getMipCount()
+    FALCOR_CHECK(
+        mip_level < self.getMipCount(), "'mip_level' ({}) is out of bounds. Only {} level(s) available.", mip_level, self.getMipCount()
     );
-    checkArgument(
-        arraySlice < texture.getArraySize(), "'arraySlice' ({}) is out of bounds. Only {} slice(s) available.", arraySlice,
-        texture.getArraySize()
+    FALCOR_CHECK(
+        array_slice < self.getArraySize(),
+        "'array_slice' ({}) is out of bounds. Only {} slice(s) available.",
+        array_slice,
+        self.getArraySize()
     );
-    checkArgument(texture.getSampleCount() == 1, "Texture is multi-sampled.");
-
-    ResourceFormat format = texture.getFormat();
-    checkArgument(isCompressedFormat(format) == false, "Texture uses a compressed format.");
-    checkArgument(isStencilFormat(format) == false, "Texture uses a stencil format.");
-
-    FormatType formatType = getFormatType(format);
-    checkArgument(formatType != FormatType::Unknown, "Texture uses an unknown pixel format.");
-
-    uint32_t channelCount = getFormatChannelCount(format);
-    checkArgument(channelCount > 0, "Texture has zero channels.");
-
-    // Make sure all channels have the same number of bits.
-    uint32_t channelBits = getNumChannelBits(format, 0);
-    for (uint32_t i = 1; i < channelCount; ++i)
-        checkArgument(getNumChannelBits(format, i) == channelBits, "Texture uses different bit depths per channel.");
-    checkArgument(
-        channelBits == 8 || channelBits == 16 || channelBits == 32, "Texture uses bit depth {}. Only 8, 16 and 32 are supported.",
-        channelBits
-    );
-
-    // Generate numpy dtype.
-    std::string dtype;
-    switch (formatType)
-    {
-    case FormatType::Float:
-        dtype = "float";
-        break;
-    case FormatType::Sint:
-    case FormatType::Snorm:
-        dtype = "int";
-        break;
-    case FormatType::Uint:
-    case FormatType::Unorm:
-    case FormatType::UnormSrgb:
-        dtype = "uint";
-        break;
-    }
-    dtype += std::to_string(channelBits);
 
     // Get image dimensions.
-    uint32_t width = texture.getWidth(mipLevel);
-    uint32_t height = texture.getHeight(mipLevel);
-    uint32_t depth = texture.getDepth(mipLevel);
+    uint32_t width = self.getWidth(mip_level);
+    uint32_t height = self.getHeight(mip_level);
+    uint32_t depth = self.getDepth(mip_level);
 
-    // Generate numpy array shape.
-    std::vector<pybind11::ssize_t> shape{width, channelCount};
-    if (height > 1)
-        shape.insert(shape.begin(), height);
-    if (depth > 1)
-        shape.insert(shape.begin(), depth);
+    uint32_t subresource = self.getSubresourceIndex(array_slice, mip_level);
+    Texture::SubresourceLayout layout = self.getSubresourceLayout(subresource);
 
-    pybind11::array result(pybind11::dtype(dtype), shape);
-    // TODO: We should add support for writing directly to a prepared buffer.
-    uint32_t subresource = texture.getSubresourceIndex(arraySlice, mipLevel);
-    auto data = texture.getDevice()->getRenderContext()->readTextureSubresource(&texture, mipLevel);
-    auto request = result.request();
-    FALCOR_ASSERT_EQ(data.size(), request.size * request.itemsize);
-    std::memcpy(request.ptr, data.data(), data.size());
+    size_t subresourceSize = layout.getTotalByteSize();
+    void* cpuData = new uint8_t[subresourceSize];
+    self.getSubresourceBlob(subresource, cpuData, subresourceSize);
 
-    return result;
+    pybind11::capsule owner(cpuData, [](void* p) noexcept { delete[] reinterpret_cast<uint8_t*>(p); });
+
+    if (auto dtype = resourceFormatToDtype(self.getFormat()))
+    {
+        uint32_t channelCount = getFormatChannelCount(self.getFormat());
+        std::vector<pybind11::size_t> shape;
+        if (depth > 1)
+            shape.push_back(depth);
+        if (height > 1)
+            shape.push_back(height);
+        shape.push_back(width);
+        if (channelCount > 1)
+            shape.push_back(channelCount);
+        return pybind11::ndarray<pybind11::numpy>(
+            cpuData, shape.size(), shape.data(), owner, nullptr, *dtype, pybind11::device::cpu::value
+        );
+    }
+    else
+    {
+        pybind11::size_t shape[1] = {subresourceSize};
+        return pybind11::ndarray<pybind11::numpy>(
+            cpuData, 1, shape, owner, nullptr, pybind11::dtype<uint8_t>(), pybind11::device::cpu::value
+        );
+    }
 }
 
-/**
- * Python binding wrapper for returning the content of texture as raw memory.
- */
-std::vector<uint8_t> pyTextureGetData(const Texture& texture, uint32_t mipLevel = 0, uint32_t arraySlice = 0)
+inline void texture_from_numpy(Texture& self, pybind11::ndarray<pybind11::numpy> data, uint32_t mip_level, uint32_t array_slice)
 {
-    checkArgument(
-        mipLevel < texture.getMipCount(), "'mipLevel' ({}) is out of bounds. Only {} level(s) available.", mipLevel, texture.getMipCount()
+    FALCOR_CHECK(
+        mip_level < self.getMipCount(), "'mip_level' ({}) is out of bounds. Only {} level(s) available.", mip_level, self.getMipCount()
     );
-    checkArgument(
-        arraySlice < texture.getArraySize(), "'arraySlice' ({}) is out of bounds. Only {} slice(s) available.", arraySlice,
-        texture.getArraySize()
+    FALCOR_CHECK(
+        array_slice < self.getArraySize(),
+        "'array_slice' ({}) is out of bounds. Only {} slice(s) available.",
+        array_slice,
+        self.getArraySize()
     );
+    FALCOR_CHECK(isNdarrayContiguous(data), "numpy array is not contiguous");
 
-    uint32_t subresource = texture.getSubresourceIndex(arraySlice, mipLevel);
-    return texture.getDevice()->getRenderContext()->readTextureSubresource(&texture, subresource);
+    uint32_t subresource = self.getSubresourceIndex(array_slice, mip_level);
+    Texture::SubresourceLayout layout = self.getSubresourceLayout(subresource);
+
+    size_t subresourceSize = layout.getTotalByteSize();
+    size_t dataSize = getNdarrayByteSize(data);
+    FALCOR_CHECK(dataSize == subresourceSize, "numpy array is doesn't match the subresource size ({} != {})", dataSize, subresourceSize);
+
+    self.setSubresourceBlob(subresource, data.data(), dataSize);
 }
 
 FALCOR_SCRIPT_BINDING(Texture)
@@ -864,20 +829,15 @@ FALCOR_SCRIPT_BINDING(Texture)
     FALCOR_SCRIPT_BINDING_DEPENDENCY(Resource)
 
     pybind11::class_<Texture, Resource, ref<Texture>> texture(m, "Texture");
+    texture.def_property_readonly("format", &Texture::getFormat);
     texture.def_property_readonly("width", [](const Texture& texture) { return texture.getWidth(); });
     texture.def_property_readonly("height", [](const Texture& texture) { return texture.getHeight(); });
     texture.def_property_readonly("depth", [](const Texture& texture) { return texture.getDepth(); });
     texture.def_property_readonly("mip_count", &Texture::getMipCount);
     texture.def_property_readonly("array_size", &Texture::getArraySize);
-    texture.def_property_readonly("samples", &Texture::getSampleCount);
-    texture.def_property_readonly("format", &Texture::getFormat);
+    texture.def_property_readonly("sample_count", &Texture::getSampleCount);
 
-    texture.def("get_image", pyTextureGetImage, "mip_level"_a = 0, "array_slice"_a = 0);
-    texture.def("get_data", pyTextureGetData, "mip_level"_a = 0, "array_slice"_a = 0);
-
-    // PYTHONDEPRECATED BEGIN
-    texture.def("getImage", pyTextureGetImage, "mipLevel"_a = 0, "arraySlice"_a = 0);
-    texture.def("getData", pyTextureGetData, "mipLevel"_a = 0, "arraySlice"_a = 0);
-    // PYTHONDEPRECATED END
+    texture.def("to_numpy", texture_to_numpy, "mip_level"_a = 0, "array_slice"_a = 0);
+    texture.def("from_numpy", texture_from_numpy, "data"_a, "mip_level"_a = 0, "array_slice"_a = 0);
 }
 } // namespace Falcor

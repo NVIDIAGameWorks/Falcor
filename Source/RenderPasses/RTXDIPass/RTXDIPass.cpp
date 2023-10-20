@@ -33,35 +33,35 @@ using namespace Falcor;
 
 namespace
 {
-    const std::string kPrepareSurfaceDataFile = "RenderPasses/RTXDIPass/PrepareSurfaceData.cs.slang";
-    const std::string kFinalShadingFile = "RenderPasses/RTXDIPass/FinalShading.cs.slang";
+const std::string kPrepareSurfaceDataFile = "RenderPasses/RTXDIPass/PrepareSurfaceData.cs.slang";
+const std::string kFinalShadingFile = "RenderPasses/RTXDIPass/FinalShading.cs.slang";
 
-    const std::string kShaderModel = "6_5";
+const std::string kInputVBuffer = "vbuffer";
+const std::string kInputTexGrads = "texGrads";
+const std::string kInputMotionVectors = "mvec";
 
-    const std::string kInputVBuffer = "vbuffer";
-    const std::string kInputTexGrads = "texGrads";
-    const std::string kInputMotionVectors = "mvec";
+const Falcor::ChannelList kInputChannels = {
+    // clang-format off
+    { kInputVBuffer,            "gVBuffer",                 "Visibility buffer in packed format"                       },
+    { kInputTexGrads,           "gTextureGrads",            "Texture gradients", true /* optional */                   },
+    { kInputMotionVectors,      "gMotionVector",            "Motion vector buffer (float format)", true /* optional */ },
+    // clang-format on
+};
 
-    const Falcor::ChannelList kInputChannels =
-    {
-        { kInputVBuffer,            "gVBuffer",                 "Visibility buffer in packed format"                       },
-        { kInputTexGrads,           "gTextureGrads",            "Texture gradients", true /* optional */                   },
-        { kInputMotionVectors,      "gMotionVector",            "Motion vector buffer (float format)", true /* optional */ },
-    };
+const Falcor::ChannelList kOutputChannels = {
+    // clang-format off
+    { "color",                  "gColor",                   "Final color",              true /* optional */, ResourceFormat::RGBA32Float },
+    { "emission",               "gEmission",                "Emissive color",           true /* optional */, ResourceFormat::RGBA32Float },
+    { "diffuseIllumination",    "gDiffuseIllumination",     "Diffuse illumination",     true /* optional */, ResourceFormat::RGBA32Float },
+    { "diffuseReflectance",     "gDiffuseReflectance",      "Diffuse reflectance",      true /* optional */, ResourceFormat::RGBA32Float },
+    { "specularIllumination",   "gSpecularIllumination",    "Specular illumination",    true /* optional */, ResourceFormat::RGBA32Float },
+    { "specularReflectance",    "gSpecularReflectance",     "Specular reflectance",     true /* optional */, ResourceFormat::RGBA32Float },
+    // clang-format on
+};
 
-    const Falcor::ChannelList kOutputChannels =
-    {
-        { "color",                  "gColor",                   "Final color",              true /* optional */, ResourceFormat::RGBA32Float },
-        { "emission",               "gEmission",                "Emissive color",           true /* optional */, ResourceFormat::RGBA32Float },
-        { "diffuseIllumination",    "gDiffuseIllumination",     "Diffuse illumination",     true /* optional */, ResourceFormat::RGBA32Float },
-        { "diffuseReflectance",     "gDiffuseReflectance",      "Diffuse reflectance",      true /* optional */, ResourceFormat::RGBA32Float },
-        { "specularIllumination",   "gSpecularIllumination",    "Specular illumination",    true /* optional */, ResourceFormat::RGBA32Float },
-        { "specularReflectance",    "gSpecularReflectance",     "Specular reflectance",     true /* optional */, ResourceFormat::RGBA32Float },
-    };
-
-    // Scripting options.
-    const char* kOptions = "options";
-}
+// Scripting options.
+const char* kOptions = "options";
+} // namespace
 
 // What passes does this DLL expose?  Register them here
 extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registry)
@@ -69,8 +69,7 @@ extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registr
     registry.registerClass<RenderPass, RTXDIPass>();
 }
 
-RTXDIPass::RTXDIPass(ref<Device> pDevice, const Properties& props)
-    : RenderPass(pDevice)
+RTXDIPass::RTXDIPass(ref<Device> pDevice, const Properties& props) : RenderPass(pDevice)
 {
     parseProperties(props);
 }
@@ -79,8 +78,10 @@ void RTXDIPass::parseProperties(const Properties& props)
 {
     for (const auto& [key, value] : props)
     {
-        if (key == kOptions) mOptions = value;
-        else logWarning("Unknown property '{}' in RTXDIPass properties.", key);
+        if (key == kOptions)
+            mOptions = value;
+        else
+            logWarning("Unknown property '{}' in RTXDIPass properties.", key);
     }
 }
 
@@ -101,6 +102,13 @@ void RTXDIPass::execute(RenderContext* pRenderContext, const RenderData& renderD
     {
         clearRenderPassChannels(pRenderContext, kOutputChannels, renderData);
         return;
+    }
+
+    // Check for scene changes that require shader recompilation.
+    if (is_set(mpScene->getUpdates(), Scene::UpdateFlags::RecompileNeeded) ||
+        is_set(mpScene->getUpdates(), Scene::UpdateFlags::GeometryChanged))
+    {
+        recreatePrograms();
     }
 
     FALCOR_ASSERT(mpRTXDI);
@@ -137,8 +145,8 @@ void RTXDIPass::setScene(RenderContext* pRenderContext, const ref<Scene>& pScene
 {
     mpScene = pScene;
     mpRTXDI = nullptr;
-    mpPrepareSurfaceDataPass = nullptr;
-    mpFinalShadingPass = nullptr;
+
+    recreatePrograms();
 
     if (mpScene)
     {
@@ -174,8 +182,15 @@ void RTXDIPass::renderUI(Gui::Widgets& widget)
     if (mpRTXDI)
     {
         mOptionsChanged = mpRTXDI->renderUI(widget);
-        if (mOptionsChanged) mOptions = mpRTXDI->getOptions();
+        if (mOptionsChanged)
+            mOptions = mpRTXDI->getOptions();
     }
+}
+
+void RTXDIPass::recreatePrograms()
+{
+    mpPrepareSurfaceDataPass = nullptr;
+    mpFinalShadingPass = nullptr;
 }
 
 void RTXDIPass::prepareSurfaceData(RenderContext* pRenderContext, const ref<Texture>& pVBuffer)
@@ -187,9 +202,9 @@ void RTXDIPass::prepareSurfaceData(RenderContext* pRenderContext, const ref<Text
 
     if (!mpPrepareSurfaceDataPass)
     {
-        Program::Desc desc;
+        ProgramDesc desc;
         desc.addShaderModules(mpScene->getShaderModules());
-        desc.addShaderLibrary(kPrepareSurfaceDataFile).setShaderModel(kShaderModel).csEntry("main");
+        desc.addShaderLibrary(kPrepareSurfaceDataFile).csEntry("main");
         desc.addTypeConformances(mpScene->getTypeConformances());
 
         auto defines = mpScene->getSceneDefines();
@@ -202,8 +217,8 @@ void RTXDIPass::prepareSurfaceData(RenderContext* pRenderContext, const ref<Text
     mpPrepareSurfaceDataPass->addDefine("GBUFFER_ADJUST_SHADING_NORMALS", mGBufferAdjustShadingNormals ? "1" : "0");
 
     auto rootVar = mpPrepareSurfaceDataPass->getRootVar();
-    rootVar["gScene"] = mpScene->getParameterBlock();
-    mpRTXDI->setShaderData(rootVar);
+    mpScene->bindShaderData(rootVar["gScene"]);
+    mpRTXDI->bindShaderData(rootVar);
 
     auto var = rootVar["gPrepareSurfaceData"];
     var["vbuffer"] = pVBuffer;
@@ -221,9 +236,9 @@ void RTXDIPass::finalShading(RenderContext* pRenderContext, const ref<Texture>& 
 
     if (!mpFinalShadingPass)
     {
-        Program::Desc desc;
+        ProgramDesc desc;
         desc.addShaderModules(mpScene->getShaderModules());
-        desc.addShaderLibrary(kFinalShadingFile).setShaderModel(kShaderModel).csEntry("main");
+        desc.addShaderLibrary(kFinalShadingFile).csEntry("main");
         desc.addTypeConformances(mpScene->getTypeConformances());
 
         auto defines = mpScene->getSceneDefines();
@@ -243,8 +258,8 @@ void RTXDIPass::finalShading(RenderContext* pRenderContext, const ref<Texture>& 
     mpFinalShadingPass->getProgram()->addDefines(getValidResourceDefines(kOutputChannels, renderData));
 
     auto rootVar = mpFinalShadingPass->getRootVar();
-    rootVar["gScene"] = mpScene->getParameterBlock();
-    mpRTXDI->setShaderData(rootVar);
+    mpScene->bindShaderData(rootVar["gScene"]);
+    mpRTXDI->bindShaderData(rootVar);
 
     auto var = rootVar["gFinalShading"];
     var["vbuffer"] = pVBuffer;
@@ -256,7 +271,8 @@ void RTXDIPass::finalShading(RenderContext* pRenderContext, const ref<Texture>& 
         ref<Texture> pTex = renderData.getTexture(channel.name);
         rootVar[channel.texname] = pTex;
     };
-    for (const auto& channel : kOutputChannels) bind(channel);
+    for (const auto& channel : kOutputChannels)
+        bind(channel);
 
     mpFinalShadingPass->execute(pRenderContext, mFrameDim.x, mFrameDim.y);
 }

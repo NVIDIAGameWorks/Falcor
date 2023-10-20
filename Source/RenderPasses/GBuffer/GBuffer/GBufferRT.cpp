@@ -31,47 +31,47 @@
 
 namespace
 {
-    const std::string kProgramRaytraceFile = "RenderPasses/GBuffer/GBuffer/GBufferRT.rt.slang";
-    const std::string kProgramComputeFile = "RenderPasses/GBuffer/GBuffer/GBufferRT.cs.slang";
+const std::string kProgramRaytraceFile = "RenderPasses/GBuffer/GBuffer/GBufferRT.rt.slang";
+const std::string kProgramComputeFile = "RenderPasses/GBuffer/GBuffer/GBufferRT.cs.slang";
 
-    // Scripting options.
-    const char kUseTraceRayInline[] = "useTraceRayInline";
-    const char kUseDOF[] = "useDOF";
+// Scripting options.
+const char kUseTraceRayInline[] = "useTraceRayInline";
+const char kUseDOF[] = "useDOF";
 
-    // Ray tracing settings that affect the traversal stack size. Set as small as possible.
-    const uint32_t kMaxPayloadSizeBytes = 4;
-    const uint32_t kMaxRecursionDepth = 1;
+// Ray tracing settings that affect the traversal stack size. Set as small as possible.
+const uint32_t kMaxPayloadSizeBytes = 4;
+const uint32_t kMaxRecursionDepth = 1;
 
-    // Scripting options
-    const std::string kLODMode = "texLOD";
+// Scripting options
+const std::string kLODMode = "texLOD";
 
-    // Additional output channels.
-    const std::string kVBufferName = "vbuffer";
-    const ChannelList kGBufferExtraChannels =
-    {
-        { kVBufferName,                 "gVBuffer",                     "Visibility buffer",                                       true /* optional */, ResourceFormat::Unknown /* set at runtime */ },
-        { "depth",                      "gDepth",                       "Depth buffer (NDC)",                                      true /* optional */, ResourceFormat::R32Float     },
-        { "linearZ",                    "gLinearZ",                     "Linear Z and slope",                                      true /* optional */, ResourceFormat::RG32Float    },
-        { "mvecW",                      "gMotionVectorW",               "Motion vector in world space",                            true /* optional */, ResourceFormat::RGBA16Float  },
-        { "normWRoughnessMaterialID",   "gNormalWRoughnessMaterialID",  "Guide normal in world space, roughness, and material ID", true /* optional */, ResourceFormat::RGB10A2Unorm },
-        { "guideNormalW",               "gGuideNormalW",                "Guide normal in world space",                             true /* optional */, ResourceFormat::RGBA32Float  },
-        { "diffuseOpacity",             "gDiffOpacity",                 "Diffuse reflection albedo and opacity",                   true /* optional */, ResourceFormat::RGBA32Float  },
-        { "specRough",                  "gSpecRough",                   "Specular reflectance and roughness",                      true /* optional */, ResourceFormat::RGBA32Float  },
-        { "emissive",                   "gEmissive",                    "Emissive color",                                          true /* optional */, ResourceFormat::RGBA32Float  },
-        { "viewW",                      "gViewW",                       "View direction in world space",                           true /* optional */, ResourceFormat::RGBA32Float  }, // TODO: Switch to packed 2x16-bit snorm format.
-        { "time",                       "gTime",                        "Per-pixel execution time",                                true /* optional */, ResourceFormat::R32Uint      },
-        { "disocclusion",               "gDisocclusion",                "Disocclusion mask",                                       true /* optional */, ResourceFormat::R32Float     },
-        { "mask",                       "gMask",                        "Mask",                                                    true /* optional */, ResourceFormat::R32Float     },
-    };
+// Additional output channels.
+const std::string kVBufferName = "vbuffer";
+const ChannelList kGBufferExtraChannels = {
+    // clang-format off
+    { kVBufferName,                 "gVBuffer",                     "Visibility buffer",                                       true /* optional */, ResourceFormat::Unknown /* set at runtime */ },
+    { "depth",                      "gDepth",                       "Depth buffer (NDC)",                                      true /* optional */, ResourceFormat::R32Float     },
+    { "linearZ",                    "gLinearZ",                     "Linear Z and slope",                                      true /* optional */, ResourceFormat::RG32Float    },
+    { "mvecW",                      "gMotionVectorW",               "Motion vector in world space",                            true /* optional */, ResourceFormat::RGBA16Float  },
+    { "normWRoughnessMaterialID",   "gNormalWRoughnessMaterialID",  "Guide normal in world space, roughness, and material ID", true /* optional */, ResourceFormat::RGB10A2Unorm },
+    { "guideNormalW",               "gGuideNormalW",                "Guide normal in world space",                             true /* optional */, ResourceFormat::RGBA32Float  },
+    { "diffuseOpacity",             "gDiffOpacity",                 "Diffuse reflection albedo and opacity",                   true /* optional */, ResourceFormat::RGBA32Float  },
+    { "specRough",                  "gSpecRough",                   "Specular reflectance and roughness",                      true /* optional */, ResourceFormat::RGBA32Float  },
+    { "emissive",                   "gEmissive",                    "Emissive color",                                          true /* optional */, ResourceFormat::RGBA32Float  },
+    { "viewW",                      "gViewW",                       "View direction in world space",                           true /* optional */, ResourceFormat::RGBA32Float  }, // TODO: Switch to packed 2x16-bit snorm format.
+    { "time",                       "gTime",                        "Per-pixel execution time",                                true /* optional */, ResourceFormat::R32Uint      },
+    { "disocclusion",               "gDisocclusion",                "Disocclusion mask",                                       true /* optional */, ResourceFormat::R32Float     },
+    { "mask",                       "gMask",                        "Mask",                                                    true /* optional */, ResourceFormat::R32Float     },
+    // clang-format on
 };
+} // namespace
 
-GBufferRT::GBufferRT(ref<Device> pDevice, const Properties& props)
-    : GBuffer(pDevice)
+GBufferRT::GBufferRT(ref<Device> pDevice, const Properties& props) : GBuffer(pDevice)
 {
+    if (!mpDevice->isShaderModelSupported(ShaderModel::SM6_5))
+        FALCOR_THROW("GBufferRT requires Shader Model 6.5 support.");
     if (!mpDevice->isFeatureSupported(Device::SupportedFeatures::RaytracingTier1_1))
-    {
-        throw RuntimeError("GBufferRT: Raytracing Tier 1.1 is not supported by the current device");
-    }
+        FALCOR_THROW("GBufferRT requires Raytracing Tier 1.1 support.");
 
     parseProperties(props);
 
@@ -99,12 +99,16 @@ void GBufferRT::execute(RenderContext* pRenderContext, const RenderData& renderD
     // Update frame dimension based on render pass output.
     // In this pass all outputs are optional, so we must first find one that exists.
     ref<Texture> pOutput;
-    auto findOutput = [&](const std::string& name) {
+    auto findOutput = [&](const std::string& name)
+    {
         auto pTex = renderData.getTexture(name);
-        if (pTex && !pOutput) pOutput = pTex;
+        if (pTex && !pOutput)
+            pOutput = pTex;
     };
-    for (const auto& channel : kGBufferChannels) findOutput(channel.name);
-    for (const auto& channel : kGBufferExtraChannels) findOutput(channel.name);
+    for (const auto& channel : kGBufferChannels)
+        findOutput(channel.name);
+    for (const auto& channel : kGBufferExtraChannels)
+        findOutput(channel.name);
 
     if (!pOutput)
     {
@@ -123,7 +127,8 @@ void GBufferRT::execute(RenderContext* pRenderContext, const RenderData& renderD
     }
 
     // Check for scene changes.
-    if (is_set(mpScene->getUpdates(), Scene::UpdateFlags::GeometryChanged) ||
+    if (is_set(mpScene->getUpdates(), Scene::UpdateFlags::RecompileNeeded) ||
+        is_set(mpScene->getUpdates(), Scene::UpdateFlags::GeometryChanged) ||
         is_set(mpScene->getUpdates(), Scene::UpdateFlags::SDFGridConfigChanged))
     {
         recreatePrograms();
@@ -140,7 +145,8 @@ void GBufferRT::execute(RenderContext* pRenderContext, const RenderData& renderD
     if (mLODMode == TexLODMode::RayDiffs)
     {
         // TODO: Remove this warning when the TexLOD code has been fixed.
-        // logWarning("GBufferRT::execute() - Ray differentials are not tested for instance transforms that flip the coordinate system handedness. The results may be incorrect.");
+        // logWarning("GBufferRT::execute() - Ray differentials are not tested for instance transforms that flip the coordinate system
+        // handedness. The results may be incorrect.");
     }
 
     mUseTraceRayInline ? executeCompute(pRenderContext, renderData) : executeRaytrace(pRenderContext, renderData);
@@ -164,12 +170,15 @@ void GBufferRT::renderUI(Gui::Widgets& widget)
         mOptionsChanged = true;
     }
 
-
     if (widget.checkbox("Use depth-of-field", mUseDOF))
     {
         mOptionsChanged = true;
     }
-    widget.tooltip("This option enables stochastic depth-of-field when the camera's aperture radius is nonzero. Disable it to force the use of a pinhole camera.", true);
+    widget.tooltip(
+        "This option enables stochastic depth-of-field when the camera's aperture radius is nonzero. "
+        "Disable it to force the use of a pinhole camera.",
+        true
+    );
 }
 
 Properties GBufferRT::getProperties() const
@@ -194,9 +203,12 @@ void GBufferRT::parseProperties(const Properties& props)
 
     for (const auto& [key, value] : props)
     {
-        if (key == kLODMode) mLODMode = value;
-        else if (key == kUseTraceRayInline) mUseTraceRayInline = value;
-        else if (key == kUseDOF) mUseDOF = value;
+        if (key == kLODMode)
+            mLODMode = value;
+        else if (key == kUseTraceRayInline)
+            mUseTraceRayInline = value;
+        else if (key == kUseDOF)
+            mUseDOF = value;
         // TODO: Check for unparsed fields, including those parsed in base classes.
     }
 }
@@ -218,7 +230,7 @@ void GBufferRT::executeRaytrace(RenderContext* pRenderContext, const RenderData&
         defines.add(getShaderDefines(renderData));
 
         // Create ray tracing program.
-        RtProgram::Desc desc;
+        ProgramDesc desc;
         desc.addShaderModules(mpScene->getShaderModules());
         desc.addShaderLibrary(kProgramRaytraceFile);
         desc.addTypeConformances(mpScene->getTypeConformances());
@@ -234,35 +246,43 @@ void GBufferRT::executeRaytrace(RenderContext* pRenderContext, const RenderData&
         // Add hit group with intersection shader for displaced meshes.
         if (mpScene->hasGeometryType(Scene::GeometryType::DisplacedTriangleMesh))
         {
-            sbt->setHitGroup(0, mpScene->getGeometryIDs(Scene::GeometryType::DisplacedTriangleMesh), desc.addHitGroup("displacedTriangleMeshClosestHit", "", "displacedTriangleMeshIntersection"));
+            sbt->setHitGroup(
+                0,
+                mpScene->getGeometryIDs(Scene::GeometryType::DisplacedTriangleMesh),
+                desc.addHitGroup("displacedTriangleMeshClosestHit", "", "displacedTriangleMeshIntersection")
+            );
         }
 
         // Add hit group with intersection shader for curves (represented as linear swept spheres).
         if (mpScene->hasGeometryType(Scene::GeometryType::Curve))
         {
-            sbt->setHitGroup(0, mpScene->getGeometryIDs(Scene::GeometryType::Curve), desc.addHitGroup("curveClosestHit", "", "curveIntersection"));
+            sbt->setHitGroup(
+                0, mpScene->getGeometryIDs(Scene::GeometryType::Curve), desc.addHitGroup("curveClosestHit", "", "curveIntersection")
+            );
         }
 
         // Add hit group with intersection shader for SDF grids.
         if (mpScene->hasGeometryType(Scene::GeometryType::SDFGrid))
         {
-            sbt->setHitGroup(0, mpScene->getGeometryIDs(Scene::GeometryType::SDFGrid), desc.addHitGroup("sdfGridClosestHit", "", "sdfGridIntersection"));
+            sbt->setHitGroup(
+                0, mpScene->getGeometryIDs(Scene::GeometryType::SDFGrid), desc.addHitGroup("sdfGridClosestHit", "", "sdfGridIntersection")
+            );
         }
 
         // Add hit groups for for other procedural primitives here.
 
-        mRaytrace.pProgram = RtProgram::create(mpDevice, desc, defines);
+        mRaytrace.pProgram = Program::create(mpDevice, desc, defines);
         mRaytrace.pVars = RtProgramVars::create(mpDevice, mRaytrace.pProgram, sbt);
 
         // Bind static resources.
         ShaderVar var = mRaytrace.pVars->getRootVar();
-        mpSampleGenerator->setShaderData(var);
+        mpSampleGenerator->bindShaderData(var);
     }
 
     mRaytrace.pProgram->addDefines(getShaderDefines(renderData));
 
     ShaderVar var = mRaytrace.pVars->getRootVar();
-    setShaderData(var, renderData);
+    bindShaderData(var, renderData);
 
     // Dispatch the rays.
     mpScene->raytrace(pRenderContext, mRaytrace.pProgram.get(), mRaytrace.pVars, uint3(mFrameDim, 1));
@@ -273,9 +293,9 @@ void GBufferRT::executeCompute(RenderContext* pRenderContext, const RenderData& 
     // Create compute pass.
     if (!mpComputePass)
     {
-    	Program::Desc desc;
+        ProgramDesc desc;
         desc.addShaderModules(mpScene->getShaderModules());
-        desc.addShaderLibrary(kProgramComputeFile).csEntry("main").setShaderModel("6_5");
+        desc.addShaderLibrary(kProgramComputeFile).csEntry("main");
         desc.addTypeConformances(mpScene->getTypeConformances());
 
         DefineList defines;
@@ -283,18 +303,18 @@ void GBufferRT::executeCompute(RenderContext* pRenderContext, const RenderData& 
         defines.add(mpSampleGenerator->getDefines());
         defines.add(getShaderDefines(renderData));
 
-    	mpComputePass = ComputePass::create(mpDevice, desc, defines, true);
+        mpComputePass = ComputePass::create(mpDevice, desc, defines, true);
 
         // Bind static resources
         ShaderVar var = mpComputePass->getRootVar();
         mpScene->setRaytracingShaderData(pRenderContext, var);
-        mpSampleGenerator->setShaderData(var);
+        mpSampleGenerator->bindShaderData(var);
     }
 
     mpComputePass->getProgram()->addDefines(getShaderDefines(renderData));
 
     ShaderVar var = mpComputePass->getRootVar();
-    setShaderData(var, renderData);
+    bindShaderData(var, renderData);
 
     mpComputePass->execute(pRenderContext, uint3(mFrameDim, 1));
 }
@@ -309,8 +329,10 @@ DefineList GBufferRT::getShaderDefines(const RenderData& renderData) const
 
     // Setup ray flags.
     RayFlags rayFlags = RayFlags::None;
-    if (mForceCullMode && mCullMode == RasterizerState::CullMode::Front) rayFlags = RayFlags::CullFrontFacingTriangles;
-    else if (mForceCullMode && mCullMode == RasterizerState::CullMode::Back) rayFlags = RayFlags::CullBackFacingTriangles;
+    if (mForceCullMode && mCullMode == RasterizerState::CullMode::Front)
+        rayFlags = RayFlags::CullFrontFacingTriangles;
+    else if (mForceCullMode && mCullMode == RasterizerState::CullMode::Back)
+        rayFlags = RayFlags::CullBackFacingTriangles;
     defines.add("RAY_FLAGS", std::to_string((uint32_t)rayFlags));
 
     // For optional I/O resources, set 'is_valid_<name>' defines to inform the program of which ones it can access.
@@ -320,7 +342,7 @@ DefineList GBufferRT::getShaderDefines(const RenderData& renderData) const
     return defines;
 }
 
-void GBufferRT::setShaderData(const ShaderVar& var, const RenderData& renderData)
+void GBufferRT::bindShaderData(const ShaderVar& var, const RenderData& renderData)
 {
     FALCOR_ASSERT(mpScene && mpScene->getCamera());
     var["gGBufferRT"]["frameDim"] = mFrameDim;
@@ -334,6 +356,8 @@ void GBufferRT::setShaderData(const ShaderVar& var, const RenderData& renderData
         ref<Texture> pTex = getOutput(renderData, channel.name);
         var[channel.texname] = pTex;
     };
-    for (const auto& channel : kGBufferChannels) bind(channel);
-    for (const auto& channel : kGBufferExtraChannels) bind(channel);
+    for (const auto& channel : kGBufferChannels)
+        bind(channel);
+    for (const auto& channel : kGBufferExtraChannels)
+        bind(channel);
 }

@@ -52,13 +52,16 @@ public:
         SpecularDeltaMv
     };
 
-    FALCOR_ENUM_INFO(DenoisingMethod, {
-        { DenoisingMethod::RelaxDiffuseSpecular, "RelaxDiffuseSpecular" },
-        { DenoisingMethod::RelaxDiffuse, "RelaxDiffuse" },
-        { DenoisingMethod::ReblurDiffuseSpecular, "ReblurDiffuseSpecular" },
-        { DenoisingMethod::SpecularReflectionMv, "SpecularReflectionMv" },
-        { DenoisingMethod::SpecularDeltaMv, "SpecularDeltaMv" },
-    });
+    FALCOR_ENUM_INFO(
+        DenoisingMethod,
+        {
+            {DenoisingMethod::RelaxDiffuseSpecular, "RelaxDiffuseSpecular"},
+            {DenoisingMethod::RelaxDiffuse, "RelaxDiffuse"},
+            {DenoisingMethod::ReblurDiffuseSpecular, "ReblurDiffuseSpecular"},
+            {DenoisingMethod::SpecularReflectionMv, "SpecularReflectionMv"},
+            {DenoisingMethod::SpecularDeltaMv, "SpecularDeltaMv"},
+        }
+    );
 
     static ref<NRDPass> create(ref<Device> pDevice, const Properties& props) { return make_ref<NRDPass>(pDevice, props); }
 
@@ -75,7 +78,7 @@ private:
     ref<Scene> mpScene;
     uint2 mScreenSize{};
     uint32_t mFrameIndex = 0;
-    RenderPassHelpers::IOSize  mOutputSizeSelection = RenderPassHelpers::IOSize::Default; ///< Selected output size.
+    RenderPassHelpers::IOSize mOutputSizeSelection = RenderPassHelpers::IOSize::Default;
 
     void reinit();
     void createPipelines();
@@ -105,7 +108,6 @@ private:
     std::vector<ref<ComputeStateObject>> mpCSOs;
     std::vector<ref<Texture>> mpPermanentTextures;
     std::vector<ref<Texture>> mpTransientTextures;
-    ref<Buffer> mpConstantBuffer;
     ref<D3D12ConstantBufferView> mpCBV;
 
     float4x4 mPrevViewMatrix;

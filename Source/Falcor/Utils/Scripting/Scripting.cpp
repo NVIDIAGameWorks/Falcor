@@ -26,7 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "Scripting.h"
-#include "Core/Errors.h"
+#include "Core/Error.h"
 #include "Utils/StringUtils.h"
 #include "Utils/StringFormatters.h"
 #include <pybind11/embed.h>
@@ -66,7 +66,7 @@ void Scripting::start()
         }
         catch (const std::exception& e)
         {
-            throw RuntimeError("Failed to start the Python interpreter: {}", e.what());
+            FALCOR_THROW("Failed to start the Python interpreter: {}", e.what());
         }
     }
 }
@@ -152,7 +152,7 @@ Scripting::RunResult Scripting::runScriptFromFile(const std::filesystem::path& p
         context.setObject("__file__", nullptr); // There seems to be no API on pybind11::dict to remove a key.
         return result;
     }
-    throw RuntimeError("Failed to run script. Can't find the file '{}'.", path);
+    FALCOR_THROW("Failed to run script. Can't find the file '{}'.", path);
 }
 
 std::string Scripting::interpretScript(const std::string& script, Context& context)

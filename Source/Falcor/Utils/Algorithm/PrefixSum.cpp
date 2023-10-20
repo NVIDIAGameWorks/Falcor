@@ -26,7 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "PrefixSum.h"
-#include "Core/Assert.h"
+#include "Core/Error.h"
 #include "Core/API/RenderContext.h"
 #include "Utils/Math/Common.h"
 #include "Utils/Timing/Profiler.h"
@@ -43,20 +43,22 @@ PrefixSum::PrefixSum(ref<Device> pDevice) : mpDevice(pDevice)
 {
     // Create shaders and state.
     DefineList defines = {{"GROUP_SIZE", std::to_string(kGroupSize)}};
-    mpPrefixSumGroupProgram = ComputeProgram::createFromFile(mpDevice, kShaderFile, "groupScan", defines);
-    mpPrefixSumGroupVars = ComputeVars::create(mpDevice, mpPrefixSumGroupProgram.get());
-    mpPrefixSumFinalizeProgram = ComputeProgram::createFromFile(mpDevice, kShaderFile, "finalizeGroups", defines);
-    mpPrefixSumFinalizeVars = ComputeVars::create(mpDevice, mpPrefixSumFinalizeProgram.get());
+    mpPrefixSumGroupProgram = Program::createCompute(mpDevice, kShaderFile, "groupScan", defines);
+    mpPrefixSumGroupVars = ProgramVars::create(mpDevice, mpPrefixSumGroupProgram.get());
+    mpPrefixSumFinalizeProgram = Program::createCompute(mpDevice, kShaderFile, "finalizeGroups", defines);
+    mpPrefixSumFinalizeVars = ProgramVars::create(mpDevice, mpPrefixSumFinalizeProgram.get());
 
     mpComputeState = ComputeState::create(mpDevice);
 
     // Create and bind buffer for per-group sums and total sum.
-    mpPrefixGroupSums = Buffer::create(
-        mpDevice, kGroupSize * sizeof(uint32_t), Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess,
-        Buffer::CpuAccess::None, nullptr
+    mpPrefixGroupSums = mpDevice->createBuffer(
+        kGroupSize * sizeof(uint32_t),
+        ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess,
+        MemoryType::DeviceLocal,
+        nullptr
     );
-    mpTotalSum = Buffer::create(mpDevice, sizeof(uint32_t), Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr);
-    mpPrevTotalSum = Buffer::create(mpDevice, sizeof(uint32_t), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr);
+    mpTotalSum = mpDevice->createBuffer(sizeof(uint32_t), ResourceBindFlags::UnorderedAccess, MemoryType::DeviceLocal, nullptr);
+    mpPrevTotalSum = mpDevice->createBuffer(sizeof(uint32_t), ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, nullptr);
 
     {
         auto var = mpPrefixSumGroupVars->getRootVar();
@@ -153,7 +155,7 @@ void PrefixSum::execute(
     {
         if (pTotalSumOffset + 4 > pTotalSumBuffer->getSize())
         {
-            throw RuntimeError("PrefixSum::execute() - Results buffer is too small.");
+            FALCOR_THROW("PrefixSum::execute() - Results buffer is too small.");
         }
 
         pRenderContext->copyBufferRegion(pTotalSumBuffer.get(), pTotalSumOffset, mpTotalSum.get(), 0, 4);
@@ -162,9 +164,7 @@ void PrefixSum::execute(
     // Read back sum of all elements to the CPU, if requested.
     if (pTotalSum)
     {
-        uint32_t* pMappedTotalSum = (uint32_t*)mpTotalSum->map(Buffer::MapType::Read);
-        *pTotalSum = *pMappedTotalSum;
-        mpTotalSum->unmap();
+        *pTotalSum = mpTotalSum->getElement<uint32_t>(0);
     }
 }
 } // namespace Falcor

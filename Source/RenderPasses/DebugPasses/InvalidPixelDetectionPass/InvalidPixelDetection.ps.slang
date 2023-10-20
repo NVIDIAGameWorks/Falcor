@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,13 +27,15 @@
  **************************************************************************/
 Texture2D<float4> gTexture;
 
-float4 main(float2 texC : TEXCOORD) : SV_TARGET0
+float4 main(float2 texC: TEXCOORD) : SV_TARGET0
 {
     uint2 uv;
     gTexture.GetDimensions(uv.x, uv.y);
     int2 xy = int2(uv * texC);
     float4 value = gTexture.Load(int3(xy, 0));
-    if (any(isnan(value))) return float4(1, 0, 0, 1);
-    else if (any(isinf(value))) return float4(0, 1, 0, 1);
+    if (any(isnan(value)))
+        return float4(1, 0, 0, 1);
+    else if (any(isinf(value)))
+        return float4(0, 1, 0, 1);
     return float4(0, 0, 0, 1);
 }

@@ -65,14 +65,14 @@ namespace Falcor
     {
         FALCOR_ASSERT(kMaxSamplerCount <= mpDevice->getLimits().maxShaderVisibleSamplers);
 
-        mpFence = GpuFence::create(mpDevice);
+        mpFence = mpDevice->createFence();
         mpTextureManager = std::make_unique<TextureManager>(mpDevice, kMaxTextureCount);
 
         // Create a default texture sampler.
         Sampler::Desc desc;
-        desc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
+        desc.setFilterMode(TextureFilteringMode::Linear, TextureFilteringMode::Linear, TextureFilteringMode::Linear);
         desc.setMaxAnisotropy(8);
-        mpDefaultTextureSampler = Sampler::create(mpDevice, desc);
+        mpDefaultTextureSampler = mpDevice->createSampler(desc);
     }
 
     void MaterialSystem::renderUI(Gui::Widgets& widget)
@@ -145,7 +145,7 @@ namespace Falcor
         // Add sampler.
         if (mTextureSamplers.size() >= kMaxSamplerCount)
         {
-            throw RuntimeError("Too many samplers");
+            FALCOR_THROW("Too many samplers");
         }
         const uint32_t samplerID = static_cast<uint32_t>(mTextureSamplers.size());
 
@@ -169,7 +169,7 @@ namespace Falcor
         FALCOR_ASSERT(!mMaterialsChanged);
         if (mBuffers.size() >= mBufferDescCount)
         {
-            throw RuntimeError("Too many buffers");
+            FALCOR_THROW("Too many buffers");
         }
         const uint32_t bufferID = static_cast<uint32_t>(mBuffers.size());
 
@@ -182,7 +182,7 @@ namespace Falcor
     void MaterialSystem::replaceBuffer(uint32_t id, const ref<Buffer>& pBuffer)
     {
         FALCOR_ASSERT(pBuffer);
-        checkArgument(id < mBuffers.size(), "'id' is out of bounds.");
+        FALCOR_CHECK(id < mBuffers.size(), "'id' is out of bounds.");
 
         mBuffers[id] = pBuffer;
         mBuffersChanged = true;
@@ -197,7 +197,7 @@ namespace Falcor
             return (uint32_t)std::distance(mTextures3D.begin(), it);
 
         if (mTextures3D.size() >= mTexture3DDescCount)
-            throw RuntimeError("Too many 3D textures");
+            FALCOR_THROW("Too many 3D textures");
 
         const uint32_t textureID = static_cast<uint32_t>(mTextures3D.size());
 
@@ -209,7 +209,7 @@ namespace Falcor
 
     MaterialID MaterialSystem::addMaterial(const ref<Material>& pMaterial)
     {
-        checkArgument(pMaterial != nullptr, "'pMaterial' is missing");
+        FALCOR_CHECK(pMaterial != nullptr, "'pMaterial' is missing");
 
         // Reuse previously added materials.
         if (auto it = std::find(mMaterials.begin(), mMaterials.end(), pMaterial); it != mMaterials.end())
@@ -220,7 +220,7 @@ namespace Falcor
         // Add material.
         if (mMaterials.size() >= std::numeric_limits<uint32_t>::max())
         {
-            throw RuntimeError("Too many materials");
+            FALCOR_THROW("Too many materials");
         }
         const MaterialID materialID{ mMaterials.size() };
 
@@ -236,46 +236,62 @@ namespace Falcor
         return materialID;
     }
 
+    void MaterialSystem::replaceMaterial(const MaterialID materialID, const ref<Material>& pReplacement)
+    {
+        FALCOR_CHECK(materialID.isValid() && materialID.get() < mMaterials.size(), "Material ID is invalid.");
+        FALCOR_CHECK(pReplacement != nullptr, "Replacement material is missing.");
+
+        // Mark descriptors used by the deleted material as reserved.
+        // This is a workaround until we have dynamically sized descriptor arrays and proper resource tracking.
+        const auto& prevMtl = mMaterials[materialID.get()];
+        mReservedTextureDescCount += prevMtl->getMaxTextureCount();
+        mReservedBufferDescCount += prevMtl->getMaxBufferCount();
+        mReservedTexture3DDescCount += prevMtl->getMaxTexture3DCount();
+
+        // Prepare replacement material.
+        if (pReplacement->getDefaultTextureSampler() == nullptr)
+        {
+            pReplacement->setDefaultTextureSampler(mpDefaultTextureSampler);
+        }
+        pReplacement->registerUpdateCallback([this](auto flags) { mMaterialUpdates |= flags; });
+
+        // Replace the material.
+        mMaterials[materialID.get()] = pReplacement;
+        mMaterialsChanged = true;
+    }
+
     void MaterialSystem::replaceMaterial(const ref<Material>& pMaterial, const ref<Material>& pReplacement)
     {
-        checkArgument(pMaterial != nullptr, "'pMaterial' is missing");
-        checkArgument(pReplacement != nullptr, "'pReplacement' is missing");
+        FALCOR_CHECK(pMaterial != nullptr, "'pMaterial' is missing");
 
         // Find material to replace.
         if (auto it = std::find(mMaterials.begin(), mMaterials.end(), pMaterial); it != mMaterials.end())
         {
-            *it = pReplacement;
-
-            if (pReplacement->getDefaultTextureSampler() == nullptr)
-            {
-                pReplacement->setDefaultTextureSampler(mpDefaultTextureSampler);
-            }
-
-            pReplacement->registerUpdateCallback([this](auto flags) { mMaterialUpdates |= flags; });
-            mMaterialsChanged = true;
+            auto materialID = MaterialID{ (size_t)std::distance(mMaterials.begin(), it) };
+            replaceMaterial(materialID, pReplacement);
         }
         else
         {
-            throw RuntimeError("Material does not exist");
+            FALCOR_THROW("Material does not exist");
         }
     }
 
     uint32_t MaterialSystem::getMaterialCountByType(const MaterialType type) const
     {
-        checkInvariant(!mMaterialsChanged, "Materials have changed. Call update() first.");
+        FALCOR_CHECK(!mMaterialsChanged, "Materials have changed. Call update() first.");
         size_t index = (size_t)type;
         return (index < mMaterialCountByType.size()) ? mMaterialCountByType[index] : 0;
     }
 
     std::set<MaterialType> MaterialSystem::getMaterialTypes() const
     {
-        checkInvariant(!mMaterialsChanged, "Materials have changed. Call update() first.");
+        FALCOR_CHECK(!mMaterialsChanged, "Materials have changed. Call update() first.");
         return mMaterialTypes;
     }
 
     bool MaterialSystem::hasMaterialType(MaterialType type) const
     {
-        checkInvariant(!mMaterialsChanged, "Materials have changed. Call update() first.");
+        FALCOR_CHECK(!mMaterialsChanged, "Materials have changed. Call update() first.");
         return mMaterialTypes.find(type) != mMaterialTypes.end();
     }
 
@@ -287,7 +303,7 @@ namespace Falcor
 
     const ref<Material>& MaterialSystem::getMaterial(const MaterialID materialID) const
     {
-        checkArgument(materialID.get() < mMaterials.size(), "MaterialID is out of range.");
+        FALCOR_CHECK(materialID.get() < mMaterials.size(), "MaterialID is out of range.");
         return mMaterials[materialID.get()];
     }
 
@@ -362,19 +378,19 @@ namespace Falcor
         RenderContext* pRenderContext = mpDevice->getRenderContext();
 
         TextureAnalyzer analyzer(mpDevice);
-        auto pResults = Buffer::create(mpDevice, textures.size() * TextureAnalyzer::getResultSize(), ResourceBindFlags::UnorderedAccess);
+        auto pResults = mpDevice->createBuffer(textures.size() * TextureAnalyzer::getResultSize(), ResourceBindFlags::UnorderedAccess);
         analyzer.analyze(pRenderContext, textures, pResults);
 
         // Copy result to staging buffer for readback.
         // This is mostly to avoid a full flush and the associated perf warning.
         // We do not have any other useful GPU work, but unrelated GPU tasks can be in flight.
-        auto pResultsStaging = Buffer::create(mpDevice, textures.size() * TextureAnalyzer::getResultSize(), ResourceBindFlags::None, Buffer::CpuAccess::Read);
+        auto pResultsStaging = mpDevice->createBuffer(textures.size() * TextureAnalyzer::getResultSize(), ResourceBindFlags::None, MemoryType::ReadBack);
         pRenderContext->copyResource(pResultsStaging.get(), pResults.get());
-        pRenderContext->flush(false);
-        mpFence->gpuSignal(pRenderContext->getLowLevelData()->getCommandQueue());
+        pRenderContext->submit(false);
+        pRenderContext->signal(mpFence.get());
 
         // Wait for results to become available. Then optimize the materials.
-        mpFence->syncCpu();
+        mpFence->wait();
         const TextureAnalyzer::Result* results = static_cast<const TextureAnalyzer::Result*>(pResultsStaging->map(Buffer::MapType::Read));
         Material::TextureOptimizationStats stats = {};
 
@@ -402,10 +418,8 @@ namespace Falcor
 
     Material::UpdateFlags MaterialSystem::update(bool forceUpdate)
     {
-        Material::UpdateFlags flags = Material::UpdateFlags::None;
-
         // If materials were added/removed since last update, we update all metadata
-        // and trigger re-creation of the parameter block.
+        // and trigger re-creation of the parameter block and update of all materials.
         if (forceUpdate || mMaterialsChanged)
         {
             updateMetadata();
@@ -413,27 +427,46 @@ namespace Falcor
 
             mpMaterialsBlock = nullptr;
             mMaterialsChanged = false;
+            forceUpdate = true;
         }
 
-        mMaterialsUpdateFlags.resize(mMaterials.size());
-
         // Update all materials.
+        // Do either a full update of all materials with deferred texture loading, or an update of just the dynamic materials.
+        // We track per-material update flags along with the combined update flags across all materials.
+        // Note that materials can record updates in between calls to update() and/or return flags from their update() calls.
+        Material::UpdateFlags updateFlags = Material::UpdateFlags::None;
+        mMaterialsUpdateFlags.resize(mMaterials.size());
+        std::fill(mMaterialsUpdateFlags.begin(), mMaterialsUpdateFlags.end(), Material::UpdateFlags::None);
+
+        auto updateMaterial = [&](const MaterialID materialID) {
+            auto& pMaterial = getMaterial(materialID);
+            if (pMaterial->mpDevice != mpDevice)
+                FALCOR_THROW("Material '{}' was created with a different device than the MaterialSystem.", pMaterial->getName());
+            Material::UpdateFlags flags = pMaterial->update(this);
+            // Record update flags.
+            mMaterialsUpdateFlags[materialID.get()] = flags;
+            updateFlags |= flags;
+        };
+
         if (forceUpdate || mMaterialUpdates != Material::UpdateFlags::None)
         {
-            // To improve load time of large assets using the MxLayeredMaterial,
-            // we defer texture loading and execute it in parallel during endDeferredLoading().
             mpTextureManager->beginDeferredLoading();
 
-            for (uint32_t materialID = 0; materialID < (uint32_t)mMaterials.size(); ++materialID)
-            {
-                auto& pMaterial = mMaterials[materialID];
-                if (pMaterial->mpDevice != mpDevice)
-                    throw RuntimeError("Material '{}' was created with a different device than the MaterialSystem.", pMaterial->getName());
-                mMaterialsUpdateFlags[materialID] = pMaterial->update(this);
-            }
+            for (size_t materialIdx = 0; materialIdx < mMaterials.size(); ++materialIdx)
+                updateMaterial(MaterialID{ materialIdx });
 
             mpTextureManager->endDeferredLoading();
         }
+        else
+        {
+            for (const auto& materialID : mDynamicMaterialIDs)
+                updateMaterial(materialID);
+        }
+
+        // Include updates recorded since last update.
+        // After this point no more material changes are expected.
+        updateFlags |= mMaterialUpdates;
+        mMaterialUpdates = Material::UpdateFlags::None;
 
         // Create parameter block if needed.
         if (!mpMaterialsBlock)
@@ -442,21 +475,19 @@ namespace Falcor
 
             // Set update flags if parameter block changes.
             // TODO: We may want to introduce MaterialSystem::UpdateFlags instead of re-using the material flags.
-            flags |= Material::UpdateFlags::DataChanged | Material::UpdateFlags::ResourcesChanged;
+            updateFlags |= Material::UpdateFlags::DataChanged | Material::UpdateFlags::ResourcesChanged;
 
-            forceUpdate = true; // Trigger full upload of all materials
+            forceUpdate = true; // Trigger full upload of all materials.
         }
 
-        // Upload all modified materials
-        if (forceUpdate || mMaterialUpdates != Material::UpdateFlags::None)
+        // Upload all modified materials.
+        if (forceUpdate || is_set(updateFlags, Material::UpdateFlags::DataChanged))
         {
             for (uint32_t materialID = 0; materialID < (uint32_t)mMaterials.size(); ++materialID)
             {
-                if (forceUpdate || mMaterialsUpdateFlags[materialID] != Material::UpdateFlags::None)
+                if (forceUpdate || is_set(mMaterialsUpdateFlags[materialID], Material::UpdateFlags::DataChanged))
                 {
                     uploadMaterial(materialID);
-
-                    flags |= mMaterialsUpdateFlags[materialID];
                 }
             }
         }
@@ -475,10 +506,10 @@ namespace Falcor
         }
 
         // Update textures.
-        if (forceUpdate || is_set(flags, Material::UpdateFlags::ResourcesChanged))
+        if (forceUpdate || is_set(updateFlags, Material::UpdateFlags::ResourcesChanged))
         {
             FALCOR_ASSERT(!mMaterialsChanged);
-            mpTextureManager->setShaderData(blockVar[kMaterialTexturesName], mTextureDescCount,
+            mpTextureManager->bindShaderData(blockVar[kMaterialTexturesName], mTextureDescCount,
                 blockVar["udimIndirection"]);
         }
 
@@ -509,7 +540,7 @@ namespace Falcor
         // This is done by iterating over all materials to query their properties.
         // We de-duplicate the result by material type to store the unique set of shader modules and type conformances.
         // Note that this means the shader code for all materials of the same type is assumed to be identical.
-        if (forceUpdate || is_set(flags, Material::UpdateFlags::CodeChanged))
+        if (forceUpdate || is_set(updateFlags, Material::UpdateFlags::CodeChanged))
         {
             mShaderModules.clear();
             mTypeConformances.clear();
@@ -526,24 +557,30 @@ namespace Falcor
             }
         }
 
-        mMaterialUpdates = Material::UpdateFlags::None;
-
-        return flags;
+        FALCOR_CHECK(mMaterialUpdates == Material::UpdateFlags::None, "Unexpected material updates.");
+        return updateFlags;
     }
 
     void MaterialSystem::updateMetadata()
     {
-        mTextureDescCount = 0;
-        mBufferDescCount = 0;
-        mTexture3DDescCount = 0;
+        mTextureDescCount = mReservedTextureDescCount;
+        mBufferDescCount = mReservedBufferDescCount;
+        mTexture3DDescCount = mReservedTexture3DDescCount;
 
         mMaterialCountByType.resize(getMaterialTypeCount());
         std::fill(mMaterialCountByType.begin(), mMaterialCountByType.end(), 0);
         mMaterialTypes.clear();
         mHasSpecGlossStandardMaterial = false;
+        mDynamicMaterialIDs.clear();
 
-        for (const auto& pMaterial : mMaterials)
+        for (size_t materialIdx = 0; materialIdx < mMaterials.size(); materialIdx++)
         {
+            const auto& pMaterial = mMaterials[materialIdx];
+            const MaterialID materialID{ materialIdx };
+
+            if (pMaterial->isDynamic())
+                mDynamicMaterialIDs.push_back(materialID);
+
             // Update descriptor counts. These counts will be reported by getDefines().
             // TODO: Remove this when unbounded descriptor arrays are supported (#1321).
             mTextureDescCount += pMaterial->getMaxTextureCount();
@@ -558,12 +595,12 @@ namespace Falcor
             if (isSpecGloss(pMaterial)) mHasSpecGlossStandardMaterial = true;
         }
 
-        checkInvariant(mMaterialTypes.find(MaterialType::Unknown) == mMaterialTypes.end(), "Unknown material type found. Make sure all material types are registered.");
+        FALCOR_CHECK(mMaterialTypes.find(MaterialType::Unknown) == mMaterialTypes.end(), "Unknown material type found. Make sure all material types are registered.");
     }
 
     MaterialSystem::MaterialStats MaterialSystem::getStats() const
     {
-        checkInvariant(!mMaterialsChanged, "Materials have changed. Call update() first.");
+        FALCOR_CHECK(!mMaterialsChanged, "Materials have changed. Call update() first.");
 
         MaterialStats s = {};
 
@@ -587,15 +624,14 @@ namespace Falcor
         return s;
     }
 
-    DefineList MaterialSystem::getDefines() const
+    void MaterialSystem::getDefines(DefineList& defines) const
     {
-        checkInvariant(!mMaterialsChanged, "Materials have changed. Call update() first.");
+        FALCOR_CHECK(!mMaterialsChanged, "Materials have changed. Call update() first.");
 
         size_t materialInstanceByteSize = 0;
         for (auto& it : mMaterials)
             materialInstanceByteSize = std::max(materialInstanceByteSize, it->getMaterialInstanceByteSize());
 
-        DefineList defines;
         defines.add("MATERIAL_SYSTEM_SAMPLER_DESC_COUNT", std::to_string(kMaxSamplerCount));
         defines.add("MATERIAL_SYSTEM_TEXTURE_DESC_COUNT", std::to_string(mTextureDescCount));
         defines.add("MATERIAL_SYSTEM_BUFFER_DESC_COUNT", std::to_string(mBufferDescCount));
@@ -613,7 +649,7 @@ namespace Falcor
             {
                 if (auto it = defines.find(name); it != defines.end())
                 {
-                    checkInvariant(it->second == value, "Mismatching values '{}' and '{}' for material define '{}'.", name, it->second, value);
+                    FALCOR_CHECK(it->second == value, "Mismatching values '{}' and '{}' for material define '{}'.", name, it->second, value);
                 }
                 else
                 {
@@ -621,13 +657,10 @@ namespace Falcor
                 }
             }
         }
-
-        return defines;
     }
 
-    Program::TypeConformanceList MaterialSystem::getTypeConformances() const
+    void MaterialSystem::getTypeConformances(TypeConformanceList& typeConformances) const
     {
-        Program::TypeConformanceList typeConformances;
         for (const auto& it : mTypeConformances)
         {
             typeConformances.add(it.second);
@@ -636,29 +669,34 @@ namespace Falcor
         typeConformances.add("IsotropicPhaseFunction", "IPhaseFunction", 1);
         typeConformances.add("HenyeyGreensteinPhaseFunction", "IPhaseFunction", 2);
         typeConformances.add("DualHenyeyGreensteinPhaseFunction", "IPhaseFunction", 3);
-        return typeConformances;
     }
 
-    Program::TypeConformanceList MaterialSystem::getTypeConformances(const MaterialType type) const
+    TypeConformanceList MaterialSystem::getTypeConformances(const MaterialType type) const
     {
         auto it = mTypeConformances.find(type);
         if (it == mTypeConformances.end())
         {
-            throw RuntimeError(fmt::format("No type conformances for material type '{}'.", to_string(type)));
+            FALCOR_THROW(fmt::format("No type conformances for material type '{}'.", to_string(type)));
         }
         return it->second;
     }
 
-    Program::ShaderModuleList MaterialSystem::getShaderModules() const
+    ProgramDesc::ShaderModuleList MaterialSystem::getShaderModules() const
     {
-        checkInvariant(!mMaterialsChanged, "Materials have changed. Call update() first.");
+        FALCOR_CHECK(!mMaterialsChanged, "Materials have changed. Call update() first.");
         return mShaderModules;
     }
 
-    const ref<ParameterBlock>& MaterialSystem::getParameterBlock() const
+    void MaterialSystem::getShaderModules(ProgramDesc::ShaderModuleList& shaderModuleList) const
     {
-        checkInvariant(mpMaterialsBlock != nullptr && !mMaterialsChanged, "Parameter block is not ready. Call update() first.");
-        return mpMaterialsBlock;
+        FALCOR_CHECK(!mMaterialsChanged, "Materials have changed. Call update() first.");
+        shaderModuleList.insert(shaderModuleList.end(), mShaderModules.begin(), mShaderModules.end());
+    }
+
+    void MaterialSystem::bindShaderData(const ShaderVar& var) const
+    {
+        FALCOR_CHECK(mpMaterialsBlock != nullptr && !mMaterialsChanged, "Parameter block is not ready. Call update() first.");
+        var = mpMaterialsBlock;
     }
 
     void MaterialSystem::createParameterBlock()
@@ -681,7 +719,7 @@ namespace Falcor
         auto byteSize = reflResType->getStructType()->getByteSize();
         if (byteSize != sizeof(MaterialDataBlob))
         {
-            throw RuntimeError("MaterialSystem material data buffer has unexpected struct size");
+            FALCOR_THROW("MaterialSystem material data buffer has unexpected struct size");
         }
 
         auto blockVar = mpMaterialsBlock->getRootVar();
@@ -689,7 +727,7 @@ namespace Falcor
         // Create materials data buffer.
         if (!mMaterials.empty() && (!mpMaterialDataBuffer || mpMaterialDataBuffer->getElementCount() < mMaterials.size()))
         {
-            mpMaterialDataBuffer = Buffer::createStructured(mpDevice, blockVar[kMaterialDataName], (uint32_t)mMaterials.size(), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+            mpMaterialDataBuffer = mpDevice->createStructuredBuffer(blockVar[kMaterialDataName], (uint32_t)mMaterials.size(), ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, nullptr, false);
             mpMaterialDataBuffer->setName("MaterialSystem::mpMaterialDataBuffer");
         }
 

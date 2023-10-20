@@ -53,6 +53,7 @@ PYBIND11_MODULE(falcor_ext, m)
 {
     if (!isLoadedFromEmbeddedPython())
     {
+        Falcor::Logger::setOutputs(Falcor::Logger::OutputFlags::Console | Falcor::Logger::OutputFlags::DebugWindow);
         Falcor::Device::enableAgilitySDK();
         Falcor::PluginManager::instance().loadAllPlugins();
     }

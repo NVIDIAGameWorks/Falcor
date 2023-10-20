@@ -32,7 +32,7 @@ namespace Falcor
 {
 GPU_TEST(SlangStructInheritanceReflection, "Not working yet")
 {
-    ctx.createProgram("Tests/Slang/SlangInheritance.cs.slang", "main", DefineList(), Program::CompilerFlags::None, "6_5");
+    ctx.createProgram("Tests/Slang/SlangInheritance.cs.slang", "main", DefineList(), SlangCompilerFlags::None, ShaderModel::SM6_5);
 
     // Reflection of struct A.
     auto typeA = ctx.getProgram()->getReflector()->findType("A");
@@ -80,13 +80,13 @@ GPU_TEST(SlangStructInheritanceLayout)
 {
     ref<Device> pDevice = ctx.getDevice();
 
-    ctx.createProgram("Tests/Slang/SlangInheritance.cs.slang", "main", DefineList(), Program::CompilerFlags::None, "6_5");
+    ctx.createProgram("Tests/Slang/SlangInheritance.cs.slang", "main", DefineList(), SlangCompilerFlags::None, ShaderModel::SM6_5);
     ShaderVar var = ctx.vars().getRootVar();
 
     // TODO: Use built-in buffer when reflection of struct inheritance works (see #1306).
     // ctx.allocateStructuredBuffer("result", 1);
-    auto pResult = Buffer::createStructured(
-        pDevice, 16, 1, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr, false
+    auto pResult = pDevice->createStructuredBuffer(
+        16, 1, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, MemoryType::DeviceLocal, nullptr, false
     );
     var["result"] = pResult;
 
@@ -96,8 +96,8 @@ GPU_TEST(SlangStructInheritanceLayout)
     initData[2] = asuint(5.11f);
     initData[3] = asuint(7.99f);
 
-    var["data"] = Buffer::createTyped<uint>(
-        pDevice, (uint32_t)initData.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, initData.data()
+    var["data"] = pDevice->createTypedBuffer<uint>(
+        (uint32_t)initData.size(), ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, initData.data()
     );
 
     ctx.runProgram();
@@ -110,8 +110,7 @@ GPU_TEST(SlangStructInheritanceLayout)
     EXPECT_EQ(offsetof(B, scalar), 0);
     EXPECT_EQ(offsetof(B, vector), 4);
 
-    // std::vector<uint32_t> result = ctx.readBuffer<uint32_t>("result");
-    const uint32_t* result = (const uint32_t*)pResult->map(Buffer::MapType::Read);
+    std::vector<uint32_t> result = pResult->getElements<uint32_t>();
 
     // Check struct fields read back from the GPU.
     // Slang uses the same struct layout as the host.

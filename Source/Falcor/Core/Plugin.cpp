@@ -63,17 +63,17 @@ bool PluginManager::loadPlugin(const std::filesystem::path& path)
     }
 
     if (!std::filesystem::exists(path))
-        throw RuntimeError("Failed to load plugin library from {}. File not found.", path);
+        FALCOR_THROW("Failed to load plugin library from {}. File not found.", path);
 
     SharedLibraryHandle library = loadSharedLibrary(path);
     if (library == nullptr)
-        throw RuntimeError("Failed to load plugin library from {}. Cannot load shared library.", path);
+        FALCOR_THROW("Failed to load plugin library from {}. Cannot load shared library.", path);
 
     using RegisterPluginProc = void (*)(PluginRegistry&);
 
     auto registerPluginProc = (RegisterPluginProc)getProcAddress(library, "registerPlugin");
     if (registerPluginProc == nullptr)
-        throw RuntimeError("Failed to load plugin library from {}. Symbol 'registerPlugin' not found.", path);
+        FALCOR_THROW("Failed to load plugin library from {}. Symbol 'registerPlugin' not found.", path);
 
     // Register plugin library.
     {

@@ -29,8 +29,10 @@
 #include "MaterialData.slang"
 #include "TextureHandle.slang"
 #include "MaterialTypeRegistry.h"
+#include "MaterialParamLayout.h"
+#include "SerializedMaterialParams.h"
 #include "Core/Macros.h"
-#include "Core/Errors.h"
+#include "Core/Error.h"
 #include "Core/Object.h"
 #include "Core/API/Formats.h"
 #include "Core/API/Texture.h"
@@ -65,6 +67,7 @@ namespace Falcor
             DataChanged         = 0x2,  ///< Material data (parameters) changed.
             ResourcesChanged    = 0x4,  ///< Material resources (textures, buffers, samplers) changed.
             DisplacementChanged = 0x8,  ///< Displacement mapping parameters changed (only for materials that support displacement).
+            EmissiveChanged     = 0x10, ///< Material emissive properties changed.
         };
 
         /** Texture slots available for use.
@@ -149,6 +152,11 @@ namespace Falcor
         */
         virtual bool isEmissive() const { return mHeader.isEmissive(); }
 
+        /** Returns true if the material is dynamic.
+            Dynamic materials are updated every frame, otherwise `update()` is called reactively upon changes.
+        */
+        virtual bool isDynamic() const { return false; }
+
         /** Compares material to another material.
             \param[in] pOther Other material.
             \return true if all materials properties *except* the name are identical.
@@ -186,6 +194,10 @@ namespace Falcor
         /** Get the alpha threshold.
         */
         virtual float getAlphaThreshold() const { return (float)mHeader.getAlphaThreshold(); }
+
+        /** Get the alpha mask texture handle.
+        */
+        virtual TextureHandle getAlphaTextureHandle() const { return mHeader.getAlphaTextureHandle(); }
 
         /** Set the nested priority used for nested dielectrics.
         */
@@ -289,12 +301,12 @@ namespace Falcor
             The shader modules must be added to any program using the material.
             \return List of shader modules.
         */
-        virtual Program::ShaderModuleList getShaderModules() const = 0;
+        virtual ProgramDesc::ShaderModuleList getShaderModules() const = 0;
 
         /** Get type conformances for the material.
             The type conformances must be set on any program using the material.
         */
-        virtual Program::TypeConformanceList getTypeConformances() const = 0;
+        virtual TypeConformanceList getTypeConformances() const = 0;
 
         /** Get shader defines for the material.
             The defines must be set on any program using the material.
@@ -326,6 +338,10 @@ namespace Falcor
             Large material instances can have a singificant performance impact.
         */
         virtual size_t getMaterialInstanceByteSize() const { return 128; }
+
+        virtual const MaterialParamLayout& getParamLayout() const { FALCOR_THROW("Material does not have a parameter layout."); }
+        virtual SerializedMaterialParams serializeParams() const { FALCOR_THROW("Material does not support serializing parameters."); }
+        virtual void deserializeParams(const SerializedMaterialParams& params) { FALCOR_THROW("Material does not support deserializing parameters."); }
 
     protected:
         Material(ref<Device> pDevice, const std::string& name, MaterialType type);
@@ -382,7 +398,7 @@ namespace Falcor
             tostr(Index);
 #undef tostr
         default:
-            throw ArgumentError("Invalid texture slot");
+            FALCOR_THROW("Invalid texture slot");
         }
     }
 

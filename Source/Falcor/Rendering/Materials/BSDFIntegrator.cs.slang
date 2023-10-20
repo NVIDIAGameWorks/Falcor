@@ -68,7 +68,6 @@ struct BSDFIntegrator
 
         sd.mtl = gScene.materials.getMaterialHeader(materialID);
         sd.materialID = materialID;
-        sd.opacity = 1.f;
         sd.IoR = 1.f;
 
         float cosTheta = saturate(cosThetas[groupID.z]);

@@ -38,25 +38,76 @@
  *
  * The host sets the following defines:
  *
- * _PIXEL_DEBUG_ENABLED     Nonzero when pixel debugging is enabled.
+ * _PIXEL_DEBUG_ENABLED     Defined when pixel debugging is enabled.
  *
  */
 
 import PixelDebugTypes;
 
-cbuffer PixelDebugCB
+struct PixelDebug
 {
-    uint2 gPixelLogSelected; // Currently selected pixel to log.
-    uint gPixelLogSize;      // Number of elements in the output buffer.
-    uint gAssertLogSize;
+    RWByteAddressBuffer counterBuffer;
+    RWStructuredBuffer<PrintRecord> printBuffer;
+    RWStructuredBuffer<AssertRecord> assertBuffer;
+
+    uint printBufferCapacity;  ///< Capacity of the print buffer.
+    uint assertBufferCapacity; ///< Capacity of the assert buffer.
+
+    uint2 selectedPixel; ///< Currently selected pixel to log.
+
+    /**
+     * Add print record.
+     * @param[in] pixel The pixel the print originated from.
+     * @param[in] msg Message string.
+     * @param[in] valueType The type of values encoded into `data`
+     * @param[in] count The number of components of `valueType` encoded into `data`
+     * @param[in] data The bits of the value to be printed.
+     */
+    [ForceInline]
+    void print(uint2 pixel, String msg, PrintValueType valueType, int count, uint4 data)
+    {
+        // TODO: Previously this was an early out:
+        // if (all(pixel == selectedPixel)) return;
+        // Due to a bug in slang this leads to expontentially growing compile times.
+        // This will be fixed in the compiler. Once it is, we should revert this workaround.
+        if (all(pixel == selectedPixel))
+        {
+            uint index = 0;
+            counterBuffer.InterlockedAdd(0, 1, index);
+            if (index < printBufferCapacity)
+            {
+                PrintRecord rec = {};
+                rec.msgHash = getStringHash(msg);
+                rec.type = (uint)valueType;
+                rec.count = count;
+                rec.data = data;
+                printBuffer[index] = rec;
+            }
+        }
+    }
+
+    /**
+     * Add an assert record.
+     * @param[in] pixel The pixel the print originated from.
+     * @param[in] msg Message string.
+     */
+    [ForceInline]
+    void assert(uint2 pixel, String msg)
+    {
+        uint index = 0;
+        counterBuffer.InterlockedAdd(4, 1, index);
+        if (index < assertBufferCapacity)
+        {
+            AssertRecord rec;
+            rec.launchIndex = uint3(pixel, 0);
+            rec.msgHash = getStringHash(msg);
+            assertBuffer[index] = rec;
+        }
+    }
 };
 
-RWStructuredBuffer<PixelLogValue> gPixelLog;
-RWStructuredBuffer<AssertLogValue> gAssertLog;
-
-#ifdef _PIXEL_DEBUG_ENABLED
+ParameterBlock<PixelDebug> gPixelDebug;
 static uint2 gPixelDebugPixel;
-#endif
 
 void printSetPixel(uint2 pixel)
 {
@@ -71,8 +122,8 @@ interface IPrintable
     /// Convert this value to a single `uint` holding its bits.
     uint getPrintableDataVal();
 
-    /// Get the `PixelLogValueType` that represents this type.
-    static PixelLogValueType getPrintableValueType();
+    /// Get the `PrintValueType` that represents this type.
+    static PrintValueType getPrintableValueType();
 }
 
 /// Values of type `bool` are printable.
@@ -82,9 +133,9 @@ extension bool : IPrintable
     {
         return uint(this);
     }
-    static PixelLogValueType getPrintableValueType()
+    static PrintValueType getPrintableValueType()
     {
-        return PixelLogValueType::Bool;
+        return PrintValueType::Bool;
     }
 }
 
@@ -95,9 +146,9 @@ extension int : IPrintable
     {
         return asuint(this);
     }
-    static PixelLogValueType getPrintableValueType()
+    static PrintValueType getPrintableValueType()
     {
-        return PixelLogValueType::Int;
+        return PrintValueType::Int;
     }
 }
 
@@ -108,9 +159,9 @@ extension uint : IPrintable
     {
         return this;
     }
-    static PixelLogValueType getPrintableValueType()
+    static PrintValueType getPrintableValueType()
     {
-        return PixelLogValueType::Uint;
+        return PrintValueType::Uint;
     }
 }
 
@@ -121,44 +172,13 @@ extension float : IPrintable
     {
         return asuint(this);
     }
-    static PixelLogValueType getPrintableValueType()
+    static PrintValueType getPrintableValueType()
     {
-        return PixelLogValueType::Float;
+        return PrintValueType::Float;
     }
 }
 
 #ifdef _PIXEL_DEBUG_ENABLED
-
-/**
- * Add a value to the pixel log if the current pixel is the selected one.
- * @param[in] msg A string message to accompany the value.
- * @param[in] valueType The type of values encoded into `data`
- * @param[in] count The number of components of `valueType` encoded into `data`
- * @param[in] data The bits of the value to be printed.
- *
- * This is a lower-level worker routine used by `print()`.
- */
-[ForceInline]
-void _print(String msg, PixelLogValueType valueType, int count, uint4 data)
-{
-    // TODO: Previously this was an early out:
-    // if (all(gPixelDebugPixel == gPixelLogSelected)) return;
-    // Due to a bug in slang this leads to expontentially growing compile times.
-    // This will be fixed in the compiler. Once it is, we should revert this workaround.
-    if (all(gPixelDebugPixel == gPixelLogSelected))
-    {
-        uint i = gPixelLog.IncrementCounter();
-        if (i < gPixelLogSize)
-        {
-            PixelLogValue val = {};
-            val.msgHash = getStringHash(msg);
-            val.type = (uint)valueType;
-            val.count = count;
-            val.data = data;
-            gPixelLog[i] = val;
-        }
-    }
-}
 
 /**
  * Print a value if the current pixel is the selected one.
@@ -170,7 +190,7 @@ void print<T : IPrintable>(String msg, T v)
 {
     vector<uint, 4> u = 0;
     u[0] = v.getPrintableDataVal();
-    _print(msg, T.getPrintableValueType(), 1, u);
+    gPixelDebug.print(gPixelDebugPixel, msg, T.getPrintableValueType(), 1, u);
 }
 
 /**
@@ -183,10 +203,8 @@ void print<T : IPrintable, let N : int>(String msg, vector<T, N> v)
 {
     vector<uint, 4> u = 0;
     for (int i = 0; i < N; ++i)
-    {
         u[i] = v[i].getPrintableDataVal();
-    }
-    _print(msg, T.getPrintableValueType(), N, u);
+    gPixelDebug.print(gPixelDebugPixel, msg, T.getPrintableValueType(), N, u);
 }
 
 /**
@@ -197,19 +215,10 @@ void print<T : IPrintable, let N : int>(String msg, vector<T, N> v)
 void assert(bool condition, String msg = "")
 {
     if (!condition)
-    {
-        uint i = gAssertLog.IncrementCounter();
-        if (i < gAssertLogSize)
-        {
-            AssertLogValue val;
-            val.launchIndex = uint3(gPixelDebugPixel, 0);
-            val.msgHash = getStringHash(msg);
-            gAssertLog[i] = val;
-        }
-    }
+        gPixelDebug.assert(gPixelDebugPixel, msg);
 }
 
-#else
+#else // _PIXEL_DEBUG_ENABLED
 
 /**
  * Define null functions if debugging is disabled.
@@ -224,4 +233,4 @@ void print<T : IPrintable>(String msg, T v) {}
 [ForceInline]
 void assert(bool condition, String msg = "") {}
 
-#endif // !_PIXEL_DEBUG_ENABLED
+#endif // _PIXEL_DEBUG_ENABLED

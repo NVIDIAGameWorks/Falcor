@@ -32,34 +32,31 @@
 
 namespace
 {
-    const std::string kProgramFile = "RenderPasses/GBuffer/VBuffer/VBufferRaster.3d.slang";
-    const std::string kShaderModel = "6_2";
-    const RasterizerState::CullMode kDefaultCullMode = RasterizerState::CullMode::Back;
+const std::string kProgramFile = "RenderPasses/GBuffer/VBuffer/VBufferRaster.3d.slang";
+const RasterizerState::CullMode kDefaultCullMode = RasterizerState::CullMode::Back;
 
-    const std::string kVBufferName = "vbuffer";
-    const std::string kVBufferDesc = "V-buffer in packed format (indices + barycentrics)";
+const std::string kVBufferName = "vbuffer";
+const std::string kVBufferDesc = "V-buffer in packed format (indices + barycentrics)";
 
-    const ChannelList kVBufferExtraChannels =
-    {
-        { "mvec",           "gMotionVector",    "Motion vector",                true /* optional */, ResourceFormat::RG32Float   },
-        { "mask",           "gMask",            "Mask",                         true /* optional */, ResourceFormat::R32Float    },
-    };
+const ChannelList kVBufferExtraChannels = {
+    // clang-format off
+    { "mvec",           "gMotionVector",    "Motion vector",                true /* optional */, ResourceFormat::RG32Float   },
+    { "mask",           "gMask",            "Mask",                         true /* optional */, ResourceFormat::R32Float    },
+    // clang-format on
+};
 
-    const std::string kDepthName = "depth";
-}
+const std::string kDepthName = "depth";
+} // namespace
 
-VBufferRaster::VBufferRaster(ref<Device> pDevice, const Properties& props)
-    : GBufferBase(pDevice)
+VBufferRaster::VBufferRaster(ref<Device> pDevice, const Properties& props) : GBufferBase(pDevice)
 {
     // Check for required features.
+    if (!mpDevice->isShaderModelSupported(ShaderModel::SM6_2))
+        FALCOR_THROW("VBufferRaster requires Shader Model 6.2 support.");
     if (!mpDevice->isFeatureSupported(Device::SupportedFeatures::Barycentrics))
-    {
-        throw RuntimeError("VBufferRaster: Pixel shader barycentrics are not supported by the current device");
-    }
+        FALCOR_THROW("VBufferRaster requires pixel shader barycentrics support.");
     if (!mpDevice->isFeatureSupported(Device::SupportedFeatures::RasterizerOrderedViews))
-    {
-        throw RuntimeError("VBufferRaster: Rasterizer ordered views (ROVs) are not supported by the current device");
-    }
+        FALCOR_THROW("VBufferRaster requires rasterizer ordered views (ROVs) support.");
 
     parseProperties(props);
 
@@ -68,7 +65,7 @@ VBufferRaster::VBufferRaster(ref<Device> pDevice, const Properties& props)
 
     // Set depth function
     DepthStencilState::Desc dsDesc;
-    dsDesc.setDepthFunc(DepthStencilState::Func::LessEqual).setDepthWriteMask(true);
+    dsDesc.setDepthFunc(ComparisonFunc::LessEqual).setDepthWriteMask(true);
     mRaster.pState->setDepthStencilState(DepthStencilState::create(dsDesc));
 
     mpFbo = Fbo::create(mpDevice);
@@ -80,11 +77,17 @@ RenderPassReflection VBufferRaster::reflect(const CompileData& compileData)
     const uint2 sz = RenderPassHelpers::calculateIOSize(mOutputSizeSelection, mFixedOutputSize, compileData.defaultTexDims);
 
     // Add the required outputs. These always exist.
-    reflector.addOutput(kDepthName, "Depth buffer").format(ResourceFormat::D32Float).bindFlags(Resource::BindFlags::DepthStencil).texture2D(sz.x, sz.y);
-    reflector.addOutput(kVBufferName, kVBufferDesc).bindFlags(Resource::BindFlags::RenderTarget | Resource::BindFlags::UnorderedAccess).format(mVBufferFormat).texture2D(sz.x, sz.y);
+    reflector.addOutput(kDepthName, "Depth buffer")
+        .format(ResourceFormat::D32Float)
+        .bindFlags(ResourceBindFlags::DepthStencil)
+        .texture2D(sz.x, sz.y);
+    reflector.addOutput(kVBufferName, kVBufferDesc)
+        .bindFlags(ResourceBindFlags::RenderTarget | ResourceBindFlags::UnorderedAccess)
+        .format(mVBufferFormat)
+        .texture2D(sz.x, sz.y);
 
     // Add all the other outputs.
-    addRenderPassOutputs(reflector, kVBufferExtraChannels, Resource::BindFlags::UnorderedAccess, sz);
+    addRenderPassOutputs(reflector, kVBufferExtraChannels, ResourceBindFlags::UnorderedAccess, sz);
 
     return reflector;
 }
@@ -93,26 +96,21 @@ void VBufferRaster::setScene(RenderContext* pRenderContext, const ref<Scene>& pS
 {
     GBufferBase::setScene(pRenderContext, pScene);
 
-    mRaster.pProgram = nullptr;
-    mRaster.pVars = nullptr;
+    recreatePrograms();
 
     if (pScene)
     {
         if (pScene->getMeshVao() && pScene->getMeshVao()->getPrimitiveTopology() != Vao::Topology::TriangleList)
         {
-            throw RuntimeError("VBufferRaster: Requires triangle list geometry due to usage of SV_Barycentrics.");
+            FALCOR_THROW("VBufferRaster: Requires triangle list geometry due to usage of SV_Barycentrics.");
         }
-
-        // Create raster program.
-        Program::Desc desc;
-        desc.addShaderModules(pScene->getShaderModules());
-        desc.addShaderLibrary(kProgramFile).vsEntry("vsMain").psEntry("psMain");
-        desc.addTypeConformances(pScene->getTypeConformances());
-        desc.setShaderModel(kShaderModel);
-
-        mRaster.pProgram = GraphicsProgram::create(mpDevice, desc, pScene->getSceneDefines());
-        mRaster.pState->setProgram(mRaster.pProgram);
     }
+}
+
+void VBufferRaster::recreatePrograms()
+{
+    mRaster.pProgram = nullptr;
+    mRaster.pVars = nullptr;
 }
 
 void VBufferRaster::execute(RenderContext* pRenderContext, const RenderData& renderData)
@@ -138,6 +136,24 @@ void VBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
         return;
     }
 
+    // Check for scene changes.
+    if (is_set(mpScene->getUpdates(), Scene::UpdateFlags::RecompileNeeded))
+    {
+        recreatePrograms();
+    }
+
+    // Create raster program.
+    if (!mRaster.pProgram)
+    {
+        ProgramDesc desc;
+        desc.addShaderModules(mpScene->getShaderModules());
+        desc.addShaderLibrary(kProgramFile).vsEntry("vsMain").psEntry("psMain");
+        desc.addTypeConformances(mpScene->getTypeConformances());
+
+        mRaster.pProgram = Program::create(mpDevice, desc, mpScene->getSceneDefines());
+        mRaster.pState->setProgram(mRaster.pProgram);
+    }
+
     // Set program defines.
     mRaster.pProgram->addDefine("USE_ALPHA_TEST", mUseAlphaTest ? "1" : "0");
 
@@ -148,7 +164,7 @@ void VBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
     // Create program vars.
     if (!mRaster.pVars)
     {
-        mRaster.pVars = GraphicsVars::create(mpDevice, mRaster.pProgram.get());
+        mRaster.pVars = ProgramVars::create(mpDevice, mRaster.pProgram.get());
     }
 
     mpFbo->attachColorTarget(pOutput, 0);

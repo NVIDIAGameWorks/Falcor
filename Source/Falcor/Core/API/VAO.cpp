@@ -39,7 +39,7 @@ Vao::Vao(const BufferVec& pVBs, ref<VertexLayout> pLayout, ref<Buffer> pIB, Reso
 ref<Vao> Vao::create(Topology topology, ref<VertexLayout> pLayout, const BufferVec& pVBs, ref<Buffer> pIB, ResourceFormat ibFormat)
 {
     // TODO: Check number of vertex buffers match with pLayout.
-    checkArgument(
+    FALCOR_CHECK(
         !pIB || (ibFormat == ResourceFormat::R16Uint || ibFormat == ResourceFormat::R32Uint), "'ibFormat' must be R16Uint or R32Uint."
     );
     return ref<Vao>(new Vao(pVBs, pLayout, pIB, ibFormat, topology));

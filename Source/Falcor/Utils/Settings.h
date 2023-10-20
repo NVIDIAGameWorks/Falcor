@@ -27,8 +27,7 @@
  **************************************************************************/
 #pragma once
 #include "Core/Macros.h"
-#include "Core/Assert.h"
-#include "Core/Platform/SearchDirectories.h"
+#include "Core/Error.h"
 
 #include <nlohmann/json.hpp>
 
@@ -163,7 +162,8 @@ public:
     template<typename T>
     std::optional<T> get(const std::string_view name) const
     {
-        FALCOR_ASSERT_MSG(!name.empty() && name.data()[name.size()] == 0, "The underlying library requires names to be null terminated");
+        // The underlying library requires attribute names to be null terminated
+        FALCOR_ASSERT(!name.empty() && name.data()[name.size()] == 0);
 
         // Handle the : in names as nesting separator
         {
@@ -202,7 +202,8 @@ public:
     template<typename T>
     T get(const std::string_view name, const T& def) const
     {
-        FALCOR_ASSERT_MSG(!name.empty() && name.data()[name.size()] == 0, "The underlying library requires names to be null terminated");
+        // The underlying library requires attribute names to be null terminated
+        FALCOR_ASSERT(!name.empty() && name.data()[name.size()] == 0);
 
         std::optional<T> opt = get<T>(name);
         return opt ? *opt : def;
@@ -211,7 +212,8 @@ public:
     // Do we have a property of the given name
     bool has(const std::string_view name) const
     {
-        FALCOR_ASSERT_MSG(!name.empty() && name.data()[name.size()] == 0, "The underlying library requires names to be null terminated");
+        // The underlying library requires attribute names to be null terminated
+        FALCOR_ASSERT(!name.empty() && name.data()[name.size()] == 0);
 
         // Handle the : in names as nesting separator
         {
@@ -239,7 +241,8 @@ public:
     template<typename T>
     bool has(const std::string_view name) const
     {
-        FALCOR_ASSERT_MSG(!name.empty() && name.data()[name.size()] == 0, "The underlying library requires names to be null terminated");
+        // The underlying library requires attribute names to be null terminated
+        FALCOR_ASSERT(!name.empty() && name.data()[name.size()] == 0);
 
         // Handle the : in names as nesting separator
         {
@@ -271,7 +274,8 @@ private:
     // Do we have a property of the given name
     bool hasExact(const std::string_view name) const
     {
-        FALCOR_ASSERT_MSG(!name.empty() && name.data()[name.size()] == 0, "The underlying library requires names to be null terminated");
+        // The underlying library requires attribute names to be null terminated
+        FALCOR_ASSERT(!name.empty() && name.data()[name.size()] == 0);
 
         return mDictionary->contains(name);
     }
@@ -280,7 +284,8 @@ private:
     template<typename T>
     bool hasExact(const std::string_view name) const
     {
-        FALCOR_ASSERT_MSG(!name.empty() && name.data()[name.size()] == 0, "The underlying library requires names to be null terminated");
+        // The underlying library requires attribute names to be null terminated
+        FALCOR_ASSERT(!name.empty() && name.data()[name.size()] == 0);
 
         if (!has(name))
             return false;
@@ -297,6 +302,8 @@ private:
 class FALCOR_API Settings
 {
 public:
+    using SearchDirectories = std::vector<std::filesystem::path>;
+
     /// Get the global settings instance.
     static Settings& getGlobalSettings();
 
@@ -338,10 +345,8 @@ public:
     template<typename T>
     std::optional<T> getAttribute(const std::string_view shapeName, const std::string_view attributeName) const
     {
-        FALCOR_ASSERT_MSG(
-            !attributeName.empty() && attributeName.data()[attributeName.size()] == 0,
-            "The underlying library requires attribute names to be null terminated"
-        );
+        // The underlying library requires attribute names to be null terminated
+        FALCOR_ASSERT(!attributeName.empty() && attributeName.data()[attributeName.size()] == 0);
 
         SettingsProperties props(&getActive().mFilteredAttributes);
 
@@ -369,7 +374,7 @@ public:
         else
         {
             nlohmann::json array = *props.get<nlohmann::json>(attributeNameFilter);
-            FALCOR_ASSERT_MSG(array.is_array(), "Assume it is a list otherwise");
+            FALCOR_CHECK(array.is_array(), "Expecting an array");
             expression = array[0].get<std::string>();
             if (array.size() > 1)
                 negateRegex = array[1].get<bool>();
@@ -384,10 +389,8 @@ public:
     template<typename T>
     T getAttribute(const std::string_view shapeName, const std::string_view attributeName, const T& def) const
     {
-        FALCOR_ASSERT_MSG(
-            !attributeName.empty() && attributeName.data()[attributeName.size()] == 0,
-            "The underlying library requires attribute names to be null terminated"
-        );
+        // The underlying library requires attribute names to be null terminated
+        FALCOR_ASSERT(!attributeName.empty() && attributeName.data()[attributeName.size()] == 0);
 
         auto opt = getAttribute<T>(shapeName, attributeName);
         return opt ? *opt : def;

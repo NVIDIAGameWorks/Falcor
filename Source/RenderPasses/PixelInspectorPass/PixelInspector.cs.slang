@@ -53,7 +53,7 @@ Texture2D<float4> gWorldTangent;
 Texture2D<float4> gWorldFaceNormal;
 Texture2D<float4> gTextureCoord;
 Texture2D<float4> gTextureGrads;
-Texture2D<uint4>  gMaterialData;
+Texture2D<uint4> gMaterialData;
 
 Texture2D<float4> gLinearColor;
 Texture2D<float4> gOutputColor;
@@ -63,11 +63,12 @@ RWStructuredBuffer<PixelData> gPixelDataBuffer;
 
 #define is_valid(name) (is_valid_##name != 0)
 
-/** Helper to create a texture sampler instance.
-    The method for computing texture level-of-detail depends on the configuration.
-    \param[in] pixel Current pixel coordinates.
-    \return Texture sampler instance.
-*/
+/**
+ * Helper to create a texture sampler instance.
+ * The method for computing texture level-of-detail depends on the configuration.
+ * @param[in] pixel Current pixel coordinates.
+ * @return Texture sampler instance.
+ */
 ITextureSampler createTextureSampler(const uint2 pixel)
 {
     if (is_valid(gTextureGrads))
@@ -81,8 +82,9 @@ ITextureSampler createTextureSampler(const uint2 pixel)
     }
 }
 
-/** Helper to load G-buffer data and prepare shading data.
-*/
+/**
+ * Helper to load G-buffer data and prepare shading data.
+ */
 bool loadShadingData(const float3 viewDir, const ITextureSampler lod, inout ShadingData sd)
 {
     float4 worldPos = gWorldPosition[gWorldPositionCoord];
@@ -113,7 +115,7 @@ bool loadShadingData(const float3 viewDir, const ITextureSampler lod, inout Shad
 }
 
 [numthreads(1, 1, 1)]
-void main(uint3 DTid : SV_DispatchThreadID)
+void main(uint3 DTid: SV_DispatchThreadID)
 {
     const uint2 pixel = gSelectedPixel;
 
@@ -144,7 +146,6 @@ void main(uint3 DTid : SV_DispatchThreadID)
         // Store material data.
         data.materialID = sd.materialID;
         data.doubleSided = sd.mtl.isDoubleSided() ? 1 : 0;
-        data.opacity = sd.opacity;
         data.IoR = sd.IoR;
 
         // Store material instance properties.

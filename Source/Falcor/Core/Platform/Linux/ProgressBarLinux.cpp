@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,7 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "Core/Platform/ProgressBar.h"
-#include "Core/Assert.h"
+#include "Core/Error.h"
 
 #include <gtk/gtk.h>
 
@@ -109,7 +109,7 @@ void ProgressBar::show(const std::string& msg)
     close();
 
     if (!gtk_init_check(0, nullptr))
-        throw RuntimeError("Failed to initialize GTK.");
+        FALCOR_THROW("Failed to initialize GTK.");
 
     mpWindow = std::make_unique<Window>(msg);
 }

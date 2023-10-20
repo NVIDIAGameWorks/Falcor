@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -255,12 +255,38 @@ float4 main(float2 texC: TEXCOORD) : SV_TARGET
         for (int x = 0; x < numVoxels.x; x++)
         {
             drawBox(
-                coords, x, y, P[x][y], P[x + 1][y], P[x][y + 1], P[x + 1][y + 1], sdf[x][y], sdf[x + 1][y], sdf[x][y + 1],
-                sdf[x + 1][y + 1], lineSize * 2, blendRadius, false, color
+                coords,
+                x,
+                y,
+                P[x][y],
+                P[x + 1][y],
+                P[x][y + 1],
+                P[x + 1][y + 1],
+                sdf[x][y],
+                sdf[x + 1][y],
+                sdf[x][y + 1],
+                sdf[x + 1][y + 1],
+                lineSize * 2,
+                blendRadius,
+                false,
+                color
             );
             drawBox(
-                coords, x, y, X[x][y], X[x + 1][y], X[x][y + 1], X[x + 1][y + 1], sdf[x][y], sdf[x + 1][y], sdf[x][y + 1],
-                sdf[x + 1][y + 1], lineSize * 2, blendRadius, true, color
+                coords,
+                x,
+                y,
+                X[x][y],
+                X[x + 1][y],
+                X[x][y + 1],
+                X[x + 1][y + 1],
+                sdf[x][y],
+                sdf[x + 1][y],
+                sdf[x][y + 1],
+                sdf[x + 1][y + 1],
+                lineSize * 2,
+                blendRadius,
+                true,
+                color
             );
         }
     }
@@ -273,30 +299,45 @@ float4 main(float2 texC: TEXCOORD) : SV_TARGET
     );
     if (warpedStandardNormal.x != 0.0 && warpedStandardNormal.y != 0.0)
         color = sdfDraw(
-            SDF2DVector(warpedPosition, warpedPosition + normalize(warpedStandardNormal) * side, lineSize * 2.0, side * 0.075), coords, red,
-            color, blendRadius
+            SDF2DVector(warpedPosition, warpedPosition + normalize(warpedStandardNormal) * side, lineSize * 2.0, side * 0.075),
+            coords,
+            red,
+            color,
+            blendRadius
         );
     if (iShowBorderLines != 0)
     {
         color = sdfDraw(
-            SDF2DRoundedLine(P[0][0] + float2(side * 0.5, 0.0), P[0][numVoxels.y] + float2(side * 0.5, 0.0), lineSize * 0.25), coords,
-            lightgray, color, blendRadius
+            SDF2DRoundedLine(P[0][0] + float2(side * 0.5, 0.0), P[0][numVoxels.y] + float2(side * 0.5, 0.0), lineSize * 0.25),
+            coords,
+            lightgray,
+            color,
+            blendRadius
         );
         color = sdfDraw(
             SDF2DRoundedLine(
                 P[numVoxels.x - 1][0] + float2(side * 0.5, 0.0), P[numVoxels.x - 1][numVoxels.y] + float2(side * 0.5, 0.0), lineSize * 0.25
             ),
-            coords, lightgray, color, blendRadius
+            coords,
+            lightgray,
+            color,
+            blendRadius
         );
         color = sdfDraw(
-            SDF2DRoundedLine(P[0][0] + float2(0.0, side * 0.5), P[numVoxels.x][0] + float2(0.0, side * 0.5), lineSize * 0.25), coords,
-            lightgray, color, blendRadius
+            SDF2DRoundedLine(P[0][0] + float2(0.0, side * 0.5), P[numVoxels.x][0] + float2(0.0, side * 0.5), lineSize * 0.25),
+            coords,
+            lightgray,
+            color,
+            blendRadius
         );
         color = sdfDraw(
             SDF2DRoundedLine(
                 P[0][numVoxels.y - 1] + float2(0.0, side * 0.5), P[numVoxels.x][numVoxels.y - 1] + float2(0.0, side * 0.5), lineSize * 0.25
             ),
-            coords, lightgray, color, blendRadius
+            coords,
+            lightgray,
+            color,
+            blendRadius
         );
     }
     if (iShowBoxAroundPoint != 0)

@@ -28,17 +28,12 @@
 #include "RtStateObject.h"
 #include "Device.h"
 #include "GFXAPI.h"
-#include "Core/Program/RtProgram.h"
+#include "Core/Program/Program.h"
 
 namespace Falcor
 {
 
-ref<RtStateObject> RtStateObject::create(ref<Device> pDevice, const Desc& desc)
-{
-    return ref<RtStateObject>(new RtStateObject(pDevice, desc));
-}
-
-RtStateObject::RtStateObject(ref<Device> pDevice, const Desc& desc) : mpDevice(pDevice), mDesc(desc)
+RtStateObject::RtStateObject(ref<Device> pDevice, const RtStateObjectDesc& desc) : mpDevice(pDevice), mDesc(desc)
 {
     auto pKernels = getKernels();
     gfx::RayTracingPipelineStateDesc rtpDesc = {};
@@ -69,11 +64,11 @@ RtStateObject::RtStateObject(ref<Device> pDevice, const Desc& desc) : mpDevice(p
     static_assert((uint32_t)gfx::RayTracingPipelineFlags::SkipTriangles == (uint32_t)RtPipelineFlags::SkipTriangles);
 
     rtpDesc.flags = (gfx::RayTracingPipelineFlags::Enum)mDesc.pipelineFlags;
-    auto rtProgram = dynamic_cast<RtProgram*>(mDesc.pKernels->getProgramVersion()->getProgram());
+    auto rtProgram = dynamic_cast<Program*>(mDesc.pProgramKernels->getProgramVersion()->getProgram());
     FALCOR_ASSERT(rtProgram);
-    rtpDesc.maxRayPayloadSize = rtProgram->getRtDesc().getMaxPayloadSize();
-    rtpDesc.maxAttributeSizeInBytes = rtProgram->getRtDesc().getMaxAttributeSize();
-    rtpDesc.program = mDesc.pKernels->getGfxProgram();
+    rtpDesc.maxRayPayloadSize = rtProgram->getDesc().maxPayloadSize;
+    rtpDesc.maxAttributeSizeInBytes = rtProgram->getDesc().maxAttributeSize;
+    rtpDesc.program = mDesc.pProgramKernels->getGfxProgram();
 
     FALCOR_GFX_CALL(mpDevice->getGfxDevice()->createRayTracingPipelineState(rtpDesc, mGfxPipelineState.writeRef()));
 
@@ -84,4 +79,10 @@ RtStateObject::RtStateObject(ref<Device> pDevice, const Desc& desc) : mpDevice(p
         mEntryPointGroupExportNames.push_back(pEntryPointGroup->getExportName());
     }
 }
+
+RtStateObject::~RtStateObject()
+{
+    mpDevice->releaseResource(mGfxPipelineState);
+}
+
 } // namespace Falcor

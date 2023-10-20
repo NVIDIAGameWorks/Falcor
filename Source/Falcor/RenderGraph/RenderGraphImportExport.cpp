@@ -27,6 +27,7 @@
  **************************************************************************/
 #include "RenderGraphImportExport.h"
 #include "RenderGraphIR.h"
+#include "Core/AssetResolver.h"
 #include "Utils/Scripting/Scripting.h"
 #include <fstream>
 
@@ -43,16 +44,12 @@ void updateGraphStrings(std::string& graph, std::filesystem::path& path, std::st
 
 void runScriptFile(const std::filesystem::path& path, const std::string& custom)
 {
-    std::filesystem::path fullPath;
-    if (findFileInDataDirectories(path, fullPath))
-    {
-        std::string script = readFile(fullPath) + custom;
-        Scripting::runScript(script);
-    }
-    else
-    {
-        throw RuntimeError("Can't find the file '{}'", path);
-    }
+    std::filesystem::path resolvedPath = AssetResolver::getDefaultResolver().resolvePath(path);
+    if (resolvedPath.empty())
+        FALCOR_THROW("Can't find the file '{}'", path);
+
+    std::string script = readFile(resolvedPath) + custom;
+    Scripting::runScript(script);
 }
 } // namespace
 

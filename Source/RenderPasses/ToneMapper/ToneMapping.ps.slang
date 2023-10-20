@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -74,7 +74,7 @@ float3 toneMapReinhardModified(float3 color)
 float3 toneMapHejiHableAlu(float3 color)
 {
     color = max(float(0).rrr, color - 0.004);
-    color = (color*(6.2 * color + 0.5)) / (color * (6.2 * color + 1.7) + 0.06);
+    color = (color * (6.2 * color + 0.5)) / (color * (6.2 * color + 1.7) + 0.06);
 
     // Result includes sRGB conversion
     return pow(color, float3(2.2));
@@ -91,7 +91,7 @@ float3 applyUc2Curve(float3 color)
     float E = 0.01; // Toe Numerator
     float F = 0.3;  // Toe Denominator
 
-    color = ((color * (A*color+C*B)+D*E)/(color*(A*color+B)+D*F))-(E/F);
+    color = ((color * (A * color + C * B) + D * E) / (color * (A * color + B) + D * F)) - (E / F);
     return color;
 }
 
@@ -117,7 +117,7 @@ float3 toneMapAces(float3 color)
     float D = 0.59;
     float E = 0.14;
 
-    color = saturate((color*(A*color+B))/(color*(C*color+D)+E));
+    color = saturate((color * (A * color + B)) / (color * (C * color + D) + E));
     return color;
 }
 
@@ -125,24 +125,24 @@ float3 toneMap(float3 color)
 {
     switch (kOperator)
     {
-        case ToneMapperOperator::Linear:
-            return toneMapLinear(color);
-        case ToneMapperOperator::Reinhard:
-            return toneMapReinhard(color);
-        case ToneMapperOperator::ReinhardModified:
-            return toneMapReinhardModified(color);
-        case ToneMapperOperator::HejiHableAlu:
-            return toneMapHejiHableAlu(color);
-        case ToneMapperOperator::HableUc2:
-            return toneMapHableUc2(color);
-        case ToneMapperOperator::Aces:
-            return toneMapAces(color);
-        default:
-            return color;
+    case ToneMapperOperator::Linear:
+        return toneMapLinear(color);
+    case ToneMapperOperator::Reinhard:
+        return toneMapReinhard(color);
+    case ToneMapperOperator::ReinhardModified:
+        return toneMapReinhardModified(color);
+    case ToneMapperOperator::HejiHableAlu:
+        return toneMapHejiHableAlu(color);
+    case ToneMapperOperator::HableUc2:
+        return toneMapHableUc2(color);
+    case ToneMapperOperator::Aces:
+        return toneMapAces(color);
+    default:
+        return color;
     }
 }
 
-float4 main(float2 texC : TEXCOORD) : SV_TARGET0
+float4 main(float2 texC: TEXCOORD) : SV_TARGET0
 {
     float4 color = gColorTex.Sample(gColorSampler, texC);
     float3 finalColor = color.rgb;

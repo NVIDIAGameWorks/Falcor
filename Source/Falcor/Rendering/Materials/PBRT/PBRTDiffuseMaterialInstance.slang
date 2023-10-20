@@ -28,12 +28,15 @@
 #include "Utils/Math/MathConstants.slangh"
 
 __exported import Rendering.Materials.IMaterialInstance;
+__exported import DiffRendering.SceneGradients;
+__exported import DiffRendering.GradientIOWrapper;
 import Utils.Math.MathHelpers;
 
-struct PBRTDiffuseBSDF : IBSDF
+struct PBRTDiffuseBSDF : IBSDF, IDifferentiable
 {
     float3 albedo;
 
+    [Differentiable]
     float3 eval<S : ISampleGenerator>(const float3 wiLocal, const float3 woLocal, inout S sg)
     {
         return albedo * max(woLocal.z, 0.0f) * M_1_PI;
@@ -66,7 +69,7 @@ struct PBRTDiffuseBSDF : IBSDF
     }
 };
 
-struct PBRTDiffuseMaterialInstance : IMaterialInstance
+struct PBRTDiffuseMaterialInstance : MaterialInstanceBase, IMaterialInstance
 {
     ShadingFrame sf;            ///< Shading frame in world space.
     PBRTDiffuseBSDF bsdf;
@@ -79,6 +82,21 @@ struct PBRTDiffuseMaterialInstance : IMaterialInstance
         if (!isValidHemisphereReflection(sd, sf, wiLocal, woLocal, wo)) return float3(0.f);
 
         return bsdf.eval(wiLocal, woLocal, sg);
+    }
+
+    [Differentiable]
+    float3 evalAD<S : ISampleGenerator>(const DiffMaterialData diffData, const ShadingData sd, const float3 wo, inout S sg)
+    {
+        float3 wiLocal = diffData.sf.toLocal(sd.V);
+        float3 woLocal = diffData.sf.toLocal(wo);
+
+        if (!isValidHemisphereReflection(sd, sf, wiLocal, woLocal, wo)) return float3(0.f);
+
+        uint offset = 0;
+        float3 albedo = diffData.read<3>(offset);
+        PBRTDiffuseBSDF bsdfAD = { albedo };
+
+        return bsdfAD.eval(wiLocal, woLocal, sg);
     }
 
     bool sample<S : ISampleGenerator>(const ShadingData sd, inout S sg, out BSDFSample result, bool useImportanceSampling = true)

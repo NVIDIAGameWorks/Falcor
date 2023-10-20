@@ -30,18 +30,18 @@
 
 namespace
 {
-    const char kShaderFilename[] = "RenderPasses/TestPasses/TestRtProgram.rt.slang";
+const char kShaderFilename[] = "RenderPasses/TestPasses/TestRtProgram.rt.slang";
 
-    // Ray tracing program settings. Set as small values as possible.
-    const uint32_t kMaxPayloadSizeBytes = 16;
-    const uint32_t kMaxAttributeSizeBytes = 8;
-    const uint32_t kMaxRecursionDepth = 1;
+// Ray tracing program settings. Set as small values as possible.
+const uint32_t kMaxPayloadSizeBytes = 16;
+const uint32_t kMaxAttributeSizeBytes = 8;
+const uint32_t kMaxRecursionDepth = 1;
 
-    const char kMode[] = "mode";
-    const char kOutput[] = "output";
+const char kMode[] = "mode";
+const char kOutput[] = "output";
 
-    std::mt19937 rng;
-}
+std::mt19937 rng;
+} // namespace
 
 void TestRtProgram::registerScriptBindings(pybind11::module& m)
 {
@@ -51,15 +51,16 @@ void TestRtProgram::registerScriptBindings(pybind11::module& m)
     pass.def("moveCustomPrimitive", &TestRtProgram::moveCustomPrimitive);
 }
 
-TestRtProgram::TestRtProgram(ref<Device> pDevice, const Properties& props)
-    : RenderPass(pDevice)
+TestRtProgram::TestRtProgram(ref<Device> pDevice, const Properties& props) : RenderPass(pDevice)
 {
     for (const auto& [key, value] : props)
     {
-        if (key == kMode) mMode = value;
-        else logWarning("Unknown property '{}' in TestRtProgram properties.", key);
+        if (key == kMode)
+            mMode = value;
+        else
+            logWarning("Unknown property '{}' in TestRtProgram properties.", key);
     }
-    if (mMode > 1) throw RuntimeError("mode has to be 0 or 1");
+    FALCOR_CHECK(mMode == 0 || mMode == 1, "mode has to be 0 or 1");
 }
 
 Properties TestRtProgram::getProperties() const
@@ -72,7 +73,7 @@ Properties TestRtProgram::getProperties() const
 RenderPassReflection TestRtProgram::reflect(const CompileData& compileData)
 {
     RenderPassReflection reflector;
-    reflector.addOutput(kOutput, "Output image").bindFlags(Resource::BindFlags::UnorderedAccess).format(ResourceFormat::RGBA32Float);
+    reflector.addOutput(kOutput, "Output image").bindFlags(ResourceBindFlags::UnorderedAccess).format(ResourceFormat::RGBA32Float);
     return reflector;
 }
 
@@ -98,7 +99,7 @@ void TestRtProgram::sceneChanged()
     // Example creating a ray tracing program using the new interfaces.
     //
 
-    RtProgram::Desc desc;
+    ProgramDesc desc;
     desc.addShaderModules(mpScene->getShaderModules());
     desc.addShaderLibrary(kShaderFilename);
     desc.setMaxTraceRecursionDepth(kMaxRecursionDepth);
@@ -137,7 +138,7 @@ void TestRtProgram::sceneChanged()
         // Override specific hit groups for some geometries.
         for (uint geometryID = 0; geometryID < geometryCount; geometryID++)
         {
-            auto type = mpScene->getGeometryType(GlobalGeometryID{ geometryID });
+            auto type = mpScene->getGeometryType(GlobalGeometryID{geometryID});
 
             if (type == Scene::GeometryType::TriangleMesh)
             {
@@ -154,7 +155,7 @@ void TestRtProgram::sceneChanged()
             }
             else if (type == Scene::GeometryType::Custom)
             {
-                uint32_t index = mpScene->getCustomPrimitiveIndex(GlobalGeometryID{ geometryID });
+                uint32_t index = mpScene->getCustomPrimitiveIndex(GlobalGeometryID{geometryID});
                 uint32_t userID = mpScene->getCustomPrimitive(index).userID;
 
                 // Use non-default material for custom primitives with even userID.
@@ -178,14 +179,14 @@ void TestRtProgram::sceneChanged()
         sbt = RtBindingTable::create(2, 1, geometryCount);
 
         // Create type conformances.
-        Program::TypeConformanceList typeConformances0 = Program::TypeConformanceList{ {{"Mtl0", "IMtl"}, 0u} };
-        Program::TypeConformanceList typeConformances1 = Program::TypeConformanceList{ {{"Mtl1", "IMtl"}, 1u} };
-        Program::TypeConformanceList typeConformances2 = Program::TypeConformanceList{ {{"Mtl2", "IMtl"}, 2u} };
+        TypeConformanceList typeConformances0 = TypeConformanceList{{{"Mtl0", "IMtl"}, 0u}};
+        TypeConformanceList typeConformances1 = TypeConformanceList{{{"Mtl1", "IMtl"}, 1u}};
+        TypeConformanceList typeConformances2 = TypeConformanceList{{{"Mtl2", "IMtl"}, 2u}};
 
         // Create hit group shaders.
         // These are using the same entry points but are specialized using different type conformances.
         // For each specialization we add a name suffix so that each generated entry point has a unique name.
-        RtProgram::ShaderID mtl[3];
+        ProgramDesc::ShaderID mtl[3];
         mtl[0] = desc.addHitGroup("closestHit", "anyHit", "", typeConformances0, "Mtl0");
         mtl[1] = desc.addHitGroup("closestHit", "anyHit", "", typeConformances1, "Mtl1");
         mtl[2] = desc.addHitGroup("closestHit", "anyHit", "", typeConformances2, "Mtl2");
@@ -209,7 +210,7 @@ void TestRtProgram::sceneChanged()
     defines.add("MODE", std::to_string(mMode));
 
     // Create program and vars.
-    mRT.pProgram = RtProgram::create(mpDevice, desc, defines);
+    mRT.pProgram = Program::create(mpDevice, desc, defines);
     mRT.pVars = RtProgramVars::create(mpDevice, mRT.pProgram, sbt);
 }
 
@@ -220,11 +221,12 @@ void TestRtProgram::execute(RenderContext* pRenderContext, const RenderData& ren
     auto pOutput = renderData.getTexture(kOutput);
     pRenderContext->clearUAV(pOutput->getUAV().get(), float4(0, 0, 0, 1));
 
-    if (!mpScene) return;
+    if (!mpScene)
+        return;
 
-    // Check for scene geometry changes.
-    // Such changes require us to re-create the raytracing binding table and vars.
-    if (is_set(mpScene->getUpdates(), Scene::UpdateFlags::GeometryChanged))
+    // Check for scene changes that require shader recompilation.
+    if (is_set(mpScene->getUpdates(), Scene::UpdateFlags::RecompileNeeded) ||
+        is_set(mpScene->getUpdates(), Scene::UpdateFlags::GeometryChanged))
     {
         sceneChanged();
     }
@@ -298,7 +300,7 @@ void TestRtProgram::addCustomPrimitive()
     }
 
     std::uniform_real_distribution<float> u(0.f, 1.f);
-    float3 c = { 4.f * u(rng) - 2.f, u(rng), 4.f * u(rng) - 2.f };
+    float3 c = {4.f * u(rng) - 2.f, u(rng), 4.f * u(rng) - 2.f};
     float r = 0.5f * u(rng) + 0.5f;
 
     mpScene->addCustomPrimitive(mUserID++, AABB(c - r, c + r));

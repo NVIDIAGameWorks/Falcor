@@ -1,3 +1,8 @@
+IMAGE_TEST = {
+    "platforms": ["windows-x86_64"],
+    "device_types": ["d3d12", "vulkan"]
+}
+
 import sys
 sys.path.append('..')
 from helpers import render_frames

@@ -31,14 +31,14 @@ import SVGFCommon;
 
 cbuffer PerImageCB
 {
-    Texture2D   gAlbedo;
-    Texture2D   gHistoryLength;
-    Texture2D   gIllumination;
-    Texture2D   gLinearZAndNormal;
+    Texture2D gAlbedo;
+    Texture2D gHistoryLength;
+    Texture2D gIllumination;
+    Texture2D gLinearZAndNormal;
 
-    int         gStepSize;
-    float       gPhiColor;
-    float       gPhiNormal;
+    int gStepSize;
+    float gPhiColor;
+    float gPhiNormal;
 };
 
 // computes a 3x3 gaussian blur of the variance, centered around
@@ -48,8 +48,8 @@ float computeVarianceCenter(int2 ipos)
     float sum = 0.f;
 
     const float kernel[2][2] = {
-        { 1.0 / 4.0, 1.0 / 8.0  },
-        { 1.0 / 8.0, 1.0 / 16.0 }
+        { 1.0 / 4.0, 1.0 / 8.0 },
+        { 1.0 / 8.0, 1.0 / 16.0 },
     };
 
     const int radius = 1;
@@ -68,10 +68,10 @@ float computeVarianceCenter(int2 ipos)
 
 float4 main(FullScreenPassVsOut vsOut) : SV_TARGET0
 {
-    const int2 ipos       = int2(vsOut.posH.xy);
+    const int2 ipos = int2(vsOut.posH.xy);
     const int2 screenSize = getTextureDims(gAlbedo, 0);
 
-    const float epsVariance      = 1e-10;
+    const float epsVariance = 1e-10;
     const float kernelWeights[3] = { 1.0, 2.0 / 3.0, 1.0 / 6.0 };
 
     // constant samplers to prevent the compiler from generating code which
@@ -93,20 +93,20 @@ float4 main(FullScreenPassVsOut vsOut) : SV_TARGET0
     }
     const float3 nCenter = oct_to_ndir_snorm(gLinearZAndNormal[ipos].zw);
 
-    const float phiLIllumination   = gPhiColor * sqrt(max(0.0, epsVariance + var.r));
-    const float phiDepth     = max(zCenter.y, 1e-8) * gStepSize;
+    const float phiLIllumination = gPhiColor * sqrt(max(0.0, epsVariance + var.r));
+    const float phiDepth = max(zCenter.y, 1e-8) * gStepSize;
 
     // explicitly store/accumulate center pixel with weight 1 to prevent issues
     // with the edge-stopping functions
-    float sumWIllumination   = 1.0;
-    float4  sumIllumination  = illuminationCenter;
+    float sumWIllumination = 1.0;
+    float4 sumIllumination = illuminationCenter;
 
     for (int yy = -2; yy <= 2; yy++)
     {
         for (int xx = -2; xx <= 2; xx++)
         {
-            const int2 p     = ipos + int2(xx, yy) * gStepSize;
-            const bool inside = all(p >= int2(0,0)) && all(p < screenSize);
+            const int2 p = ipos + int2(xx, yy) * gStepSize;
+            const bool inside = all(p >= int2(0, 0)) && all(p < screenSize);
 
             const float kernel = kernelWeights[abs(xx)] * kernelWeights[abs(yy)];
 
@@ -119,15 +119,22 @@ float4 main(FullScreenPassVsOut vsOut) : SV_TARGET0
 
                 // compute the edge-stopping functions
                 const float2 w = computeWeight(
-                    zCenter.x, zP, phiDepth * length(float2(xx, yy)),
-                    nCenter, nP, gPhiNormal,
-                    lIlluminationCenter, lIlluminationP, phiLIllumination);
+                    zCenter.x,
+                    zP,
+                    phiDepth * length(float2(xx, yy)),
+                    nCenter,
+                    nP,
+                    gPhiNormal,
+                    lIlluminationCenter,
+                    lIlluminationP,
+                    phiLIllumination
+                );
 
                 const float wIllumination = w.x * kernel;
 
                 // alpha channel contains the variance, therefore the weights need to be squared, see paper for the formula
-                sumWIllumination  += wIllumination;
-                sumIllumination   += float4(wIllumination.xxx, wIllumination * wIllumination) * illuminationP;
+                sumWIllumination += wIllumination;
+                sumIllumination += float4(wIllumination.xxx, wIllumination * wIllumination) * illuminationP;
             }
         }
     }

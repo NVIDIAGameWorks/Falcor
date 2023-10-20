@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -75,7 +75,7 @@ namespace Falcor
 
         RGLFile() = default;
 
-        /** Loads RGL measured BRDF file and validates contents. Throws RuntimeError on failure.
+        /** Loads RGL measured BRDF file and validates contents. Throws Falcor::Exception on failure.
         */
         RGLFile(std::ifstream& in);
 
@@ -95,7 +95,7 @@ namespace Falcor
 
         /** Make sure all required fields are present and have correct shape and dimensions,
             then populates mMeasurement field if all fields are correct.
-            Throws RuntimeError on validation error.
+            Throws Falcor::Exception on validation error.
         */
         void validate();
 

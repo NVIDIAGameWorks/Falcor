@@ -41,9 +41,13 @@ struct Vertex
 };
 
 const float2 kVertexPos[] = {
-    float2(0, 0), float2(0, 1), float2(1, 0),
+    float2(0, 0),
+    float2(0, 1),
+    float2(1, 0),
 
-    float2(1, 0), float2(0, 1), float2(1, 1),
+    float2(1, 0),
+    float2(0, 1),
+    float2(1, 1),
 };
 
 const uint32_t kMaxCharCount = 1000;
@@ -64,14 +68,17 @@ ref<Vao> createVAO(const ref<Buffer>& pVB)
 
 TextRenderer::TextRenderer(ref<Device> pDevice) : mpDevice(pDevice)
 {
-    // Create a vertex buffer
-    const uint32_t vbSize = (uint32_t)(sizeof(Vertex) * kMaxCharCount * std::size(kVertexPos));
-    mpVb = Buffer::create(mpDevice, vbSize, Buffer::BindFlags::Vertex, Buffer::CpuAccess::Write, nullptr);
+    for (uint32_t i = 0; i < kVaoCount; ++i)
+    {
+        // Create a vertex buffer
+        const uint32_t vbSize = (uint32_t)(sizeof(Vertex) * kMaxCharCount * std::size(kVertexPos));
+        ref<Buffer> pVb = mpDevice->createBuffer(vbSize, ResourceBindFlags::Vertex, MemoryType::Upload, nullptr);
+        mpVaos[i] = createVAO(pVb);
+    }
 
     // Create the RenderState
     mpPass = RasterPass::create(mpDevice, "Utils/UI/TextRenderer.3d.slang", "vsMain", "psMain");
     auto& pState = mpPass->getState();
-    pState->setVao(createVAO(mpVb));
 
     // create the depth-state
     DepthStencilState::Desc dsDesc;
@@ -86,8 +93,13 @@ TextRenderer::TextRenderer(ref<Device> pDevice) : mpDevice(pDevice)
     // Blend state
     BlendState::Desc blendDesc;
     blendDesc.setRtBlend(0, true).setRtParams(
-        0, BlendState::BlendOp::Add, BlendState::BlendOp::Add, BlendState::BlendFunc::SrcAlpha, BlendState::BlendFunc::OneMinusSrcAlpha,
-        BlendState::BlendFunc::One, BlendState::BlendFunc::One
+        0,
+        BlendState::BlendOp::Add,
+        BlendState::BlendOp::Add,
+        BlendState::BlendFunc::SrcAlpha,
+        BlendState::BlendFunc::OneMinusSrcAlpha,
+        BlendState::BlendFunc::One,
+        BlendState::BlendFunc::One
     );
     pState->setBlendState(BlendState::create(blendDesc));
     mpFont = std::make_unique<Font>(mpDevice, getRuntimeDirectory() / "data/framework/fonts/dejavu-sans-mono-14");
@@ -136,7 +148,9 @@ void TextRenderer::renderText(RenderContext* pRenderContext, const std::string& 
     // Make sure we enough space for the next char
     FALCOR_ASSERT(text.size() < kMaxCharCount);
     setCbData(pDstFbo);
-    Vertex* verts = (Vertex*)mpVb->map(Buffer::MapType::WriteDiscard);
+    const auto& pVao = mpVaos[mVaoIndex];
+    const auto& pVb = pVao->getVertexBuffer(0);
+    Vertex* verts = reinterpret_cast<Vertex*>(pVb->map(Buffer::MapType::Write));
 
     float startX = pos.x;
     uint32_t vertexCount = 0; // Not the same as text.size(), since some special characters are ignored
@@ -170,9 +184,12 @@ void TextRenderer::renderText(RenderContext* pRenderContext, const std::string& 
     }
 
     // Submit
-    mpVb->unmap();
+    pVb->unmap();
+    mpPass->getState()->setVao(pVao);
     mpPass->getState()->setFbo(pDstFbo);
     mpPass->draw(pRenderContext, vertexCount, 0);
+
+    mVaoIndex = (mVaoIndex + 1) % kVaoCount;
 }
 
 } // namespace Falcor

@@ -14,7 +14,7 @@
     </dependency>
     <!-- Media -->
     <dependency name="media" linkPath="media">
-        <package name="falcor_media" version="b7e93e03" />
+        <package name="falcor_media" version="7accd221" />
     </dependency>
     <!-- Libraries -->
     <dependency name="falcor_dependencies" linkPath="external/packman/deps">
@@ -23,8 +23,8 @@
     <remote name="github-slang-windows" type="https" packageLocation="github.com/shader-slang/slang/releases/download/v${version}/slang-${version}-win64.zip"/>
     <remote name="github-slang-linux" type="https" packageLocation="github.com/shader-slang/slang/releases/download/v${version}/slang-${version}-linux-x86_64.zip"/>
     <dependency name="slang" linkPath="external/packman/slang">
-        <package name="slang" version="2023.0.3" remotes="github-slang-windows" platforms="windows-x86_64"/>
-        <package name="slang" version="2023.0.3" remotes="github-slang-linux" platforms="linux-x86_64" />
+        <package name="slang" version="2023.3.20" remotes="github-slang-windows" platforms="windows-x86_64"/>
+        <package name="slang" version="2023.3.20" remotes="github-slang-linux" platforms="linux-x86_64" />
     </dependency>
     <dependency name="pix" linkPath="external/packman/pix">
         <package name="WinPixEventRuntime" version="1.0.190604001" platforms="windows-x86_64" />
@@ -47,7 +47,6 @@
     <dependency name="nv-usd-release" linkPath="external/packman/nv-usd-release">
         <package name="nv-usd" version="22.11.nv.0.2.424.27f22922-win64_nopy_release-dev_omniverse" platforms="windows-x86_64" />
         <package name="nv-usd" version="22.11.nv.0.2.424.27f22922-linux64_nopy-centos_release-dev_omniverse" platforms="linux-x86_64" />
-
     </dependency>
     <dependency name="nv-usd-debug" linkPath="external/packman/nv-usd-debug">
         <package name="nv-usd" version="22.11.nv.0.2.424.27f22922-win64_nopy_debug-dev_omniverse" platforms="windows-x86_64" />
@@ -60,6 +59,6 @@
         <package name="nrd" version="3.1.0-falcor-windows-x86_64" platforms="windows-x86_64" />
     </dependency>
     <dependency name="dlss" linkPath="external/packman/dlss">
-        <package name="dlss" version="3.1.0" platforms="windows-x86_64 linux-x86_64" />
+        <package name="dlss" version="3.5.0" platforms="windows-x86_64 linux-x86_64" />
     </dependency>
 </project>

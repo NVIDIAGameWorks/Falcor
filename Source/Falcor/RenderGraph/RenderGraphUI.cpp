@@ -1202,8 +1202,10 @@ void RenderGraphUI::updatePins(bool addLinks)
                     for (const auto& connectedPin : (inputPins->second))
                     {
                         if (!mpNodeGraphEditor->isLinkPresent(
-                                mpNodeGraphEditor->getNodeFromID(currentPassUI.mGuiNodeID), currentPinUI.mGuiPinID,
-                                mpNodeGraphEditor->getNodeFromID(connectedPin.second), connectedPin.first
+                                mpNodeGraphEditor->getNodeFromID(currentPassUI.mGuiNodeID),
+                                currentPinUI.mGuiPinID,
+                                mpNodeGraphEditor->getNodeFromID(connectedPin.second),
+                                connectedPin.first
                             ))
                         {
                             RenderGraphNode* pNode = static_cast<RenderGraphNode*>(mpNodeGraphEditor->getNodeFromID(connectedPin.second));
@@ -1229,8 +1231,12 @@ void RenderGraphUI::updatePins(bool addLinks)
                             }
 
                             mpNodeGraphEditor->addLinkFromGraph(
-                                mpNodeGraphEditor->getNodeFromID(currentPassUI.mGuiNodeID), currentPinUI.mGuiPinID,
-                                mpNodeGraphEditor->getNodeFromID(connectedPin.second), connectedPin.first, false, edgeColor
+                                mpNodeGraphEditor->getNodeFromID(currentPassUI.mGuiNodeID),
+                                currentPinUI.mGuiPinID,
+                                mpNodeGraphEditor->getNodeFromID(connectedPin.second),
+                                connectedPin.first,
+                                false,
+                                edgeColor
                             );
 
                             RenderGraphNode* pDstGraphNode =
@@ -1278,8 +1284,10 @@ void RenderGraphUI::updatePins(bool addLinks)
                 uint32_t inputPinID = connectedNodeUI.mNameToIndexOutput.find(currentPinUI.mConnectedPinName)->second;
 
                 if (!mpNodeGraphEditor->isLinkPresent(
-                        mpNodeGraphEditor->getNodeFromID(connectedNodeUI.mGuiNodeID), inputPinID,
-                        mpNodeGraphEditor->getNodeFromID(inputIDs.second), inputIDs.first
+                        mpNodeGraphEditor->getNodeFromID(connectedNodeUI.mGuiNodeID),
+                        inputPinID,
+                        mpNodeGraphEditor->getNodeFromID(inputIDs.second),
+                        inputIDs.first
                     ))
                 {
                     auto edgeIt = mInputPinStringToLinkID.find(currentPass.first + "." + currentPinName);
@@ -1288,7 +1296,8 @@ void RenderGraphUI::updatePins(bool addLinks)
 
                     removeEdge(
                         mpNodeGraphEditor->getNodeFromID(connectedNodeUI.mGuiNodeID)->getName(),
-                        mpNodeGraphEditor->getNodeFromID(inputIDs.second)->getName(), mpRenderGraph->mEdgeData[edgeID].srcField,
+                        mpNodeGraphEditor->getNodeFromID(inputIDs.second)->getName(),
+                        mpRenderGraph->mEdgeData[edgeID].srcField,
                         mpRenderGraph->mEdgeData[edgeID].dstField
                     );
                     mpRenderGraph->removeEdge(edgeID);

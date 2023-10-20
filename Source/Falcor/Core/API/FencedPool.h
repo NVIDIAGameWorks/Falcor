@@ -26,10 +26,9 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "GpuFence.h"
-#include "Core/Assert.h"
+#include "Fence.h"
 #include "Core/Macros.h"
-#include "Core/Errors.h"
+#include "Core/Error.h"
 #include "Core/Object.h"
 #include <queue>
 
@@ -49,7 +48,7 @@ public:
      * @param[in] pUserData Optional ptr to user data passed to the object creation function.
      * @return A new object, or throws an exception if creation failed.
      */
-    static ref<FencedPool> create(ref<GpuFence> pFence, NewObjectFuncType newFunc, void* pUserData = nullptr)
+    static ref<FencedPool> create(ref<Fence> pFence, NewObjectFuncType newFunc, void* pUserData = nullptr)
     {
         return new FencedPool(pFence, newFunc, pUserData);
     }
@@ -63,12 +62,12 @@ public:
         // Retire the active object
         Data data;
         data.alloc = mActiveObject;
-        data.timestamp = mpFence->getCpuValue();
+        data.timestamp = mpFence->getSignaledValue();
         mQueue.push(data);
 
         // The queue is sorted based on time. Check if the first object is free
         data = mQueue.front();
-        if (data.timestamp <= mpFence->getGpuValue())
+        if (data.timestamp < mpFence->getCurrentValue())
         {
             mQueue.pop();
         }
@@ -82,8 +81,7 @@ public:
     }
 
 private:
-    FencedPool(ref<GpuFence> pFence, NewObjectFuncType newFunc, void* pUserData)
-        : mNewObjFunc(newFunc), mpFence(pFence), mpUserData(pUserData)
+    FencedPool(ref<Fence> pFence, NewObjectFuncType newFunc, void* pUserData) : mNewObjFunc(newFunc), mpFence(pFence), mpUserData(pUserData)
     {
         FALCOR_ASSERT(pFence && newFunc);
         mActiveObject = createObject();
@@ -93,7 +91,7 @@ private:
     {
         ObjectType pObj = mNewObjFunc(mpUserData);
         if (pObj == nullptr)
-            throw RuntimeError("Failed to create new object in fenced pool");
+            FALCOR_THROW("Failed to create new object in fenced pool");
         return pObj;
     }
 
@@ -106,7 +104,7 @@ private:
     ObjectType mActiveObject;
     NewObjectFuncType mNewObjFunc = nullptr;
     std::queue<Data> mQueue;
-    ref<GpuFence> mpFence;
+    ref<Fence> mpFence;
     void* mpUserData;
 };
 } // namespace Falcor

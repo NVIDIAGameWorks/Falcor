@@ -115,12 +115,12 @@ void testWaveMinMax(GPUUnitTestContext& ctx, bool conditional)
     ref<Device> pDevice = ctx.getDevice();
 
     DefineList defines = {{"CONDITIONAL", conditional ? "1" : "0"}};
-    ctx.createProgram(kShaderFilename, "testWaveMinMax", defines, Program::CompilerFlags::None, "6_0");
+    ctx.createProgram(kShaderFilename, "testWaveMinMax", defines, SlangCompilerFlags::None, ShaderModel::SM6_0);
     ctx.allocateStructuredBuffer("result", kNumElems * 2);
 
     auto var = ctx.vars().getRootVar();
     uint32_t zero = 0;
-    auto pLaneCount = Buffer::createTyped<uint32_t>(pDevice, 1, ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None, &zero);
+    auto pLaneCount = pDevice->createTypedBuffer<uint32_t>(1, ResourceBindFlags::UnorderedAccess, MemoryType::DeviceLocal, &zero);
     var["laneCount"] = pLaneCount;
 
     std::uniform_real_distribution<float> u(0.f, 1.f);
@@ -131,17 +131,16 @@ void testWaveMinMax(GPUUnitTestContext& ctx, bool conditional)
         for (size_t j = 0; j < 32; j++)
             testData[i + j] = offset + 2.f * u(rng) - 1.f;
     }
-    var["testData"] = Buffer::createTyped<uint32_t>(
-        pDevice, kNumElems, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, (uint32_t*)testData.data()
+    var["testData"] = pDevice->createTypedBuffer<uint32_t>(
+        kNumElems, ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, (uint32_t*)testData.data()
     );
 
     ctx.runProgram(kNumElems, 1, 1);
 
     // Get the lane count. We abort the test if it is an unsupported count.
-    const uint32_t laneCount = *(const uint32_t*)pLaneCount->map(Buffer::MapType::Read);
-    pLaneCount->unmap();
+    uint32_t laneCount = pLaneCount->getElement<uint32_t>(0);
     if (laneCount < 4 || laneCount > 128)
-        throw RuntimeError("Unsupported wave lane count");
+        FALCOR_THROW("Unsupported wave lane count");
 
     // Verify results of wave min/max.
     std::vector<float> expectedResult = computeMinMaxResult(testData, laneCount, conditional);
@@ -159,19 +158,16 @@ uint32_t queryLaneCount(GPUUnitTestContext& ctx)
 {
     ref<Device> pDevice = ctx.getDevice();
 
-    ctx.createProgram(kShaderFilename, "testWaveGetLaneCount", DefineList(), Program::CompilerFlags::None, "6_0");
+    ctx.createProgram(kShaderFilename, "testWaveGetLaneCount", DefineList(), SlangCompilerFlags::None, ShaderModel::SM6_0);
 
     auto var = ctx.vars().getRootVar();
     uint32_t zero = 0;
-    auto pLaneCount = Buffer::createTyped<uint32_t>(pDevice, 1, ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None, &zero);
+    auto pLaneCount = pDevice->createTypedBuffer<uint32_t>(1, ResourceBindFlags::UnorderedAccess, MemoryType::DeviceLocal, &zero);
     var["laneCount"] = pLaneCount;
 
     ctx.runProgram(1, 1, 1);
 
-    const uint32_t laneCount = *(const uint32_t*)pLaneCount->map(Buffer::MapType::Read);
-    pLaneCount->unmap();
-
-    return laneCount;
+    return pLaneCount->getElement<uint32_t>(0);
 }
 } // namespace
 
@@ -187,26 +183,25 @@ GPU_TEST(WaveMatch, Device::Type::D3D12)
 {
     ref<Device> pDevice = ctx.getDevice();
 
-    ctx.createProgram(kShaderFilename, "testWaveMatch", DefineList(), Program::CompilerFlags::None, "6_5");
+    ctx.createProgram(kShaderFilename, "testWaveMatch", DefineList(), SlangCompilerFlags::None, ShaderModel::SM6_5);
     ctx.allocateStructuredBuffer("result", kNumElems);
 
     auto var = ctx.vars().getRootVar();
     uint32_t zero = 0;
-    auto pLaneCount = Buffer::createTyped<uint32_t>(pDevice, 1, ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None, &zero);
+    auto pLaneCount = pDevice->createTypedBuffer<uint32_t>(1, ResourceBindFlags::UnorderedAccess, MemoryType::DeviceLocal, &zero);
     var["laneCount"] = pLaneCount;
 
     std::vector<uint32_t> matchData = generateMatchData(kNumElems);
     FALCOR_ASSERT(matchData.size() == kNumElems);
     var["testData"] =
-        Buffer::createTyped<uint32_t>(pDevice, kNumElems, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, matchData.data());
+        pDevice->createTypedBuffer<uint32_t>(kNumElems, ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, matchData.data());
 
     ctx.runProgram(kNumElems, 1, 1);
 
     // Get the lane count. We abort the test if it is an unsupported count.
-    const uint32_t laneCount = *(const uint32_t*)pLaneCount->map(Buffer::MapType::Read);
-    pLaneCount->unmap();
+    const uint32_t laneCount = pLaneCount->getElement<uint32_t>(0);
     if (laneCount < 4 || laneCount > 128)
-        throw RuntimeError("Unsupported wave lane count");
+        FALCOR_THROW("Unsupported wave lane count");
 
     // Verify results of wave match.
     std::vector<uint4> expectedResult = computeMatchResult(matchData, laneCount);
@@ -249,12 +244,12 @@ GPU_TEST(WaveMaxSimpleFloat, "Disabled due to compiler issues")
     for (size_t i = 0; i < testData.size(); i++)
         testData[i] = (float)i - 15;
 
-    ctx.createProgram(kShaderFilename, "testWaveMaxSimpleFloat", DefineList(), Program::CompilerFlags::None, "6_0");
+    ctx.createProgram(kShaderFilename, "testWaveMaxSimpleFloat", DefineList(), SlangCompilerFlags::None, ShaderModel::SM6_0);
     ctx.allocateStructuredBuffer("result", 32);
 
     auto var = ctx.vars().getRootVar();
     var["testData"] =
-        Buffer::createTyped<uint32_t>(pDevice, 32, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, (uint32_t*)testData.data());
+        pDevice->createTypedBuffer<uint32_t>(32, ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, (uint32_t*)testData.data());
     ctx.runProgram(32, 1, 1);
 
     // Verify result.
@@ -283,12 +278,12 @@ GPU_TEST(WaveMaxSimpleInt)
     for (size_t i = 0; i < testData.size(); i++)
         testData[i] = (int)i - 15;
 
-    ctx.createProgram(kShaderFilename, "testWaveMaxSimpleInt", DefineList(), Program::CompilerFlags::None, "6_0");
+    ctx.createProgram(kShaderFilename, "testWaveMaxSimpleInt", DefineList(), SlangCompilerFlags::None, ShaderModel::SM6_0);
     ctx.allocateStructuredBuffer("result", 32);
 
     auto var = ctx.vars().getRootVar();
     var["testData"] =
-        Buffer::createTyped<uint32_t>(pDevice, 32, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, (uint32_t*)testData.data());
+        pDevice->createTypedBuffer<uint32_t>(32, ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, (uint32_t*)testData.data());
     ctx.runProgram(32, 1, 1);
 
     // Verify result.

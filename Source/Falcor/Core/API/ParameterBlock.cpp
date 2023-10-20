@@ -29,8 +29,7 @@
 #include "Device.h"
 #include "CopyContext.h"
 #include "GFXAPI.h"
-#include "Core/Assert.h"
-#include "Core/Errors.h"
+#include "Core/Error.h"
 #include "Core/Program/ProgramVersion.h"
 #include "Utils/Logger.h"
 
@@ -56,10 +55,11 @@ gfx::ShaderOffset getGFXShaderOffset(const ParameterBlock::BindLocation& bindLoc
     return gfxOffset;
 }
 
-bool isSrvType(const ref<const ReflectionType>& pType)
+bool isSrvType(const ReflectionType* pType)
 {
+    FALCOR_ASSERT(pType);
     auto resourceType = pType->unwrapArray()->asResourceType();
-    if (resourceType->getType() == ReflectionResourceType::Type::Sampler ||
+    if (!resourceType || resourceType->getType() == ReflectionResourceType::Type::Sampler ||
         resourceType->getType() == ReflectionResourceType::Type::ConstantBuffer)
         return false;
 
@@ -75,10 +75,11 @@ bool isSrvType(const ref<const ReflectionType>& pType)
     }
 }
 
-bool isUavType(const ref<const ReflectionType>& pType)
+bool isUavType(const ReflectionType* pType)
 {
+    FALCOR_ASSERT(pType);
     auto resourceType = pType->unwrapArray()->asResourceType();
-    if (resourceType->getType() == ReflectionResourceType::Type::Sampler ||
+    if (!resourceType || resourceType->getType() == ReflectionResourceType::Type::Sampler ||
         resourceType->getType() == ReflectionResourceType::Type::ConstantBuffer)
         return false;
 
@@ -94,16 +95,36 @@ bool isUavType(const ref<const ReflectionType>& pType)
     }
 }
 
-bool isCbvType(const ref<const ReflectionType>& pType)
+bool isSamplerType(const ReflectionType* pType)
 {
+    FALCOR_ASSERT(pType);
     auto resourceType = pType->unwrapArray()->asResourceType();
-    if (resourceType->getType() == ReflectionResourceType::Type::ConstantBuffer)
-    {
-        FALCOR_ASSERT(resourceType->getShaderAccess() == ReflectionResourceType::ShaderAccess::Read);
-        return true;
-    }
-    return false;
+    return (resourceType && resourceType->getType() == ReflectionResourceType::Type::Sampler);
 }
+
+bool isAccelerationStructureType(const ReflectionType* pType)
+{
+    FALCOR_ASSERT(pType);
+    auto resourceType = pType->unwrapArray()->asResourceType();
+    return (resourceType && resourceType->getType() == ReflectionResourceType::Type::AccelerationStructure);
+}
+
+bool isParameterBlockType(const ReflectionType* pType)
+{
+    FALCOR_ASSERT(pType);
+    auto resourceType = pType->unwrapArray()->asResourceType();
+    // Parameter blocks are currently classified as constant buffers.
+    // See getResourceType() in ProgramReflection.cpp
+    return (resourceType && resourceType->getType() == ReflectionResourceType::Type::ConstantBuffer);
+}
+
+bool isConstantBufferType(const ReflectionType* pType)
+{
+    FALCOR_ASSERT(pType);
+    auto resourceType = pType->unwrapArray()->asResourceType();
+    return (resourceType && resourceType->getType() == ReflectionResourceType::Type::ConstantBuffer);
+}
+
 } // namespace
 
 ref<ParameterBlock> ParameterBlock::create(
@@ -112,8 +133,7 @@ ref<ParameterBlock> ParameterBlock::create(
     const ref<const ReflectionType>& pElementType
 )
 {
-    if (!pElementType)
-        throw ArgumentError("Can't create a parameter block without type information");
+    FALCOR_CHECK(pElementType, "Can't create a parameter block without type information");
     auto pReflection = ParameterBlockReflection::create(pProgramVersion.get(), pElementType);
     return create(pDevice, pReflection);
 }
@@ -142,7 +162,7 @@ ShaderVar ParameterBlock::getRootVar() const
     return ShaderVar(const_cast<ParameterBlock*>(this));
 }
 
-ShaderVar ParameterBlock::findMember(const std::string& varName) const
+ShaderVar ParameterBlock::findMember(std::string_view varName) const
 {
     return getRootVar().findMember(varName);
 }
@@ -157,7 +177,7 @@ size_t ParameterBlock::getElementSize() const
     return mpReflector->getElementType()->getByteSize();
 }
 
-UniformShaderVarOffset ParameterBlock::getVariableOffset(const std::string& varName) const
+TypedShaderVarOffset ParameterBlock::getVariableOffset(std::string_view varName) const
 {
     return getElementType()->getZeroOffset()[varName];
 }
@@ -215,7 +235,7 @@ void ParameterBlock::prepareResource(CopyContext* pContext, Resource* pResource,
     }
 
     bool insertBarrier = true;
-    insertBarrier = (is_set(pResource->getBindFlags(), Resource::BindFlags::AccelerationStructure) == false);
+    insertBarrier = (is_set(pResource->getBindFlags(), ResourceBindFlags::AccelerationStructure) == false);
     if (insertBarrier)
     {
         insertBarrier = !pContext->resourceBarrier(pResource, isUav ? Resource::State::UnorderedAccess : Resource::State::ShaderResource);
@@ -225,38 +245,6 @@ void ParameterBlock::prepareResource(CopyContext* pContext, Resource* pResource,
     // Otherwise the user would have to insert barriers explicitly between passes accessing UAVs, which is easily forgotten.
     if (insertBarrier && isUav)
         pContext->uavBarrier(pResource);
-}
-
-// Template specialization to allow setting booleans on a parameter block.
-// On the host side a bool is 1B and the device 4B. We cast bools to 32-bit integers here.
-// Note that this applies to our boolN vectors as well, which are currently 1B per element.
-
-template<>
-FALCOR_API bool ParameterBlock::setVariable(UniformShaderVarOffset offset, const bool& value)
-{
-    int32_t v = value ? 1 : 0;
-    return setVariable(offset, v);
-}
-
-template<>
-FALCOR_API bool ParameterBlock::setVariable(UniformShaderVarOffset offset, const bool2& value)
-{
-    int2 v = {value.x ? 1 : 0, value.y ? 1 : 0};
-    return setVariable(offset, v);
-}
-
-template<>
-FALCOR_API bool ParameterBlock::setVariable(UniformShaderVarOffset offset, const bool3& value)
-{
-    int3 v = {value.x ? 1 : 0, value.y ? 1 : 0, value.z ? 1 : 0};
-    return setVariable(offset, v);
-}
-
-template<>
-FALCOR_API bool ParameterBlock::setVariable(UniformShaderVarOffset offset, const bool4& value)
-{
-    int4 v = {value.x ? 1 : 0, value.y ? 1 : 0, value.z ? 1 : 0, value.w ? 1 : 0};
-    return setVariable(offset, v);
 }
 
 ParameterBlock::~ParameterBlock() {}
@@ -317,54 +305,170 @@ void ParameterBlock::initializeResourceBindings()
     }
 }
 
-bool ParameterBlock::setBlob(const void* pSrc, UniformShaderVarOffset offset, size_t size)
+void ParameterBlock::setBlob(const void* pSrc, const BindLocation& bindLocation, size_t size)
 {
-    gfx::ShaderOffset gfxOffset = getGFXShaderOffset(offset);
-    return SLANG_SUCCEEDED(mpShaderObject->setData(gfxOffset, pSrc, size));
+    if (!isConstantBufferType(bindLocation.getType()))
+    {
+        gfx::ShaderOffset gfxOffset = getGFXShaderOffset(bindLocation);
+        FALCOR_GFX_CALL(mpShaderObject->setData(gfxOffset, pSrc, size));
+    }
+    else
+    {
+        FALCOR_THROW("Error trying to set a blob to a non constant buffer variable.");
+    }
 }
 
-bool ParameterBlock::setBlob(const void* pSrc, size_t offset, size_t size)
+void ParameterBlock::setBlob(const void* pSrc, size_t offset, size_t size)
 {
     gfx::ShaderOffset gfxOffset = {};
     gfxOffset.uniformOffset = offset;
-    return SLANG_SUCCEEDED(mpShaderObject->setData(gfxOffset, pSrc, size));
+    FALCOR_GFX_CALL(mpShaderObject->setData(gfxOffset, pSrc, size));
 }
 
-bool ParameterBlock::setBuffer(const std::string& name, const ref<Buffer>& pBuffer)
+//
+// Uniforms
+//
+
+template<typename T>
+void setVariableInternal(
+    ParameterBlock* pBlock,
+    const ParameterBlock::BindLocation& bindLocation,
+    const T& value,
+    ReflectionBasicType::Type type,
+    ReflectionBasicType::Type implicitType = ReflectionBasicType::Type::Unknown
+)
 {
-    auto var = getRootVar()[name];
-    return var.setBuffer(pBuffer);
+    const ReflectionBasicType* basicType = bindLocation.getType()->unwrapArray()->asBasicType();
+    if (!basicType)
+        FALCOR_THROW("Error trying to set a variable that is not a basic type.");
+    ReflectionBasicType::Type expectedType = basicType->getType();
+    // Check types. Allow implicit conversions from signed to unsigned types.
+    if (type != expectedType && implicitType != expectedType)
+        FALCOR_THROW(
+            "Error trying to set a variable with a different type than the one in the program (expected {}, got {}).",
+            enumToString(expectedType),
+            enumToString(type)
+        );
+    size_t size = sizeof(T);
+    size_t expectedSize = basicType->getByteSize();
+    if (size != expectedSize)
+        FALCOR_THROW(
+            "Error trying to set a variable with a different size than the one in the program (expected {} bytes, got {}).",
+            expectedSize,
+            size
+        );
+    auto gfxOffset = getGFXShaderOffset(bindLocation);
+    FALCOR_GFX_CALL(pBlock->getShaderObject()->setData(gfxOffset, &value, size));
 }
 
-bool ParameterBlock::setBuffer(const BindLocation& bindLoc, const ref<Buffer>& pResource)
+template<typename T>
+void ParameterBlock::setVariable(const BindLocation& bindLocation, const T& value)
+{
+    FALCOR_UNIMPLEMENTED();
+}
+
+#define DEFINE_SET_VARIABLE(ctype, basicType, implicitType)                                           \
+    template<>                                                                                        \
+    FALCOR_API void ParameterBlock::setVariable(const BindLocation& bindLocation, const ctype& value) \
+    {                                                                                                 \
+        setVariableInternal<ctype>(this, bindLocation, value, basicType, implicitType);               \
+    }
+
+DEFINE_SET_VARIABLE(uint32_t, ReflectionBasicType::Type::Uint, ReflectionBasicType::Type::Int);
+DEFINE_SET_VARIABLE(uint2, ReflectionBasicType::Type::Uint2, ReflectionBasicType::Type::Int2);
+DEFINE_SET_VARIABLE(uint3, ReflectionBasicType::Type::Uint3, ReflectionBasicType::Type::Int3);
+DEFINE_SET_VARIABLE(uint4, ReflectionBasicType::Type::Uint4, ReflectionBasicType::Type::Int4);
+
+DEFINE_SET_VARIABLE(int32_t, ReflectionBasicType::Type::Int, ReflectionBasicType::Type::Uint);
+DEFINE_SET_VARIABLE(int2, ReflectionBasicType::Type::Int2, ReflectionBasicType::Type::Uint2);
+DEFINE_SET_VARIABLE(int3, ReflectionBasicType::Type::Int3, ReflectionBasicType::Type::Uint3);
+DEFINE_SET_VARIABLE(int4, ReflectionBasicType::Type::Int4, ReflectionBasicType::Type::Uint4);
+
+DEFINE_SET_VARIABLE(float, ReflectionBasicType::Type::Float, ReflectionBasicType::Type::Unknown);
+DEFINE_SET_VARIABLE(float2, ReflectionBasicType::Type::Float2, ReflectionBasicType::Type::Unknown);
+DEFINE_SET_VARIABLE(float3, ReflectionBasicType::Type::Float3, ReflectionBasicType::Type::Unknown);
+DEFINE_SET_VARIABLE(float4, ReflectionBasicType::Type::Float4, ReflectionBasicType::Type::Unknown);
+
+// DEFINE_SET_VARIABLE(float1x4, ReflectionBasicType::Type::Float1x4, ReflectionBasicType::Type::Unknown);
+DEFINE_SET_VARIABLE(float2x4, ReflectionBasicType::Type::Float2x4, ReflectionBasicType::Type::Unknown);
+DEFINE_SET_VARIABLE(float3x4, ReflectionBasicType::Type::Float3x4, ReflectionBasicType::Type::Unknown);
+DEFINE_SET_VARIABLE(float4x4, ReflectionBasicType::Type::Float4x4, ReflectionBasicType::Type::Unknown);
+
+DEFINE_SET_VARIABLE(uint64_t, ReflectionBasicType::Type::Uint64, ReflectionBasicType::Type::Int64);
+
+#undef DEFINE_SET_VARIABLE
+
+// Template specialization to allow setting booleans on a parameter block.
+// On the host side a bool is 1B and the device 4B. We cast bools to 32-bit integers here.
+// Note that this applies to our boolN vectors as well, which are currently 1B per element.
+
+template<>
+FALCOR_API void ParameterBlock::setVariable(const BindLocation& bindLocation, const bool& value)
+{
+    uint v = value ? 1 : 0;
+    setVariableInternal(this, bindLocation, v, ReflectionBasicType::Type::Bool);
+}
+
+template<>
+FALCOR_API void ParameterBlock::setVariable(const BindLocation& bindLocation, const bool2& value)
+{
+    uint2 v = {value.x ? 1 : 0, value.y ? 1 : 0};
+    setVariableInternal(this, bindLocation, v, ReflectionBasicType::Type::Bool2);
+}
+
+template<>
+FALCOR_API void ParameterBlock::setVariable(const BindLocation& bindLocation, const bool3& value)
+{
+    uint3 v = {value.x ? 1 : 0, value.y ? 1 : 0, value.z ? 1 : 0};
+    setVariableInternal(this, bindLocation, v, ReflectionBasicType::Type::Bool3);
+}
+
+template<>
+FALCOR_API void ParameterBlock::setVariable(const BindLocation& bindLocation, const bool4& value)
+{
+    uint4 v = {value.x ? 1 : 0, value.y ? 1 : 0, value.z ? 1 : 0, value.w ? 1 : 0};
+    setVariableInternal(this, bindLocation, v, ReflectionBasicType::Type::Bool4);
+}
+
+//
+// Buffer
+//
+
+void ParameterBlock::setBuffer(std::string_view name, const ref<Buffer>& pBuffer)
+{
+    getRootVar()[name].setBuffer(pBuffer);
+}
+
+void ParameterBlock::setBuffer(const BindLocation& bindLoc, const ref<Buffer>& pBuffer)
 {
     gfx::ShaderOffset gfxOffset = getGFXShaderOffset(bindLoc);
     if (isUavType(bindLoc.getType()))
     {
-        auto pUAV = pResource ? pResource->getUAV() : nullptr;
+        if (pBuffer && !is_set(pBuffer->getBindFlags(), ResourceBindFlags::UnorderedAccess))
+            FALCOR_THROW("Trying to bind buffer '{}' created without UnorderedAccess flag as a UAV.", pBuffer->getName());
+        auto pUAV = pBuffer ? pBuffer->getUAV() : nullptr;
         mpShaderObject->setResource(gfxOffset, pUAV ? pUAV->getGfxResourceView() : nullptr);
         mUAVs[gfxOffset] = pUAV;
-        mResources[gfxOffset] = pResource;
+        mResources[gfxOffset] = pBuffer;
     }
     else if (isSrvType(bindLoc.getType()))
     {
-        auto pSRV = pResource ? pResource->getSRV() : nullptr;
+        if (pBuffer && !is_set(pBuffer->getBindFlags(), ResourceBindFlags::ShaderResource))
+            FALCOR_THROW("Trying to bind buffer '{}' created without ShaderResource flag as an SRV.", pBuffer->getName());
+        auto pSRV = pBuffer ? pBuffer->getSRV() : nullptr;
         mpShaderObject->setResource(gfxOffset, pSRV ? pSRV->getGfxResourceView() : nullptr);
         mSRVs[gfxOffset] = pSRV;
-        mResources[gfxOffset] = pResource;
+        mResources[gfxOffset] = pBuffer;
     }
     else
     {
-        logError("Error trying to bind resource to non SRV/UAV variable. Ignoring call.");
-        return false;
+        FALCOR_THROW("Error trying to bind buffer to a non SRV/UAV variable.");
     }
-    return true;
 }
 
-ref<Buffer> ParameterBlock::getBuffer(const std::string& name) const
+ref<Buffer> ParameterBlock::getBuffer(std::string_view name) const
 {
-    auto var = getRootVar()[name];
-    return var.getBuffer();
+    return getRootVar()[name].getBuffer();
 }
 
 ref<Buffer> ParameterBlock::getBuffer(const BindLocation& bindLoc) const
@@ -388,83 +492,26 @@ ref<Buffer> ParameterBlock::getBuffer(const BindLocation& bindLoc) const
     }
     else
     {
-        logError("Error trying to bind resource to non SRV/UAV variable. Ignoring call.");
-        return nullptr;
+        FALCOR_THROW("Error trying to get buffer from a non SRV/UAV variable.");
     }
 }
 
-bool ParameterBlock::setParameterBlock(const std::string& name, const ref<ParameterBlock>& pBlock)
+//
+// Texture
+//
+
+void ParameterBlock::setTexture(std::string_view name, const ref<Texture>& pTexture)
 {
-    auto var = getRootVar()[name];
-    return var.setParameterBlock(pBlock);
+    getRootVar()[name].setTexture(pTexture);
 }
 
-bool ParameterBlock::setParameterBlock(const BindLocation& bindLocation, const ref<ParameterBlock>& pBlock)
+void ParameterBlock::setTexture(const BindLocation& bindLocation, const ref<Texture>& pTexture)
 {
-    auto gfxOffset = getGFXShaderOffset(bindLocation);
-    mParameterBlocks[gfxOffset] = pBlock;
-    return SLANG_SUCCEEDED(mpShaderObject->setObject(gfxOffset, pBlock ? pBlock->mpShaderObject : nullptr));
-}
-
-ref<ParameterBlock> ParameterBlock::getParameterBlock(const std::string& name) const
-{
-    auto var = getRootVar()[name];
-    return var.getParameterBlock();
-}
-
-ref<ParameterBlock> ParameterBlock::getParameterBlock(const BindLocation& bindLocation) const
-{
-    auto gfxOffset = getGFXShaderOffset(bindLocation);
-    auto iter = mParameterBlocks.find(gfxOffset);
-    if (iter == mParameterBlocks.end())
-        return nullptr;
-    return iter->second;
-}
-
-template<typename VarType>
-bool ParameterBlock::setVariable(UniformShaderVarOffset offset, const VarType& value)
-{
-    auto gfxOffset = getGFXShaderOffset(offset);
-    return SLANG_SUCCEEDED(mpShaderObject->setData(gfxOffset, &value, sizeof(VarType)));
-}
-
-#define set_constant_by_offset(_t) template FALCOR_API bool ParameterBlock::setVariable(UniformShaderVarOffset offset, const _t& value)
-set_constant_by_offset(uint32_t);
-set_constant_by_offset(uint2);
-set_constant_by_offset(uint3);
-set_constant_by_offset(uint4);
-
-set_constant_by_offset(int32_t);
-set_constant_by_offset(int2);
-set_constant_by_offset(int3);
-set_constant_by_offset(int4);
-
-set_constant_by_offset(float);
-set_constant_by_offset(float2);
-set_constant_by_offset(float3);
-set_constant_by_offset(float4);
-
-set_constant_by_offset(float1x4);
-set_constant_by_offset(float2x4);
-set_constant_by_offset(float3x4);
-set_constant_by_offset(float4x4);
-
-set_constant_by_offset(uint64_t);
-
-#undef set_constant_by_offset
-
-bool ParameterBlock::setTexture(const std::string& name, const ref<Texture>& pTexture)
-{
-    auto var = getRootVar()[name];
-    return var.setTexture(pTexture);
-}
-
-bool ParameterBlock::setTexture(const BindLocation& bindLocation, const ref<Texture>& pTexture)
-{
-    const auto& bindingInfo = mpReflector->getResourceRangeBindingInfo(bindLocation.getResourceRangeIndex());
     gfx::ShaderOffset gfxOffset = getGFXShaderOffset(bindLocation);
     if (isUavType(bindLocation.getType()))
     {
+        if (pTexture && !is_set(pTexture->getBindFlags(), ResourceBindFlags::UnorderedAccess))
+            FALCOR_THROW("Trying to bind texture '{}' created without UnorderedAccess flag as a UAV.", pTexture->getName());
         auto pUAV = pTexture ? pTexture->getUAV() : nullptr;
         mpShaderObject->setResource(gfxOffset, pUAV ? pUAV->getGfxResourceView() : nullptr);
         mUAVs[gfxOffset] = pUAV;
@@ -472,6 +519,8 @@ bool ParameterBlock::setTexture(const BindLocation& bindLocation, const ref<Text
     }
     else if (isSrvType(bindLocation.getType()))
     {
+        if (pTexture && !is_set(pTexture->getBindFlags(), ResourceBindFlags::ShaderResource))
+            FALCOR_THROW("Trying to bind texture '{}' created without ShaderResource flag as an SRV.", pTexture->getName());
         auto pSRV = pTexture ? pTexture->getSRV() : nullptr;
         mpShaderObject->setResource(gfxOffset, pSRV ? pSRV->getGfxResourceView() : nullptr);
         mSRVs[gfxOffset] = pSRV;
@@ -479,16 +528,13 @@ bool ParameterBlock::setTexture(const BindLocation& bindLocation, const ref<Text
     }
     else
     {
-        logError("Error trying to bind resource to non SRV/UAV variable. Ignoring call.");
-        return false;
+        FALCOR_THROW("Error trying to bind texture to a non SRV/UAV variable.");
     }
-    return true;
 }
 
-ref<Texture> ParameterBlock::getTexture(const std::string& name) const
+ref<Texture> ParameterBlock::getTexture(std::string_view name) const
 {
-    auto var = getRootVar()[name];
-    return var.getTexture();
+    return getRootVar()[name].getTexture();
 }
 
 ref<Texture> ParameterBlock::getTexture(const BindLocation& bindLocation) const
@@ -512,16 +558,19 @@ ref<Texture> ParameterBlock::getTexture(const BindLocation& bindLocation) const
     }
     else
     {
-        logError("Error trying to bind resource to non SRV/UAV variable. Ignoring call.");
-        return nullptr;
+        FALCOR_THROW("Error trying to get texture from a non SRV/UAV variable.");
     }
 }
 
-bool ParameterBlock::setSrv(const BindLocation& bindLocation, const ref<ShaderResourceView>& pSrv)
+//
+// ResourceView
+//
+
+void ParameterBlock::setSrv(const BindLocation& bindLocation, const ref<ShaderResourceView>& pSrv)
 {
-    gfx::ShaderOffset gfxOffset = getGFXShaderOffset(bindLocation);
     if (isSrvType(bindLocation.getType()))
     {
+        gfx::ShaderOffset gfxOffset = getGFXShaderOffset(bindLocation);
         mpShaderObject->setResource(gfxOffset, pSrv ? pSrv->getGfxResourceView() : nullptr);
         mSRVs[gfxOffset] = pSrv;
         // Note: The resource view does not hold a strong reference to the resource, so we need to keep it alive here.
@@ -529,17 +578,31 @@ bool ParameterBlock::setSrv(const BindLocation& bindLocation, const ref<ShaderRe
     }
     else
     {
-        logError("Error trying to bind SRV to a non SRV variable. Ignoring call.");
-        return false;
+        FALCOR_THROW("Error trying to bind an SRV to a non SRV variable.");
     }
-    return true;
 }
 
-bool ParameterBlock::setUav(const BindLocation& bindLocation, const ref<UnorderedAccessView>& pUav)
+ref<ShaderResourceView> ParameterBlock::getSrv(const BindLocation& bindLocation) const
 {
-    gfx::ShaderOffset gfxOffset = getGFXShaderOffset(bindLocation);
+    if (isSrvType(bindLocation.getType()))
+    {
+        gfx::ShaderOffset gfxOffset = getGFXShaderOffset(bindLocation);
+        auto iter = mSRVs.find(gfxOffset);
+        if (iter == mSRVs.end())
+            return nullptr;
+        return iter->second;
+    }
+    else
+    {
+        FALCOR_THROW("Error trying to get an SRV from a non SRV variable.");
+    }
+}
+
+void ParameterBlock::setUav(const BindLocation& bindLocation, const ref<UnorderedAccessView>& pUav)
+{
     if (isUavType(bindLocation.getType()))
     {
+        gfx::ShaderOffset gfxOffset = getGFXShaderOffset(bindLocation);
         mpShaderObject->setResource(gfxOffset, pUav ? pUav->getGfxResourceView() : nullptr);
         mUAVs[gfxOffset] = pUav;
         // Note: The resource view does not hold a strong reference to the resource, so we need to keep it alive here.
@@ -547,73 +610,143 @@ bool ParameterBlock::setUav(const BindLocation& bindLocation, const ref<Unordere
     }
     else
     {
-        logError("Error trying to bind UAV to a non UAV variable. Ignoring call.");
-        return false;
+        FALCOR_THROW("Error trying to bind a UAV to a non UAV variable.");
     }
-    return true;
-}
-
-bool ParameterBlock::setAccelerationStructure(const BindLocation& bindLocation, const ref<RtAccelerationStructure>& pAccl)
-{
-    gfx::ShaderOffset gfxOffset = getGFXShaderOffset(bindLocation);
-    mAccelerationStructures[gfxOffset] = pAccl;
-    return SLANG_SUCCEEDED(mpShaderObject->setResource(gfxOffset, pAccl ? pAccl->getGfxAccelerationStructure() : nullptr));
-}
-
-ref<ShaderResourceView> ParameterBlock::getSrv(const BindLocation& bindLocation) const
-{
-    gfx::ShaderOffset gfxOffset = getGFXShaderOffset(bindLocation);
-    auto iter = mSRVs.find(gfxOffset);
-    if (iter == mSRVs.end())
-        return nullptr;
-    return iter->second;
 }
 
 ref<UnorderedAccessView> ParameterBlock::getUav(const BindLocation& bindLocation) const
 {
-    gfx::ShaderOffset gfxOffset = getGFXShaderOffset(bindLocation);
-    auto iter = mUAVs.find(gfxOffset);
-    if (iter == mUAVs.end())
-        return nullptr;
-    return iter->second;
+    if (isUavType(bindLocation.getType()))
+    {
+        gfx::ShaderOffset gfxOffset = getGFXShaderOffset(bindLocation);
+        auto iter = mUAVs.find(gfxOffset);
+        if (iter == mUAVs.end())
+            return nullptr;
+        return iter->second;
+    }
+    else
+    {
+        FALCOR_THROW("Error trying to get a UAV from a non UAV variable.");
+    }
+}
+
+void ParameterBlock::setAccelerationStructure(const BindLocation& bindLocation, const ref<RtAccelerationStructure>& pAccl)
+{
+    if (isAccelerationStructureType(bindLocation.getType()))
+    {
+        gfx::ShaderOffset gfxOffset = getGFXShaderOffset(bindLocation);
+        mAccelerationStructures[gfxOffset] = pAccl;
+        FALCOR_GFX_CALL(mpShaderObject->setResource(gfxOffset, pAccl ? pAccl->getGfxAccelerationStructure() : nullptr));
+    }
+    else
+    {
+        FALCOR_THROW("Error trying to bind an acceleration structure to a non acceleration structure variable.");
+    }
 }
 
 ref<RtAccelerationStructure> ParameterBlock::getAccelerationStructure(const BindLocation& bindLocation) const
 {
-    gfx::ShaderOffset gfxOffset = getGFXShaderOffset(bindLocation);
-    auto iter = mAccelerationStructures.find(gfxOffset);
-    if (iter == mAccelerationStructures.end())
-        return nullptr;
-    return iter->second;
+    if (isAccelerationStructureType(bindLocation.getType()))
+    {
+        gfx::ShaderOffset gfxOffset = getGFXShaderOffset(bindLocation);
+        auto iter = mAccelerationStructures.find(gfxOffset);
+        if (iter == mAccelerationStructures.end())
+            return nullptr;
+        return iter->second;
+    }
+    else
+    {
+        FALCOR_THROW("Error trying to get an acceleration structure from a non acceleration structure variable.");
+    }
 }
 
-bool ParameterBlock::setSampler(const std::string& name, const ref<Sampler>& pSampler)
+//
+// Sampler
+//
+
+void ParameterBlock::setSampler(std::string_view name, const ref<Sampler>& pSampler)
 {
-    auto var = getRootVar()[name];
-    return var.setSampler(pSampler);
+    getRootVar()[name].setSampler(pSampler);
 }
 
-bool ParameterBlock::setSampler(const BindLocation& bindLocation, const ref<Sampler>& pSampler)
+void ParameterBlock::setSampler(const BindLocation& bindLocation, const ref<Sampler>& pSampler)
 {
-    gfx::ShaderOffset gfxOffset = getGFXShaderOffset(bindLocation);
-    const ref<Sampler>& pBoundSampler = pSampler ? pSampler : mpDevice->getDefaultSampler();
-    mSamplers[gfxOffset] = pBoundSampler;
-    return SLANG_SUCCEEDED(mpShaderObject->setSampler(gfxOffset, pBoundSampler->getGfxSamplerState()));
+    if (isSamplerType(bindLocation.getType()))
+    {
+        gfx::ShaderOffset gfxOffset = getGFXShaderOffset(bindLocation);
+        const ref<Sampler>& pBoundSampler = pSampler ? pSampler : mpDevice->getDefaultSampler();
+        mSamplers[gfxOffset] = pBoundSampler;
+        FALCOR_GFX_CALL(mpShaderObject->setSampler(gfxOffset, pBoundSampler->getGfxSamplerState()));
+    }
+    else
+    {
+        FALCOR_THROW("Error trying to bind a sampler to a non sampler variable.");
+    }
+}
+
+ref<Sampler> ParameterBlock::getSampler(std::string_view name) const
+{
+    return getRootVar()[name].getSampler();
 }
 
 ref<Sampler> ParameterBlock::getSampler(const BindLocation& bindLocation) const
 {
-    gfx::ShaderOffset gfxOffset = getGFXShaderOffset(bindLocation);
-    auto iter = mSamplers.find(gfxOffset);
-    if (iter == mSamplers.end())
-        return nullptr;
-    return iter->second;
+    if (isSamplerType(bindLocation.getType()))
+    {
+        gfx::ShaderOffset gfxOffset = getGFXShaderOffset(bindLocation);
+        auto iter = mSamplers.find(gfxOffset);
+        if (iter == mSamplers.end())
+            return nullptr;
+        return iter->second;
+    }
+    else
+    {
+        FALCOR_THROW("Error trying to get a sampler from a non sampler variable.");
+    }
 }
 
-ref<Sampler> ParameterBlock::getSampler(const std::string& name) const
+//
+// ParameterBlock
+//
+
+void ParameterBlock::setParameterBlock(std::string_view name, const ref<ParameterBlock>& pBlock)
 {
-    auto var = getRootVar()[name];
-    return var.getSampler();
+    getRootVar()[name].setParameterBlock(pBlock);
+}
+
+void ParameterBlock::setParameterBlock(const BindLocation& bindLocation, const ref<ParameterBlock>& pBlock)
+{
+    if (isParameterBlockType(bindLocation.getType()))
+    {
+        auto gfxOffset = getGFXShaderOffset(bindLocation);
+        mParameterBlocks[gfxOffset] = pBlock;
+        FALCOR_GFX_CALL(mpShaderObject->setObject(gfxOffset, pBlock ? pBlock->mpShaderObject : nullptr));
+    }
+    else
+    {
+        FALCOR_THROW("Error trying to bind a parameter block to a non parameter block variable.");
+    }
+}
+
+ref<ParameterBlock> ParameterBlock::getParameterBlock(std::string_view name) const
+{
+    return getRootVar()[name].getParameterBlock();
+}
+
+ref<ParameterBlock> ParameterBlock::getParameterBlock(const BindLocation& bindLocation) const
+{
+    if (isParameterBlockType(bindLocation.getType()))
+    {
+        auto gfxOffset = getGFXShaderOffset(bindLocation);
+        auto iter = mParameterBlocks.find(gfxOffset);
+        if (iter == mParameterBlocks.end())
+            return nullptr;
+        return iter->second;
+    }
+    else
+    {
+        FALCOR_THROW("Error trying to get a parameter block from a non parameter block variable.");
+    }
 }
 
 size_t ParameterBlock::getSize() const
@@ -644,31 +777,11 @@ bool ParameterBlock::prepareDescriptorSets(CopyContext* pCopyContext)
     return true;
 }
 
-const ref<ParameterBlock>& ParameterBlock::getParameterBlock(uint32_t resourceRangeIndex, uint32_t arrayIndex) const
-{
-    static const ref<ParameterBlock> pNull;
-
-    gfx::ShaderOffset gfxOffset = {};
-    gfxOffset.bindingRangeIndex = resourceRangeIndex;
-    gfxOffset.bindingArrayIndex = arrayIndex;
-    auto iter = mParameterBlocks.find(gfxOffset);
-    if (iter == mParameterBlocks.end())
-    {
-        return pNull;
-    }
-    return iter->second;
-}
-
 void ParameterBlock::collectSpecializationArgs(SpecializationArgs& ioArgs) const {}
 
 void const* ParameterBlock::getRawData() const
 {
     return mpShaderObject->getRawData();
-}
-
-ref<Buffer> ParameterBlock::getUnderlyingConstantBuffer() const
-{
-    throw "unimplemented";
 }
 
 } // namespace Falcor

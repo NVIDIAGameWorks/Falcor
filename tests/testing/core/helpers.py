@@ -5,33 +5,31 @@ Module with various helpers functions.
 import os
 import re
 import subprocess
-import time
 import socket
 from urllib.parse import urlparse
-
-class GitError(Exception):
-    pass
 
 def get_git_head_branch(path):
     '''
     Return the git HEAD branch name by reading from .git/HEAD file.
+    If .git/HEAD does not exist, return 'unknown'.
     '''
     try:
         head = open(os.path.join(path, '.git/HEAD')).read()
         # HEAD either contains a reference to refs/heads or a sha1
         return re.search(r'(ref: refs\/heads\/)?(.*)$', head).group(2)
     except (IOError, OSError, AttributeError) as e:
-        raise GitError(e)
+        return 'unknown'
 
 def get_git_remote_origin(path, remote='origin'):
     '''
     Return the git remote origin by reading from .git/config file.
+    If .git/config does not exist, return 'unknown'.
     '''
     try:
         config = open(os.path.join(path, '.git/config')).read()
         return re.search(r'^\[remote \"%s\"\].*\n.*url = (.*)$' % (remote), config, flags=re.MULTILINE).group(1)
     except (IOError, OSError, AttributeError) as e:
-        raise GitError(e)
+        return 'unknown'
 
 def get_hostname():
     '''

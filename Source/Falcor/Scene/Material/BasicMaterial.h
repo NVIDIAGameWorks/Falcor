@@ -172,10 +172,12 @@ namespace Falcor
         /** Set the base color.
         */
         void setBaseColor(const float4& color);
+        void setBaseColor3(const float3& color) { setBaseColor(float4(color, getBaseColor().w)); }
 
         /** Get the base color.
         */
         float4 getBaseColor() const { return (float4)mData.baseColor; }
+        float3 getBaseColor3() const { return getBaseColor().xyz(); }
 
         /** Set the specular parameters.
         */

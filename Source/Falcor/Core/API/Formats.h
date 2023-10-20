@@ -26,8 +26,8 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "Core/Assert.h"
 #include "Core/Macros.h"
+#include "Core/Error.h"
 #include "Core/Enum.h"
 #include <string>
 #include <vector>

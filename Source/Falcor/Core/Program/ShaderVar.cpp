@@ -27,131 +27,32 @@
  **************************************************************************/
 #include "ShaderVar.h"
 #include "Core/API/ParameterBlock.h"
+#include "Utils/Scripting/ScriptBindings.h"
 
 namespace Falcor
 {
 ShaderVar::ShaderVar() : mpBlock(nullptr) {}
 ShaderVar::ShaderVar(const ShaderVar& other) : mpBlock(other.mpBlock), mOffset(other.mOffset) {}
 ShaderVar::ShaderVar(ParameterBlock* pObject, const TypedShaderVarOffset& offset) : mpBlock(pObject), mOffset(offset) {}
-ShaderVar::ShaderVar(ParameterBlock* pObject) : mpBlock(pObject), mOffset(pObject->getElementType(), ShaderVarOffset::kZero) {}
+ShaderVar::ShaderVar(ParameterBlock* pObject) : mpBlock(pObject), mOffset(pObject->getElementType().get(), ShaderVarOffset::kZero) {}
 
-ShaderVar ShaderVar::findMember(const std::string& name) const
-{
-    if (!isValid())
-        return *this;
-    auto pType = getType();
-
-    // If the user is applying `[]` to a `ShaderVar`
-    // that represents a constant buffer (or parameter block)
-    // then we assume they mean to look up a member
-    // inside the buffer/block, and thus implicitly
-    // dereference this `ShaderVar`.
-    //
-    if (auto pResourceType = pType->asResourceType())
-    {
-        switch (pResourceType->getType())
-        {
-        case ReflectionResourceType::Type::ConstantBuffer:
-            return getParameterBlock()->getRootVar().findMember(name);
-        default:
-            break;
-        }
-    }
-
-    if (auto pStructType = pType->asStructType())
-    {
-        if (auto pMember = pStructType->findMember(name))
-        {
-            // Need to apply the offsets from member
-            TypedShaderVarOffset newOffset = TypedShaderVarOffset(pMember->getType(), mOffset + pMember->getBindLocation());
-            return ShaderVar(mpBlock, newOffset);
-        }
-    }
-
-    return ShaderVar();
-}
-
-ShaderVar ShaderVar::findMember(uint32_t index) const
-{
-    if (!isValid())
-        return *this;
-    auto pType = getType();
-
-    // If the user is applying `[]` to a `ShaderVar`
-    // that represents a constant buffer (or parameter block)
-    // then we assume they mean to look up a member
-    // inside the buffer/block, and thus implicitly
-    // dereference this `ShaderVar`.
-    //
-    if (auto pResourceType = pType->asResourceType())
-    {
-        switch (pResourceType->getType())
-        {
-        case ReflectionResourceType::Type::ConstantBuffer:
-            return getParameterBlock()->getRootVar().findMember(index);
-        default:
-            break;
-        }
-    }
-
-    if (auto pStructType = pType->asStructType())
-    {
-        if (index < pStructType->getMemberCount())
-        {
-            auto pMember = pStructType->getMember(index);
-
-            // Need to apply the offsets from member
-            TypedShaderVarOffset newOffset = TypedShaderVarOffset(pMember->getType(), mOffset + pMember->getBindLocation());
-            return ShaderVar(mpBlock, newOffset);
-        }
-    }
-
-    return ShaderVar();
-}
-
-ShaderVar ShaderVar::operator[](const std::string& name) const
-{
-    auto result = findMember(name);
-    if (!result.isValid() && isValid())
-    {
-        throw ArgumentError("No member named '{}' found.", name);
-    }
-    return result;
-}
+//
+// Navigation
+//
 
 ShaderVar ShaderVar::operator[](std::string_view name) const
 {
-    return (*this)[std::string(name)];
-}
-
-ShaderVar ShaderVar::operator[](const char* name) const
-{
-    // #SHADER_VAR we can use std::string_view to do lookups into the map
-    // TODO: We should have the ability to do this lookup
-    // without ever having to construct a `std::string`.
-    //
-    // The sticking point is the `ReflectionStructType::findMember`
-    // operation, which currently needs to do lookup in a `std::map<std::string, ...>`,
-    // so that we can't use a `const char*` as the key for lookup
-    // without incurring the cost of a constructing a `std::string`.
-    //
-    // To get around this limitation we'd need to implement a more clever/complicated
-    // map that uses a raw `const char*` as the key, and then compares keys with
-    // `strcmp`, while ensuring that the keys actually stored in the map are allocated
-    // and retained somewhere (which they should be because they are the names of
-    // the members of the `ReflectionStructType`).
-    //
-    // For now we just punt and go with the slow option even
-    // if the user is using a static string.
-    //
-    return (*this)[std::string(name)];
+    FALCOR_CHECK(isValid(), "Cannot lookup on invalid ShaderVar.");
+    auto result = findMember(name);
+    FALCOR_CHECK(result.isValid(), "No member named '{}' found.", name);
+    return result;
 }
 
 ShaderVar ShaderVar::operator[](size_t index) const
 {
-    if (!isValid())
-        return *this;
-    auto pType = getType();
+    FALCOR_CHECK(isValid(), "Cannot lookup on invalid ShaderVar.");
+
+    const ReflectionType* pType = getType();
 
     // If the user is applying `[]` to a `ShaderVar`
     // that represents a constant buffer (or parameter block)
@@ -196,14 +97,190 @@ ShaderVar ShaderVar::operator[](size_t index) const
         }
     }
 
-    throw ArgumentError("No element or member found at index {}", index);
+    FALCOR_THROW("No element or member found at index {}", index);
 }
+
+ShaderVar ShaderVar::findMember(std::string_view name) const
+{
+    if (!isValid())
+        return *this;
+    const ReflectionType* pType = getType();
+
+    // If the user is applying `[]` to a `ShaderVar`
+    // that represents a constant buffer (or parameter block)
+    // then we assume they mean to look up a member
+    // inside the buffer/block, and thus implicitly
+    // dereference this `ShaderVar`.
+    //
+    if (auto pResourceType = pType->asResourceType())
+    {
+        switch (pResourceType->getType())
+        {
+        case ReflectionResourceType::Type::ConstantBuffer:
+            return getParameterBlock()->getRootVar().findMember(name);
+        default:
+            break;
+        }
+    }
+
+    if (auto pStructType = pType->asStructType())
+    {
+        if (auto pMember = pStructType->findMember(name))
+        {
+            // Need to apply the offsets from member
+            TypedShaderVarOffset newOffset = TypedShaderVarOffset(pMember->getType(), mOffset + pMember->getBindLocation());
+            return ShaderVar(mpBlock, newOffset);
+        }
+    }
+
+    return ShaderVar();
+}
+
+ShaderVar ShaderVar::findMember(uint32_t index) const
+{
+    if (!isValid())
+        return *this;
+    const ReflectionType* pType = getType();
+
+    // If the user is applying `[]` to a `ShaderVar`
+    // that represents a constant buffer (or parameter block)
+    // then we assume they mean to look up a member
+    // inside the buffer/block, and thus implicitly
+    // dereference this `ShaderVar`.
+    //
+    if (auto pResourceType = pType->asResourceType())
+    {
+        switch (pResourceType->getType())
+        {
+        case ReflectionResourceType::Type::ConstantBuffer:
+            return getParameterBlock()->getRootVar().findMember(index);
+        default:
+            break;
+        }
+    }
+
+    if (auto pStructType = pType->asStructType())
+    {
+        if (index < pStructType->getMemberCount())
+        {
+            auto pMember = pStructType->getMember(index);
+
+            // Need to apply the offsets from member
+            TypedShaderVarOffset newOffset = TypedShaderVarOffset(pMember->getType(), mOffset + pMember->getBindLocation());
+            return ShaderVar(mpBlock, newOffset);
+        }
+    }
+
+    return ShaderVar();
+}
+
+//
+// Variable assignment
+//
+
+void ShaderVar::setBlob(void const* data, size_t size) const
+{
+    // If the var is pointing at a constant buffer, then assume
+    // the user actually means to write the blob *into* that buffer.
+    //
+    const ReflectionType* pType = getType();
+    if (auto pResourceType = pType->asResourceType())
+    {
+        switch (pResourceType->getType())
+        {
+        case ReflectionResourceType::Type::ConstantBuffer:
+            return getParameterBlock()->getRootVar().setBlob(data, size);
+        default:
+            break;
+        }
+    }
+
+    mpBlock->setBlob(mOffset, data, size);
+}
+
+//
+// Resource binding
+//
+
+void ShaderVar::setBuffer(const ref<Buffer>& pBuffer) const
+{
+    mpBlock->setBuffer(mOffset, pBuffer);
+}
+
+ref<Buffer> ShaderVar::getBuffer() const
+{
+    return mpBlock->getBuffer(mOffset);
+}
+
+void ShaderVar::setTexture(const ref<Texture>& pTexture) const
+{
+    mpBlock->setTexture(mOffset, pTexture);
+}
+
+ref<Texture> ShaderVar::getTexture() const
+{
+    return mpBlock->getTexture(mOffset);
+}
+
+void ShaderVar::setSrv(const ref<ShaderResourceView>& pSrv) const
+{
+    mpBlock->setSrv(mOffset, pSrv);
+}
+
+ref<ShaderResourceView> ShaderVar::getSrv() const
+{
+    return mpBlock->getSrv(mOffset);
+}
+
+void ShaderVar::setUav(const ref<UnorderedAccessView>& pUav) const
+{
+    mpBlock->setUav(mOffset, pUav);
+}
+
+ref<UnorderedAccessView> ShaderVar::getUav() const
+{
+    return mpBlock->getUav(mOffset);
+}
+
+void ShaderVar::setAccelerationStructure(const ref<RtAccelerationStructure>& pAccl) const
+{
+    mpBlock->setAccelerationStructure(mOffset, pAccl);
+}
+
+ref<RtAccelerationStructure> ShaderVar::getAccelerationStructure() const
+{
+    return mpBlock->getAccelerationStructure(mOffset);
+}
+
+void ShaderVar::setSampler(const ref<Sampler>& pSampler) const
+{
+    mpBlock->setSampler(mOffset, pSampler);
+}
+
+ref<Sampler> ShaderVar::getSampler() const
+{
+    return mpBlock->getSampler(mOffset);
+}
+
+void ShaderVar::setParameterBlock(const ref<ParameterBlock>& pBlock) const
+{
+    mpBlock->setParameterBlock(mOffset, pBlock);
+}
+
+ref<ParameterBlock> ShaderVar::getParameterBlock() const
+{
+    return mpBlock->getParameterBlock(mOffset);
+}
+
+//
+// Offset access
+//
 
 ShaderVar ShaderVar::operator[](const TypedShaderVarOffset& offset) const
 {
     if (!isValid())
         return *this;
-    auto pType = getType();
+    const ReflectionType* pType = getType();
 
     // If the user is applying `[]` to a `ShaderVar`
     // that represents a constant buffer (or parameter block)
@@ -228,7 +305,7 @@ ShaderVar ShaderVar::operator[](const UniformShaderVarOffset& loc) const
 {
     if (!isValid())
         return *this;
-    auto pType = getType();
+    const ReflectionType* pType = getType();
 
     // If the user is applying `[]` to a `ShaderVar`
     // that represents a constant buffer (or parameter block)
@@ -291,157 +368,116 @@ ShaderVar ShaderVar::operator[](const UniformShaderVarOffset& loc) const
         }
     }
 
-    throw ArgumentError("No element or member found at offset {}", byteOffset);
-}
-
-bool ShaderVar::isValid() const
-{
-    return mOffset.isValid();
-}
-
-bool ShaderVar::setTexture(const ref<Texture>& pTexture) const
-{
-    return mpBlock->setTexture(mOffset, pTexture);
-}
-
-bool ShaderVar::setSampler(const ref<Sampler>& pSampler) const
-{
-    return mpBlock->setSampler(mOffset, pSampler);
-}
-
-bool ShaderVar::setBuffer(const ref<Buffer>& pBuffer) const
-{
-    return mpBlock->setBuffer(mOffset, pBuffer);
-}
-
-bool ShaderVar::setSrv(const ref<ShaderResourceView>& pSrv) const
-{
-    return mpBlock->setSrv(mOffset, pSrv);
-}
-
-bool ShaderVar::setUav(const ref<UnorderedAccessView>& pUav) const
-{
-    return mpBlock->setUav(mOffset, pUav);
-}
-
-bool ShaderVar::setAccelerationStructure(const ref<RtAccelerationStructure>& pAccl) const
-{
-    return mpBlock->setAccelerationStructure(mOffset, pAccl);
-}
-
-bool ShaderVar::setParameterBlock(const ref<ParameterBlock>& pBlock) const
-{
-    return mpBlock->setParameterBlock(mOffset, pBlock);
-}
-
-bool ShaderVar::setImpl(const ref<Texture>& pTexture) const
-{
-    return mpBlock->setTexture(mOffset, pTexture);
-}
-
-bool ShaderVar::setImpl(const ref<Sampler>& pSampler) const
-{
-    return mpBlock->setSampler(mOffset, pSampler);
-}
-
-bool ShaderVar::setImpl(const ref<Buffer>& pBuffer) const
-{
-    return mpBlock->setBuffer(mOffset, pBuffer);
-}
-
-bool ShaderVar::setImpl(const ref<ParameterBlock>& pBlock) const
-{
-    return mpBlock->setParameterBlock(mOffset, pBlock);
-}
-
-bool ShaderVar::setBlob(void const* data, size_t size) const
-{
-    // If the var is pointing at a constant buffer, then assume
-    // the user actually means to write the blob *into* that buffer.
-    //
-    auto pType = getType();
-    if (auto pResourceType = pType->asResourceType())
-    {
-        switch (pResourceType->getType())
-        {
-        case ReflectionResourceType::Type::ConstantBuffer:
-            return getParameterBlock()->getRootVar().setBlob(data, size);
-        default:
-            break;
-        }
-    }
-
-    return mpBlock->setBlob(mOffset, data, size);
-}
-
-ShaderVar::operator ref<Buffer>() const
-{
-    return mpBlock->getBuffer(mOffset);
-}
-
-ShaderVar::operator ref<Texture>() const
-{
-    return mpBlock->getTexture(mOffset);
-}
-
-ShaderVar::operator ref<Sampler>() const
-{
-    return mpBlock->getSampler(mOffset);
-}
-
-ShaderVar::operator UniformShaderVarOffset() const
-{
-    return mOffset.getUniform();
-}
-
-ref<ParameterBlock> ShaderVar::getParameterBlock() const
-{
-    return mpBlock->getParameterBlock(mOffset);
-}
-
-ref<Buffer> ShaderVar::getBuffer() const
-{
-    return mpBlock->getBuffer(mOffset);
-}
-
-ref<Texture> ShaderVar::getTexture() const
-{
-    return mpBlock->getTexture(mOffset);
-}
-
-ref<Sampler> ShaderVar::getSampler() const
-{
-    return mpBlock->getSampler(mOffset);
-}
-
-ref<ShaderResourceView> ShaderVar::getSrv() const
-{
-    return mpBlock->getSrv(mOffset);
-}
-
-ref<UnorderedAccessView> ShaderVar::getUav() const
-{
-    return mpBlock->getUav(mOffset);
-}
-
-ref<RtAccelerationStructure> ShaderVar::getAccelerationStructure() const
-{
-    return mpBlock->getAccelerationStructure(mOffset);
-}
-
-size_t ShaderVar::getByteOffset() const
-{
-    return mOffset.getUniform().getByteOffset();
-}
-
-ref<const ReflectionType> ShaderVar::getType() const
-{
-    return mOffset.getType();
+    FALCOR_THROW("No element or member found at offset {}", byteOffset);
 }
 
 void const* ShaderVar::getRawData() const
 {
     return (uint8_t*)(mpBlock->getRawData()) + mOffset.getUniform().getByteOffset();
+}
+
+void ShaderVar::setImpl(const ref<Texture>& pTexture) const
+{
+    mpBlock->setTexture(mOffset, pTexture);
+}
+
+void ShaderVar::setImpl(const ref<Sampler>& pSampler) const
+{
+    mpBlock->setSampler(mOffset, pSampler);
+}
+
+void ShaderVar::setImpl(const ref<Buffer>& pBuffer) const
+{
+    mpBlock->setBuffer(mOffset, pBuffer);
+}
+
+void ShaderVar::setImpl(const ref<ParameterBlock>& pBlock) const
+{
+    mpBlock->setParameterBlock(mOffset, pBlock);
+}
+
+FALCOR_SCRIPT_BINDING(ShaderVar)
+{
+    FALCOR_SCRIPT_BINDING_DEPENDENCY(Buffer)
+    FALCOR_SCRIPT_BINDING_DEPENDENCY(Texture)
+
+    pybind11::class_<ShaderVar> shaderVar(m, "ShaderVar");
+
+    shaderVar.def("__getitem__", [](ShaderVar& self, std::string_view name) { return self[name]; });
+    shaderVar.def("__getattr__", [](ShaderVar& self, std::string_view name) { return self[name]; });
+
+#define def_setter(type)                                                                                          \
+    shaderVar.def("__setitem__", [](ShaderVar& self, std::string_view name, type value) { self[name] = value; }); \
+    shaderVar.def("__setattr__", [](ShaderVar& self, std::string_view name, type value) { self[name] = value; });
+
+    def_setter(ref<Buffer>);
+    def_setter(ref<Texture>);
+    def_setter(ref<Sampler>);
+
+    def_setter(uint2);
+    def_setter(uint3);
+    def_setter(uint4);
+
+    def_setter(int2);
+    def_setter(int3);
+    def_setter(int4);
+
+    def_setter(bool);
+    def_setter(bool2);
+    def_setter(bool3);
+    def_setter(bool4);
+
+    def_setter(float2);
+    def_setter(float3);
+    def_setter(float4);
+
+    def_setter(float3x4);
+    def_setter(float4x4);
+
+#undef def_setter
+
+    // We need to handle integers and floats specially.
+    // Python only has an `int` and `float` type that can have different bit-width.
+    // We use reflection data to convert the python types to the correct types before assigning.
+
+    auto set_int = [](ShaderVar& self, std::string_view name, pybind11::int_ value)
+    {
+        const ReflectionBasicType* basicType = self[name].getType()->unwrapArray()->asBasicType();
+        FALCOR_CHECK(basicType, "Error trying to set a variable that is not a basic type.");
+        switch (basicType->getType())
+        {
+        case ReflectionBasicType::Type::Int:
+            self[name] = value.cast<int32_t>();
+            break;
+        case ReflectionBasicType::Type::Uint:
+            self[name] = value.cast<uint32_t>();
+            break;
+        default:
+            FALCOR_THROW("Error trying to set a variable that is not an integer type.");
+            break;
+        }
+    };
+
+    shaderVar.def("__setitem__", set_int);
+    shaderVar.def("__setattr__", set_int);
+
+    auto set_float = [](ShaderVar& self, std::string_view name, pybind11::float_ value)
+    {
+        const ReflectionBasicType* basicType = self[name].getType()->unwrapArray()->asBasicType();
+        FALCOR_CHECK(basicType, "Error trying to set a variable that is not a basic type.");
+        switch (basicType->getType())
+        {
+        case ReflectionBasicType::Type::Float:
+            self[name] = value.cast<float>();
+            break;
+        default:
+            FALCOR_THROW("Error trying to set a variable that is not an float type.");
+            break;
+        }
+    };
+
+    shaderVar.def("__setitem__", set_float);
+    shaderVar.def("__setattr__", set_float);
 }
 
 } // namespace Falcor

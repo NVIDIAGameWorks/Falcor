@@ -40,7 +40,7 @@ import Scene.Scene;
 
 /** Implementation of the BSDF for the measured MERLMix material.
 */
-struct MERLMixMaterialInstance : IMaterialInstance
+struct MERLMixMaterialInstance : MaterialInstanceBase, IMaterialInstance
 {
     ShadingFrame sf;    ///< Shading frame in world space.
     uint bufferID;      ///< Buffer ID in material system where BRDF data is stored.
@@ -69,6 +69,12 @@ struct MERLMixMaterialInstance : IMaterialInstance
         if (!isValidHemisphereReflection(sd, sf, wiLocal, woLocal, wo)) return float3(0.f);
 
         return evalLocal(wiLocal, woLocal);
+    }
+
+    [Differentiable]
+    float3 evalAD<S : ISampleGenerator>(const DiffMaterialData diffData, const ShadingData sd, const float3 wo, inout S sg)
+    {
+        return float3(0.f);
     }
 
     bool sample<S : ISampleGenerator>(const ShadingData sd, inout S sg, out BSDFSample result, bool useImportanceSampling = true)

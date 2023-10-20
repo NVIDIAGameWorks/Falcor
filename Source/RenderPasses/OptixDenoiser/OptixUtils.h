@@ -28,13 +28,45 @@
 #pragma once
 
 #include "Falcor.h"
+#include "Utils/CudaRuntime.h"
+#include "Utils/CudaUtils.h"
 
 #include <optix.h>
 #include <optix_stubs.h>
 
-// Note:  There's some CUDA / Falcor type conflicts.  This header includes Falcor-facing functions
-//        for accessing the OptiX denoiser.  Including <cuda_runtime.h> or <cuda.h> was a pain
-//        I wanted to avoid, so CUDA-specific stuff lives in CudaUtils.cpp
+/**
+ * Utility class for a GPU/device buffer for use with CUDA.
+ * Adapted from Ingo Wald's SIGGRAPH 2019 tutorial code for OptiX 7.
+ */
+class CudaBuffer
+{
+public:
+    CudaBuffer() {}
 
-// Initializes OptiX.  Returns true on success.
-bool initOptix(OptixDeviceContext& optixContext);
+    CUdeviceptr getDevicePtr() { return (CUdeviceptr)mpDevicePtr; }
+    size_t getSize() { return mSizeBytes; }
+
+    void allocate(size_t size)
+    {
+        if (mpDevicePtr)
+            free();
+        mSizeBytes = size;
+        FALCOR_CUDA_CHECK(cudaMalloc((void**)&mpDevicePtr, mSizeBytes));
+    }
+
+    void resize(size_t size) { allocate(size); }
+
+    void free()
+    {
+        FALCOR_CUDA_CHECK(cudaFree(mpDevicePtr));
+        mpDevicePtr = nullptr;
+        mSizeBytes = 0;
+    }
+
+private:
+    size_t mSizeBytes = 0;
+    void* mpDevicePtr = nullptr;
+};
+
+// Initializes OptiX context. Throws an exception if initialization fails.
+OptixDeviceContext initOptix(Falcor::Device* pDevice);

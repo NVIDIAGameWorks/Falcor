@@ -29,7 +29,7 @@
 #include "Vector.h"
 #include "Matrix.h"
 #include "Quaternion.h"
-#include "Core/Assert.h"
+#include "Core/Error.h"
 #include <algorithm>
 #include <cmath>
 

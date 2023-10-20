@@ -26,8 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "Spectrum.h"
-#include "Core/Assert.h"
-#include "Core/Errors.h"
+#include "Core/Error.h"
 #include <fstd/span.h> // TODO C++20: Replace with <span>
 #include <unordered_map>
 
@@ -42,12 +41,12 @@ PiecewiseLinearSpectrum::PiecewiseLinearSpectrum(fstd::span<const float> wavelen
     , mValues(values.begin(), values.end())
     , mMaxValue(*std::max_element(values.begin(), values.end()))
 {
-    checkArgument(wavelengths.size() == values.size(), "'wavelengths' and 'values' need to contain the same number of elements");
+    FALCOR_CHECK(wavelengths.size() == values.size(), "'wavelengths' and 'values' need to contain the same number of elements");
 }
 
 PiecewiseLinearSpectrum PiecewiseLinearSpectrum::fromInterleaved(fstd::span<const float> interleaved, bool normalize)
 {
-    checkArgument(interleaved.size() % 2 == 0, "'interleaved' must have an even number of elements.");
+    FALCOR_CHECK(interleaved.size() % 2 == 0, "'interleaved' must have an even number of elements.");
 
     size_t count = interleaved.size() / 2;
     std::vector<float> wavelengths(count);
@@ -57,7 +56,7 @@ PiecewiseLinearSpectrum PiecewiseLinearSpectrum::fromInterleaved(fstd::span<cons
     {
         wavelengths[i] = interleaved[i * 2];
         values[i] = interleaved[i * 2 + 1];
-        checkArgument(i == 0 || wavelengths[i] >= wavelengths[i - 1], "'interleaved' must have wavelengths that are monotonic increasing.");
+        FALCOR_CHECK(i == 0 || wavelengths[i] >= wavelengths[i - 1], "'interleaved' must have wavelengths that are monotonic increasing.");
     }
 
     auto spec = PiecewiseLinearSpectrum(wavelengths, values);
@@ -77,7 +76,7 @@ std::optional<PiecewiseLinearSpectrum> PiecewiseLinearSpectrum::fromFile(const s
 
 void PiecewiseLinearSpectrum::scale(float factor)
 {
-    checkArgument(factor >= 0.f, "'factor' ({}) needs to be positive.", factor);
+    FALCOR_CHECK(factor >= 0.f, "'factor' ({}) needs to be positive.", factor);
     for (auto& value : mValues)
         value *= factor;
     mMaxValue *= factor;

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -79,15 +79,15 @@ struct Marker2DPayload
 
 struct Marker2DDataBlob
 {
-    SDF2DShapeType  type;
+    SDF2DShapeType type;
     Marker2DPayload payload;
 };
 
 struct Marker2DTransform
 {
-    float   scale;
-    float   rotation;
-    float2  translation;
+    float scale;
+    float rotation;
+    float2 translation;
 };
 
 struct SimpleMarker2DData
@@ -98,9 +98,9 @@ struct SimpleMarker2DData
 
 struct Marker2DRoundedLine
 {
-    float2  positionA;
-    float2  positionB;
-    float   width;
+    float2 positionA;
+    float2 positionB;
+    float width;
 };
 
 struct RoundedLineMarker2DData
@@ -163,8 +163,10 @@ struct CircleSectorMarker2DData
     float maxRadius;
     float minRadius;
     float4 color;
-    float4 borderColor;     ///< The color of the border in x,y,z and the border thickness in w. Uses the same alpha as color.a
-    uint excludeBorders;    ///< Flags for which borders should be excluded. Flags can be any of ExcludeBorderFlags OR'ed together.
+    /// The color of the border in x,y,z and the border thickness in w. Uses the same alpha as color.a
+    float4 borderColor;
+    /// Flags for which borders should be excluded. Flags can be any of ExcludeBorderFlags OR'ed together.
+    uint excludeBorders;
 };
 
 END_NAMESPACE_FALCOR

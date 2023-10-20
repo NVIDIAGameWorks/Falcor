@@ -188,16 +188,15 @@ namespace Falcor
         , mRawData(rawData)
     {}
 
-    ref<LightProfile> LightProfile::createFromIesProfile(ref<Device> pDevice, const std::filesystem::path& filename, bool normalize)
+    ref<LightProfile> LightProfile::createFromIesProfile(ref<Device> pDevice, const std::filesystem::path& path, bool normalize)
     {
-        std::filesystem::path fullpath;
-        if (!findFileInDataDirectories(filename, fullpath))
+        std::ifstream ifs(path);
+        if (!ifs.good())
         {
-            logWarning("Error when loading light profile. Can't find file '{}'", filename);
+            logWarning("Error when loading light profile. Can't open file '{}'", path);
             return nullptr;
         }
 
-        std::ifstream ifs(fullpath);
         std::string str;
         ifs.seekg(0, std::ios::end);
         str.reserve(ifs.tellg());
@@ -213,14 +212,14 @@ namespace Falcor
         case IesStatus::UnsupportedTilt:
         case IesStatus::WrongDataSize:
         case IesStatus::InvalidData:
-            logWarning("Error while loading IES profile from '{}'.", fullpath);
+            logWarning("Error while loading IES profile from '{}'.", path);
             return nullptr;
         }
 
         // Stash the normalization factor in data[0], we don't use that anyway
         numericData[0] = normalize ? (1.f / maxCandelas) : 1.f;
 
-        std::string name = fullpath.filename().string();
+        std::string name = path.filename().string();
 
         return ref<LightProfile>(new LightProfile(pDevice, name, numericData));
     }
@@ -228,9 +227,9 @@ namespace Falcor
     void LightProfile::bake(RenderContext* pRenderContext)
     {
         auto pBakePass = ComputePass::create(mpDevice, kBakeIesProfileFile, "main");
-        auto pBuffer = Buffer::createTyped<float>(mpDevice, (uint32_t)mRawData.size(), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, mRawData.data());
-        mpTexture = Texture::create2D(mpDevice, kBakeResolution, kBakeResolution, ResourceFormat::R16Float, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
-        auto pFluxTexture = Texture::create2D(mpDevice, kBakeResolution, kBakeResolution, ResourceFormat::R32Float, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
+        auto pBuffer = mpDevice->createTypedBuffer<float>((uint32_t)mRawData.size(), ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, mRawData.data());
+        mpTexture = mpDevice->createTexture2D(kBakeResolution, kBakeResolution, ResourceFormat::R16Float, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
+        auto pFluxTexture = mpDevice->createTexture2D(kBakeResolution, kBakeResolution, ResourceFormat::R32Float, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
 
         auto var = pBakePass->getRootVar();
         var["gIesData"] = pBuffer;
@@ -245,11 +244,11 @@ namespace Falcor
         mFluxFactor = fluxFactor.x;
 
         Sampler::Desc desc;
-        desc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
-        mpSampler = Sampler::create(mpDevice, desc);
+        desc.setFilterMode(TextureFilteringMode::Linear, TextureFilteringMode::Linear, TextureFilteringMode::Linear);
+        mpSampler = mpDevice->createSampler(desc);
     }
 
-    void LightProfile::setShaderData(const ShaderVar& var) const
+    void LightProfile::bindShaderData(const ShaderVar& var) const
     {
         var["fluxFactor"] = mFluxFactor;
         var["texture"] = mpTexture;

@@ -26,7 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "RtProgram.h"
+#include "Program.h"
 #include "Core/Macros.h"
 #include "Core/Object.h"
 #include "Scene/SceneIDs.h"
@@ -43,13 +43,13 @@ namespace Falcor
  * and the mapping from (rayType, geometryID) to which hit group to execute.
  *
  * The user is responsible for creating a binding table for use with a particular
- * RtProgram and Scene before creating an RtProgramVars object.
+ * Program and Scene before creating an RtProgramVars object.
  */
 class FALCOR_API RtBindingTable : public Object
 {
     FALCOR_OBJECT(RtBindingTable)
 public:
-    using ShaderID = RtProgram::ShaderID;
+    using ShaderID = ProgramDesc::ShaderID;
 
     /**
      * Create a new binding table.

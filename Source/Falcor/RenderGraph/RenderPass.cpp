@@ -32,7 +32,7 @@ namespace Falcor
 RenderData::RenderData(
     const std::string& passName,
     ResourceCache& resources,
-    InternalDictionary& dictionary,
+    Dictionary& dictionary,
     const uint2& defaultTexDims,
     ResourceFormat defaultTexFormat
 )

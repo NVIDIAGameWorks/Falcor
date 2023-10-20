@@ -56,7 +56,8 @@ void testTraceRayInlineAPI(uint3 threadID: SV_DispatchThreadID)
     rayQuery.TraceRayInline(
         gAccelerationStructure,
         rayFlags, // OR'd with flags above
-        instanceMask, ray
+        instanceMask,
+        ray
     );
 
     // Proceed() below is where behind-the-scenes traversal happens,

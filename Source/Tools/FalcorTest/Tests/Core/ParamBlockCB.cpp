@@ -46,5 +46,6 @@ GPU_TEST(ParamBlockCB)
     ctx.runProgram(1, 1, 1);
 
     std::vector<float> result = ctx.readBuffer<float>("result");
+    EXPECT_EQ(result[0], 42.1f);
 }
 } // namespace Falcor

@@ -31,10 +31,11 @@
 
 using namespace Falcor;
 
-/** Render pass that blits an input texture to an output texture.
-
-    This pass is useful for format conversion.
-*/
+/**
+ * Render pass that blits an input texture to an output texture.
+ *
+ * This pass is useful for format conversion.
+ */
 class BlitPass : public RenderPass
 {
 public:
@@ -50,12 +51,12 @@ public:
     virtual void renderUI(Gui::Widgets& widget) override;
 
     // Scripting functions
-    Sampler::Filter getFilter() const { return mFilter; }
-    void setFilter(Sampler::Filter filter) { mFilter = filter; }
+    TextureFilteringMode getFilter() const { return mFilter; }
+    void setFilter(TextureFilteringMode filter) { mFilter = filter; }
 
 private:
     void parseProperties(const Properties& props);
 
-    Sampler::Filter mFilter = Sampler::Filter::Linear;
+    TextureFilteringMode mFilter = TextureFilteringMode::Linear;
     ResourceFormat mOutputFormat = ResourceFormat::Unknown;
 };

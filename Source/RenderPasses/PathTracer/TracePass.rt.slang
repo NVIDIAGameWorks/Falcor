@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -37,12 +37,20 @@ import Utils.Math.FormatConversion;
 import PathTracer;
 import PathTracerNRD;
 
+import Utils.NVAPI; // TODO(@skallweit) this is currently needed to make g_NvidiaExt visible
+
 ParameterBlock<PathTracer> gPathTracer;
+#if USE_SER
+ReorderingScheduler gScheduler;
+#else
 Scheduler gScheduler;
+#endif
 
 // Define ray indices.
 static const uint kRayTypeScatter = 0;
 static const uint kMissScatter = 0;
+
+struct DummyAttribs { uint dummy; };
 
 struct PathPayload
 {
@@ -117,6 +125,261 @@ struct VisibilityQuery : PathTracer::IVisibilityQuery
         return sceneRayQuery.traceVisibilityRay(ray, RAY_FLAG_NONE, 0xff);
     }
 };
+
+/** Helper function to create a HitInfo from a HitObject.
+ */
+HitInfo makeHitInfo(const HitObject hitObject)
+{
+    HitInfo hit = {};
+
+    if (hitObject.IsHit())
+    {
+        const GeometryInstanceID instanceID = GeometryInstanceID(hitObject.GetInstanceID(), hitObject.GetGeometryIndex());
+        const uint primitiveIndex = hitObject.GetPrimitiveIndex();
+
+        // Lookup geometry type as we cannot reconstruct that from the HitObject directly.
+        const GeometryType type = gScene.getGeometryInstanceType(instanceID);
+
+        switch (type)
+        {
+        case GeometryType::None:
+            break;
+        case GeometryType::TriangleMesh:
+        {
+            TriangleHit triangleHit;
+            triangleHit.instanceID = instanceID;
+            triangleHit.primitiveIndex = primitiveIndex;
+            BuiltInTriangleIntersectionAttributes attribs = hitObject.GetAttributes<BuiltInTriangleIntersectionAttributes>();
+            triangleHit.barycentrics = attribs.barycentrics;
+            hit = HitInfo(triangleHit);
+            break;
+        }
+        case GeometryType::DisplacedTriangleMesh:
+        {
+            DisplacedTriangleHit displacedTriangleHit;
+            displacedTriangleHit.instanceID = instanceID;
+            displacedTriangleHit.primitiveIndex = primitiveIndex;
+            DisplacedTriangleMeshIntersector.Attribs attribs = hitObject.GetAttributes<DisplacedTriangleMeshIntersector.Attribs>();
+            displacedTriangleHit.barycentrics = attribs.barycentrics;
+            displacedTriangleHit.displacement = attribs.displacement;
+            hit = HitInfo(displacedTriangleHit);
+            break;
+        }
+        case GeometryType::Curve:
+        {
+            CurveHit curveHit;
+            curveHit.instanceID = instanceID;
+            curveHit.primitiveIndex = primitiveIndex;
+            CurveIntersector.Attribs attribs = hitObject.GetAttributes<CurveIntersector.Attribs>();
+            curveHit.barycentrics = attribs.barycentrics;
+            hit = HitInfo(curveHit);
+            break;
+        }
+        case GeometryType::SDFGrid:
+        {
+            SDFGridHit sdfGridHit;
+            sdfGridHit.instanceID = instanceID;
+            SDFGridHitData attribs = hitObject.GetAttributes<SDFGridHitData>();
+            sdfGridHit.hitData = attribs;
+            hit = HitInfo(sdfGridHit);
+            break;
+        }
+        case GeometryType::Custom:
+            // Unsupported.
+            break;
+        }
+    }
+
+    return hit;
+}
+
+/** Reordering scheduler using SER/HitObject API.
+
+    The API allows to implement the PathTracer::IClosestHitQuery interface, because
+    after executing ray traversal using HitObject::TraceRay(), control is given back to the
+    caller before the CHS/MS is explicitly invoked using InvokeHitObject().
+    This allows for executing volume distance sampling as part of PathTracer::nextHit.
+*/
+struct ReorderingScheduler
+{
+    /** Handle a miss.
+        Hit information is encoded in the payload.
+        Note: This is also called for volume hits.
+        \param[in,out] payload Payload data.
+    */
+    void handleMiss(inout PathPayload payload)
+    {
+        PathState path = PathPayload::unpack(payload);
+        path.clearHit();
+        path.sceneLength = float16_t(kNRDInvalidPathLength);
+
+        gPathTracer.setupPathLogging(path);
+        gPathTracer.handleMiss(path);
+
+        payload = PathPayload::pack(path);
+    }
+
+    /** Handle a hit.
+        \param[in,out] payload Payload data.
+    */
+    void handleHit(inout PathPayload payload)
+    {
+        PathState path = PathPayload::unpack(payload);
+
+        gPathTracer.setupPathLogging(path);
+        VisibilityQuery vq;
+#if defined(DELTA_REFLECTION_PASS)
+        gPathTracer.handleDeltaReflectionHit(path);
+#elif defined(DELTA_TRANSMISSION_PASS)
+        gPathTracer.handleDeltaTransmissionHit(path);
+#else
+        gPathTracer.handleHit(path, vq);
+#endif
+
+        payload = PathPayload::pack(path);
+    }
+
+    /** Traces a path and write result to output.
+        \param[in] pathID Path ID.
+    */
+    void tracePath(uint pathID)
+    {
+        PathState path = {};
+
+        gPathTracer.generatePath(pathID, path);
+        gPathTracer.setupPathLogging(path);
+
+        if (path.isHit())
+        {
+            // Handle primary hits.
+
+            // Create a HitObject from a HitInfo.
+            // The created HitObject does only contain the minimal required data,
+            // most data is already passed in the path.hit object.
+            // For volume hits, a miss object is returned(and handled in the handleMiss() function).
+            HitObject hitObject;
+            RayDesc dummyRay = {};
+            DummyAttribs dummyAttribs = {};
+
+            switch (path.hit.getType())
+            {
+            case HitType::None:
+                hitObject = HitObject::MakeMiss(kMissScatter, dummyRay);
+                break;
+            case HitType::Volume:
+                hitObject = HitObject::MakeMiss(kMissScatter, dummyRay);
+                break;
+            default:
+            {
+                const GeometryInstanceID instanceID = path.hit.getInstanceID();
+                const GeometryInstanceData instance = gScene.getGeometryInstance(instanceID);
+                const uint primitiveIndex = path.hit.getPrimitiveIndex();
+                hitObject = HitObject::MakeHit(
+                    gScene.rtAccel,         // AccelerationStructure
+                    instance.instanceIndex, // InstanceIndex
+                    instance.geometryIndex, // GeometryIndex
+                    primitiveIndex,         // PrimitiveIndex
+                    0,                      // HitKind
+                    kRayTypeScatter,        // RayContributionToHitGroupIndex
+                    rayTypeCount,           // MultiplierForGeometryContributionToHitGroupIndex
+                    dummyRay,               // Ray
+                    dummyAttribs            // Attributes
+                );
+                break;
+            }
+            }
+
+            PathPayload payload = PathPayload::pack(path);
+            HitObject::Invoke(gScene.rtAccel, hitObject, payload);
+            path = PathPayload::unpack(payload);
+        }
+        else
+        {
+            // Note the primary miss has already been handled by the separate path generation pass
+            // the path tracer runs first. Abort execution here to avoid double work.
+            return;
+        }
+
+        // Trace path.
+        while (path.isActive())
+        {
+            PathPayload payload = {};
+            HitObject hitObject;
+
+            {
+                // Advance to next path vertex.
+                path.incrementVertexIndex();
+
+                // Trace ray.
+                logTraceRay(PixelStatsRayType::ClosestHit);
+                const Ray ray = path.getScatterRay();
+                payload = PathPayload::pack(path);
+                const uint rayFlags = kUseAlphaTest ? RAY_FLAG_NONE : RAY_FLAG_FORCE_OPAQUE;
+                hitObject = HitObject::TraceRay( gScene.rtAccel, rayFlags, 0xff /* instanceInclusionMask */, kRayTypeScatter /* hitIdx */, rayTypeCount, kMissScatter, ray.toRayDesc(), payload );
+                path = PathPayload::unpack(payload);
+
+                if (hitObject.IsHit())
+                {
+                    path.setHit(makeHitInfo(hitObject));
+                    path.sceneLength += float16_t(hitObject.GetRayDesc().TMax);
+                }
+                else
+                {
+                    path.clearHit();
+                    path.sceneLength = float16_t(kNRDInvalidPathLength);
+                }
+            }
+
+            // Add path coherence hints.
+            const uint materialID = gScene.getMaterialID(path.hit.getInstanceID());
+            const MaterialHeader materialHeader = gScene.materials.getMaterialHeader(materialID);
+            uint coherenceHints = gPathTracer.getCoherenceHints(path, materialHeader.isDeltaSpecular(), materialHeader.isEmissive());
+
+            // Reorder and invoke closest hit or miss shader.
+            ReorderThread(hitObject, coherenceHints, 4);
+            payload = PathPayload::pack(path);
+            HitObject::Invoke(gScene.rtAccel, hitObject, payload);
+            path = PathPayload::unpack(payload);
+        }
+
+#if !defined(DELTA_REFLECTION_PASS) && !defined(DELTA_TRANSMISSION_PASS)
+        gPathTracer.writeOutput(path);
+#endif
+    }
+
+    /** Runs the path tracer for a single pixel.
+        \param[in] pixel Pixel index.
+    */
+    void run(uint2 pixel)
+    {
+        // Determine number of samples to take.
+        uint samplesRemaining = kSamplesPerPixel;
+        if (kSamplesPerPixel == 0)
+        {
+            samplesRemaining = gPathTracer.sampleCount[pixel];
+        }
+
+        // Loop over samples.
+        while (samplesRemaining > 0)
+        {
+            samplesRemaining -= 1;
+            uint pathID = pixel.x | (pixel.y << 12) | (samplesRemaining << 24);
+            tracePath(pathID);
+
+            // Use SER to compact active threads.
+            if (kSamplesPerPixel == 0)
+            {
+                bool needReorder = WaveActiveAnyTrue(samplesRemaining == 0);
+                if (samplesRemaining == 0) break;
+                if (needReorder)
+                {
+                    HitObject hitObject = HitObject::MakeNop();
+                    ReorderThread(hitObject);
+                }
+            }
+        }
+    }
+}
 
 /** Simple scheduler using a fullscreen raytracing dispatch.
 */
@@ -273,11 +536,15 @@ void scatterTriangleAnyHit(inout PathPayload payload : SV_RayPayload, BuiltInTri
 [shader("closesthit")]
 void scatterTriangleClosestHit(inout PathPayload payload : SV_RayPayload, BuiltInTriangleIntersectionAttributes attribs : SV_IntersectionAttributes)
 {
+#if USE_SER
+    gScheduler.handleHit(payload);
+#else
     TriangleHit triangleHit;
     triangleHit.instanceID = getGeometryInstanceID();
     triangleHit.primitiveIndex = PrimitiveIndex();
     triangleHit.barycentrics = attribs.barycentrics;
     gScheduler.handleHit(payload, HitInfo(triangleHit), RayTCurrent());
+#endif
 }
 
 //
@@ -299,12 +566,16 @@ void displacedTriangleMeshIntersection()
 [shader("closesthit")]
 void scatterDisplacedTriangleMeshClosestHit(inout PathPayload payload, DisplacedTriangleMeshIntersector::Attribs attribs)
 {
+#if USE_SER
+    gScheduler.handleHit(payload);
+#else
     DisplacedTriangleHit displacedTriangleHit;
     displacedTriangleHit.instanceID = getGeometryInstanceID();
     displacedTriangleHit.primitiveIndex = PrimitiveIndex();
     displacedTriangleHit.barycentrics = attribs.barycentrics;
     displacedTriangleHit.displacement = attribs.displacement;
     gScheduler.handleHit(payload, HitInfo(displacedTriangleHit), RayTCurrent());
+#endif
 }
 
 //
@@ -326,11 +597,15 @@ void curveIntersection()
 [shader("closesthit")]
 void scatterCurveClosestHit(inout PathPayload payload, CurveIntersector::Attribs attribs)
 {
+#if USE_SER
+    gScheduler.handleHit(payload);
+#else
     CurveHit curveHit;
     curveHit.instanceID = getGeometryInstanceID();
     curveHit.primitiveIndex = PrimitiveIndex();
     curveHit.barycentrics = attribs.barycentrics;
     gScheduler.handleHit(payload, HitInfo(curveHit), RayTCurrent());
+#endif
 }
 
 
@@ -353,10 +628,14 @@ void sdfGridIntersection()
 [shader("closesthit")]
 void scatterSdfGridClosestHit(inout PathPayload payload, SDFGridHitData sdfGridHitData)
 {
+#if USE_SER
+    gScheduler.handleHit(payload);
+#else
     SDFGridHit sdfGridHit;
     sdfGridHit.instanceID = getGeometryInstanceID();
     sdfGridHit.hitData = sdfGridHitData;
     gScheduler.handleHit(payload, HitInfo(sdfGridHit), RayTCurrent());
+#endif
 }
 
 //

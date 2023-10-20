@@ -38,7 +38,7 @@
 #include "ScalarMath.h"
 #include "VectorMath.h"
 #include "MathConstants.slangh"
-#include "Core/Assert.h"
+#include "Core/Error.h"
 
 namespace Falcor
 {

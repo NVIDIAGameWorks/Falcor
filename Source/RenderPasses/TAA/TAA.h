@@ -32,8 +32,9 @@
 
 using namespace Falcor;
 
-/** Temporal AA class
-*/
+/**
+ * Temporal AA class
+ */
 class TAA : public RenderPass
 {
 public:

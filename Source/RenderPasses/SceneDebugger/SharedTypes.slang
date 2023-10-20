@@ -54,28 +54,31 @@ enum class SceneDebuggerMode : uint32_t
     FlatShaded,
 };
 
-FALCOR_ENUM_INFO(SceneDebuggerMode, {
-    // Geometry
-    { SceneDebuggerMode::HitType, "HitType" },
-    { SceneDebuggerMode::InstanceID, "InstanceID" },
-    { SceneDebuggerMode::MaterialID, "MaterialID" },
-    { SceneDebuggerMode::GeometryID, "GeometryID" },
-    { SceneDebuggerMode::BlasID, "BlasID" },
-    { SceneDebuggerMode::InstancedGeometry, "InstancedGeometry" },
-    { SceneDebuggerMode::PrimitiveID, "PrimitiveID" },
-    // Shading data
-    { SceneDebuggerMode::FaceNormal, "FaceNormal" },
-    { SceneDebuggerMode::ShadingNormal, "ShadingNormal" },
-    { SceneDebuggerMode::ShadingTangent, "ShadingTangent" },
-    { SceneDebuggerMode::ShadingBitangent, "ShadingBitangent" },
-    { SceneDebuggerMode::FrontFacingFlag, "FrontFacingFlag" },
-    { SceneDebuggerMode::BackfacingShadingNormal, "BackfacingShadingNormal" },
-    { SceneDebuggerMode::TexCoords, "TexCoords" },
-    // Material properties
-    { SceneDebuggerMode::GuideNormal, "GuideNormal" },
-    { SceneDebuggerMode::Roughness, "Roughness" },
-    { SceneDebuggerMode::FlatShaded, "FlatShaded" },
-});
+FALCOR_ENUM_INFO(
+    SceneDebuggerMode,
+    {
+        // Geometry
+        { SceneDebuggerMode::HitType, "HitType" },
+        { SceneDebuggerMode::InstanceID, "InstanceID" },
+        { SceneDebuggerMode::MaterialID, "MaterialID" },
+        { SceneDebuggerMode::GeometryID, "GeometryID" },
+        { SceneDebuggerMode::BlasID, "BlasID" },
+        { SceneDebuggerMode::InstancedGeometry, "InstancedGeometry" },
+        { SceneDebuggerMode::PrimitiveID, "PrimitiveID" },
+        // Shading data
+        { SceneDebuggerMode::FaceNormal, "FaceNormal" },
+        { SceneDebuggerMode::ShadingNormal, "ShadingNormal" },
+        { SceneDebuggerMode::ShadingTangent, "ShadingTangent" },
+        { SceneDebuggerMode::ShadingBitangent, "ShadingBitangent" },
+        { SceneDebuggerMode::FrontFacingFlag, "FrontFacingFlag" },
+        { SceneDebuggerMode::BackfacingShadingNormal, "BackfacingShadingNormal" },
+        { SceneDebuggerMode::TexCoords, "TexCoords" },
+        // Material properties
+        { SceneDebuggerMode::GuideNormal, "GuideNormal" },
+        { SceneDebuggerMode::Roughness, "Roughness" },
+        { SceneDebuggerMode::FlatShaded, "FlatShaded" },
+    }
+);
 FALCOR_ENUM_REGISTER(SceneDebuggerMode);
 
 struct SceneDebuggerParams
@@ -89,8 +92,8 @@ struct SceneDebuggerParams
     int remapRange = true;          ///< Remap valid range to [0,1] before output.
     int clamp = true;               ///< Clamp pixel values to [0,1] before output.
 
-    int showVolumes = true;         ///< Show volumes.
-    float densityScale = 1.f;       ///< Volume density scale factor.
+    int showVolumes = true;   ///< Show volumes.
+    float densityScale = 1.f; ///< Volume density scale factor.
 };
 
 struct PixelData
@@ -124,7 +127,7 @@ enum class InstanceInfoFlags : uint32_t
 
 struct InstanceInfo
 {
-    uint flags = 0;                 ///< Flags as a combination of 'InstanceInfoFlags' flags.
+    uint flags = 0; ///< Flags as a combination of 'InstanceInfoFlags' flags.
 };
 
 END_NAMESPACE_FALCOR

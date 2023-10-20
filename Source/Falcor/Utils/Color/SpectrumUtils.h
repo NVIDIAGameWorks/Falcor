@@ -28,7 +28,7 @@
 #pragma once
 #include "SampledSpectrum.h"
 #include "Core/Macros.h"
-#include "Core/Assert.h"
+#include "Core/Error.h"
 #include "Utils/Math/Vector.h"
 #include "Utils/Color/ColorUtils.h"
 #include <algorithm>
@@ -129,8 +129,11 @@ public:
     )
     {
         return integrate<T, float3>(
-            spectrum, interpolationType, [](float wavelength) -> float3 { return SpectrumUtils::wavelengthToXYZ_CIE1931(wavelength); },
-            componentIndex, integrationSteps
+            spectrum,
+            interpolationType,
+            [](float wavelength) -> float3 { return SpectrumUtils::wavelengthToXYZ_CIE1931(wavelength); },
+            componentIndex,
+            integrationSteps
         );
     }
 
@@ -151,10 +154,12 @@ public:
     )
     {
         return integrate<T, float3>(
-            spectrum, interpolationType,
+            spectrum,
+            interpolationType,
             [](float wavelength) -> float3
             { return SpectrumUtils::wavelengthToXYZ_CIE1931(wavelength) * SpectrumUtils::wavelengthToD65(wavelength); },
-            componentIndex, integrationSteps
+            componentIndex,
+            integrationSteps
         );
     }
 

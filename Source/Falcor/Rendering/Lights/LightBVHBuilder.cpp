@@ -26,8 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "LightBVHBuilder.h"
-#include "Core/Assert.h"
-#include "Core/Errors.h"
+#include "Core/Error.h"
 #include "Utils/Logger.h"
 #include "Utils/Timing/Profiler.h"
 #include "Utils/Math/MathConstants.slangh"
@@ -194,7 +193,7 @@ namespace
                                                delta + theta <= oTheta + 1e-3f);
                                if (!dInCone)
                                {
-                                   throw RuntimeError("Error in coneUnion(): angle diff {} > spread {}", delta + theta, oTheta);
+                                   FALCOR_THROW("Error in coneUnion(): angle diff {} > spread {}", delta + theta, oTheta);
                                }
                            };
         checkInside(aDir, aTheta);
@@ -268,11 +267,11 @@ namespace Falcor
         // Validate options.
         if (mOptions.maxTriangleCountPerLeaf > kMaxLeafTriangleCount)
         {
-            throw RuntimeError("Max triangle count per leaf exceeds the maximum supported ({})", kMaxLeafTriangleCount);
+            FALCOR_THROW("Max triangle count per leaf exceeds the maximum supported ({})", kMaxLeafTriangleCount);
         }
         if (data.trianglesData.size() > kMaxLeafTriangleOffset + kMaxLeafTriangleCount)
         {
-            throw RuntimeError("Emissive triangle count exceeds the maximum supported ({})", kMaxLeafTriangleOffset + kMaxLeafTriangleCount);
+            FALCOR_THROW("Emissive triangle count exceeds the maximum supported ({})", kMaxLeafTriangleOffset + kMaxLeafTriangleCount);
         }
 
         // Allocate temporary memory for the BVH build.
@@ -392,7 +391,7 @@ namespace Falcor
             {
                 // This is an unrecoverable error since we use bit masks to represent the traversal path from
                 // the root node to each leaf node in the tree, which is necessary for pdf computation with MIS.
-                throw RuntimeError("BVH depth of {} reached. Maximum of {} allowed.", depth + 1, kMaxBVHDepth);
+                FALCOR_THROW("BVH depth of {} reached. Maximum of {} allowed.", depth + 1, kMaxBVHDepth);
             }
 
             uint32_t leftIndex = buildInternal(options, splitHeuristic, bitmask | (0ull << depth), depth + 1, Range(triangleRange.begin, splitResult.triangleIndex), data);
@@ -877,7 +876,7 @@ namespace Falcor
         case SplitHeuristic::BinnedSAOH:
             return computeSplitWithBinnedSAOH;
         default:
-            throw RuntimeError("Unsupported SplitHeuristic: {}", static_cast<uint32_t>(heuristic));
+            FALCOR_THROW("Unsupported SplitHeuristic: {}", static_cast<uint32_t>(heuristic));
         }
     }
 }

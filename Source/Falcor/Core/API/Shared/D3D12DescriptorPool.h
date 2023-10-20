@@ -30,7 +30,7 @@
 #include "Core/Macros.h"
 #include "Core/Object.h"
 #include "Core/API/ShaderResourceType.h"
-#include "Core/API/GpuFence.h"
+#include "Core/API/Fence.h"
 #include <memory>
 #include <queue>
 
@@ -85,7 +85,7 @@ public:
      * @param[in] pFence Fence object for synchronization.
      * @return A new object, or throws an exception if creation failed.
      */
-    static ref<D3D12DescriptorPool> create(Device* pDevice, const Desc& desc, ref<GpuFence> pFence);
+    static ref<D3D12DescriptorPool> create(Device* pDevice, const Desc& desc, ref<Fence> pFence);
 
     uint32_t getDescCount(Type type) const { return mDesc.mDescCount[(uint32_t)type]; }
     uint32_t getTotalDescCount() const { return mDesc.mTotalDescCount; }
@@ -96,11 +96,11 @@ public:
 
 private:
     friend class D3D12DescriptorSet;
-    D3D12DescriptorPool(Device* pDevice, const Desc& desc, ref<GpuFence> pFence);
+    D3D12DescriptorPool(Device* pDevice, const Desc& desc, ref<Fence> pFence);
     void releaseAllocation(std::shared_ptr<DescriptorSetApiData> pData);
     Desc mDesc;
     std::shared_ptr<ApiData> mpApiData;
-    ref<GpuFence> mpFence;
+    ref<Fence> mpFence;
 
     struct DeferredRelease
     {

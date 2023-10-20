@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -33,15 +33,16 @@ import Utils.Sampling.SampleGeneratorInterface;
 /** This class implements sampling and evaluation of an anisotropic GGX.
     The class uses the visible distribution of normals for sampling.
 */
-struct AnisotropicGGX
+struct AnisotropicGGX : IDifferentiable
 {
     float2 alpha;
-    
+
+    [Differentiable]
     __init(float2 alpha)
     {
         this.alpha = alpha;
     }
-    
+
     /** A 'singular' distribution is one which would be more ideally treated as an
         ideal mirror. It can't be sampled reliably.
     */
@@ -49,7 +50,8 @@ struct AnisotropicGGX
     {
         return all(alpha < 1e-3f);
     }
-    
+
+    [Differentiable]
     float getIsotropicRoughness()
     {
         return max(alpha.x, alpha.y);
@@ -58,32 +60,35 @@ struct AnisotropicGGX
     /** Computes the Smith lambda function. This function is symmetric with respect to direction,
         i.e. smithLambda(v) = smithLambda(-v). The result returned is equivalent to assuming v.z > 0.
     */
+    [Differentiable]
     float smithLambda(float3 v)
     {
         float cosThetaSq = v.z * v.z;
         float sinThetaSq = max(1.0f - cosThetaSq, 0.0f);
         float tanThetaSq = sinThetaSq / cosThetaSq;
         if (isinf(tanThetaSq)) return 0.0f;
-        
+
         float2 cosSinPhiSq = sinThetaSq == 0.0f ? float2(1.0f, 0.0f) : float2(v.x * v.x, v.y * v.y) / sinThetaSq;
         float alphaSq = dot(cosSinPhiSq, alpha * alpha);
         return (sqrt(1.0f + alphaSq * tanThetaSq) - 1.0f) * 0.5f;
     }
-    
+
     /** Compute the monostatic Smith shadowing function. This function returns the result
         assuming w.z > 0. This is what you want for single scattering, but you need to be careful
         for multiple scattering on microfacets.
     */
+    [Differentiable]
     float G1(float3 w)
     {
         return 1.0f / (1.0f + smithLambda(w));
     }
-    
+
     /** Compute the bistatic Smith shadowing function for reflection.
         This will be off for refraction, where we would have to use the beta
         function instead. This is not worth the trouble unless we do
         multiple scattering on microfacet dielectrics as well.
     */
+    [Differentiable]
     float G2(float3 wo, float3 wi)
     {
         return 1.0f / (1.0f + smithLambda(wo) + smithLambda(wi));
@@ -91,24 +96,26 @@ struct AnisotropicGGX
 
     /** Computes the normal distribution function, i.e. D(h)
     */
+    [Differentiable]
     float evalNDF(float3 h)
     {
         float cosThetaSq = h.z * h.z;
         float sinThetaSq = max(1.0f - cosThetaSq, 0.0f);
         float tanThetaSq = sinThetaSq / cosThetaSq;
         if (isinf(tanThetaSq)) return 0.0f;
-        
+
         float cosThetaQu = cosThetaSq * cosThetaSq;
         if (cosThetaQu < 1e-16f) return 0.0f;
-        
+
         float2 cosSinPhiSq = sinThetaSq == 0.0f ? float2(1.0f, 0.0f) : float2(h.x * h.x, h.y * h.y) / sinThetaSq;
         float2 alphaSq = cosSinPhiSq / (alpha * alpha);
         float e = tanThetaSq * (alphaSq.x + alphaSq.y);
         return 1.0f / (M_PI * alpha.x * alpha.y * cosThetaQu * sqr(1.0f + e));
     }
-    
+
     /** Computes the distribution of visible normals, i.e. D_wi(h)
     */
+    [Differentiable]
     float evalVNDF(float3 w, float3 h)
     {
         return w.z == 0.0f ? 0.0f : (G1(w) * abs(dot(w, h)) * evalNDF(h)) / abs(w.z);
@@ -120,17 +127,17 @@ struct AnisotropicGGX
     {
         float3 wh = normalize(float3(alpha.x * w.x, alpha.y * w.y, w.z));
         if (wh.z < 0.0f) wh = -wh;
-        
+
         float3 T1 = dot(wh.xy, wh.xy) > 0.0f ? normalize(float3(-wh.y, wh.x, 0.0f)) : float3(1.0f, 0.0f, 0.0f);
         float3 T2 = cross(wh, T1);
-        
+
         float r = sqrt(sampleNext1D(sg));
         float phi = 2.0f * M_PI * sampleNext1D(sg);
         float t1 = r * cos(phi);
         float t2 = r * sin(phi);
         float s = 0.5 * (1.0 + wh.z);
         t2 = (1.0f - s) * sqrt(1.0f - t1 * t1) + s * t2;
-        
+
         float3 nh = t1 * T1 + t2 * T2 + sqrt(max(0.0f, 1.0f - t1 * t1 - t2 * t2)) * wh;
         return normalize(float3(alpha.x * nh.x, alpha.y * nh.y, max(0.0f, nh.z)));
     }

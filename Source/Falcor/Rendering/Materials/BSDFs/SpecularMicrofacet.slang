@@ -46,7 +46,7 @@ __exported import Rendering.Materials.IBSDF;
 /**
  * Specular reflection using microfacets.
  */
-struct SpecularMicrofacetBRDF : IBSDF
+struct SpecularMicrofacetBRDF : IBSDF, IDifferentiable
 {
     float3 albedo;    ///< Specular albedo.
     float alpha;      ///< GGX width parameter.
@@ -54,6 +54,7 @@ struct SpecularMicrofacetBRDF : IBSDF
 
     bool hasLobe(LobeType lobeType) { return (activeLobes & (uint)lobeType) != 0; }
 
+    [Differentiable]
     float3 eval<S : ISampleGenerator>(const float3 wi, const float3 wo, inout S sg)
     {
         if (min(wi.z, wo.z) < kMinCosTheta)
@@ -192,7 +193,7 @@ struct SpecularMicrofacetBRDF : IBSDF
 /**
  * Specular reflection and transmission using microfacets.
  */
-struct SpecularMicrofacetBSDF : IBSDF
+struct SpecularMicrofacetBSDF : IBSDF, IDifferentiable
 {
     float3 transmissionAlbedo; ///< Transmission albedo.
     float alpha;               ///< GGX width parameter.
@@ -201,6 +202,7 @@ struct SpecularMicrofacetBSDF : IBSDF
 
     bool hasLobe(LobeType lobeType) { return (activeLobes & (uint)lobeType) != 0; }
 
+    [Differentiable]
     float3 eval<S : ISampleGenerator>(const float3 wi, const float3 wo, inout S sg)
     {
         if (min(wi.z, abs(wo.z)) < kMinCosTheta)

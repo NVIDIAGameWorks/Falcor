@@ -26,7 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "Logger.h"
-#include "Core/Assert.h"
+#include "Core/Error.h"
 #include "Core/Platform/OS.h"
 #include "Utils/Scripting/ScriptBindings.h"
 #include <iostream>
@@ -43,7 +43,6 @@ Logger::Level sVerbosity = Logger::Level::Info;
 Logger::OutputFlags sOutputs = Logger::OutputFlags::Console | Logger::OutputFlags::File | Logger::OutputFlags::DebugWindow;
 std::filesystem::path sLogFilePath;
 
-#if FALCOR_ENABLE_LOGGER
 bool sInitialized = false;
 FILE* sLogFile = nullptr;
 
@@ -89,19 +88,16 @@ void printToLogFile(const std::string& s)
         std::fflush(sLogFile);
     }
 }
-#endif
 } // namespace
 
 void Logger::shutdown()
 {
-#if FALCOR_ENABLE_LOGGER
     if (sLogFile)
     {
         fclose(sLogFile);
         sLogFile = nullptr;
         sInitialized = false;
     }
-#endif
 }
 
 inline const char* getLogLevelString(Logger::Level level)
@@ -153,7 +149,6 @@ private:
 void Logger::log(Level level, const std::string_view msg, Frequency frequency)
 {
     std::lock_guard<std::mutex> lock(sMutex);
-#if FALCOR_ENABLE_LOGGER
     if (level <= sVerbosity)
     {
         std::string s = fmt::format("{} {}\n", getLogLevelString(level), msg);
@@ -181,7 +176,6 @@ void Logger::log(Level level, const std::string_view msg, Frequency frequency)
             printToDebugWindow(s);
         }
     }
-#endif
 }
 
 void Logger::setVerbosity(Level level)
@@ -211,7 +205,6 @@ Logger::OutputFlags Logger::getOutputs()
 void Logger::setLogFilePath(const std::filesystem::path& path)
 {
     std::lock_guard<std::mutex> lock(sMutex);
-#if FALCOR_ENABLE_LOGGER
     if (sLogFile)
     {
         fclose(sLogFile);
@@ -219,9 +212,6 @@ void Logger::setLogFilePath(const std::filesystem::path& path)
         sInitialized = false;
     }
     sLogFilePath = path;
-#else
-    return false;
-#endif
 }
 
 std::filesystem::path Logger::getLogFilePath()
@@ -251,20 +241,25 @@ FALCOR_SCRIPT_BINDING(Logger)
     outputFlags.value("DebugWindow", Logger::OutputFlags::DebugWindow);
 
     logger.def_property_static(
-        "verbosity", [](pybind11::object) { return Logger::getVerbosity(); },
+        "verbosity",
+        [](pybind11::object) { return Logger::getVerbosity(); },
         [](pybind11::object, Logger::Level verbosity) { Logger::setVerbosity(verbosity); }
     );
     logger.def_property_static(
-        "outputs", [](pybind11::object) { return Logger::getOutputs(); },
+        "outputs",
+        [](pybind11::object) { return Logger::getOutputs(); },
         [](pybind11::object, Logger::OutputFlags outputs) { Logger::setOutputs(outputs); }
     );
     logger.def_property_static(
-        "log_file_path", [](pybind11::object) { return Logger::getLogFilePath(); },
+        "log_file_path",
+        [](pybind11::object) { return Logger::getLogFilePath(); },
         [](pybind11::object, std::filesystem::path path) { Logger::setLogFilePath(path); }
     );
 
     logger.def_static(
-        "log", [](Logger::Level level, const std::string_view msg) { Logger::log(level, msg, Logger::Frequency::Always); }, "level"_a,
+        "log",
+        [](Logger::Level level, const std::string_view msg) { Logger::log(level, msg, Logger::Frequency::Always); },
+        "level"_a,
         "msg"_a
     );
 }

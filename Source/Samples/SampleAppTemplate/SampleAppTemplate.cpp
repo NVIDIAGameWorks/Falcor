@@ -91,7 +91,7 @@ void SampleAppTemplate::onHotReload(HotReloadFlags reloaded)
     //
 }
 
-int main(int argc, char** argv)
+int runMain(int argc, char** argv)
 {
     SampleAppConfig config;
     config.windowDesc.title = "Falcor Project Template";
@@ -99,4 +99,9 @@ int main(int argc, char** argv)
 
     SampleAppTemplate project(config);
     return project.run();
+}
+
+int main(int argc, char** argv)
+{
+    return catchAndReportAllExceptions([&]() { return runMain(argc, argv); });
 }

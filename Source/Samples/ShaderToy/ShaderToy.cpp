@@ -27,6 +27,8 @@
  **************************************************************************/
 #include "ShaderToy.h"
 
+FALCOR_EXPORT_D3D12_AGILITY_SDK
+
 ShaderToy::ShaderToy(const SampleAppConfig& config) : SampleApp(config) {}
 
 ShaderToy::~ShaderToy() {}
@@ -48,8 +50,8 @@ void ShaderToy::onLoad(RenderContext* pRenderContext)
 
     // Texture sampler
     Sampler::Desc samplerDesc;
-    samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear).setMaxAnisotropy(8);
-    mpLinearSampler = Sampler::create(getDevice(), samplerDesc);
+    samplerDesc.setFilterMode(TextureFilteringMode::Linear, TextureFilteringMode::Linear, TextureFilteringMode::Linear).setMaxAnisotropy(8);
+    mpLinearSampler = getDevice()->createSampler(samplerDesc);
 
     // Load shaders
     mpMainPass = FullScreenPass::create(getDevice(), "Samples/ShaderToy/Toy.ps.slang");
@@ -73,7 +75,7 @@ void ShaderToy::onFrameRender(RenderContext* pRenderContext, const ref<Fbo>& pTa
     mpMainPass->execute(pRenderContext, pTargetFbo);
 }
 
-int main(int argc, char** argv)
+int runMain(int argc, char** argv)
 {
     SampleAppConfig config;
     config.windowDesc.width = 1280;
@@ -84,4 +86,9 @@ int main(int argc, char** argv)
 
     ShaderToy shaderToy(config);
     return shaderToy.run();
+}
+
+int main(int argc, char** argv)
+{
+    return catchAndReportAllExceptions([&]() { return runMain(argc, argv); });
 }

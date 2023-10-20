@@ -69,7 +69,7 @@ private:
     private:
         std::unique_ptr<ParallelReduction> mpParallelReduction;
         ref<Buffer> mpReductionResult;
-        ref<GpuFence> mpFence;
+        ref<Fence> mpFence;
         bool mReductionAvailable = false;
     };
 

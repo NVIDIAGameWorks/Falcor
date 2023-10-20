@@ -29,7 +29,7 @@
 
 #include "ScalarTypes.h"
 #include "VectorTypes.h"
-#include "Core/Assert.h"
+#include "Core/Error.h"
 
 #include <limits>
 

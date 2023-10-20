@@ -55,6 +55,7 @@ float3 rgToNormal(float2 rg)
 }
 
 // TODO: this function is broken an may return negative values.
+[Differentiable]
 float getMetallic(float3 diffuse, float3 spec)
 {
     // This is based on the way that UE4 and Substance Painter 2 converts base+metallic+specular level to diffuse/spec colors
@@ -106,6 +107,7 @@ ShadingFrame computeShadingFrameFromNormalMap(const ShadingData sd, const Normal
     \param[in] sd Shading data.
     \param[in,out] sf Shading frame that will be modified.
 */
+[Differentiable]
 void flipShadingNormal(const ShadingData sd, inout ShadingFrame sf)
 {
     if (!sd.frontFacing && sd.mtl.isDoubleSided())

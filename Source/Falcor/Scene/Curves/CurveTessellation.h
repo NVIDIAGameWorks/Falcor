@@ -29,6 +29,7 @@
 #include "Core/Macros.h"
 #include "Utils/Math/Matrix.h"
 #include "Utils/Math/Vector.h"
+#include "Utils/fast_vector.h"
 #include <vector>
 
 namespace Falcor
@@ -41,10 +42,10 @@ namespace Falcor
         struct SweptSphereResult
         {
             uint32_t degree;
-            std::vector<uint32_t> indices;
-            std::vector<float3> points;
-            std::vector<float> radius;
-            std::vector<float2> texCrds;
+            fast_vector<uint32_t> indices;
+            fast_vector<float3> points;
+            fast_vector<float> radius;
+            fast_vector<float2> texCrds;
         };
 
         /** Convert cubic B-splines to a couple of linear swept sphere segments.
@@ -67,13 +68,13 @@ namespace Falcor
 
         struct MeshResult
         {
-            std::vector<float3> vertices;
-            std::vector<float3> normals;
-            std::vector<float4> tangents;
-            std::vector<float2> texCrds;
-            std::vector<float> radii;
-            std::vector<uint32_t> faceVertexCounts;
-            std::vector<uint32_t> faceVertexIndices;
+            fast_vector<float3> vertices;
+            fast_vector<float3> normals;
+            fast_vector<float4> tangents;
+            fast_vector<float2> texCrds;
+            fast_vector<float> radii;
+            fast_vector<uint32_t> faceVertexCounts;
+            fast_vector<uint32_t> faceVertexIndices;
         };
 
         /** Tessellate cubic B-splines to a triangular mesh.

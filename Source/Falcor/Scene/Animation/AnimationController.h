@@ -144,6 +144,7 @@ namespace Falcor
 
     private:
         friend class SceneBuilder;
+        friend class Scene;
 
         void initLocalMatrices();
         void updateLocalMatrices(double time);

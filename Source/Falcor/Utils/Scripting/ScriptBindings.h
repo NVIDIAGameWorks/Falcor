@@ -26,10 +26,11 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "Core/Errors.h"
+#include "Core/Error.h"
 #include "Core/Enum.h"
 #include "Core/ObjectPython.h"
 #include <pybind11/pybind11.h>
+#include <pybind11/functional.h>
 #include <pybind11/stl.h>
 #include <pybind11/stl/filesystem.h>
 #include <functional>
@@ -131,3 +132,29 @@ static std::string repr(const T& value)
 #endif // _staticlibrary
 
 } // namespace Falcor::ScriptBindings
+
+namespace pybind11
+{
+
+template<typename T>
+class falcor_enum : public enum_<T>
+{
+public:
+    static_assert(::Falcor::has_enum_info_v<T>, "pybind11::falcor_enum<> requires an enumeration type with infos!");
+
+    using Base = enum_<T>;
+
+    template<typename... Extra>
+    explicit falcor_enum(const handle& scope, const char* name, const Extra&... extra) : Base(scope, name, extra...)
+    {
+        for (const auto& item : ::Falcor::EnumInfo<T>::items())
+        {
+            const char* value_name = item.second.c_str();
+            // Handle reserved Python keywords.
+            if (item.second == "None")
+                value_name = "None_";
+            Base::value(value_name, item.first);
+        }
+    }
+};
+} // namespace pybind11

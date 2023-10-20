@@ -33,7 +33,7 @@
 #include "Core/API/Formats.h"
 #include "Utils/Math/Vector.h"
 #include "Utils/UI/Gui.h"
-#include "Utils/InternalDictionary.h"
+#include "Utils/Dictionary.h"
 #include <memory>
 #include <string>
 #include <vector>
@@ -49,7 +49,7 @@ public:
     struct Context
     {
         RenderContext* pRenderContext;
-        InternalDictionary& passesDictionary;
+        Dictionary& passesDictionary;
         uint2 defaultTexDims;
         ResourceFormat defaultTexFormat;
     };

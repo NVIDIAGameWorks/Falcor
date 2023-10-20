@@ -28,6 +28,7 @@
 #include "RenderGraphCompiler.h"
 #include "RenderGraph.h"
 #include "RenderPasses/ResolvePass.h"
+#include "Core/Error.h"
 #include "Utils/Algorithm/DirectedGraphTraversal.h"
 #include "Utils/StringUtils.h"
 
@@ -115,7 +116,7 @@ void RenderGraphCompiler::validateGraph() const
         err += "Graph must have at least one output.\n";
 
     if (err.size())
-        throw RuntimeError(err);
+        FALCOR_THROW(err);
 }
 
 void RenderGraphCompiler::resolveExecutionOrder()
@@ -397,8 +398,13 @@ RenderPass::CompileData RenderGraphCompiler::prepPassCompilationData(const PassD
             compileData.connectedResources.addInput(resName, "External input resource")
                 .format(pTex->getFormat())
                 .resourceType(
-                    resourceTypeToFieldType(pTex->getType()), pTex->getWidth(), pTex->getHeight(), pTex->getDepth(), pTex->getSampleCount(),
-                    pTex->getMipCount(), pTex->getArraySize()
+                    resourceTypeToFieldType(pTex->getType()),
+                    pTex->getWidth(),
+                    pTex->getHeight(),
+                    pTex->getDepth(),
+                    pTex->getSampleCount(),
+                    pTex->getMipCount(),
+                    pTex->getArraySize()
                 );
         }
     }
@@ -468,11 +474,7 @@ void RenderGraphCompiler::compilePasses(RenderContext* pRenderContext)
             }
         }
 
-        if (!changed)
-        {
-            reportError("Graph compilation failed.\n" + log);
-            return;
-        }
+        FALCOR_CHECK(changed, "Graph compilation failed:\n{}", log);
     }
 }
 } // namespace Falcor

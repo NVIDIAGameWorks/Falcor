@@ -54,7 +54,7 @@ namespace Falcor
     {
         if (!mPrimitives.empty())
         {
-            throw RuntimeError("An SDFSVS instance cannot be created from primitives!");
+            FALCOR_THROW("An SDFSVS instance cannot be created from primitives!");
         }
 
         if (mpSDFGridTexture && mpSDFGridTexture->getWidth() == mGridWidth + 1)
@@ -63,30 +63,24 @@ namespace Falcor
         }
         else
         {
-            mpSDFGridTexture = Texture::create3D(mpDevice, mGridWidth + 1, mGridWidth + 1, mGridWidth + 1, ResourceFormat::R8Snorm, 1, mValues.data());
+            mpSDFGridTexture = mpDevice->createTexture3D(mGridWidth + 1, mGridWidth + 1, mGridWidth + 1, ResourceFormat::R8Snorm, 1, mValues.data());
         }
 
         if (!mpCountSurfaceVoxelsPass)
         {
-            Program::Desc desc;
-            desc.addShaderLibrary(kSDFCountSurfaceVoxelsShaderName).csEntry("main").setShaderModel("6_5");
+            ProgramDesc desc;
+            desc.addShaderLibrary(kSDFCountSurfaceVoxelsShaderName).csEntry("main");
             mpCountSurfaceVoxelsPass = ComputePass::create(mpDevice, desc);
         }
 
         if (!mpSurfaceVoxelCounter)
         {
             static uint32_t zero = 0;
-            mpSurfaceVoxelCounter = Buffer::create(mpDevice, sizeof(uint32_t), Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, &zero);
-            mpSurfaceVoxelCounterStagingBuffer = Buffer::create(mpDevice, sizeof(uint32_t), Resource::BindFlags::None, Buffer::CpuAccess::Read);
+            mpSurfaceVoxelCounter = mpDevice->createBuffer(sizeof(uint32_t), ResourceBindFlags::UnorderedAccess, MemoryType::DeviceLocal, &zero);
         }
         else
         {
             pRenderContext->clearUAV(mpSurfaceVoxelCounter->getUAV().get(), uint4(0));
-        }
-
-        if (!mpReadbackFence)
-        {
-            mpReadbackFence = GpuFence::create(mpDevice);
         }
 
         // Count the number of surface containing voxels in the texture.
@@ -96,17 +90,7 @@ namespace Falcor
             var["gSDFGrid"] = mpSDFGridTexture;
             var["gTotalVoxelCount"] = mpSurfaceVoxelCounter;
             mpCountSurfaceVoxelsPass->execute(pRenderContext, mGridWidth, mGridWidth, mGridWidth);
-
-            // Copy surface containing voxels count to staging buffer.
-            pRenderContext->copyResource(mpSurfaceVoxelCounterStagingBuffer.get(), mpSurfaceVoxelCounter.get());
-            pRenderContext->flush(false);
-            mpReadbackFence->gpuSignal(pRenderContext->getLowLevelData()->getCommandQueue());
-
-            // Copy surface containing voxels count from staging buffer to CPU.
-            mpReadbackFence->syncCpu();
-            const uint32_t* pSurfaceContainingVoxels = reinterpret_cast<const uint32_t*>(mpSurfaceVoxelCounterStagingBuffer->map(Buffer::MapType::Read));
-            std::memcpy(&mVoxelCount, pSurfaceContainingVoxels, sizeof(uint32_t));
-            mpSurfaceVoxelCounterStagingBuffer->unmap();
+            mVoxelCount = mpSurfaceVoxelCounter->getElement<uint32_t>(0);
         }
 
 
@@ -114,12 +98,12 @@ namespace Falcor
         {
             if (!mpVoxelAABBBuffer || mpVoxelAABBBuffer->getElementCount() < mVoxelCount)
             {
-                mpVoxelAABBBuffer = Buffer::createStructured(mpDevice, sizeof(AABB), mVoxelCount);
+                mpVoxelAABBBuffer = mpDevice->createStructuredBuffer(sizeof(AABB), mVoxelCount);
             }
 
             if (!mpVoxelBuffer || mpVoxelBuffer->getElementCount() < mVoxelCount)
             {
-                mpVoxelBuffer = Buffer::createStructured(mpDevice, sizeof(SDFSVSVoxel), mVoxelCount);
+                mpVoxelBuffer = mpDevice->createStructuredBuffer(sizeof(SDFSVSVoxel), mVoxelCount);
             }
         }
 
@@ -127,8 +111,8 @@ namespace Falcor
         {
             if (!mpSDFSVSVoxelizerPass)
             {
-                Program::Desc desc;
-                desc.addShaderLibrary(kSDFSVSVoxelizerShaderName).csEntry("main").setShaderModel("6_5");
+                ProgramDesc desc;
+                desc.addShaderLibrary(kSDFSVSVoxelizerShaderName).csEntry("main");
                 mpSDFSVSVoxelizerPass = ComputePass::create(mpDevice, desc);
             }
 
@@ -147,19 +131,17 @@ namespace Falcor
 
         if (deleteScratchData)
         {
-            mpReadbackFence.reset();
             mpCountSurfaceVoxelsPass.reset();
             mpSurfaceVoxelCounter.reset();
-            mpSurfaceVoxelCounterStagingBuffer.reset();
             mpSDFGridTexture.reset();
         }
     }
 
-    void SDFSVS::setShaderData(const ShaderVar& var) const
+    void SDFSVS::bindShaderData(const ShaderVar& var) const
     {
         if (!mpVoxelBuffer || !mpVoxelAABBBuffer)
         {
-            throw RuntimeError("SDFSVS::setShaderData() can't be called before calling SDFSVS::createResources()!");
+            FALCOR_THROW("SDFSVS::bindShaderData() can't be called before calling SDFSVS::createResources()!");
         }
 
         var["virtualGridWidth"] = mGridWidth;

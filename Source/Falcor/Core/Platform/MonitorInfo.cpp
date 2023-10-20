@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -65,7 +65,12 @@ bool GetMonitorSizeFromEDID(const HKEY hDevRegKey, short& WidthMm, short& Height
     for (LONG i = 0, retValue = ERROR_SUCCESS; retValue != ERROR_NO_MORE_ITEMS; ++i)
     {
         retValue = RegEnumValue(
-            hDevRegKey, i, &valueName[0], &AcutalValueNameLength, NULL, &dwType,
+            hDevRegKey,
+            i,
+            &valueName[0],
+            &AcutalValueNameLength,
+            NULL,
+            &dwType,
             EDIDdata, // buffer
             &edidsize // buffer size
         );
@@ -266,8 +271,14 @@ void MonitorInfo::displayMonitorInfo()
     for (const auto& desc : getMonitorDescs())
     {
         fmt::print(
-            "{}{}: {} x {} pix, {:0.1f} x {:0.1f} in, {:0.2f} ppi\n", desc.identifier, desc.isPrimary ? " (Primary) " : " ",
-            desc.resolution.x, desc.resolution.y, desc.physicalSize.x, desc.physicalSize.y, desc.ppi
+            "{}{}: {} x {} pix, {:0.1f} x {:0.1f} in, {:0.2f} ppi\n",
+            desc.identifier,
+            desc.isPrimary ? " (Primary) " : " ",
+            desc.resolution.x,
+            desc.resolution.y,
+            desc.physicalSize.x,
+            desc.physicalSize.y,
+            desc.ppi
         );
     }
 }

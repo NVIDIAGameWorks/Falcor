@@ -31,12 +31,13 @@
 
 using namespace Falcor;
 
-/** Ray traced V-buffer pass.
-
-    This pass renders a visibility buffer using ray tracing.
-    The visibility buffer encodes the mesh instance ID and primitive index,
-    as well as the barycentrics at the hit point.
-*/
+/**
+ * Ray traced V-buffer pass.
+ *
+ * This pass renders a visibility buffer using ray tracing.
+ * The visibility buffer encodes the mesh instance ID and primitive index,
+ * as well as the barycentrics at the hit point.
+ */
 class VBufferRT : public GBufferBase
 {
 public:
@@ -59,20 +60,24 @@ private:
     void executeCompute(RenderContext* pRenderContext, const RenderData& renderData);
 
     DefineList getShaderDefines(const RenderData& renderData) const;
-    void setShaderData(const ShaderVar& var, const RenderData& renderData);
+    void bindShaderData(const ShaderVar& var, const RenderData& renderData);
     void recreatePrograms();
 
     // Internal state
-    bool mComputeDOF = false;           ///< Flag indicating if depth-of-field is computed for the current frame.
+
+    /// Flag indicating if depth-of-field is computed for the current frame.
+    bool mComputeDOF = false;
     ref<SampleGenerator> mpSampleGenerator;
 
     // UI variables
+
     bool mUseTraceRayInline = false;
-    bool mUseDOF = true;                ///< Option for enabling depth-of-field when camera's aperture radius is nonzero.
+    /// Option for enabling depth-of-field when camera's aperture radius is nonzero.
+    bool mUseDOF = true;
 
     struct
     {
-        ref<RtProgram> pProgram;
+        ref<Program> pProgram;
         ref<RtProgramVars> pVars;
     } mRaytrace;
 

@@ -55,8 +55,8 @@ namespace Falcor
         Material::UpdateFlags update(MaterialSystem* pOwner) override;
         bool isEqual(const ref<Material>& pOther) const override;
         MaterialDataBlob getDataBlob() const override { return prepareDataBlob(mData); }
-        Program::ShaderModuleList getShaderModules() const override;
-        Program::TypeConformanceList getTypeConformances() const override;
+        ProgramDesc::ShaderModuleList getShaderModules() const override;
+        TypeConformanceList getTypeConformances() const override;
         size_t getMaxBufferCount() const override { return 1; }
 
         bool setTexture(const TextureSlot slot, const ref<Texture>& pTexture) override;

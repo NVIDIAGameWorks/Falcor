@@ -55,8 +55,13 @@ bool LockFile::open(const std::filesystem::path& path)
 {
 #if FALCOR_WINDOWS
     mFileHandle = ::CreateFileW(
-        path.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, CREATE_ALWAYS,
-        FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OVERLAPPED, NULL
+        path.c_str(),
+        GENERIC_READ | GENERIC_WRITE,
+        FILE_SHARE_READ | FILE_SHARE_WRITE,
+        NULL,
+        CREATE_ALWAYS,
+        FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OVERLAPPED,
+        NULL
     );
     mIsOpen = mFileHandle != INVALID_HANDLE_VALUE;
 #elif FALCOR_LINUX

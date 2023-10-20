@@ -65,9 +65,9 @@ namespace Falcor
         SharedData(ref<Device> pDevice)
         {
             Sampler::Desc samplerDesc;
-            samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Linear);
-            samplerDesc.setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
-            pSampler = Sampler::create(pDevice, samplerDesc);
+            samplerDesc.setFilterMode(TextureFilteringMode::Linear, TextureFilteringMode::Linear, TextureFilteringMode::Linear);
+            samplerDesc.setAddressingMode(TextureAddressingMode::Clamp, TextureAddressingMode::Clamp, TextureAddressingMode::Clamp);
+            pSampler = pDevice->createSampler(samplerDesc);
         }
     };
 
@@ -79,7 +79,7 @@ namespace Falcor
         , mBrickWidth(brickWidth)
         , mCompressed(compressed)
     {
-        checkArgument(!compressed || (brickWidth + 1) % 4 == 0, "'brickWidth' ({}) must be a multiple of 4 minus 1 for compressed SDFSBSs", brickWidth);
+        FALCOR_CHECK(!compressed || (brickWidth + 1) % 4 == 0, "'brickWidth' ({}) must be a multiple of 4 minus 1 for compressed SDFSBSs", brickWidth);
 
 
         mpSharedData = sSharedCache.acquire(mpDevice.get(), [this]() { return std::make_shared<SharedData>(mpDevice); });
@@ -147,11 +147,11 @@ namespace Falcor
         allocatePrimitiveBits();
     }
 
-    void SDFSBS::setShaderData(const ShaderVar& var) const
+    void SDFSBS::bindShaderData(const ShaderVar& var) const
     {
         if (!mpBrickAABBsBuffer || !mpIndirectionTexture || !mpBrickTexture)
         {
-            throw RuntimeError("SDFSBS::setShaderData() can't be called before calling SDFSBS::createResources()!");
+            FALCOR_THROW("SDFSBS::bindShaderData() can't be called before calling SDFSBS::createResources()!");
         }
 
         var["aabbs"] = mpBrickAABBsBuffer;
@@ -179,7 +179,7 @@ namespace Falcor
         {
             if (!mpAssignBrickValidityPass)
             {
-                Program::Desc desc;
+                ProgramDesc desc;
                 desc.addShaderLibrary(kAssignBrickValidityShaderName).csEntry("main");
 
                 // For brick widths smaller than 8 brick validation will be performed using group shared memory.
@@ -194,13 +194,13 @@ namespace Falcor
 
             if (!mpIndirectionTexture || mpIndirectionTexture->getWidth() < mVirtualBricksPerAxis)
             {
-                mpIndirectionTexture = Texture::create3D(mpDevice, mVirtualBricksPerAxis, mVirtualBricksPerAxis, mVirtualBricksPerAxis, ResourceFormat::R32Uint, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
+                mpIndirectionTexture = mpDevice->createTexture3D(mVirtualBricksPerAxis, mVirtualBricksPerAxis, mVirtualBricksPerAxis, ResourceFormat::R32Uint, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
                 mpIndirectionTexture->setName("SDFSBS::IndirectionTextureValues");
             }
 
             if (!mpValidityBuffer || mpValidityBuffer->getElementCount() < virtualBrickCount)
             {
-                mpValidityBuffer = Buffer::createStructured(mpDevice, sizeof(uint32_t), virtualBrickCount, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr, false);
+                mpValidityBuffer = mpDevice->createStructuredBuffer(sizeof(uint32_t), virtualBrickCount, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, MemoryType::DeviceLocal, nullptr, false);
             }
             else
             {
@@ -225,12 +225,12 @@ namespace Falcor
 
             if (!mpIndirectionBuffer || mpIndirectionBuffer->getElementCount() < virtualBrickCount)
             {
-                mpIndirectionBuffer = Buffer::createStructured(mpDevice, sizeof(uint32_t), virtualBrickCount, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr, false);
+                mpIndirectionBuffer = mpDevice->createStructuredBuffer(sizeof(uint32_t), virtualBrickCount, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, MemoryType::DeviceLocal, nullptr, false);
             }
 
             if (!mpCountBuffer)
             {
-                mpCountBuffer = Buffer::create(mpDevice, 4, ResourceBindFlags::None, Buffer::CpuAccess::None);
+                mpCountBuffer = mpDevice->createBuffer(4, ResourceBindFlags::None, MemoryType::DeviceLocal);
             }
 
             pRenderContext->copyResource(mpIndirectionBuffer.get(), mpValidityBuffer.get());
@@ -242,7 +242,7 @@ namespace Falcor
         {
             if (!mpResetBrickValidityPass)
             {
-                Program::Desc desc;
+                ProgramDesc desc;
                 desc.addShaderLibrary(kResetBrickValidityShaderName).csEntry("main");
                 mpResetBrickValidityPass = ComputePass::create(mpDevice, desc);
             }
@@ -258,7 +258,7 @@ namespace Falcor
         {
             if (!mpCopyIndirectionBufferPass)
             {
-                Program::Desc desc;
+                ProgramDesc desc;
                 desc.addShaderLibrary(kCopyIndirectionBufferShaderName).csEntry("main");
                 mpCopyIndirectionBufferPass = ComputePass::create(mpDevice, desc);
             }
@@ -274,7 +274,7 @@ namespace Falcor
         {
             if (!mpCreateBricksFromSDFieldPass)
             {
-                Program::Desc desc;
+                ProgramDesc desc;
                 desc.addShaderLibrary(kCreateBricksFromSDFieldShaderName).csEntry("main");
                 mpCreateBricksFromSDFieldPass = ComputePass::create(mpDevice, desc, { {"COMPRESS_BRICKS", mCompressed ? "1" : "0"} });
             }
@@ -301,16 +301,16 @@ namespace Falcor
 
                 if (mCompressed)
                 {
-                    mpBrickTexture = Texture::create2D(mpDevice, textureWidth, textureHeight, ResourceFormat::BC4Snorm, 1, 1);
+                    mpBrickTexture = mpDevice->createTexture2D(textureWidth, textureHeight, ResourceFormat::BC4Snorm, 1, 1);
 
                     // Compression scheme may change the actual width and height to something else.
                     mBrickTextureDimensions = uint2(mpBrickTexture->getWidth(), mpBrickTexture->getHeight());
 
-                    mpBrickScratchTexture = Texture::create2D(mpDevice, mBrickTextureDimensions.x / 4, mBrickTextureDimensions.y / 4, ResourceFormat::RG32Int, 1, 1, nullptr, Resource::BindFlags::UnorderedAccess);
+                    mpBrickScratchTexture = mpDevice->createTexture2D(mBrickTextureDimensions.x / 4, mBrickTextureDimensions.y / 4, ResourceFormat::RG32Int, 1, 1, nullptr, ResourceBindFlags::UnorderedAccess);
                 }
                 else
                 {
-                    mpBrickTexture = Texture::create2D(mpDevice, textureWidth, textureHeight, ResourceFormat::R8Snorm, 1, 1, nullptr, ResourceBindFlags::UnorderedAccess | ResourceBindFlags::ShaderResource);
+                    mpBrickTexture = mpDevice->createTexture2D(textureWidth, textureHeight, ResourceFormat::R8Snorm, 1, 1, nullptr, ResourceBindFlags::UnorderedAccess | ResourceBindFlags::ShaderResource);
 
                     mBrickTextureDimensions = uint2(textureWidth, textureHeight);
                 }
@@ -318,7 +318,7 @@ namespace Falcor
 
             if (!mpBrickAABBsBuffer || mpBrickAABBsBuffer->getElementCount() < mBrickCount)
             {
-                mpBrickAABBsBuffer = Buffer::createStructured(mpDevice, sizeof(AABB), mBrickCount, ResourceBindFlags::UnorderedAccess | ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+                mpBrickAABBsBuffer = mpDevice->createStructuredBuffer(sizeof(AABB), mBrickCount, ResourceBindFlags::UnorderedAccess | ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, nullptr, false);
             }
 
             auto paramBlock = mpCreateBricksFromSDFieldPass->getRootVar()["gParamBlock"];
@@ -377,7 +377,7 @@ namespace Falcor
         if (!includeValues && mBakePrimitives)
         {
             // Create a grid to hold the values if the grid is missing a value representation but request to bake the primitives.
-            mpSDFGridTexture = Texture::create3D(mpDevice, gridWidthInValues, gridWidthInValues, gridWidthInValues, ResourceFormat::R8Snorm, 1, nullptr, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess);
+            mpSDFGridTexture = mpDevice->createTexture3D(gridWidthInValues, gridWidthInValues, gridWidthInValues, ResourceFormat::R8Snorm, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
             mpSDFGridTexture->setName("SDFSBS::SDFGridTexture");
             pRenderContext->clearUAV(mpSDFGridTexture->getUAV().get(), float4(std::numeric_limits<float>::max()));
             includeValues = true;
@@ -395,7 +395,7 @@ namespace Falcor
             if (!mpChunkCoordsBuffer || mpChunkCoordsBuffer->getSize() < mBrickCount * sizeof(uint3))
             {
                 uint3 initialData(0);
-                mpChunkCoordsBuffer = Buffer::create(mpDevice, mBrickCount * sizeof(uint3), Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, (const void*)&initialData);
+                mpChunkCoordsBuffer = mpDevice->createBuffer(mBrickCount * sizeof(uint3), ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, MemoryType::DeviceLocal, (const void*)&initialData);
                 mpChunkCoordsBuffer->setName("SDFSBS::chunkCoordsBuffer");
             }
             createEmptyBrick = true;
@@ -421,7 +421,7 @@ namespace Falcor
         {
             if (!mpCreateRootChunksFromPrimitives)
             {
-                Program::Desc desc;
+                ProgramDesc desc;
                 desc.addShaderLibrary(kCreateChunksFromPrimitivesShaderName).csEntry("rootEntryPoint");
 
                 DefineList defines;
@@ -433,7 +433,7 @@ namespace Falcor
 
             if (!mpSubdivideChunksUsingPrimitives)
             {
-                Program::Desc desc;
+                ProgramDesc desc;
                 desc.addShaderLibrary(kCreateChunksFromPrimitivesShaderName).csEntry("subdivideEntryPoint");
 
                 DefineList defines;
@@ -445,7 +445,7 @@ namespace Falcor
 
             if (!mpCoarselyPruneEmptyBricks)
             {
-                Program::Desc desc;
+                ProgramDesc desc;
                 desc.addShaderLibrary(kPruneEmptyBricksShaderName).csEntry("coarsePrune");
 
                 DefineList defines;
@@ -456,7 +456,7 @@ namespace Falcor
 
             if (!mpFinelyPruneEmptyBricks)
             {
-                Program::Desc desc;
+                ProgramDesc desc;
                 desc.addShaderLibrary(kPruneEmptyBricksShaderName).csEntry("finePrune");
 
                 DefineList defines;
@@ -467,7 +467,7 @@ namespace Falcor
 
             if (!mpCreateBricksFromChunks)
             {
-                Program::Desc desc;
+                ProgramDesc desc;
                 desc.addShaderLibrary(kCreateBricksFromChunksShaderName).csEntry("main");
 
                 DefineList defines;
@@ -503,7 +503,7 @@ namespace Falcor
         uint32_t currentSubChunkCount = currentGridWidth * currentGridWidth * currentGridWidth;
         if (!mpSubChunkValidityBuffer || mpSubChunkValidityBuffer->getSize() < currentSubChunkCount * sizeof(uint32_t))
         {
-            mpSubChunkValidityBuffer = Buffer::create(mpDevice, currentSubChunkCount * sizeof(uint32_t));
+            mpSubChunkValidityBuffer = mpDevice->createBuffer(currentSubChunkCount * sizeof(uint32_t));
             mpSubChunkValidityBuffer->setName("SDFSBS::SubChunkValidityBuffer");
         }
         else
@@ -513,7 +513,7 @@ namespace Falcor
 
         if (!mpSubChunkCoordsBuffer || mpSubChunkCoordsBuffer->getElementCount() < currentSubChunkCount * sizeof(uint3))
         {
-            mpSubChunkCoordsBuffer = Buffer::create(mpDevice, currentSubChunkCount * sizeof(uint3));
+            mpSubChunkCoordsBuffer = mpDevice->createBuffer(currentSubChunkCount * sizeof(uint3));
             mpSubChunkCoordsBuffer->setName("SDFSBS::SubChunkCoordsBuffer");
         }
 
@@ -522,7 +522,7 @@ namespace Falcor
             auto paramBlock = mpCreateRootChunksFromPrimitives->getRootVar()["gParamBlock"];
             paramBlock["primitiveCount"] = primitiveCount - mCurrentBakedPrimitiveCount;
             paramBlock["currentGridWidth"] = currentGridWidth;
-            paramBlock["groupCount"] = 1;
+            paramBlock["groupCount"] = 1u;
             paramBlock["intervalValues"] = includeValues ? mIntervalSDFieldMaps[subdivisionCount-1] : nullptr;
             paramBlock["subChunkValidity"] = mpSubChunkValidityBuffer;
             paramBlock["subChunkCoords"] = mpSubChunkCoordsBuffer;
@@ -539,7 +539,7 @@ namespace Falcor
         if (!mpSubdivisionArgBuffer)
         {
             static const DispatchArguments baseIndirectArgs = { 0, 1, 1 };
-            mpSubdivisionArgBuffer = Buffer::create(mpDevice, sizeof(DispatchArguments), ResourceBindFlags::IndirectArg, Buffer::CpuAccess::None, &baseIndirectArgs);
+            mpSubdivisionArgBuffer = mpDevice->createBuffer(sizeof(DispatchArguments), ResourceBindFlags::IndirectArg, MemoryType::DeviceLocal, &baseIndirectArgs);
         }
 
         // Subdivisions.
@@ -555,7 +555,7 @@ namespace Falcor
                 // Update chunk buffers for this subdivision.
                 if (!mpChunkIndirectionBuffer || mpChunkIndirectionBuffer->getSize() < mpSubChunkValidityBuffer->getSize())
                 {
-                    mpChunkIndirectionBuffer = Buffer::create(mpDevice, mpSubChunkValidityBuffer->getSize());
+                    mpChunkIndirectionBuffer = mpDevice->createBuffer(mpSubChunkValidityBuffer->getSize());
                     mpChunkIndirectionBuffer->setName("SDFSBS::ChunkIndirectionBuffer");
                 }
 
@@ -572,7 +572,7 @@ namespace Falcor
                 {
                     if (!mpChunkCoordsBuffer || mpChunkCoordsBuffer->getSize() < currentChunkCount * sizeof(uint3))
                     {
-                        mpChunkCoordsBuffer = Buffer::create(mpDevice, currentChunkCount * sizeof(uint3));
+                        mpChunkCoordsBuffer = mpDevice->createBuffer(currentChunkCount * sizeof(uint3));
                         mpChunkCoordsBuffer->setName("SDFSBS::ChunkCoordsBuffer");
                     }
 
@@ -586,7 +586,7 @@ namespace Falcor
                     // Clear or realloc sub chunk buffers.
                     if (!mpSubChunkValidityBuffer || mpSubChunkValidityBuffer->getSize() < currentSubChunkCount * sizeof(uint32_t))
                     {
-                        mpSubChunkValidityBuffer = Buffer::create(mpDevice, currentSubChunkCount * sizeof(uint32_t));
+                        mpSubChunkValidityBuffer = mpDevice->createBuffer(currentSubChunkCount * sizeof(uint32_t));
                         mpSubChunkValidityBuffer->setName("SDFSBS::subChunkValidityBuffer");
                     }
                     else
@@ -596,7 +596,7 @@ namespace Falcor
 
                     if (!mpSubChunkCoordsBuffer || mpSubChunkCoordsBuffer->getElementCount() < currentSubChunkCount * sizeof(uint3))
                     {
-                        mpSubChunkCoordsBuffer = Buffer::create(mpDevice, currentSubChunkCount * sizeof(uint3));
+                        mpSubChunkCoordsBuffer = mpDevice->createBuffer(currentSubChunkCount * sizeof(uint3));
                         mpSubChunkCoordsBuffer->setName("SDFSBS::subChunkCoordsBuffer");
                     }
 
@@ -625,7 +625,7 @@ namespace Falcor
                 // Update chunk buffer for brick creation.
                 if (!mpChunkIndirectionBuffer || mpChunkIndirectionBuffer->getSize() < mpSubChunkValidityBuffer->getSize())
                 {
-                    mpChunkIndirectionBuffer = Buffer::create(mpDevice, mpSubChunkValidityBuffer->getSize());
+                    mpChunkIndirectionBuffer = mpDevice->createBuffer(mpSubChunkValidityBuffer->getSize());
                     mpChunkIndirectionBuffer->setName("SDFSBS::ChunkIndirectionBuffer");
                 }
 
@@ -638,7 +638,7 @@ namespace Falcor
 
                 if (!mpChunkCoordsBuffer || mpChunkCoordsBuffer->getSize() < mBrickCount * sizeof(uint3))
                 {
-                    mpChunkCoordsBuffer = Buffer::create(mpDevice, mBrickCount * sizeof(uint3));
+                    mpChunkCoordsBuffer = mpDevice->createBuffer(mBrickCount * sizeof(uint3));
                     mpChunkCoordsBuffer->setName("SDFSBS::chunkCoordsBuffer");
                 }
 
@@ -711,14 +711,14 @@ namespace Falcor
                 // Allocate AABB buffer, indirection buffer and brick texture.
                 if (!mpBrickAABBsBuffer || mpBrickAABBsBuffer->getElementCount() < mBrickCount)
                 {
-                    mpBrickAABBsBuffer = Buffer::createStructured(mpDevice, sizeof(AABB), mBrickCount, ResourceBindFlags::UnorderedAccess | ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, nullptr, false);
+                    mpBrickAABBsBuffer = mpDevice->createStructuredBuffer(sizeof(AABB), mBrickCount, ResourceBindFlags::UnorderedAccess | ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, nullptr, false);
                     mpBrickAABBsBuffer->setName("SDFSBS::BrickAABBsBuffer");
                     updateFlags |= UpdateFlags::BuffersReallocated;
                 }
 
                 if (!mpIndirectionTexture || mpIndirectionTexture->getWidth() < mVirtualBricksPerAxis)
                 {
-                    mpIndirectionTexture = Texture::create3D(mpDevice, mVirtualBricksPerAxis, mVirtualBricksPerAxis, mVirtualBricksPerAxis, ResourceFormat::R32Uint, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
+                    mpIndirectionTexture = mpDevice->createTexture3D(mVirtualBricksPerAxis, mVirtualBricksPerAxis, mVirtualBricksPerAxis, ResourceFormat::R32Uint, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
                     mpIndirectionTexture->setName("SDFSBS::IndirectionTextureValuesPrims");
                     updateFlags |= UpdateFlags::BuffersReallocated;
                 }
@@ -740,17 +740,17 @@ namespace Falcor
 
                     if (mCompressed)
                     {
-                        mpBrickTexture = Texture::create2D(mpDevice, textureWidth, textureHeight, ResourceFormat::BC4Snorm, 1, 1);
+                        mpBrickTexture = mpDevice->createTexture2D(textureWidth, textureHeight, ResourceFormat::BC4Snorm, 1, 1);
                         mpBrickTexture->setName("SDFSBS::BrickTexture");
 
                         // Compression scheme may change the actual width and height to something else.
                         mBrickTextureDimensions = uint2(mpBrickTexture->getWidth(), mpBrickTexture->getHeight());
 
-                        mpBrickScratchTexture = Texture::create2D(mpDevice, mBrickTextureDimensions.x / 4, mBrickTextureDimensions.y / 4, ResourceFormat::RG32Int, 1, 1, nullptr, Resource::BindFlags::UnorderedAccess);
+                        mpBrickScratchTexture = mpDevice->createTexture2D(mBrickTextureDimensions.x / 4, mBrickTextureDimensions.y / 4, ResourceFormat::RG32Int, 1, 1, nullptr, ResourceBindFlags::UnorderedAccess);
                     }
                     else
                     {
-                        mpBrickTexture = Texture::create2D(mpDevice, textureWidth, textureHeight, ResourceFormat::R8Snorm, 1, 1, nullptr, ResourceBindFlags::UnorderedAccess | ResourceBindFlags::ShaderResource);
+                        mpBrickTexture = mpDevice->createTexture2D(textureWidth, textureHeight, ResourceFormat::R8Snorm, 1, 1, nullptr, ResourceBindFlags::UnorderedAccess | ResourceBindFlags::ShaderResource);
                         mpBrickTexture->setName("SDFSBS::BrickTexture");
 
                         mBrickTextureDimensions = uint2(textureWidth, textureHeight);
@@ -762,7 +762,7 @@ namespace Falcor
                 {
                     if (!mpSDFGridTextureModified || mpSDFGridTextureModified->getWidth() < gridWidthInValues)
                     {
-                        mpSDFGridTextureModified = Texture::create3D(mpDevice, gridWidthInValues, gridWidthInValues, gridWidthInValues, ResourceFormat::R8Snorm, 1, nullptr, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess);
+                        mpSDFGridTextureModified = mpDevice->createTexture3D(gridWidthInValues, gridWidthInValues, gridWidthInValues, ResourceFormat::R8Snorm, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
                         mpSDFGridTextureModified->setName("SDFSBS::SDFGridTextureModified");
                     }
 
@@ -836,13 +836,13 @@ namespace Falcor
 
     void SDFSBS::expandSDFGridTexture(RenderContext* pRenderContext, bool deleteScratchData, uint32_t oldGridWidthInValues, uint32_t gridWidthInValues)
     {
-        checkArgument(oldGridWidthInValues < gridWidthInValues, "Can only expand SDF grid texture if the old width is smaller than the new width.");
+        FALCOR_CHECK(oldGridWidthInValues < gridWidthInValues, "Can only expand SDF grid texture if the old width is smaller than the new width.");
 
         mResolutionScalingFactor = (float)gridWidthInValues / oldGridWidthInValues;
 
         if (!mpExpandSDFieldPass)
         {
-            Program::Desc desc;
+            ProgramDesc desc;
             desc.addShaderLibrary(kExpandSDFieldShaderName).csEntry("main");
 
             DefineList defines;
@@ -855,7 +855,7 @@ namespace Falcor
         {
             if (!mpOldSDFGridTexture || mpOldSDFGridTexture->getWidth() != oldGridWidthInValues)
             {
-                mpOldSDFGridTexture = Texture::create3D(mpDevice, oldGridWidthInValues, oldGridWidthInValues, oldGridWidthInValues, ResourceFormat::R8Snorm, 1, nullptr, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess);
+                mpOldSDFGridTexture = mpDevice->createTexture3D(oldGridWidthInValues, oldGridWidthInValues, oldGridWidthInValues, ResourceFormat::R8Snorm, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
                 mpOldSDFGridTexture->setName("SDFSBS::OldSDFGridTexture");
             }
 
@@ -865,7 +865,7 @@ namespace Falcor
         // Create destination grid texture to write to.
         if (!mpSDFGridTexture || mpSDFGridTexture->getWidth() < gridWidthInValues)
         {
-            mpSDFGridTexture = Texture::create3D(mpDevice, gridWidthInValues, gridWidthInValues, gridWidthInValues, ResourceFormat::R8Snorm, 1, nullptr, Resource::BindFlags::ShaderResource | Resource::BindFlags::UnorderedAccess);
+            mpSDFGridTexture = mpDevice->createTexture3D(gridWidthInValues, gridWidthInValues, gridWidthInValues, ResourceFormat::R8Snorm, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
             mpSDFGridTexture->setName("SDFSBS::SDFGridTexture");
         }
 
@@ -895,7 +895,7 @@ namespace Falcor
     {
         if (!mpComputeRootIntervalSDFieldFromGridPass)
         {
-            Program::Desc desc;
+            ProgramDesc desc;
             desc.addShaderLibrary(kComputeIntervalSDFieldFromGridShaderName).csEntry("rootGather");
 
             // For brick widths smaller than 8 interval computation will be performed using group shared memory.
@@ -911,7 +911,7 @@ namespace Falcor
 
         if (!mpComputeIntervalSDFieldFromGridPass)
         {
-            Program::Desc desc;
+            ProgramDesc desc;
             desc.addShaderLibrary(kComputeIntervalSDFieldFromGridShaderName).csEntry("chunkGather");
 
             DefineList defines;
@@ -931,7 +931,7 @@ namespace Falcor
             auto& pTexture = mIntervalSDFieldMaps[i];
             if (!pTexture || pTexture->getWidth() < width)
             {
-                pTexture = Texture::create3D(mpDevice, width, width, width, ResourceFormat::RG8Snorm, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
+                pTexture = mpDevice->createTexture3D(width, width, width, ResourceFormat::RG8Snorm, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
                 pTexture->setName("SDFSBS::IntervalValuesMaps[" + std::to_string(i) + "]");
             }
 
@@ -990,7 +990,7 @@ namespace Falcor
 
     void SDFSBS::createSDFGridTexture(RenderContext* pRenderContext, const std::vector<int8_t>& sdField)
     {
-        checkArgument(!sdField.empty(), "Cannot create SDF grid texture from empty values vector");
+        FALCOR_CHECK(!sdField.empty(), "Cannot create SDF grid texture from empty values vector");
 
         if (mpSDFGridTexture && mpSDFGridTexture->getWidth() == mGridWidth + 1)
         {
@@ -998,7 +998,7 @@ namespace Falcor
         }
         else
         {
-            mpSDFGridTexture = Texture::create3D(mpDevice, mGridWidth + 1, mGridWidth + 1, mGridWidth + 1, ResourceFormat::R8Snorm, 1, sdField.data());
+            mpSDFGridTexture = mpDevice->createTexture3D(mGridWidth + 1, mGridWidth + 1, mGridWidth + 1, ResourceFormat::R8Snorm, 1, sdField.data());
         }
 
         mSDFieldUpdated = true;
@@ -1011,12 +1011,12 @@ namespace Falcor
     {
         if (!mpCountStagingBuffer)
         {
-            mpCountStagingBuffer = Buffer::create(mpDevice, 4, ResourceBindFlags::None, Buffer::CpuAccess::Read);
+            mpCountStagingBuffer = mpDevice->createBuffer(4, ResourceBindFlags::None, MemoryType::ReadBack);
         }
 
         // Copy result to staging buffer.
         pRenderContext->copyBufferRegion(mpCountStagingBuffer.get(), 0, pBuffer.get(), 0, 4);
-        pRenderContext->flush(true);
+        pRenderContext->submit(true);
 
         // Read back final results.
         uint32_t finalResults = *reinterpret_cast<uint32_t*>(mpCountStagingBuffer->map(Buffer::MapType::Read));
@@ -1028,7 +1028,7 @@ namespace Falcor
     {
         if (!mpCompactifyChunks)
         {
-            Program::Desc desc;
+            ProgramDesc desc;
             desc.addShaderLibrary(kCompactifyChunksShaderName).csEntry("main");
             mpCompactifyChunks = ComputePass::create(mpDevice, desc);
         }

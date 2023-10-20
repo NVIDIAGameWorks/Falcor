@@ -27,7 +27,7 @@
  **************************************************************************/
 #include "RenderPassHelpers.h"
 #include "RenderPass.h"
-#include "Core/Assert.h"
+#include "Core/Error.h"
 #include "Utils/Scripting/ScriptBindings.h"
 
 namespace Falcor

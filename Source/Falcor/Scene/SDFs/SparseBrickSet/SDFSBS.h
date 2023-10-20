@@ -64,7 +64,7 @@ namespace Falcor
         virtual const ref<Buffer>& getAABBBuffer() const override { return mpBrickAABBsBuffer; }
         virtual uint32_t getAABBCount() const override { return mBrickCount; }
 
-        virtual void setShaderData(const ShaderVar& var) const override;
+        virtual void bindShaderData(const ShaderVar& var) const override;
 
         virtual float getResolutionScalingFactor() const override { return mResolutionScalingFactor; };
         virtual void resetResolutionScalingFactor() override { mResolutionScalingFactor = 1.0f; };
@@ -148,7 +148,7 @@ namespace Falcor
         ref<Buffer> mpSubChunkValidityBuffer;
         ref<Buffer> mpSubChunkCoordsBuffer;
         ref<Buffer> mpSubdivisionArgBuffer;
-        ref<GpuFence> mpReadbackFence;
+        ref<Fence> mpReadbackFence;
 
         // Scratch data used for building from the SD Field and primitives.
         ref<Texture> mpOldSDFGridTexture;

@@ -29,7 +29,7 @@
 
 namespace
 {
-    const char kShaderFilename[] = "RenderPasses/TestPasses/TestPyTorchPass.cs.slang";
+const char kShaderFilename[] = "RenderPasses/TestPasses/TestPyTorchPass.cs.slang";
 }
 
 void TestPyTorchPass::registerScriptBindings(pybind11::module& m)
@@ -40,29 +40,26 @@ void TestPyTorchPass::registerScriptBindings(pybind11::module& m)
     pass.def("verifyData", &TestPyTorchPass::verifyData);
 }
 
-TestPyTorchPass::TestPyTorchPass(ref<Device> pDevice, const Properties& props)
-    : RenderPass(pDevice)
+TestPyTorchPass::TestPyTorchPass(ref<Device> pDevice, const Properties& props) : RenderPass(pDevice)
 {
     {
-        Program::Desc desc;
+        ProgramDesc desc;
         desc.addShaderLibrary(kShaderFilename).csEntry("writeBuffer");
         mpWritePass = ComputePass::create(mpDevice, desc);
     }
     {
-        Program::Desc desc;
+        ProgramDesc desc;
         desc.addShaderLibrary(kShaderFilename).csEntry("readBuffer");
         mpReadPass = ComputePass::create(mpDevice, desc);
     }
 
-    mpFence = GpuFence::create(mpDevice);
-    mpCounterBuffer = Buffer::create(mpDevice, sizeof(uint32_t));
-    mpCounterStagingBuffer = Buffer::create(mpDevice, sizeof(uint32_t), ResourceBindFlags::None, Buffer::CpuAccess::Read, nullptr);
+    mpCounterBuffer = mpDevice->createBuffer(sizeof(uint32_t));
+    mpCounterStagingBuffer = mpDevice->createBuffer(sizeof(uint32_t), ResourceBindFlags::None, MemoryType::ReadBack, nullptr);
 
 #if FALCOR_HAS_CUDA
     // Initialize CUDA.
-    // This does not seem to be necessary in order to access shared buffer handles.
-    // Is it because the python script has created the device prior to calling functions here?
-    initCuda();
+    if (!mpDevice->initCudaDevice())
+        FALCOR_THROW("Failed to initialize CUDA device.");
 #endif
 }
 
@@ -96,7 +93,7 @@ TestPyTorchPass::PyTorchTensor TestPyTorchPass::generateData(const uint3 dim, co
 
     const size_t elemCount = (size_t)dim.x * dim.y * dim.z;
     const size_t byteSize = elemCount * sizeof(float);
-    checkInvariant(byteSize <= std::numeric_limits<uint32_t>::max(), "Buffer is too large.");
+    FALCOR_CHECK(byteSize <= std::numeric_limits<uint32_t>::max(), "Buffer is too large.");
 
     if (mpBuffer == nullptr || mpBuffer->getElementCount() < elemCount)
     {
@@ -104,7 +101,14 @@ TestPyTorchPass::PyTorchTensor TestPyTorchPass::generateData(const uint3 dim, co
         // Pytorch can access the data in the shared buffer while we generate new data into the data buffer.
         // It is fine to recreate the buffers here without syncing as the caller is responsible for synchronization.
         logInfo("Reallocating buffers to size {} bytes", byteSize);
-        mpBuffer = Buffer::createStructured(mpDevice, sizeof(float), elemCount, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr, false);
+        mpBuffer = mpDevice->createStructuredBuffer(
+            sizeof(float),
+            elemCount,
+            ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess,
+            MemoryType::DeviceLocal,
+            nullptr,
+            false
+        );
         mSharedWriteBuffer = createInteropBuffer(mpDevice, byteSize);
     }
 
@@ -119,21 +123,21 @@ TestPyTorchPass::PyTorchTensor TestPyTorchPass::generateData(const uint3 dim, co
     // Copy data to shared CUDA buffer.
     pRenderContext->copyResource(mSharedWriteBuffer.buffer.get(), mpBuffer.get());
 
-    // Flush and wait on fence for synchronization.
-    pRenderContext->flush(false);
-    mpFence->gpuSignal(pRenderContext->getLowLevelData()->getCommandQueue());
-    mpFence->syncCpu();
+    // Wait for copy to finish.
+    pRenderContext->waitForFalcor();
 
     // Construct PyTorch tensor from CUDA buffer.
-    const size_t shape[3] = { dim.x, dim.y, dim.z };
+    const size_t shape[3] = {dim.x, dim.y, dim.z};
     const pybind11::dlpack::dtype dtype = pybind11::dtype<float>();
     int32_t deviceType = pybind11::device::cuda::value;
     int32_t deviceId = 0; // TODO: Consistent enumeration of GPU device IDs.
 
-    TestPyTorchPass::PyTorchTensor tensor = TestPyTorchPass::PyTorchTensor((void*)mSharedWriteBuffer.devicePtr, 3, shape, pybind11::handle() /* owner */, nullptr /* strides */, dtype, deviceType, deviceId);
+    TestPyTorchPass::PyTorchTensor tensor = TestPyTorchPass::PyTorchTensor(
+        (void*)mSharedWriteBuffer.devicePtr, 3, shape, pybind11::handle() /* owner */, nullptr /* strides */, dtype, deviceType, deviceId
+    );
     return tensor;
 #else
-    throw RuntimeError("CUDA is not available.");
+    FALCOR_THROW("CUDA is not available.");
 #endif
 }
 
@@ -147,18 +151,13 @@ bool TestPyTorchPass::verifyData(const uint3 dim, const uint32_t offset, TestPyT
     RenderContext* pRenderContext = mpDevice->getRenderContext();
 
     // Verify that the data is a valid Torch tensor.
-    if (!data.is_valid() ||
-        data.dtype() != pybind11::dtype<float>() ||
-        data.device_type() != pybind11::device::cuda::value)
+    if (!data.is_valid() || data.dtype() != pybind11::dtype<float>() || data.device_type() != pybind11::device::cuda::value)
     {
         logWarning("Expected CUDA float tensor");
         return false;
     }
 
-    if (data.ndim() != 3 ||
-        data.shape(0) != dim.x ||
-        data.shape(1) != dim.y ||
-        data.shape(2) != dim.z)
+    if (data.ndim() != 3 || data.shape(0) != dim.x || data.shape(1) != dim.y || data.shape(2) != dim.z)
     {
         logWarning("Unexpected tensor dimensions (dim {}, expected dim {})", uint3(data.shape(0), data.shape(1), data.shape(2)), dim);
         return false;
@@ -171,12 +170,12 @@ bool TestPyTorchPass::verifyData(const uint3 dim, const uint32_t offset, TestPyT
     const uint3 stride = {
         dim[0] > 1 ? data.stride(0) : 0,
         dim[1] > 1 ? data.stride(1) : 0,
-        dim[2] > 1 ? data.stride(2) : 0
+        dim[2] > 1 ? data.stride(2) : 0,
     };
     const uint3 expectedStride = {
         dim[0] > 1 ? dim[1] * dim[2] : 0,
         dim[1] > 1 ? dim[2] : 0,
-        dim[2] > 1 ? 1 : 0
+        dim[2] > 1 ? 1 : 0,
     };
     if (any(stride != expectedStride))
     {
@@ -187,7 +186,7 @@ bool TestPyTorchPass::verifyData(const uint3 dim, const uint32_t offset, TestPyT
     // Create shared CUDA/DX buffer for accessing the data.
     const size_t elemCount = (size_t)dim.x * dim.y * dim.z;
     const size_t byteSize = elemCount * sizeof(float);
-    checkInvariant(byteSize <= std::numeric_limits<uint32_t>::max(), "Buffer is too large.");
+    FALCOR_CHECK(byteSize <= std::numeric_limits<uint32_t>::max(), "Buffer is too large.");
 
     if (mSharedReadBuffer.buffer == nullptr || mSharedReadBuffer.buffer->getSize() < byteSize)
     {
@@ -200,10 +199,10 @@ bool TestPyTorchPass::verifyData(const uint3 dim, const uint32_t offset, TestPyT
 
     // Copy to shared CUDA/DX buffer for access from compute pass.
     CUdeviceptr srcPtr = (CUdeviceptr)data.data();
-    cudaCopyDeviceToDevice((void*)mSharedReadBuffer.devicePtr, (void*)srcPtr, byteSize);
+    cuda_utils::memcpyDeviceToDevice((void*)mSharedReadBuffer.devicePtr, (const void*)srcPtr, byteSize);
 
-    // The sync is required for the data to be visible in the DX buffer after the copy.
-    syncCudaDevice();
+    // Wait for CUDA to finish the copy.
+    pRenderContext->waitForCuda();
 
     pRenderContext->clearUAV(mpCounterBuffer->getUAV().get(), uint4(0));
 
@@ -220,10 +219,8 @@ bool TestPyTorchPass::verifyData(const uint3 dim, const uint32_t offset, TestPyT
     // Copy counter to staging buffer for readback.
     pRenderContext->copyResource(mpCounterStagingBuffer.get(), mpCounterBuffer.get());
 
-    // Flush and wait on fence for synchronization.
-    pRenderContext->flush(false);
-    mpFence->gpuSignal(pRenderContext->getLowLevelData()->getCommandQueue());
-    mpFence->syncCpu();
+    // Wait for results to be available.
+    pRenderContext->submit(true);
 
     const uint32_t counter = *reinterpret_cast<const uint32_t*>(mpCounterStagingBuffer->map(Buffer::MapType::Read));
     mpCounterStagingBuffer->unmap();
@@ -237,6 +234,6 @@ bool TestPyTorchPass::verifyData(const uint3 dim, const uint32_t offset, TestPyT
 
     return true;
 #else
-    throw RuntimeError("CUDA is not available.");
+    FALCOR_THROW("CUDA is not available.");
 #endif
 }

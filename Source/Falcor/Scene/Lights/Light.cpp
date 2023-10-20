@@ -74,7 +74,7 @@ namespace Falcor
         return getChanges();
     }
 
-    void Light::setShaderData(const ShaderVar& var)
+    void Light::bindShaderData(const ShaderVar& var)
     {
 #define check_offset(_a) FALCOR_ASSERT(var.getType()->getMemberOffset(#_a).getByteOffset() == offsetof(LightData, _a))
         check_offset(dirW);

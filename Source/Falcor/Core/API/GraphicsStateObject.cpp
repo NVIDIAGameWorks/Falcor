@@ -158,19 +158,19 @@ void getGFXStencilDesc(gfx::DepthStencilOpDesc& gfxDesc, DepthStencilState::Sten
     gfxDesc.stencilFunc = getGFXComparisonFunc(desc.func);
 }
 
-gfx::PrimitiveType getGFXPrimitiveType(GraphicsStateObject::PrimitiveType primitiveType)
+gfx::PrimitiveType getGFXPrimitiveType(GraphicsStateObjectDesc::PrimitiveType primitiveType)
 {
     switch (primitiveType)
     {
-    case Falcor::GraphicsStateObject::PrimitiveType::Undefined:
+    case GraphicsStateObjectDesc::PrimitiveType::Undefined:
         return gfx::PrimitiveType::Triangle;
-    case Falcor::GraphicsStateObject::PrimitiveType::Point:
+    case GraphicsStateObjectDesc::PrimitiveType::Point:
         return gfx::PrimitiveType::Point;
-    case Falcor::GraphicsStateObject::PrimitiveType::Line:
+    case GraphicsStateObjectDesc::PrimitiveType::Line:
         return gfx::PrimitiveType::Line;
-    case Falcor::GraphicsStateObject::PrimitiveType::Triangle:
+    case GraphicsStateObjectDesc::PrimitiveType::Triangle:
         return gfx::PrimitiveType::Triangle;
-    case Falcor::GraphicsStateObject::PrimitiveType::Patch:
+    case GraphicsStateObjectDesc::PrimitiveType::Patch:
         return gfx::PrimitiveType::Patch;
     default:
         FALCOR_UNREACHABLE();
@@ -226,52 +226,13 @@ ref<BlendState> GraphicsStateObject::spDefaultBlendState;
 ref<RasterizerState> GraphicsStateObject::spDefaultRasterizerState;
 ref<DepthStencilState> GraphicsStateObject::spDefaultDepthStencilState;
 
-bool GraphicsStateObject::Desc::operator==(const GraphicsStateObject::Desc& other) const
-{
-    bool b = true;
-    b = b && (mpLayout == other.mpLayout);
-    b = b && (mFboDesc == other.mFboDesc);
-    b = b && (mpProgram == other.mpProgram);
-    b = b && (mSampleMask == other.mSampleMask);
-    b = b && (mPrimType == other.mPrimType);
-
-    if (mpRasterizerState)
-    {
-        b = b && (mpRasterizerState == other.mpRasterizerState);
-    }
-    else
-    {
-        b = b && (other.mpRasterizerState == nullptr || other.mpRasterizerState == spDefaultRasterizerState);
-    }
-
-    if (mpBlendState)
-    {
-        b = b && (mpBlendState == other.mpBlendState);
-    }
-    else
-    {
-        b = b && (other.mpBlendState == nullptr || other.mpBlendState == spDefaultBlendState);
-    }
-
-    if (mpDepthStencilState)
-    {
-        b = b && (mpDepthStencilState == other.mpDepthStencilState);
-    }
-    else
-    {
-        b = b && (other.mpDepthStencilState == nullptr || other.mpDepthStencilState == spDefaultDepthStencilState);
-    }
-
-    return b;
-}
-
 GraphicsStateObject::~GraphicsStateObject()
 {
     mpDevice->releaseResource(mGfxPipelineState);
     mpDevice->releaseResource(mpGFXRenderPassLayout);
 }
 
-GraphicsStateObject::GraphicsStateObject(ref<Device> pDevice, const Desc& desc) : mpDevice(pDevice), mDesc(desc)
+GraphicsStateObject::GraphicsStateObject(ref<Device> pDevice, const GraphicsStateObjectDesc& desc) : mpDevice(pDevice), mDesc(desc)
 {
     if (spDefaultBlendState == nullptr)
     {
@@ -282,16 +243,16 @@ GraphicsStateObject::GraphicsStateObject(ref<Device> pDevice, const Desc& desc) 
     }
 
     // Initialize default objects
-    if (!mDesc.mpBlendState)
-        mDesc.mpBlendState = spDefaultBlendState;
-    if (!mDesc.mpRasterizerState)
-        mDesc.mpRasterizerState = spDefaultRasterizerState;
-    if (!mDesc.mpDepthStencilState)
-        mDesc.mpDepthStencilState = spDefaultDepthStencilState;
+    if (!mDesc.pBlendState)
+        mDesc.pBlendState = spDefaultBlendState;
+    if (!mDesc.pRasterizerState)
+        mDesc.pRasterizerState = spDefaultRasterizerState;
+    if (!mDesc.pDepthStencilState)
+        mDesc.pDepthStencilState = spDefaultDepthStencilState;
 
     gfx::GraphicsPipelineStateDesc gfxDesc = {};
     // Set blend state.
-    auto blendState = mDesc.getBlendState();
+    const auto& blendState = mDesc.pBlendState;
     FALCOR_ASSERT(blendState->getRtCount() <= gfx::kMaxRenderTargetCount);
     auto& targetBlendDescs = gfxDesc.blend.targets;
     {
@@ -324,7 +285,7 @@ GraphicsStateObject::GraphicsStateObject(ref<Device> pDevice, const Desc& desc) 
 
     // Set depth stencil state.
     {
-        auto depthStencilState = mDesc.getDepthStencilState();
+        const auto& depthStencilState = mDesc.pDepthStencilState;
         getGFXStencilDesc(gfxDesc.depthStencil.backFace, depthStencilState->getStencilDesc(Falcor::DepthStencilState::Face::Back));
         getGFXStencilDesc(gfxDesc.depthStencil.frontFace, depthStencilState->getStencilDesc(Falcor::DepthStencilState::Face::Front));
         gfxDesc.depthStencil.depthFunc = getGFXComparisonFunc(depthStencilState->getDepthFunc());
@@ -338,7 +299,7 @@ GraphicsStateObject::GraphicsStateObject(ref<Device> pDevice, const Desc& desc) 
 
     // Set raterizer state.
     {
-        auto rasterState = mDesc.getRasterizerState();
+        const auto& rasterState = mDesc.pRasterizerState;
         gfxDesc.rasterizer.antialiasedLineEnable = rasterState->isLineAntiAliasingEnabled();
         gfxDesc.rasterizer.cullMode = getGFXCullMode(rasterState->getCullMode());
         gfxDesc.rasterizer.depthBias = rasterState->getDepthBias();
@@ -348,7 +309,7 @@ GraphicsStateObject::GraphicsStateObject(ref<Device> pDevice, const Desc& desc) 
         gfxDesc.rasterizer.fillMode = getGFXFillMode(rasterState->getFillMode());
         gfxDesc.rasterizer.frontFace =
             rasterState->isFrontCounterCW() ? gfx::FrontFaceMode::CounterClockwise : gfx::FrontFaceMode::Clockwise;
-        gfxDesc.rasterizer.multisampleEnable = mDesc.getFboDesc().getSampleCount() != 1;
+        gfxDesc.rasterizer.multisampleEnable = mDesc.fboDesc.getSampleCount() != 1;
         gfxDesc.rasterizer.scissorEnable = rasterState->isScissorTestEnabled();
         gfxDesc.rasterizer.enableConservativeRasterization = rasterState->isConservativeRasterizationEnabled();
         gfxDesc.rasterizer.forcedSampleCount = rasterState->getForcedSampleCount();
@@ -356,14 +317,14 @@ GraphicsStateObject::GraphicsStateObject(ref<Device> pDevice, const Desc& desc) 
 
     // Create input layout.
     {
-        auto vertexLayout = mDesc.getVertexLayout();
+        const auto& vertexLayout = mDesc.pVertexLayout;
         if (vertexLayout)
         {
             std::vector<gfx::VertexStreamDesc> vertexStreams(vertexLayout->getBufferCount());
             std::vector<gfx::InputElementDesc> inputElements;
             for (size_t i = 0; i < vertexLayout->getBufferCount(); ++i)
             {
-                auto& bufferLayout = mDesc.getVertexLayout()->getBufferLayout(i);
+                auto& bufferLayout = mDesc.pVertexLayout->getBufferLayout(i);
                 vertexStreams[i].instanceDataStepRate = bufferLayout->getInstanceStepRate();
                 vertexStreams[i].slotClass = getGFXInputSlotClass(bufferLayout->getInputClass());
                 vertexStreams[i].stride = bufferLayout->getStride();
@@ -400,10 +361,10 @@ GraphicsStateObject::GraphicsStateObject(ref<Device> pDevice, const Desc& desc) 
     // Create framebuffer layout.
     gfx::IFramebufferLayout::Desc gfxFbDesc = {};
     {
-        auto fboDesc = mDesc.getFboDesc();
+        const auto& fboDesc = mDesc.fboDesc;
         gfx::IFramebufferLayout::TargetLayout depthAttachment = {};
         std::vector<gfx::IFramebufferLayout::TargetLayout> attachments(Fbo::getMaxColorTargetCount());
-        if (mDesc.getFboDesc().getDepthStencilFormat() != ResourceFormat::Unknown)
+        if (mDesc.fboDesc.getDepthStencilFormat() != ResourceFormat::Unknown)
         {
             depthAttachment.format = getGFXFormat(fboDesc.getDepthStencilFormat());
             depthAttachment.sampleCount = fboDesc.getSampleCount();
@@ -433,7 +394,7 @@ GraphicsStateObject::GraphicsStateObject(ref<Device> pDevice, const Desc& desc) 
         depthAccess.stencilLoadOp = gfx::IRenderPassLayout::TargetLoadOp::Load;
         depthAccess.stencilStoreOp = gfx::IRenderPassLayout::TargetStoreOp::Store;
         depthAccess.storeOp = gfx::IRenderPassLayout::TargetStoreOp::Store;
-        if (this->mDesc.getFboDesc().getDepthStencilFormat() != ResourceFormat::Unknown)
+        if (this->mDesc.fboDesc.getDepthStencilFormat() != ResourceFormat::Unknown)
         {
             renderPassDesc.depthStencilAccess = &depthAccess;
         }
@@ -451,15 +412,10 @@ GraphicsStateObject::GraphicsStateObject(ref<Device> pDevice, const Desc& desc) 
         FALCOR_GFX_CALL(mpDevice->getGfxDevice()->createRenderPassLayout(renderPassDesc, mpGFXRenderPassLayout.writeRef()));
     }
 
-    gfxDesc.primitiveType = getGFXPrimitiveType(mDesc.getPrimitiveType());
-    gfxDesc.program = mDesc.getProgramKernels()->getGfxProgram();
+    gfxDesc.primitiveType = getGFXPrimitiveType(mDesc.primitiveType);
+    gfxDesc.program = mDesc.pProgramKernels->getGfxProgram();
 
     FALCOR_GFX_CALL(mpDevice->getGfxDevice()->createGraphicsPipelineState(gfxDesc, mGfxPipelineState.writeRef()));
-}
-
-ref<GraphicsStateObject> GraphicsStateObject::create(ref<Device> pDevice, const Desc& desc)
-{
-    return ref<GraphicsStateObject>(new GraphicsStateObject(pDevice, desc));
 }
 
 void GraphicsStateObject::breakStrongReferenceToDevice()

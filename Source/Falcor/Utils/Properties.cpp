@@ -77,9 +77,9 @@ VecT vecFromJson(const json& json, std::string_view name)
 {
     auto constexpr length = VecT::length();
     if (!json.is_array())
-        throw RuntimeError("Property '{}' is not an array.", name);
+        FALCOR_THROW("Property '{}' is not an array.", name);
     if (json.size() != length)
-        throw RuntimeError("Property '{}' has an invalid number of elements.", name);
+        FALCOR_THROW("Property '{}' has an invalid number of elements.", name);
     VecT result;
     for (size_t i = 0; i < length; ++i)
         json[i].get_to(result[i]);
@@ -92,43 +92,43 @@ T valueFromJson(const json& json, std::string_view name)
     if constexpr (std::is_same_v<T, bool>)
     {
         if (!json.is_boolean())
-            throw RuntimeError("Property '{}' is not a boolean.", name);
+            FALCOR_THROW("Property '{}' is not a boolean.", name);
         return static_cast<T>(json);
     }
     else if constexpr (std::is_integral_v<T> && std::is_signed_v<T>)
     {
         if (!json.is_number_integer())
-            throw RuntimeError("Property '{}' is not an integer.", name);
+            FALCOR_THROW("Property '{}' is not an integer.", name);
         return static_cast<T>(json);
     }
     else if constexpr (std::is_integral_v<T> && !std::is_signed_v<T>)
     {
-        // if (!json.is_number_intenger() !json.is_number_unsigned()) throw RuntimeError("Property '{}' is not an unsigned integer.", name);
+        // if (!json.is_number_intenger() !json.is_number_unsigned()) FALCOR_THROW("Property '{}' is not an unsigned integer.", name);
         return static_cast<T>(json);
     }
     else if constexpr (std::is_floating_point_v<T>)
     {
         // Allow integers to be converted to floating point
         if (!json.is_number_float() && !json.is_number_integer())
-            throw RuntimeError("Property '{}' is not a floating point value or integer.", name);
+            FALCOR_THROW("Property '{}' is not a floating point value or integer.", name);
         return static_cast<T>(json);
     }
     else if constexpr (std::is_same_v<T, std::string>)
     {
         if (!json.is_string())
-            throw RuntimeError("Property '{}' is not a string.", name);
+            FALCOR_THROW("Property '{}' is not a string.", name);
         return static_cast<T>(json);
     }
     else if constexpr (std::is_same_v<T, std::filesystem::path>)
     {
         if (!json.is_string())
-            throw RuntimeError("Property '{}' is not a string/path.", name);
+            FALCOR_THROW("Property '{}' is not a string/path.", name);
         return static_cast<std::string>(json);
     }
     else if constexpr (std::is_same_v<T, Properties>)
     {
         if (!json.is_object())
-            throw RuntimeError("Property '{}' is not an object.", name);
+            FALCOR_THROW("Property '{}' is not an object.", name);
         return Properties(json);
     }
     else if constexpr (std::is_same_v<T, int2> || std::is_same_v<T, int3> || std::is_same_v<T, int4>)

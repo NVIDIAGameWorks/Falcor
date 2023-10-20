@@ -26,10 +26,9 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "Core/Assert.h"
-#include "Core/Errors.h"
+#include "Core/Error.h"
 #include "Core/State/ComputeState.h"
-#include "Core/Program/ComputeProgram.h"
+#include "Core/Program/Program.h"
 #include "Core/Program/ProgramVars.h"
 #include "Core/Program/ShaderVar.h"
 #include "Utils/Math/Vector.h"
@@ -169,15 +168,15 @@ public:
         const std::filesystem::path& path,
         const std::string& csEntry = "main",
         const DefineList& programDefines = DefineList(),
-        Program::CompilerFlags flags = Program::CompilerFlags::None,
-        const std::string& shaderModel = "",
+        SlangCompilerFlags flags = SlangCompilerFlags::None,
+        ShaderModel shaderModel = ShaderModel::Unknown,
         bool createShaderVars = true
     );
 
     /**
      * Create compute program based on program desc and defines.
      */
-    void createProgram(const Program::Desc& desc, const DefineList& programDefines = DefineList(), bool createShaderVars = true);
+    void createProgram(const ProgramDesc& desc, const DefineList& programDefines = DefineList(), bool createShaderVars = true);
 
     /**
      * (Re-)create the shader variables. Call this if vars were not
@@ -187,10 +186,10 @@ public:
     void createVars();
 
     /**
-     * vars returns the ComputeVars for the program for use in binding
+     * vars returns the ProgramVars for the program for use in binding
      * textures, etc.
      */
-    ComputeVars& vars()
+    ProgramVars& vars()
     {
         FALCOR_ASSERT(mpVars);
         return *mpVars;
@@ -230,10 +229,7 @@ public:
         if (it == mStructuredBuffers.end())
             throw ErrorRunningTestException(std::string(bufferName) + ": couldn't find buffer to map");
         ref<Buffer> buffer = it->second;
-        const T* data = reinterpret_cast<const T*>(buffer->map(Buffer::MapType::Read));
-        size_t size = buffer->getSize() / sizeof(T);
-        std::vector result(data, data + size);
-        buffer->unmap();
+        std::vector<T> result = buffer->getElements<T>();
         return result;
     }
 
@@ -265,14 +261,19 @@ public:
     /**
      * Returns the program.
      */
-    ComputeProgram* getProgram() const { return mpProgram.get(); }
+    Program* getProgram() const { return mpProgram.get(); }
+
+    /**
+     * Returns the program vars.
+     */
+    ProgramVars* getVars() const { return mpVars.get(); }
 
 private:
     // Internal state
     ref<Device> mpDevice;
     ref<ComputeState> mpState;
-    ref<ComputeProgram> mpProgram;
-    ref<ComputeVars> mpVars;
+    ref<Program> mpProgram;
+    ref<ProgramVars> mpVars;
     uint3 mThreadGroupSize = {0, 0, 0};
 
     std::map<std::string, ref<Buffer>> mStructuredBuffers;
@@ -505,8 +506,16 @@ inline std::optional<std::string> createBinaryMessage(std::string_view lhsStr, s
         return std::optional<std::string>{};
     size_t maxSize = std::max(lhsStr.size(), rhsStr.size());
     return fmt::format(
-        "Expected: ({}) {} ({}), actual:\n  {:<{}} = {}\n  {:<{}} = {}", lhsStr, TCmpHelper::asString(), rhsStr, lhsStr, maxSize, lhs,
-        rhsStr, maxSize, rhs
+        "Expected: ({}) {} ({}), actual:\n  {:<{}} = {}\n  {:<{}} = {}",
+        lhsStr,
+        TCmpHelper::asString(),
+        rhsStr,
+        lhsStr,
+        maxSize,
+        lhs,
+        rhsStr,
+        maxSize,
+        rhs
     );
 }
 
@@ -661,5 +670,31 @@ using GPUUnitTestContext = unittest::GPUUnitTestContext;
 #define ASSERT_GE(lhs, rhs) ASSERT_GE_MSG(lhs, rhs, "")
 #define ASSERT_LT(lhs, rhs) ASSERT_LT_MSG(lhs, rhs, "")
 #define ASSERT_GT(lhs, rhs) ASSERT_GT_MSG(lhs, rhs, "")
+
+#define EXPECT_THROW(expression) \
+    try                          \
+    {                            \
+        expression;              \
+        EXPECT(false);           \
+    }                            \
+    catch (...)                  \
+    {                            \
+        EXPECT(true);            \
+    }
+
+#define EXPECT_THROW_AS(expression, type) \
+    try                                   \
+    {                                     \
+        expression;                       \
+        EXPECT(false);                    \
+    }                                     \
+    catch (const type&)                   \
+    {                                     \
+        EXPECT(true);                     \
+    }                                     \
+    catch (...)                           \
+    {                                     \
+        EXPECT(false);                    \
+    }
 
 } // namespace Falcor

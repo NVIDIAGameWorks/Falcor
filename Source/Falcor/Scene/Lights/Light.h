@@ -50,7 +50,7 @@ namespace Falcor
 
         /** Set the light parameters into a shader variable. To use this you need to include/import 'ShaderCommon' inside your shader.
         */
-        virtual void setShaderData(const ShaderVar& var);
+        virtual void bindShaderData(const ShaderVar& var);
 
         /** Render UI elements for this light.
         */

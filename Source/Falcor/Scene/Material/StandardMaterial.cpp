@@ -26,6 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "StandardMaterial.h"
+#include "StandardMaterialParamLayout.slang"
 #include "Utils/Logger.h"
 #include "Utils/Scripting/ScriptBindings.h"
 #include "GlobalState.h"
@@ -79,6 +80,9 @@ namespace Falcor
         float emissiveFactor = getEmissiveFactor();
         if (widget.var("Emissive factor", emissiveFactor, 0.f, std::numeric_limits<float>::max(), 0.01f)) setEmissiveFactor(emissiveFactor);
 
+        bool hasEntryPointVolumeProperties = getHasEntryPointVolumeProperties();
+        if (widget.checkbox("Textured absorption coefficient", hasEntryPointVolumeProperties)) setHasEntryPointVolumeProperties(hasEntryPointVolumeProperties);
+
         // Restore update flags.
         changed |= mUpdates != UpdateFlags::None;
         markUpdates(prevUpdates | mUpdates);
@@ -123,19 +127,19 @@ namespace Falcor
         }
     }
 
-    Program::ShaderModuleList StandardMaterial::getShaderModules() const
+    ProgramDesc::ShaderModuleList StandardMaterial::getShaderModules() const
     {
-        return { Program::ShaderModule(kShaderFile) };
+        return { ProgramDesc::ShaderModule::fromFile(kShaderFile) };
     }
 
-    Program::TypeConformanceList StandardMaterial::getTypeConformances() const
+    TypeConformanceList StandardMaterial::getTypeConformances() const
     {
         return { {{"StandardMaterial", "IMaterial"}, (uint32_t)MaterialType::Standard} };
     }
 
     void StandardMaterial::setShadingModel(ShadingModel model)
     {
-        checkArgument(model == ShadingModel::MetalRough || model == ShadingModel::SpecGloss, "'model' must be MetalRough or SpecGloss");
+        FALCOR_CHECK(model == ShadingModel::MetalRough || model == ShadingModel::SpecGloss, "'model' must be MetalRough or SpecGloss");
 
         if (getShadingModel() != model)
         {
@@ -182,7 +186,7 @@ namespace Falcor
         if (any(mData.emissive != color))
         {
             mData.emissive = color;
-            markUpdates(UpdateFlags::DataChanged);
+            markUpdates(UpdateFlags::DataChanged | UpdateFlags::EmissiveChanged);
             updateEmissiveFlag();
         }
     }
@@ -192,9 +196,51 @@ namespace Falcor
         if (mData.emissiveFactor != factor)
         {
             mData.emissiveFactor = factor;
-            markUpdates(UpdateFlags::DataChanged);
+            markUpdates(UpdateFlags::DataChanged | UpdateFlags::EmissiveChanged);
             updateEmissiveFlag();
         }
+    }
+
+    void StandardMaterial::setHasEntryPointVolumeProperties(bool hasEntryPointVolumeProperties)
+    {
+        if (mData.getHasEntryPointVolumeProperties() != hasEntryPointVolumeProperties)
+        {
+            mData.setHasEntryPointVolumeProperties(hasEntryPointVolumeProperties);
+            markUpdates(UpdateFlags::DataChanged);
+        }
+    }
+
+    bool StandardMaterial::getHasEntryPointVolumeProperties() const
+    {
+        return getShadingModel() == ShadingModel::SpecGloss ? false : mData.getHasEntryPointVolumeProperties();
+    }
+
+    DefineList StandardMaterial::getDefines() const
+    {
+        DefineList defines;
+
+        if (mData.getHasEntryPointVolumeProperties())
+            defines.add("HAS_MATERIAL_VOLUME_PROPERITES", "1");
+
+        return defines;
+    }
+
+    const MaterialParamLayout& StandardMaterial::getParamLayout() const
+    {
+        FALCOR_CHECK(getShadingModel() == ShadingModel::MetalRough, "Only MetalRough shading model is supported in parameter layout.");
+        return StandardMaterialParamLayout::layout();
+    }
+
+    SerializedMaterialParams StandardMaterial::serializeParams() const
+    {
+        FALCOR_CHECK(getShadingModel() == ShadingModel::MetalRough, "Only MetalRough shading model is supported for serialization.");
+        return StandardMaterialParamLayout::serialize(this);
+    }
+
+    void StandardMaterial::deserializeParams(const SerializedMaterialParams& params)
+    {
+        FALCOR_CHECK(getShadingModel() == ShadingModel::MetalRough, "Only MetalRough shading model is supported for serialization.");
+        StandardMaterialParamLayout::deserialize(this, params);
     }
 
     FALCOR_SCRIPT_BINDING(StandardMaterial)
@@ -214,6 +260,7 @@ namespace Falcor
         };
         material.def(pybind11::init(create), "name"_a = "", "model"_a = ShadingModel::MetalRough); // PYTHONDEPRECATED
 
+        material.def_property("entryPointVolumeProperties", &StandardMaterial::getHasEntryPointVolumeProperties, &StandardMaterial::setHasEntryPointVolumeProperties);
         material.def_property("roughness", &StandardMaterial::getRoughness, &StandardMaterial::setRoughness);
         material.def_property("metallic", &StandardMaterial::getMetallic, &StandardMaterial::setMetallic);
         material.def_property("emissiveColor", &StandardMaterial::getEmissiveColor, &StandardMaterial::setEmissiveColor);

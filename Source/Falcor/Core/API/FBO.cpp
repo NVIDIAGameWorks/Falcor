@@ -28,7 +28,7 @@
 #include "FBO.h"
 #include "Device.h"
 #include "GFXAPI.h"
-#include "Core/Errors.h"
+#include "Core/Error.h"
 #include "Core/ObjectPython.h"
 #include "Utils/Scripting/ScriptBindings.h"
 
@@ -76,40 +76,43 @@ void checkAttachArguments(const Texture* pTexture, uint32_t mipLevel, uint32_t f
     if (pTexture == nullptr)
         return;
 
-    checkArgument(mipLevel < pTexture->getMipCount(), "'mipLevel' ({}) is out of bounds.", mipLevel);
+    FALCOR_CHECK(mipLevel < pTexture->getMipCount(), "'mipLevel' ({}) is out of bounds.", mipLevel);
 
     if (arraySize != Fbo::kAttachEntireMipLevel)
     {
-        checkArgument(arraySize != 0, "'arraySize' must not be zero.");
+        FALCOR_CHECK(arraySize != 0, "'arraySize' must not be zero.");
         if (pTexture->getType() == Texture::Type::Texture3D)
         {
-            checkArgument(
+            FALCOR_CHECK(
                 arraySize + firstArraySlice <= pTexture->getDepth(),
-                "'firstArraySlice' ({}) and 'arraySize' ({}) request depth index that is out of bounds.", firstArraySlice, arraySize
+                "'firstArraySlice' ({}) and 'arraySize' ({}) request depth index that is out of bounds.",
+                firstArraySlice,
+                arraySize
             );
         }
         else
         {
-            checkArgument(
+            FALCOR_CHECK(
                 arraySize + firstArraySlice <= pTexture->getArraySize(),
-                "'frstArraySlice' ({}) and 'arraySize' ({}) request array index that is out of bounds.", firstArraySlice, arraySize
+                "'frstArraySlice' ({}) and 'arraySize' ({}) request array index that is out of bounds.",
+                firstArraySlice,
+                arraySize
             );
         }
     }
 
     if (isDepthAttachment)
     {
-        checkArgument(isDepthStencilFormat(pTexture->getFormat()), "Depth-stencil texture must have a depth-stencil format.");
-        checkArgument(
-            is_set(pTexture->getBindFlags(), Texture::BindFlags::DepthStencil),
-            "Depth-stencil texture must have the DepthStencil bind flag."
+        FALCOR_CHECK(isDepthStencilFormat(pTexture->getFormat()), "Depth-stencil texture must have a depth-stencil format.");
+        FALCOR_CHECK(
+            is_set(pTexture->getBindFlags(), ResourceBindFlags::DepthStencil), "Depth-stencil texture must have the DepthStencil bind flag."
         );
     }
     else
     {
-        checkArgument(!isDepthStencilFormat(pTexture->getFormat()), "Color texture must not have a depth-stencil format.");
-        checkArgument(
-            is_set(pTexture->getBindFlags(), Texture::BindFlags::RenderTarget), "Color texture must have the RenderTarget bind flag."
+        FALCOR_CHECK(!isDepthStencilFormat(pTexture->getFormat()), "Color texture must not have a depth-stencil format.");
+        FALCOR_CHECK(
+            is_set(pTexture->getBindFlags(), ResourceBindFlags::RenderTarget), "Color texture must have the RenderTarget bind flag."
         );
     }
 }
@@ -122,32 +125,32 @@ ref<Texture> createTexture2D(
     uint32_t sampleCount,
     uint32_t arraySize,
     uint32_t mipLevels,
-    Texture::BindFlags flags
+    ResourceBindFlags flags
 )
 {
     if (format == ResourceFormat::Unknown)
     {
-        throw RuntimeError("Can't create Texture2D with an unknown resource format.");
+        FALCOR_THROW("Can't create Texture2D with an unknown resource format.");
     }
 
     if (sampleCount > 1)
     {
-        return Texture::create2DMS(pDevice, w, h, format, sampleCount, arraySize, flags);
+        return pDevice->createTexture2DMS(w, h, format, sampleCount, arraySize, flags);
     }
     else
     {
-        return Texture::create2D(pDevice, w, h, format, arraySize, mipLevels, nullptr, flags);
+        return pDevice->createTexture2D(w, h, format, arraySize, mipLevels, nullptr, flags);
     }
 }
 
-Texture::BindFlags getBindFlags(bool isDepth, bool allowUav)
+ResourceBindFlags getBindFlags(bool isDepth, bool allowUav)
 {
-    Texture::BindFlags flags = Texture::BindFlags::ShaderResource;
-    flags |= isDepth ? Texture::BindFlags::DepthStencil : Texture::BindFlags::RenderTarget;
+    ResourceBindFlags flags = ResourceBindFlags::ShaderResource;
+    flags |= isDepth ? ResourceBindFlags::DepthStencil : ResourceBindFlags::RenderTarget;
 
     if (allowUav)
     {
-        flags |= Texture::BindFlags::UnorderedAccess;
+        flags |= ResourceBindFlags::UnorderedAccess;
     }
     return flags;
 }
@@ -363,7 +366,7 @@ void Fbo::attachDepthStencilTarget(const ref<Texture>& pDepthStencil, uint32_t m
     bool allowUav = false;
     if (pDepthStencil)
     {
-        allowUav = ((pDepthStencil->getBindFlags() & Texture::BindFlags::UnorderedAccess) != Texture::BindFlags::None);
+        allowUav = ((pDepthStencil->getBindFlags() & ResourceBindFlags::UnorderedAccess) != ResourceBindFlags::None);
     }
 
     mTempDesc.setDepthStencilTarget(pDepthStencil ? pDepthStencil->getFormat() : ResourceFormat::Unknown, allowUav);
@@ -372,8 +375,10 @@ void Fbo::attachDepthStencilTarget(const ref<Texture>& pDepthStencil, uint32_t m
 
 void Fbo::attachColorTarget(const ref<Texture>& pTexture, uint32_t rtIndex, uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize)
 {
-    checkArgument(
-        rtIndex < mColorAttachments.size(), "'rtIndex' ({}) is out of range. Only {} color targets are available.", rtIndex,
+    FALCOR_CHECK(
+        rtIndex < mColorAttachments.size(),
+        "'rtIndex' ({}) is out of range. Only {} color targets are available.",
+        rtIndex,
         mColorAttachments.size()
     );
 
@@ -394,7 +399,7 @@ void Fbo::attachColorTarget(const ref<Texture>& pTexture, uint32_t rtIndex, uint
     bool allowUav = false;
     if (pTexture)
     {
-        allowUav = ((pTexture->getBindFlags() & Texture::BindFlags::UnorderedAccess) != Texture::BindFlags::None);
+        allowUav = ((pTexture->getBindFlags() & ResourceBindFlags::UnorderedAccess) != ResourceBindFlags::None);
     }
 
     mTempDesc.setColorTarget(rtIndex, pTexture ? pTexture->getFormat() : ResourceFormat::Unknown, allowUav);
@@ -427,12 +432,12 @@ void Fbo::validateAttachment(const Attachment& attachment) const
 
             if (mTempDesc.getSampleCount() != pTexture->getSampleCount())
             {
-                throw RuntimeError("Error when validating FBO. Different sample counts in attachments.");
+                FALCOR_THROW("Error when validating FBO. Different sample counts in attachments.");
             }
 
             if (mIsLayered != (attachment.arraySize > 1))
             {
-                throw RuntimeError("Error when validating FBO. Can't bind both layered and non-layered textures.");
+                FALCOR_THROW("Error when validating FBO. Can't bind both layered and non-layered textures.");
             }
         }
     }
@@ -459,7 +464,7 @@ void Fbo::calcAndValidateProperties() const
         uint32_t expectedCount = mSamplePositionsPixelCount * mTempDesc.getSampleCount();
         if (expectedCount != mSamplePositions.size())
         {
-            throw RuntimeError("Error when validating FBO. The sample positions array size has the wrong size.");
+            FALCOR_THROW("Error when validating FBO. The sample positions array size has the wrong size.");
         }
     }
 
@@ -471,8 +476,10 @@ void Fbo::calcAndValidateProperties() const
 
 ref<Texture> Fbo::getColorTexture(uint32_t index) const
 {
-    checkArgument(
-        index < mColorAttachments.size(), "'index' ({}) is out of range. Only {} color slots are available.", index,
+    FALCOR_CHECK(
+        index < mColorAttachments.size(),
+        "'index' ({}) is out of range. Only {} color slots are available.",
+        index,
         mColorAttachments.size()
     );
     return mColorAttachments[index].pTexture;
@@ -517,11 +524,11 @@ ref<Fbo> Fbo::create2D(
 {
     uint32_t sampleCount = fboDesc.getSampleCount();
 
-    checkArgument(width > 0, "'width' must not be zero.");
-    checkArgument(height > 0, "'height' must not be zero.");
-    checkArgument(arraySize > 0, "'arraySize' must not be zero.");
-    checkArgument(mipLevels > 0, "'mipLevels' must not be zero.");
-    checkArgument(sampleCount == 1 || mipLevels == 1, "Cannot create multi-sampled texture with more than one mip-level.");
+    FALCOR_CHECK(width > 0, "'width' must not be zero.");
+    FALCOR_CHECK(height > 0, "'height' must not be zero.");
+    FALCOR_CHECK(arraySize > 0, "'arraySize' must not be zero.");
+    FALCOR_CHECK(mipLevels > 0, "'mipLevels' must not be zero.");
+    FALCOR_CHECK(sampleCount == 1 || mipLevels == 1, "Cannot create multi-sampled texture with more than one mip-level.");
 
     ref<Fbo> pFbo = create(pDevice);
 
@@ -530,7 +537,7 @@ ref<Fbo> Fbo::create2D(
     {
         if (fboDesc.getColorTargetFormat(i) != ResourceFormat::Unknown)
         {
-            Texture::BindFlags flags = getBindFlags(false, fboDesc.isColorTargetUav(i));
+            ResourceBindFlags flags = getBindFlags(false, fboDesc.isColorTargetUav(i));
             ref<Texture> pTex =
                 createTexture2D(pDevice, width, height, fboDesc.getColorTargetFormat(i), sampleCount, arraySize, mipLevels, flags);
             pFbo->attachColorTarget(pTex, i, 0, 0, kAttachEntireMipLevel);
@@ -539,7 +546,7 @@ ref<Fbo> Fbo::create2D(
 
     if (fboDesc.getDepthStencilFormat() != ResourceFormat::Unknown)
     {
-        Texture::BindFlags flags = getBindFlags(true, fboDesc.isDepthStencilUav());
+        ResourceBindFlags flags = getBindFlags(true, fboDesc.isDepthStencilUav());
         ref<Texture> pDepth =
             createTexture2D(pDevice, width, height, fboDesc.getDepthStencilFormat(), sampleCount, arraySize, mipLevels, flags);
         pFbo->attachDepthStencilTarget(pDepth, 0, 0, kAttachEntireMipLevel);
@@ -557,26 +564,26 @@ ref<Fbo> Fbo::createCubemap(
     uint32_t mipLevels
 )
 {
-    checkArgument(width > 0, "'width' must not be zero.");
-    checkArgument(height > 0, "'height' must not be zero.");
-    checkArgument(arraySize > 0, "'arraySize' must not be zero.");
-    checkArgument(mipLevels > 0, "'mipLevels' must not be zero.");
-    checkArgument(fboDesc.getSampleCount() == 1, "Cannot create multi-sampled cube map.");
+    FALCOR_CHECK(width > 0, "'width' must not be zero.");
+    FALCOR_CHECK(height > 0, "'height' must not be zero.");
+    FALCOR_CHECK(arraySize > 0, "'arraySize' must not be zero.");
+    FALCOR_CHECK(mipLevels > 0, "'mipLevels' must not be zero.");
+    FALCOR_CHECK(fboDesc.getSampleCount() == 1, "Cannot create multi-sampled cube map.");
 
     ref<Fbo> pFbo = create(pDevice);
 
     // Create the color targets
     for (uint32_t i = 0; i < getMaxColorTargetCount(); i++)
     {
-        Texture::BindFlags flags = getBindFlags(false, fboDesc.isColorTargetUav(i));
-        auto pTex = Texture::createCube(pDevice, width, height, fboDesc.getColorTargetFormat(i), arraySize, mipLevels, nullptr, flags);
+        ResourceBindFlags flags = getBindFlags(false, fboDesc.isColorTargetUav(i));
+        auto pTex = pDevice->createTextureCube(width, height, fboDesc.getColorTargetFormat(i), arraySize, mipLevels, nullptr, flags);
         pFbo->attachColorTarget(pTex, i, 0, kAttachEntireMipLevel);
     }
 
     if (fboDesc.getDepthStencilFormat() != ResourceFormat::Unknown)
     {
-        Texture::BindFlags flags = getBindFlags(true, fboDesc.isDepthStencilUav());
-        auto pDepth = Texture::createCube(pDevice, width, height, fboDesc.getDepthStencilFormat(), arraySize, mipLevels, nullptr, flags);
+        ResourceBindFlags flags = getBindFlags(true, fboDesc.isDepthStencilUav());
+        auto pDepth = pDevice->createTextureCube(width, height, fboDesc.getDepthStencilFormat(), arraySize, mipLevels, nullptr, flags);
         pFbo->attachDepthStencilTarget(pDepth, 0, kAttachEntireMipLevel);
     }
 

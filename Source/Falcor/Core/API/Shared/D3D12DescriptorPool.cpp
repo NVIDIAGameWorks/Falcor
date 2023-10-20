@@ -64,14 +64,14 @@ const D3D12DescriptorPool::ApiHandle& D3D12DescriptorPool::getApiHandle(uint32_t
     return mpApiData->pHeaps[heapIndex]->getApiHandle();
 }
 
-ref<D3D12DescriptorPool> D3D12DescriptorPool::create(Device* pDevice, const Desc& desc, ref<GpuFence> pFence)
+ref<D3D12DescriptorPool> D3D12DescriptorPool::create(Device* pDevice, const Desc& desc, ref<Fence> pFence)
 {
     FALCOR_ASSERT(pDevice);
     pDevice->requireD3D12();
     return ref<D3D12DescriptorPool>(new D3D12DescriptorPool(pDevice, desc, pFence));
 }
 
-D3D12DescriptorPool::D3D12DescriptorPool(Device* pDevice, const Desc& desc, ref<GpuFence> pFence) : mDesc(desc), mpFence(pFence)
+D3D12DescriptorPool::D3D12DescriptorPool(Device* pDevice, const Desc& desc, ref<Fence> pFence) : mDesc(desc), mpFence(pFence)
 {
     // Find out how many heaps we need
     static_assert(D3D12DescriptorPool::kTypeCount == 13, "Unexpected desc count, make sure all desc types are supported");
@@ -103,8 +103,8 @@ D3D12DescriptorPool::~D3D12DescriptorPool() = default;
 
 void D3D12DescriptorPool::executeDeferredReleases()
 {
-    uint64_t gpuVal = mpFence->getGpuValue();
-    while (mpDeferredReleases.size() && mpDeferredReleases.top().fenceValue <= gpuVal)
+    uint64_t currentValue = mpFence->getCurrentValue();
+    while (mpDeferredReleases.size() && mpDeferredReleases.top().fenceValue < currentValue)
     {
         mpDeferredReleases.pop();
     }
@@ -114,7 +114,7 @@ void D3D12DescriptorPool::releaseAllocation(std::shared_ptr<DescriptorSetApiData
 {
     DeferredRelease d;
     d.pData = pData;
-    d.fenceValue = mpFence->getCpuValue();
+    d.fenceValue = mpFence->getSignaledValue();
     mpDeferredReleases.push(d);
 }
 } // namespace Falcor

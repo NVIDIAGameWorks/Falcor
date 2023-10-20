@@ -30,19 +30,20 @@
 #include "RenderGraph/RenderPass.h"
 #include "RenderGraph/RenderPassHelpers.h"
 #include "Utils/Sampling/SampleGenerator.h"
-#include "Rendering/Materials/TexLODTypes.slang"  // Using the enum with Mip0, RayCones, etc
+#include "Rendering/Materials/TexLODTypes.slang" // Using the enum with Mip0, RayCones, etc
 #include "WhittedRayTracerTypes.slang"
 
 using namespace Falcor;
 
-/** Whitted ray tracer.
-
-    This pass implements the simplest possible Whitted ray tracer.
-
-    The render pass serves as an example and testbed for texture LOD.
-    The scene materials are overridden to add ideal specular reflection
-    and refraction components. Unbiased rendering should not be expected.
-*/
+/**
+ * Whitted ray tracer.
+ *
+ * This pass implements the simplest possible Whitted ray tracer.
+ *
+ * The render pass serves as an example and testbed for texture LOD.
+ * The scene materials are overridden to add ideal specular reflection
+ * and refraction components. Unbiased rendering should not be expected.
+ */
 class WhittedRayTracer : public RenderPass
 {
 public:
@@ -76,28 +77,42 @@ public:
 
 private:
     void prepareVars();
-    void setStaticParams(RtProgram* pProgram) const;
+    void setStaticParams(Program* pProgram) const;
 
     // Internal state
-    ref<Scene>                  mpScene;                                    ///< Current scene.
-    ref<SampleGenerator>        mpSampleGenerator;                          ///< GPU sample generator.
 
-    uint                        mMaxBounces = 3;                                        ///< Max number of indirect bounces (0 = none).
-    TexLODMode                  mTexLODMode = TexLODMode::Mip0;                         ///< Which texture LOD mode to use.
-    RayConeMode                 mRayConeMode = RayConeMode::Combo;                      ///< Which variant of ray cones to use.
-    RayFootprintFilterMode      mRayConeFilterMode = RayFootprintFilterMode::Isotropic; ///< Which filter mode to use for ray cones.
-    RayFootprintFilterMode      mRayDiffFilterMode = RayFootprintFilterMode::Isotropic; ///< Which filter mode to use for ray differentials.
-    bool                        mVisualizeSurfaceSpread = false;                        ///< Visualize surface spread angle at the first hit for the ray cones methods.
-    bool                        mUseRoughnessToVariance = false;                        ///< Use roughness to variance to grow ray cones based on BDSF roughness.
-    bool                        mUseFresnelAsBRDF = false;                              ///< Use Fresnel term as BRDF (instead of hacky throughput adjustment)
+    /// Current scene.
+    ref<Scene> mpScene;
+    /// GPU sample generator.
+    ref<SampleGenerator> mpSampleGenerator;
+
+    /// Max number of indirect bounces (0 = none).
+    uint mMaxBounces = 3;
+    /// Which texture LOD mode to use.
+    TexLODMode mTexLODMode = TexLODMode::Mip0;
+    /// Which variant of ray cones to use.
+    RayConeMode mRayConeMode = RayConeMode::Combo;
+    /// Which filter mode to use for ray cones.
+    RayFootprintFilterMode mRayConeFilterMode = RayFootprintFilterMode::Isotropic;
+    /// Which filter mode to use for ray differentials.
+    RayFootprintFilterMode mRayDiffFilterMode = RayFootprintFilterMode::Isotropic;
+    /// Visualize surface spread angle at the first hit for the ray cones methods.
+    bool mVisualizeSurfaceSpread = false;
+    /// Use roughness to variance to grow ray cones based on BDSF roughness.
+    bool mUseRoughnessToVariance = false;
+    /// Use Fresnel term as BRDF (instead of hacky throughput adjustment)
+    bool mUseFresnelAsBRDF = false;
+
     // Runtime data
-    uint                        mFrameCount = 0;                                        ///< Frame count since scene was loaded.
-    bool                        mOptionsChanged = false;
+
+    /// Frame count since scene was loaded.
+    uint mFrameCount = 0;
+    bool mOptionsChanged = false;
 
     // Ray tracing program.
     struct
     {
-        ref<RtProgram> pProgram;
+        ref<Program> pProgram;
         ref<RtBindingTable> pBindingTable;
         ref<RtProgramVars> pVars;
     } mTracer;

@@ -26,25 +26,26 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 
-/** Whitted ray tracer.
-
-    The purpose is to use it as a baseline for showing how to implement different
-    texture level-of-detail filtering methods.
-
-    The host sets the following defines:
-
-    MAX_BOUNCES                 Maximum number of indirect bounces (0 means no indirect).
-    USE_ANALYTIC_LIGHTS         Nonzero if Falcor's analytic lights should be used.
-    USE_EMISSIVE_LIGHTS         Nonzero if emissive geometry should be used as lights.
-    USE_ENV_LIGHT               Nonzero if env map is available and should be used as light source.
-    USE_ENV_BACKGROUND          Nonzero if env map is available and should be used as background.
-    TEX_LOD_MODE                Could be either of Mip0, RayCones, RayDiffs.
-    RAY_CONE_MODE               Could be either Combo or Unified.
-    VISUALIZE_SURFACE_SPREAD    True if we want to visualize the surface spread angle for the ray cone methods.
-    USE_ROUGHNESS_TO_VARIANCE   True if we want to grow the size of the ray cones base on the BRDF roughness.
-    USE_FRESNEL_AS_BRDF         True if we want to use Fresnel term as BRDF.
-    is_valid_<name>             1 if optional I/O buffer with this name should be used.
-*/
+/**
+ * Whitted ray tracer.
+ *
+ * The purpose is to use it as a baseline for showing how to implement different
+ * texture level-of-detail filtering methods.
+ *
+ * The host sets the following defines:
+ *
+ * MAX_BOUNCES                 Maximum number of indirect bounces (0 means no indirect).
+ * USE_ANALYTIC_LIGHTS         Nonzero if Falcor's analytic lights should be used.
+ * USE_EMISSIVE_LIGHTS         Nonzero if emissive geometry should be used as lights.
+ * USE_ENV_LIGHT               Nonzero if env map is available and should be used as light source.
+ * USE_ENV_BACKGROUND          Nonzero if env map is available and should be used as background.
+ * TEX_LOD_MODE                Could be either of Mip0, RayCones, RayDiffs.
+ * RAY_CONE_MODE               Could be either Combo or Unified.
+ * VISUALIZE_SURFACE_SPREAD    True if we want to visualize the surface spread angle for the ray cone methods.
+ * USE_ROUGHNESS_TO_VARIANCE   True if we want to grow the size of the ray cones base on the BRDF roughness.
+ * USE_FRESNEL_AS_BRDF         True if we want to use Fresnel term as BRDF.
+ * is_valid_<name>             1 if optional I/O buffer with this name should be used.
+ */
 
 #include "Utils/Math/MathConstants.slangh"
 
@@ -59,9 +60,9 @@ import WhittedRayTracerTypes;
 
 cbuffer CB
 {
-    uint        gFrameCount;                    // Frame count since scene was loaded.
-    uint        gPRNGDimension;                 // First available PRNG dimension.
-    float       gScreenSpacePixelSpreadAngle;   // The angle an "average" pixel spans from camera (texLOD).
+    uint gFrameCount;                   // Frame count since scene was loaded.
+    uint gPRNGDimension;                // First available PRNG dimension.
+    float gScreenSpacePixelSpreadAngle; // The angle an "average" pixel spans from camera (texLOD).
 }
 
 // Inputs
@@ -70,9 +71,9 @@ Texture2D<float4> gWorldShadingNormal;
 Texture2D<float4> gWorldShadingTangent;
 Texture2D<float4> gWorldFaceNormal;
 Texture2D<float2> gTextureCoord;
-Texture2D<float4> gTextureGrads;        // Optional
-Texture2D<uint4>  gMaterialData;
-Texture2D<PackedHitInfo> gVBuffer;      // Optional
+Texture2D<float4> gTextureGrads; // Optional
+Texture2D<uint4> gMaterialData;
+Texture2D<PackedHitInfo> gVBuffer; // Optional
 
 // Outputs
 RWTexture2D<float4> gOutputColor;
@@ -94,8 +95,9 @@ static const bool kUseRoughnessToVariance = USE_ROUGHNESS_TO_VARIANCE;
 static const bool kVisualizeSurfaceSpread = VISUALIZE_SURFACE_SPREAD;
 static const bool kUseFresnelAsBRDF = USE_FRESNEL_AS_BRDF;
 
-/** Payload for shadow ray.
-*/
+/**
+ * Payload for shadow ray.
+ */
 struct ShadowRayData
 {
     bool visible;
@@ -105,37 +107,52 @@ float roughnessToSpread(float roughness)
 {
     const float ggxAlpha = roughness * roughness;
     const float s = ggxAlpha * ggxAlpha;
-    const float sigma2 =  (s / max(0.0001f, (1.0f - s))) * 0.5f;
+    const float sigma2 = (s / max(0.0001f, (1.0f - s))) * 0.5f;
     return 2.0f * sqrt(sigma2);
 }
 
-/** Returns the shading normal flipped for backfacing hits on double-sided materials.
-    This reproduces the legacy behavior before the conventions were updated.
-*/
+/**
+ * Returns the shading normal flipped for backfacing hits on double-sided materials.
+ * This reproduces the legacy behavior before the conventions were updated.
+ */
 float3 getFlippedShadingNormal(const ShadingData sd)
 {
     return !sd.frontFacing && sd.mtl.isDoubleSided() ? -sd.frame.N : sd.frame.N;
 }
 
-/** Payload for scatter ray (128B when ray cones are used, 164B when ray diffs are used).
-*/
+/**
+ * Payload for scatter ray (128B when ray cones are used, 164B when ray diffs are used).
+ */
 struct ScatterRayData
 {
-    float3  radiance;                   ///< Accumulated outgoing radiance from path.
-    bool    terminated;                 ///< Set to true when path is terminated.
-    bool    hasHitRefractiveMaterial;   ///> Whether the path has hit some refractive material on the way.
-    float3  thp;                        ///< Current path throughput. This is updated at each path vertex.
-    uint    pathLength;                 ///< Path length in number of path segments (0 at origin, 1 at first secondary hit, etc.). Max 2^31.
-    float3  origin;                     ///< Next path segment origin.
-    float3  direction;                  ///< Next path segment direction.
-                                        //   only one (at most) of RayCone and RayDiff will be used (none, if we use Mip0).
-    RayCone rayCone;                    ///< Ray cone (2 floats) for texture LOD.
-    RayDiff rayDiff;                    ///< Ray differential (12 floats) for texture LOD.
+    /// Accumulated outgoing radiance from path.
+    float3 radiance;
+    /// Set to true when path is terminated.
+    bool terminated;
+    /// Whether the path has hit some refractive material on the way.
+    bool hasHitRefractiveMaterial;
+    /// Current path throughput. This is updated at each path vertex.
+    float3 thp;
+    /// Path length in number of path segments (0 at origin, 1 at first secondary hit, etc.). Max 2^31.
+    uint pathLength;
+    /// Next path segment origin.
+    float3 origin;
+    /// Next path segment direction.
+    float3 direction;
 
-    SampleGenerator sg;                 ///< Per-ray state for the sample generator (up to 16B).
+    //   only one (at most) of RayCone and RayDiff will be used (none, if we use Mip0).
 
-    /** Initializes ray payload with default parameters.
-    */
+    /// Ray cone (2 floats) for texture LOD.
+    RayCone rayCone;
+    /// Ray differential (12 floats) for texture LOD.
+    RayDiff rayDiff;
+
+    /// Per-ray state for the sample generator (up to 16B).
+    SampleGenerator sg;
+
+    /**
+     * Initializes ray payload with default parameters.
+     */
     __init(SampleGenerator sg)
     {
         this.terminated = false;
@@ -151,11 +168,12 @@ struct ScatterRayData
     }
 };
 
-/** Helper to create a texture sampler instance.
-    The method for computing texture level-of-detail depends on the configuration.
-    \param[in] pixel Current pixel coordinates.
-    \return Texture sampler instance.
-*/
+/**
+ * Helper to create a texture sampler instance.
+ * The method for computing texture level-of-detail depends on the configuration.
+ * @param[in] pixel Current pixel coordinates.
+ * @return Texture sampler instance.
+ */
 ITextureSampler createTextureSampler(const uint2 pixel)
 {
     if (is_valid(gTextureGrads))
@@ -169,8 +187,9 @@ ITextureSampler createTextureSampler(const uint2 pixel)
     }
 }
 
-/** Helper to load G-buffer data and prepare shading data.
-*/
+/**
+ * Helper to load G-buffer data and prepare shading data.
+ */
 ShadingData loadShadingData(const uint2 pixel, const float3 posW, const float3 rayDir, const ITextureSampler lod)
 {
     // Load G-buffer data.
@@ -192,9 +211,10 @@ ShadingData loadShadingData(const uint2 pixel, const float3 posW, const float3 r
     return gScene.materials.prepareShadingData(v, materialID, -rayDir, lod);
 }
 
-/** Helper for computing relatice index of refraction (eta) at a hit.
-    This is computed based on the IoRs of the media outside and inside the material.
-*/
+/**
+ * Helper for computing relatice index of refraction (eta) at a hit.
+ * This is computed based on the IoRs of the media outside and inside the material.
+ */
 float computeEta(const ShadingData sd)
 {
     float insideIoR = gScene.materials.evalIoR(sd.materialID);
@@ -202,12 +222,13 @@ float computeEta(const ShadingData sd)
     return eta;
 }
 
-/** Traces a shadow ray towards a light source.
-    \param[in] origin Ray origin for the shadow ray.
-    \param[in] dir Direction from shading point towards the light source (normalized).
-    \param[in] distance Distance to the light source.
-    \return True if light is visible, false otherwise.
-*/
+/**
+ * Traces a shadow ray towards a light source.
+ * @param[in] origin Ray origin for the shadow ray.
+ * @param[in] dir Direction from shading point towards the light source (normalized).
+ * @param[in] distance Distance to the light source.
+ * @return True if light is visible, false otherwise.
+ */
 bool traceShadowRay(float3 origin, float3 dir, float distance)
 {
     RayDesc ray;
@@ -218,14 +239,24 @@ bool traceShadowRay(float3 origin, float3 dir, float distance)
 
     ShadowRayData rayData;
     rayData.visible = false; // Set to true by miss shader if ray is not terminated before.
-    TraceRay(gScene.rtAccel, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH, 0xff /* instanceInclusionMask */, 1 /* hitIdx */, rayTypeCount, 1 /* missIdx */, ray, rayData);
+    TraceRay(
+        gScene.rtAccel,
+        RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH,
+        0xff /* instanceInclusionMask */,
+        1 /* hitIdx */,
+        rayTypeCount,
+        1 /* missIdx */,
+        ray,
+        rayData
+    );
 
     return rayData.visible;
 }
 
-/** Traces a scatter ray based on ray parameters stored in the ray payload.
-    \param[in] rayData Describes the ray parameters. The struct is modified based on the result.
-*/
+/**
+ * Traces a scatter ray based on ray parameters stored in the ray payload.
+ * @param[in] rayData Describes the ray parameters. The struct is modified based on the result.
+ */
 void traceScatterRay(inout ScatterRayData rayData)
 {
     RayDesc ray;
@@ -234,18 +265,19 @@ void traceScatterRay(inout ScatterRayData rayData)
     ray.TMin = 0.f;
     ray.TMax = kRayTMax;
 
-    uint rayFlags = 0;      // TODO: Set cull mode from the app.
+    uint rayFlags = 0; // TODO: Set cull mode from the app.
     TraceRay(gScene.rtAccel, rayFlags, 0xff /* instanceInclusionMask */, 0 /* hitIdx */, rayTypeCount, 0 /* missIdx */, ray, rayData);
 }
 
-/** Evaluates the direct illumination from all analytic lights.
-    This function samples Falcor's light list uniformly with one shadow ray per light.
-    \param[in] sd Shading data.
-    \param[in] mi Material instance at the shading point.
-    \param[in] rayOrigin Ray origin for the shadow ray.
-    \param[in] sg SampleGenerator object.
-    \return Outgoing radiance in view direction.
-*/
+/**
+ * Evaluates the direct illumination from all analytic lights.
+ * This function samples Falcor's light list uniformly with one shadow ray per light.
+ * @param[in] sd Shading data.
+ * @param[in] mi Material instance at the shading point.
+ * @param[in] rayOrigin Ray origin for the shadow ray.
+ * @param[in] sg SampleGenerator object.
+ * @return Outgoing radiance in view direction.
+ */
 float3 evalDirectAnalytic(const ShadingData sd, const IMaterialInstance mi, const float3 rayOrigin, inout SampleGenerator sg)
 {
     // Use all analytic light sources.
@@ -264,22 +296,31 @@ float3 evalDirectAnalytic(const ShadingData sd, const IMaterialInstance mi, cons
         {
             // Test visibility by tracing a shadow ray.
             bool V = traceShadowRay(rayOrigin, ls.dir, ls.distance);
-            contribution +=  V ? mi.eval(sd, ls.dir, sg) * ls.Li * invPdf : float3(0);
+            contribution += V ? mi.eval(sd, ls.dir, sg) * ls.Li * invPdf : float3(0);
         }
     }
     return contribution;
 }
 
-/** Processes a hit point to generate a reflection ray or terminate.
-    \param[in] sd Shading data.
-    \param[in] bsdfProperties BSDF properties.
-    \param[in] rayOrigin Ray origin for the new ray.
-    \param[in] rayDir Ray direction for incident ray.
-    \param[in] normal Surface normal to use for reflection (may be different from the shading normal).
-    \param[in] tir True if total internal reflection.
-    \param[in,out] rayData Ray payload.
-*/
-void generateReflectionRay(const ShadingData sd, const BSDFProperties bsdfProperties, const float3 rayOrigin, const float3 rayDir, const float3 normal, bool tir, inout ScatterRayData rayData)
+/**
+ * Processes a hit point to generate a reflection ray or terminate.
+ * @param[in] sd Shading data.
+ * @param[in] bsdfProperties BSDF properties.
+ * @param[in] rayOrigin Ray origin for the new ray.
+ * @param[in] rayDir Ray direction for incident ray.
+ * @param[in] normal Surface normal to use for reflection (may be different from the shading normal).
+ * @param[in] tir True if total internal reflection.
+ * @param[in,out] rayData Ray payload.
+ */
+void generateReflectionRay(
+    const ShadingData sd,
+    const BSDFProperties bsdfProperties,
+    const float3 rayOrigin,
+    const float3 rayDir,
+    const float3 normal,
+    bool tir,
+    inout ScatterRayData rayData
+)
 {
     float3 wo = reflect(rayDir, normal);
     rayData.origin = rayOrigin;
@@ -299,7 +340,7 @@ void generateReflectionRay(const ShadingData sd, const BSDFProperties bsdfProper
 
 /*********************** Ray index 0: Scatter ray ************************ */
 [shader("miss")]
-void scatterMiss(inout ScatterRayData rayData : SV_RayPayload)
+void scatterMiss(inout ScatterRayData rayData: SV_RayPayload)
 {
     // Ray missed the scene. Mark the ray as terminated.
     rayData.terminated = true;
@@ -323,17 +364,21 @@ void scatterMiss(inout ScatterRayData rayData : SV_RayPayload)
 }
 
 [shader("anyhit")]
-void scatterAnyHit(inout ScatterRayData rayData : SV_RayPayload, BuiltInTriangleIntersectionAttributes attribs : SV_IntersectionAttributes)
+void scatterAnyHit(inout ScatterRayData rayData: SV_RayPayload, BuiltInTriangleIntersectionAttributes attribs: SV_IntersectionAttributes)
 {
     // Alpha test for non-opaque geometry.
     GeometryInstanceID instanceID = getGeometryInstanceID();
     VertexData v = getVertexData(instanceID, PrimitiveIndex(), attribs);
     const uint materialID = gScene.getMaterialID(instanceID);
-    if (gScene.materials.alphaTest(v, materialID, 0.f)) IgnoreHit();
+    if (gScene.materials.alphaTest(v, materialID, 0.f))
+        IgnoreHit();
 }
 
 [shader("closesthit")]
-void scatterClosestHit(inout ScatterRayData rayData : SV_RayPayload, BuiltInTriangleIntersectionAttributes attribs : SV_IntersectionAttributes)
+void scatterClosestHit(
+    inout ScatterRayData rayData: SV_RayPayload,
+    BuiltInTriangleIntersectionAttributes attribs: SV_IntersectionAttributes
+)
 {
     // Evaluate Falcor's material parameters at the hit point.
     const float3 rayDir = WorldRayDirection();
@@ -365,7 +410,8 @@ void scatterClosestHit(inout ScatterRayData rayData : SV_RayPayload, BuiltInTria
         // Propagate (only) to hit point (not setting any surfaceSpreadAngle -- this is cone in the next propagate call, a few lines down).
         rayData.rayCone = rayData.rayCone.propagateDistance(hitT);
 
-        if (kRayConeFilterMode == RayFootprintFilterMode::Isotropic || (kRayConeFilterMode == RayFootprintFilterMode::AnisotropicWhenRefraction && !rayData.hasHitRefractiveMaterial))
+        if (kRayConeFilterMode == RayFootprintFilterMode::Isotropic ||
+            (kRayConeFilterMode == RayFootprintFilterMode::AnisotropicWhenRefraction && !rayData.hasHitRefractiveMaterial))
         {
             float lambda = rayData.rayCone.computeLOD(v.coneTexLODValue, rayDir, v.normalW);
             lod = ExplicitRayConesLodTextureSampler(lambda);
@@ -388,22 +434,37 @@ void scatterClosestHit(inout ScatterRayData rayData : SV_RayPayload, BuiltInTria
     }
     else if (kTexLODMode == TexLODMode::RayDiffs)
     {
-        float2 dUVdx, dUVdy;    // Ray differential variables for the texture lookup.
+        float2 dUVdx, dUVdy; // Ray differential variables for the texture lookup.
         float2 dBarydx, dBarydy;
         float3 geometricNormal = gScene.getFaceNormalW(instanceID, PrimitiveIndex());
-        RayDiff newRayDiff = rayData.rayDiff.propagate(rayOrg, rayDir, hitT, geometricNormal);              // Propagate the ray differential to the current hit point.
+        // Propagate the ray differential to the current hit point.
+        RayDiff newRayDiff = rayData.rayDiff.propagate(rayOrg, rayDir, hitT, geometricNormal);
 
         float3 barycentrics;
         StaticVertexData triangleVertices[3];
         v = getVertexData(instanceID, PrimitiveIndex(), attribs, barycentrics, triangleVertices);
 
-        float3 unnormalizedN;   // Non-normalized interpolated normal for ray differential scatter.
-        float3 normals[3];      // Non-normalized normals for ray differential scatter.
+        float3 unnormalizedN; // Non-normalized interpolated normal for ray differential scatter.
+        float3 normals[3];    // Non-normalized normals for ray differential scatter.
 
-        prepareRayDiffAtHitPoint(v, triangleVertices, barycentrics, rayDir, gScene.getWorldMatrix(instanceID), gScene.getInverseTransposeWorldMatrix(instanceID),
-            newRayDiff, unnormalizedN, normals, dBarydx, dBarydy, dUVdx, dUVdy);
+        prepareRayDiffAtHitPoint(
+            v,
+            triangleVertices,
+            barycentrics,
+            rayDir,
+            gScene.getWorldMatrix(instanceID),
+            gScene.getInverseTransposeWorldMatrix(instanceID),
+            newRayDiff,
+            unnormalizedN,
+            normals,
+            dBarydx,
+            dBarydy,
+            dUVdx,
+            dUVdy
+        );
 
-        if (kRayDiffFilterMode == RayFootprintFilterMode::Isotropic || (kRayDiffFilterMode == RayFootprintFilterMode::AnisotropicWhenRefraction && !rayData.hasHitRefractiveMaterial))
+        if (kRayDiffFilterMode == RayFootprintFilterMode::Isotropic ||
+            (kRayDiffFilterMode == RayFootprintFilterMode::AnisotropicWhenRefraction && !rayData.hasHitRefractiveMaterial))
         {
             // When using ExplicitRayDiffsIsotropicTextureSampler, the texture sampler will compute a single lambda for texture LOD
             // using the dUVdx and dUVdy.
@@ -423,7 +484,9 @@ void scatterClosestHit(inout ScatterRayData rayData : SV_RayPayload, BuiltInTria
         }
         else
         {
-            if (!refractRayDifferential(newRayDiff, rayDir, unnormalizedN, normalize(unnormalizedN), dBarydx, dBarydy, normals, eta, refractedRayDir))
+            if (!refractRayDifferential(
+                    newRayDiff, rayDir, unnormalizedN, normalize(unnormalizedN), dBarydx, dBarydy, normals, eta, refractedRayDir
+                ))
             {
                 reflectRayDifferential(newRayDiff, rayDir, unnormalizedN, v.normalW, dBarydx, dBarydy, normals);
                 tir = true;
@@ -467,7 +530,9 @@ void scatterClosestHit(inout ScatterRayData rayData : SV_RayPayload, BuiltInTria
         }
         else // Refraction
         {
-            if (!refractRayCone(rayData.rayCone, rayOrg, rayDir, sd.posW, getFlippedShadingNormal(sd), surfaceSpreadAngle, eta, refractedRayDir))
+            if (!refractRayCone(
+                    rayData.rayCone, rayOrg, rayDir, sd.posW, getFlippedShadingNormal(sd), surfaceSpreadAngle, eta, refractedRayDir
+                ))
             {
                 rayData.rayCone = rayData.rayCone.addToSpreadAngle(surfaceSpreadAngle);
                 tir = true;
@@ -489,7 +554,7 @@ void scatterClosestHit(inout ScatterRayData rayData : SV_RayPayload, BuiltInTria
     }
 
     // Compute ray origin for new rays spawned from the hit.
-    float3 rayOriginAtHitPoint = sd.computeNewRayOrigin();
+    float3 rayOriginAtHitPoint = sd.computeRayOrigin();
 
     // Add contribution of direct light from analytic lights.
     if (kUseAnalyticLights)
@@ -507,13 +572,15 @@ void scatterClosestHit(inout ScatterRayData rayData : SV_RayPayload, BuiltInTria
     else
     {
         rayData.direction = refractedRayDir;
-        rayData.origin = sd.computeNewRayOrigin(false);
+        rayData.origin = sd.computeRayOrigin(false);
 
         if (kUseFresnelAsBRDF)
         {
-            rayData.thp *= 1.0f - evalFresnelSchlick(bsdfProperties.specularReflectance, 1.0f, max(0.00001f, dot(getFlippedShadingNormal(sd), -rayDir)));
+            rayData.thp *=
+                1.0f -
+                evalFresnelSchlick(bsdfProperties.specularReflectance, 1.0f, max(0.00001f, dot(getFlippedShadingNormal(sd), -rayDir)));
             // There's convinient 'evalFresnelDielectric' we could use here, but it's somewhat darker (worse for development)
-            //rayData.thp *= 1.0f - evalFresnelDielectric(eta, dot(getFlippedShadingNormal(sd), -rayDir));
+            // rayData.thp *= 1.0f - evalFresnelDielectric(eta, dot(getFlippedShadingNormal(sd), -rayDir));
         }
         else
         {
@@ -524,7 +591,7 @@ void scatterClosestHit(inout ScatterRayData rayData : SV_RayPayload, BuiltInTria
     }
     rayData.pathLength++;
 
-    if (max(max(rayData.thp.x, rayData.thp.y), rayData.thp.z) < 0.01f)  // TODO: this is a hack to terminate rays
+    if (max(max(rayData.thp.x, rayData.thp.y), rayData.thp.z) < 0.01f) // TODO: this is a hack to terminate rays
     {
         rayData.terminated = true;
         return;
@@ -534,33 +601,35 @@ void scatterClosestHit(inout ScatterRayData rayData : SV_RayPayload, BuiltInTria
 /************************** Ray index 1: Shadow ray ************************ */
 
 [shader("miss")]
-void shadowMiss(inout ShadowRayData rayData : SV_RayPayload)
+void shadowMiss(inout ShadowRayData rayData: SV_RayPayload)
 {
     // The miss shader is executed if the ray misses all geometry. Mark as visible.
     rayData.visible = true;
 }
 
 [shader("anyhit")]
-void shadowAnyHit(inout ShadowRayData rayData : SV_RayPayload, BuiltInTriangleIntersectionAttributes attribs : SV_IntersectionAttributes)
+void shadowAnyHit(inout ShadowRayData rayData: SV_RayPayload, BuiltInTriangleIntersectionAttributes attribs: SV_IntersectionAttributes)
 {
     // Alpha test for non-opaque geometry.
     GeometryInstanceID instanceID = getGeometryInstanceID();
     VertexData v = getVertexData(instanceID, PrimitiveIndex(), attribs);
     const uint materialID = gScene.getMaterialID(instanceID);
-    if (gScene.materials.alphaTest(v, materialID, 0.f)) IgnoreHit();
+    if (gScene.materials.alphaTest(v, materialID, 0.f))
+        IgnoreHit();
 }
 
 /** ******************************** RayGen ******************************** */
 
-/** This is the entry point for the Whitted ray tracer.
-
-    One path per pixel is generated, which  is traced into the scene.
-    The path tracer is written as a for-loop over path segments.
-
-    Built-in light sources (point, directional, ..) are sampled explicitly at each
-    path vertex. The contributions from area lights (env map and mesh lights)
-    are explicitly added by the scatter ray hit/miss shaders.
-*/
+/**
+ * This is the entry point for the Whitted ray tracer.
+ *
+ * One path per pixel is generated, which  is traced into the scene.
+ * The path tracer is written as a for-loop over path segments.
+ *
+ * Built-in light sources (point, directional, ..) are sampled explicitly at each
+ * path vertex. The contributions from area lights (env map and mesh lights)
+ * are explicitly added by the scatter ray hit/miss shaders.
+ */
 [shader("raygeneration")]
 void rayGen()
 {
@@ -569,7 +638,7 @@ void rayGen()
 
     float3 outColor = float3(0.0f);
 
-    const float3 nonNormalizedRayDir = gScene.camera.computeNonNormalizedRayDirPinhole(launchIndex, launchDim);    // Used by ray diffs.
+    const float3 nonNormalizedRayDir = gScene.camera.computeNonNormalizedRayDirPinhole(launchIndex, launchDim); // Used by ray diffs.
     const float3 rayDir = normalize(nonNormalizedRayDir);
     const float4 worldPos = gWorldPosition[launchIndex];
 
@@ -589,10 +658,11 @@ void rayGen()
 
         // Advance the generator to the first available dimension.
         // TODO: This is potentially expensive. We may want to store/restore the state from memory if it becomes a problem.
-        for (uint i = 0; i < gPRNGDimension; i++) sampleNext1D(sg);
+        for (uint i = 0; i < gPRNGDimension; i++)
+            sampleNext1D(sg);
 
         // Compute ray origin for new rays spawned from the G-buffer.
-        const float3 rayOriginAtHitPoint = sd.computeNewRayOrigin();
+        const float3 rayOriginAtHitPoint = sd.computeRayOrigin();
 
         // Always output directly emitted light, independent of whether emissive materials are treated as light sources or not.
         outColor += bsdfProperties.emission;
@@ -624,7 +694,9 @@ void rayGen()
                 const float3 barycentrics = triangleHit.getBarycentricWeights();
                 float2 txcoords[3], dBarydx, dBarydy, dUVdx, dUVdy;
 
-                StaticVertexData vertices[3] = { gScene.getVertex(vertexIndices[0]), gScene.getVertex(vertexIndices[1]), gScene.getVertex(vertexIndices[2]) };
+                StaticVertexData vertices[3] = {
+                    gScene.getVertex(vertexIndices[0]), gScene.getVertex(vertexIndices[1]), gScene.getVertex(vertexIndices[2])
+                };
 
                 float curvature = gScene.computeCurvatureIsotropicFirstHit(triangleHit.instanceID, triangleHit.primitiveIndex, rayDir);
 
@@ -632,13 +704,20 @@ void rayGen()
                 {
                     RayDiff rayDiff;
                     float3 dDdx, dDdy, unnormalizedN, normals[3], dNdx, dNdy, edge1, edge2;
-                    prepareVerticesForRayDiffs(rayDir, vertices, worldMat, worldInvTransposeMat, barycentrics, edge1, edge2, normals, unnormalizedN, txcoords);
-                    computeRayDirectionDifferentials(nonNormalizedRayDir, gScene.camera.data.cameraU, gScene.camera.data.cameraV, launchDim, dDdx, dDdy);
-                    RayDiff rd = RayDiff(float3(0.f), float3(0.f), dDdx, dDdy);    // Init ray diff. dOdx = 0 , dOdy = 0, and the directions are from above.
-                    rayDiff = rd.propagate(worldPos.xyz, rayDir, hitT, getFlippedShadingNormal(sd));               // Propagate the ray differential to the current hit point.
+                    prepareVerticesForRayDiffs(
+                        rayDir, vertices, worldMat, worldInvTransposeMat, barycentrics, edge1, edge2, normals, unnormalizedN, txcoords
+                    );
+                    computeRayDirectionDifferentials(
+                        nonNormalizedRayDir, gScene.camera.data.cameraU, gScene.camera.data.cameraV, launchDim, dDdx, dDdy
+                    );
+                    // Init ray diff. dOdx = 0 , dOdy = 0, and the directions are from above.
+                    RayDiff rd = RayDiff(float3(0.f), float3(0.f), dDdx, dDdy);
+                    // Propagate the ray differential to the current hit point.
+                    rayDiff = rd.propagate(worldPos.xyz, rayDir, hitT, getFlippedShadingNormal(sd));
                     computeBarycentricDifferentials(rayDiff, rayDir, edge1, edge2, sd.faceN, dBarydx, dBarydy);
                     computeNormalDifferentials(rayDiff, unnormalizedN, dBarydx, dBarydy, normals, dNdx, dNdy);
-                    float3 right = normalize(gScene.camera.computeNonNormalizedRayDirPinhole(launchIndex + uint2(1, 0), launchDim)) - rayDir;
+                    float3 right =
+                        normalize(gScene.camera.computeNonNormalizedRayDirPinhole(launchIndex + uint2(1, 0), launchDim)) - rayDir;
                     float3 up = normalize(gScene.camera.computeNonNormalizedRayDirPinhole(launchIndex + uint2(0, 1), launchDim)) - rayDir;
                     surfaceSpreadAngle = computeScreenSpaceSurfaceSpreadAngle(right, up, dNdx, dNdy);
                 }
@@ -646,7 +725,9 @@ void rayGen()
                 {
                     float curvature = gScene.computeCurvatureIsotropicFirstHit(triangleHit.instanceID, triangleHit.primitiveIndex, rayDir);
                     float rayConeWidth = hitT * gScreenSpacePixelSpreadAngle;
-                    surfaceSpreadAngle = computeSpreadAngleFromCurvatureIso(curvature, hitT * gScreenSpacePixelSpreadAngle, rayDir, getFlippedShadingNormal(sd));
+                    surfaceSpreadAngle = computeSpreadAngleFromCurvatureIso(
+                        curvature, hitT * gScreenSpacePixelSpreadAngle, rayDir, getFlippedShadingNormal(sd)
+                    );
                 }
 
 #if USE_ROUGHNESS_TO_VARIANCE
@@ -666,12 +747,15 @@ void rayGen()
                 rayData.rayCone = rc.propagateDistance(hitT);
                 if (eta == 1.0f) // Reflection
                 {
-                    rayData.rayCone = rayData.rayCone.addToSpreadAngle(2.0f * surfaceSpreadAngle); // Reflection needs a factor of 2.0 (see RTG1 article on texture LOD).
+                    // Reflection needs a factor of 2.0 (see RTG1 article on texture LOD).
+                    rayData.rayCone = rayData.rayCone.addToSpreadAngle(2.0f * surfaceSpreadAngle);
                 }
                 else // Refraction
                 {
                     float3 hitPoint = rayOrg + rayDir * hitT;
-                    if (!refractRayCone(rayData.rayCone, rayOrg, rayDir, hitPoint, getFlippedShadingNormal(sd), surfaceSpreadAngle, eta, refractedRayDir))
+                    if (!refractRayCone(
+                            rayData.rayCone, rayOrg, rayDir, hitPoint, getFlippedShadingNormal(sd), surfaceSpreadAngle, eta, refractedRayDir
+                        ))
                     {
                         rayData.rayCone = rayData.rayCone.addToSpreadAngle(surfaceSpreadAngle);
                         tir = true;
@@ -686,11 +770,15 @@ void rayGen()
             const float3 rayOrg = gScene.camera.getPosition();
             const float hitT = length(rayOrg - worldPos.xyz);
 
-            computeRayDirectionDifferentials(nonNormalizedRayDir, gScene.camera.data.cameraU, gScene.camera.data.cameraV, launchDim, dDdx, dDdy);
+            computeRayDirectionDifferentials(
+                nonNormalizedRayDir, gScene.camera.data.cameraU, gScene.camera.data.cameraV, launchDim, dDdx, dDdy
+            );
 
-            rayData.rayDiff = RayDiff(float3(0.f), float3(0.f), dDdx, dDdy); // Init ray diff. dOdx = 0 , dOdy = 0, and the directions are from above.
+            // Init ray diff. dOdx = 0 , dOdy = 0, and the directions are from above.
+            rayData.rayDiff = RayDiff(float3(0.f), float3(0.f), dDdx, dDdy);
 
-            rayData.rayDiff = rayData.rayDiff.propagate(worldPos.xyz, rayDir, hitT, sd.faceN); // Propagate the ray differential to the current hit point.
+            // Propagate the ray differential to the current hit point.
+            rayData.rayDiff = rayData.rayDiff.propagate(worldPos.xyz, rayDir, hitT, sd.faceN);
 
             const HitInfo hit = HitInfo(gVBuffer[launchIndex]);
             if (hit.isValid() && hit.getType() == HitType::Triangle)
@@ -703,8 +791,14 @@ void rayGen()
                 float3 unnormalizedN, normals[3], dNdx, dNdy, edge1, edge2;
                 float2 txcoords[3], dBarydx, dBarydy, dUVdx, dUVdy;
 
-                StaticVertexData vertices[3] = { gScene.getVertex(vertexIndices[0]), gScene.getVertex(vertexIndices[1]), gScene.getVertex(vertexIndices[2]) };
-                prepareVerticesForRayDiffs(rayDir, vertices, worldMat, worldInvTransposeMat, barycentrics, edge1, edge2, normals, unnormalizedN, txcoords);
+                StaticVertexData vertices[3] = {
+                    gScene.getVertex(vertexIndices[0]),
+                    gScene.getVertex(vertexIndices[1]),
+                    gScene.getVertex(vertexIndices[2]),
+                };
+                prepareVerticesForRayDiffs(
+                    rayDir, vertices, worldMat, worldInvTransposeMat, barycentrics, edge1, edge2, normals, unnormalizedN, txcoords
+                );
 
                 computeBarycentricDifferentials(rayData.rayDiff, rayDir, edge1, edge2, sd.faceN, dBarydx, dBarydy);
 
@@ -714,7 +808,17 @@ void rayGen()
                 }
                 else
                 {
-                    if (!refractRayDifferential(rayData.rayDiff, rayDir, unnormalizedN, normalize(unnormalizedN), dBarydx, dBarydy, normals, eta, refractedRayDir))
+                    if (!refractRayDifferential(
+                            rayData.rayDiff,
+                            rayDir,
+                            unnormalizedN,
+                            normalize(unnormalizedN),
+                            dBarydx,
+                            dBarydy,
+                            normals,
+                            eta,
+                            refractedRayDir
+                        ))
                     {
                         reflectRayDifferential(rayData.rayDiff, rayDir, unnormalizedN, normalize(unnormalizedN), dBarydx, dBarydy, normals);
                         tir = true;
@@ -738,14 +842,16 @@ void rayGen()
         else
         {
             rayData.direction = refractedRayDir;
-            rayData.origin = sd.computeNewRayOrigin(false);
+            rayData.origin = sd.computeRayOrigin(false);
 
             if (kUseFresnelAsBRDF)
             {
-                rayData.thp *= 1.0f - evalFresnelSchlick(bsdfProperties.specularReflectance, 1.0f, max(0.00001f, dot(getFlippedShadingNormal(sd), -rayDir)));
+                rayData.thp *=
+                    1.0f -
+                    evalFresnelSchlick(bsdfProperties.specularReflectance, 1.0f, max(0.00001f, dot(getFlippedShadingNormal(sd), -rayDir)));
 
                 // There's convenient 'evalFresnelDielectric' we could use here, but it's somewhat darker (worse for development)
-                //rayData.thp *= 1.0f - evalFresnelDielectric(eta, dot(getFlippedShadingNormal(sd), -rayDir));
+                // rayData.thp *= 1.0f - evalFresnelDielectric(eta, dot(getFlippedShadingNormal(sd), -rayDir));
             }
             else
             {
@@ -771,7 +877,7 @@ void rayGen()
         // Background pixel.
         if (kUseEnvBackground)
         {
-            float lod = 0.0f;    // TexLODMode::Mip0.
+            float lod = 0.0f; // TexLODMode::Mip0.
             if (kTexLODMode == TexLODMode::RayCones)
             {
                 lod = computeEnvironmentMapLOD(gScreenSpacePixelSpreadAngle, gScene.envMap.envMap);
@@ -779,7 +885,9 @@ void rayGen()
             else if (kTexLODMode == TexLODMode::RayDiffs)
             {
                 float3 dDdx, dDdy;
-                computeRayDirectionDifferentials(nonNormalizedRayDir, gScene.camera.data.cameraU, gScene.camera.data.cameraV, launchDim, dDdx, dDdy);
+                computeRayDirectionDifferentials(
+                    nonNormalizedRayDir, gScene.camera.data.cameraU, gScene.camera.data.cameraV, launchDim, dDdx, dDdy
+                );
                 lod = computeEnvironmentMapLOD(dDdx, dDdy, gScene.envMap.envMap);
             }
             outColor = gScene.envMap.eval(rayDir, lod);

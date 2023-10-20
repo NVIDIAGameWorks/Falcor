@@ -34,23 +34,23 @@
 #include <slang-gfx.h>
 #include <slang-com-ptr.h>
 
-#define FALCOR_GFX_CALL(a)               \
-    {                                    \
-        gfx::Result result_ = a;         \
-        if (SLANG_FAILED(result_))       \
-        {                                \
-            gfxReportError(#a, result_); \
-        }                                \
+#define FALCOR_GFX_CALL(call)                      \
+    {                                              \
+        gfx::Result result_ = call;                \
+        if (SLANG_FAILED(result_))                 \
+        {                                          \
+            gfxReportError("GFX", #call, result_); \
+        }                                          \
     }
 
 #if FALCOR_HAS_D3D12
-#define FALCOR_D3D_CALL(_a)           \
-    {                                 \
-        HRESULT hr_ = _a;             \
-        if (FAILED(hr_))              \
-        {                             \
-            gfxReportError(#_a, hr_); \
-        }                             \
+#define FALCOR_D3D_CALL(call)                      \
+    {                                              \
+        HRESULT result_ = call;                    \
+        if (FAILED(result_))                       \
+        {                                          \
+            gfxReportError("D3D", #call, result_); \
+        }                                          \
     }
 #define FALCOR_GET_COM_INTERFACE(_base, _type, _var) \
     FALCOR_MAKE_SMART_COM_PTR(_type);                \
@@ -62,7 +62,9 @@
 namespace Falcor
 {
 /**
- * Log a message if hr indicates an error
+ * Report a GFX or D3D error.
+ * This will throw a RuntimeError exception.
  */
-FALCOR_API void gfxReportError(const char* msg, gfx::Result result);
+FALCOR_API void gfxReportError(const char* api, const char* call, gfx::Result result);
+
 } // namespace Falcor

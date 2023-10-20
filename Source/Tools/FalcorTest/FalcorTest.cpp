@@ -25,6 +25,7 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
+#include "Core/Error.h"
 #include "Utils/StringUtils.h"
 #include "Testing/UnitTest.h"
 
@@ -38,7 +39,7 @@ using namespace Falcor;
 
 FALCOR_EXPORT_D3D12_AGILITY_SDK
 
-int main(int argc, char** argv)
+int runMain(int argc, char** argv)
 {
     args::ArgumentParser parser("Falcor unit tests.");
     parser.helpParams.programName = "FalcorTest";
@@ -161,12 +162,17 @@ int main(int argc, char** argv)
         }
     }
 
-    try
-    {
-        return unittest::runTests(options);
-    }
-    catch (const std::exception& e)
-    {
-        reportFatalError("FalcorTest crashed unexpectedly...\n" + std::string(e.what()), false);
-    }
+    // Setup error diagnostics to not break on exceptions.
+    // We might have unit tests that check for exceptions, so we want to throw
+    // them without breaking into the debugger in order to let tests run
+    // uninterrupted with the debugger attached. The test framework will
+    // break into the debugger when a test conditions is not met.
+    setErrorDiagnosticFlags(getErrorDiagnosticFlags() & ~ErrorDiagnosticFlags::BreakOnThrow);
+
+    return unittest::runTests(options);
+}
+
+int main(int argc, char** argv)
+{
+    return catchAndReportAllExceptions([&]() { return runMain(argc, argv); });
 }

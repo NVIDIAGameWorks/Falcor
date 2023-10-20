@@ -50,12 +50,12 @@ void test(GPUUnitTestContext& ctx, const std::string& entryPoint, const size_t n
 
     std::vector<uint16_t> elems = generateData(n);
 
-    ctx.createProgram("Tests/Slang/TemplatedLoad.cs.slang", entryPoint, DefineList(), Program::CompilerFlags::None, "6_5");
+    ctx.createProgram("Tests/Slang/TemplatedLoad.cs.slang", entryPoint, DefineList(), SlangCompilerFlags::None, ShaderModel::SM6_5);
     ctx.allocateStructuredBuffer("result", (uint32_t)elems.size());
 
     auto var = ctx.vars().getRootVar();
     var["data"] =
-        Buffer::create(pDevice, elems.size() * sizeof(elems[0]), ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, elems.data());
+        pDevice->createBuffer(elems.size() * sizeof(elems[0]), ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, elems.data());
 
     ctx.runProgram(1, 1, 1);
 

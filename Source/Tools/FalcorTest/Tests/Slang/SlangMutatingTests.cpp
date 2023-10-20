@@ -33,12 +33,12 @@ GPU_TEST(SlangMutating)
 {
     ref<Device> pDevice = ctx.getDevice();
 
-    ctx.createProgram("Tests/Slang/SlangMutatingTests.cs.slang", "main", DefineList(), Program::CompilerFlags::None, "6_3");
+    ctx.createProgram("Tests/Slang/SlangMutatingTests.cs.slang", "main", DefineList(), SlangCompilerFlags::None, ShaderModel::SM6_3);
     ctx.allocateStructuredBuffer("result", 1);
 
     ShaderVar var = ctx.vars().getRootVar();
     uint4 v = {11, 22, 33, 44};
-    var["buffer"] = Buffer::createTyped<uint4>(pDevice, 1, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, &v);
+    var["buffer"] = pDevice->createTypedBuffer<uint4>(1, ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, &v);
 
     ctx.runProgram();
 

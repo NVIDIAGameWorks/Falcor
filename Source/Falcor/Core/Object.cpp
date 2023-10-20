@@ -26,8 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "Object.h"
-#include "Assert.h"
-#include "ErrorHandling.h"
+#include "Error.h"
 #include <set>
 #include <mutex>
 
@@ -56,7 +55,7 @@ void Object::decRef(bool dealloc) const noexcept
     uint32_t refCount = mRefCount.fetch_sub(1);
     if (refCount <= 0)
     {
-        reportFatalError("Internal error: Object reference count < 0!");
+        reportFatalErrorAndTerminate("Internal error: Object reference count < 0!");
     }
     else if (refCount == 1)
     {

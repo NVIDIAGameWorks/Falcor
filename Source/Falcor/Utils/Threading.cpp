@@ -26,7 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "Threading.h"
-#include "Core/Assert.h"
+#include "Core/Error.h"
 
 namespace Falcor
 {
@@ -40,24 +40,32 @@ struct ThreadingData
 } gData; // TODO: REMOVEGLOBAL
 } // namespace
 
+static std::mutex sThreadingInitMutex;
+static uint32_t sThreadingInitCount = 0;
+
 void Threading::start(uint32_t threadCount)
 {
-    if (gData.initialized)
-        return;
-
-    gData.threads.resize(threadCount);
-    gData.initialized = true;
+    std::lock_guard<std::mutex> lock(sThreadingInitMutex);
+    if (sThreadingInitCount++ == 0)
+    {
+        gData.threads.resize(threadCount);
+        gData.initialized = true;
+    }
 }
 
 void Threading::shutdown()
 {
-    for (auto& t : gData.threads)
+    std::lock_guard<std::mutex> lock(sThreadingInitMutex);
+    uint32_t count = sThreadingInitCount--;
+    if (count == 1)
     {
-        if (t.joinable())
-            t.join();
+        for (auto& t : gData.threads)
+            if (t.joinable())
+                t.join();
+        gData.initialized = false;
     }
-
-    gData.initialized = false;
+    else if (count == 0)
+        FALCOR_THROW("Threading::stop() called more times than Threading::start().");
 }
 
 Threading::Task Threading::dispatchTask(const std::function<void(void)>& func)

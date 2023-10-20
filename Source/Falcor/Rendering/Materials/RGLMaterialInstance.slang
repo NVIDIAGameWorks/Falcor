@@ -35,7 +35,7 @@ import Scene.Scene;
 
 /** Implementation of the BSDF for the measured RGL material.
 */
-struct RGLMaterialInstance : IMaterialInstance
+struct RGLMaterialInstance : MaterialInstanceBase, IMaterialInstance
 {
     ShadingFrame sf;            ///< Shading frame in world space.
     float2 slice;
@@ -98,6 +98,12 @@ struct RGLMaterialInstance : IMaterialInstance
         float3 f = sigma == 0.0f ? 0.0f : fr * ndf.eval(unitH) / (4.0f * sigma);
 
         return f;
+    }
+
+    [Differentiable]
+    float3 evalAD<S : ISampleGenerator>(const DiffMaterialData diffData, const ShadingData sd, const float3 wo, inout S sg)
+    {
+        return float3(0.f);
     }
 
     bool sample<S : ISampleGenerator>(const ShadingData sd, inout S sg, out BSDFSample result, bool useImportanceSampling = true)

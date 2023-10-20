@@ -85,8 +85,13 @@ void testDDS(GPUUnitTestContext& ctx, const std::string& testName, ResourceForma
     // Create uncompressed destination texture
     ref<Texture> pSrcTex = pDDSTex;
     ResourceFormat destFormat = ResourceFormat::RGBA32Float;
-    auto pDst = Texture::create2D(
-        pDevice, pDDSTex->getWidth(), pDDSTex->getHeight(), destFormat, 1, 1, nullptr,
+    auto pDst = pDevice->createTexture2D(
+        pDDSTex->getWidth(),
+        pDDSTex->getHeight(),
+        destFormat,
+        1,
+        1,
+        nullptr,
         ResourceBindFlags::ShaderResource | ResourceBindFlags::RenderTarget
     );
 
@@ -116,26 +121,24 @@ void testDDS(GPUUnitTestContext& ctx, const std::string& testName, ResourceForma
     {
         // Create texture from difference data
         std::vector<uint8_t> diff = ctx.readBuffer<uint8_t>("difference");
-        ref<Texture> pDiffTex(Texture::create2D(pDevice, dstDim.x, dstDim.y, ResourceFormat::RGBA32Float, 1, 1, diff.data()));
+        ref<Texture> pDiffTex(pDevice->createTexture2D(dstDim.x, dstDim.y, ResourceFormat::RGBA32Float, 1, 1, diff.data()));
 
         // Analyze difference texture
         TextureAnalyzer analyzer(pDevice);
-        auto pResultBuffer = Buffer::create(
-            pDevice, TextureAnalyzer::getResultSize(), ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess
-        );
+        auto pResultBuffer =
+            pDevice->createBuffer(TextureAnalyzer::getResultSize(), ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
         analyzer.analyze(ctx.getRenderContext(), pDiffTex, 0, 0, pResultBuffer);
-        const TextureAnalyzer::Result* result = static_cast<const TextureAnalyzer::Result*>(pResultBuffer->map(Buffer::MapType::Read));
+        TextureAnalyzer::Result result = pResultBuffer->getElement<TextureAnalyzer::Result>(0);
 
         // Expect difference image to be uniform 0.
-        EXPECT(result->isConstant(TextureChannelFlags::Red));
-        EXPECT(result->isConstant(TextureChannelFlags::Green));
-        EXPECT(result->isConstant(TextureChannelFlags::Blue));
-        EXPECT(result->isConstant(TextureChannelFlags::Alpha));
-        EXPECT_EQ(result->value.r, 0.f);
-        EXPECT_EQ(result->value.g, 0.f);
-        EXPECT_EQ(result->value.b, 0.f);
-        EXPECT_EQ(result->value.a, 0.f);
-        pResultBuffer->unmap();
+        EXPECT(result.isConstant(TextureChannelFlags::Red));
+        EXPECT(result.isConstant(TextureChannelFlags::Green));
+        EXPECT(result.isConstant(TextureChannelFlags::Blue));
+        EXPECT(result.isConstant(TextureChannelFlags::Alpha));
+        EXPECT_EQ(result.value.r, 0.f);
+        EXPECT_EQ(result.value.g, 0.f);
+        EXPECT_EQ(result.value.b, 0.f);
+        EXPECT_EQ(result.value.a, 0.f);
     }
     else
     {
@@ -143,8 +146,14 @@ void testDDS(GPUUnitTestContext& ctx, const std::string& testName, ResourceForma
         std::vector<uint8_t> result = ctx.readBuffer<uint8_t>("result");
         Bitmap::UniqueConstPtr resultBitmap(Bitmap::create(dstDim.x, dstDim.y, ResourceFormat::RGBA8Unorm, result.data()));
         Bitmap::saveImage(
-            refPath, dstDim.x, dstDim.y, Bitmap::FileFormat::PngFile, Bitmap::ExportFlags::Uncompressed | Bitmap::ExportFlags::ExportAlpha,
-            ResourceFormat::RGBA8Unorm, false, result.data()
+            refPath,
+            dstDim.x,
+            dstDim.y,
+            Bitmap::FileFormat::PngFile,
+            Bitmap::ExportFlags::Uncompressed | Bitmap::ExportFlags::ExportAlpha,
+            ResourceFormat::RGBA8Unorm,
+            false,
+            result.data()
         );
     }
 }

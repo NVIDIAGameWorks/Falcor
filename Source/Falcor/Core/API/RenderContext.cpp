@@ -174,11 +174,11 @@ void RenderContext::clearTexture(Texture* pTexture, const float4& clearColor)
 
     auto bindFlags = pTexture->getBindFlags();
     // Select the right clear based on the texture's binding flags
-    if (is_set(bindFlags, Resource::BindFlags::RenderTarget))
+    if (is_set(bindFlags, ResourceBindFlags::RenderTarget))
         clearRtv(pTexture->getRTV().get(), clearColor);
-    else if (is_set(bindFlags, Resource::BindFlags::UnorderedAccess))
+    else if (is_set(bindFlags, ResourceBindFlags::UnorderedAccess))
         clearUAV(pTexture->getUAV().get(), clearColor);
-    else if (is_set(bindFlags, Resource::BindFlags::DepthStencil))
+    else if (is_set(bindFlags, ResourceBindFlags::DepthStencil))
     {
         if (isStencilFormat(format) && (clearColor.y != 0))
         {
@@ -196,9 +196,9 @@ void RenderContext::clearTexture(Texture* pTexture, const float4& clearColor)
     }
 }
 
-void RenderContext::flush(bool wait)
+void RenderContext::submit(bool wait)
 {
-    ComputeContext::flush(wait);
+    ComputeContext::submit(wait);
     mpLastBoundGraphicsVars = nullptr;
 }
 
@@ -207,14 +207,21 @@ void RenderContext::blit(
     const ref<RenderTargetView>& pDst,
     uint4 srcRect,
     uint4 dstRect,
-    Sampler::Filter filter
+    TextureFilteringMode filter
 )
 {
-    const Sampler::ReductionMode componentsReduction[] = {
-        Sampler::ReductionMode::Standard, Sampler::ReductionMode::Standard, Sampler::ReductionMode::Standard,
-        Sampler::ReductionMode::Standard};
+    const TextureReductionMode componentsReduction[] = {
+        TextureReductionMode::Standard,
+        TextureReductionMode::Standard,
+        TextureReductionMode::Standard,
+        TextureReductionMode::Standard,
+    };
     const float4 componentsTransform[] = {
-        float4(1.0f, 0.0f, 0.0f, 0.0f), float4(0.0f, 1.0f, 0.0f, 0.0f), float4(0.0f, 0.0f, 1.0f, 0.0f), float4(0.0f, 0.0f, 0.0f, 1.0f)};
+        float4(1.0f, 0.0f, 0.0f, 0.0f),
+        float4(0.0f, 1.0f, 0.0f, 0.0f),
+        float4(0.0f, 0.0f, 1.0f, 0.0f),
+        float4(0.0f, 0.0f, 0.0f, 1.0f),
+    };
 
     blit(pSrc, pDst, srcRect, dstRect, filter, componentsReduction, componentsTransform);
 }
@@ -224,8 +231,8 @@ void RenderContext::blit(
     const ref<RenderTargetView>& pDst,
     uint4 srcRect,
     uint4 dstRect,
-    Sampler::Filter filter,
-    const Sampler::ReductionMode componentsReduction[4],
+    TextureFilteringMode filter,
+    const TextureReductionMode componentsReduction[4],
     const float4 componentsTransform[4]
 )
 {
@@ -239,7 +246,7 @@ void RenderContext::blit(
     FALCOR_ASSERT(pSrcResource && pDstResource);
     if (pSrcResource->getType() == Resource::Type::Buffer || pDstResource->getType() == Resource::Type::Buffer)
     {
-        throw ArgumentError("RenderContext::blit does not support buffers");
+        FALCOR_THROW("RenderContext::blit does not support buffers");
     }
 
     const Texture* pSrcTexture = dynamic_cast<const Texture*>(pSrcResource);
@@ -266,8 +273,8 @@ void RenderContext::blit(
     // Determine the type of blit.
     const uint32_t sampleCount = pSrcTexture->getSampleCount();
     const bool complexBlit =
-        !((componentsReduction[0] == Sampler::ReductionMode::Standard) && (componentsReduction[1] == Sampler::ReductionMode::Standard) &&
-          (componentsReduction[2] == Sampler::ReductionMode::Standard) && (componentsReduction[3] == Sampler::ReductionMode::Standard) &&
+        !((componentsReduction[0] == TextureReductionMode::Standard) && (componentsReduction[1] == TextureReductionMode::Standard) &&
+          (componentsReduction[2] == TextureReductionMode::Standard) && (componentsReduction[3] == TextureReductionMode::Standard) &&
           all(componentsTransform[0] == float4(1.0f, 0.0f, 0.0f, 0.0f)) && all(componentsTransform[1] == float4(0.0f, 1.0f, 0.0f, 0.0f)) &&
           all(componentsTransform[2] == float4(0.0f, 0.0f, 1.0f, 0.0f)) && all(componentsTransform[3] == float4(0.0f, 0.0f, 0.0f, 1.0f)));
 
@@ -296,23 +303,23 @@ void RenderContext::blit(
 
     // Complex blit doesn't work with multi-sampled textures.
     if (complexBlit && sampleCount > 1)
-        throw RuntimeError("RenderContext::blit() does not support sample count > 1 for complex blit");
+        FALCOR_THROW("RenderContext::blit() does not support sample count > 1 for complex blit");
 
     // Validate source format. Only single-sampled basic blit handles integer source format.
     // All variants support casting to integer destination format.
     if (isIntegerFormat(pSrcTexture->getFormat()))
     {
         if (sampleCount > 1)
-            throw RuntimeError("RenderContext::blit() requires non-integer source format for multi-sampled textures");
+            FALCOR_THROW("RenderContext::blit() requires non-integer source format for multi-sampled textures");
         else if (complexBlit)
-            throw RuntimeError("RenderContext::blit() requires non-integer source format for complex blit");
+            FALCOR_THROW("RenderContext::blit() requires non-integer source format for complex blit");
     }
 
     // Blit does not support texture arrays or mip maps.
     if (!(pSrc->getViewInfo().arraySize == 1 && pSrc->getViewInfo().mipCount == 1) ||
         !(pDst->getViewInfo().arraySize == 1 && pDst->getViewInfo().mipCount == 1))
     {
-        throw RuntimeError("RenderContext::blit() does not support texture arrays or mip maps");
+        FALCOR_THROW("RenderContext::blit() does not support texture arrays or mip maps");
     }
 
     // Configure program.
@@ -328,14 +335,14 @@ void RenderContext::blit(
         ref<Sampler> usedSampler[4];
         for (uint32_t i = 0; i < 4; i++)
         {
-            FALCOR_ASSERT(componentsReduction[i] != Sampler::ReductionMode::Comparison); // Comparison mode not supported.
+            FALCOR_ASSERT(componentsReduction[i] != TextureReductionMode::Comparison); // Comparison mode not supported.
 
-            if (componentsReduction[i] == Sampler::ReductionMode::Min)
-                usedSampler[i] = (filter == Sampler::Filter::Linear) ? blitCtx.pLinearMinSampler : blitCtx.pPointMinSampler;
-            else if (componentsReduction[i] == Sampler::ReductionMode::Max)
-                usedSampler[i] = (filter == Sampler::Filter::Linear) ? blitCtx.pLinearMaxSampler : blitCtx.pPointMaxSampler;
+            if (componentsReduction[i] == TextureReductionMode::Min)
+                usedSampler[i] = (filter == TextureFilteringMode::Linear) ? blitCtx.pLinearMinSampler : blitCtx.pPointMinSampler;
+            else if (componentsReduction[i] == TextureReductionMode::Max)
+                usedSampler[i] = (filter == TextureFilteringMode::Linear) ? blitCtx.pLinearMaxSampler : blitCtx.pPointMaxSampler;
             else
-                usedSampler[i] = (filter == Sampler::Filter::Linear) ? blitCtx.pLinearSampler : blitCtx.pPointSampler;
+                usedSampler[i] = (filter == TextureFilteringMode::Linear) ? blitCtx.pLinearSampler : blitCtx.pPointSampler;
         }
 
         blitCtx.pPass->getVars()->setSampler("gSamplerR", usedSampler[0]);
@@ -356,7 +363,7 @@ void RenderContext::blit(
     else
     {
         blitCtx.pPass->getVars()->setSampler(
-            "gSampler", (filter == Sampler::Filter::Linear) ? blitCtx.pLinearSampler : blitCtx.pPointSampler
+            "gSampler", (filter == TextureFilteringMode::Linear) ? blitCtx.pLinearSampler : blitCtx.pPointSampler
         );
     }
 
@@ -430,7 +437,7 @@ void RenderContext::clearDsv(const DepthStencilView* pDsv, float depth, uint8_t 
 
 void RenderContext::drawInstanced(
     GraphicsState* pState,
-    GraphicsVars* pVars,
+    ProgramVars* pVars,
     uint32_t vertexCount,
     uint32_t instanceCount,
     uint32_t startVertexLocation,
@@ -438,20 +445,20 @@ void RenderContext::drawInstanced(
 )
 {
     auto encoder = drawCallCommon(pState, pVars);
-    encoder->drawInstanced(vertexCount, instanceCount, startVertexLocation, startInstanceLocation);
+    FALCOR_GFX_CALL(encoder->drawInstanced(vertexCount, instanceCount, startVertexLocation, startInstanceLocation));
     mCommandsPending = true;
 }
 
-void RenderContext::draw(GraphicsState* pState, GraphicsVars* pVars, uint32_t vertexCount, uint32_t startVertexLocation)
+void RenderContext::draw(GraphicsState* pState, ProgramVars* pVars, uint32_t vertexCount, uint32_t startVertexLocation)
 {
     auto encoder = drawCallCommon(pState, pVars);
-    encoder->draw(vertexCount, startVertexLocation);
+    FALCOR_GFX_CALL(encoder->draw(vertexCount, startVertexLocation));
     mCommandsPending = true;
 }
 
 void RenderContext::drawIndexedInstanced(
     GraphicsState* pState,
-    GraphicsVars* pVars,
+    ProgramVars* pVars,
     uint32_t indexCount,
     uint32_t instanceCount,
     uint32_t startIndexLocation,
@@ -460,26 +467,27 @@ void RenderContext::drawIndexedInstanced(
 )
 {
     auto encoder = drawCallCommon(pState, pVars);
-    encoder->drawIndexedInstanced(indexCount, instanceCount, startIndexLocation, baseVertexLocation, startInstanceLocation);
+    FALCOR_GFX_CALL(encoder->drawIndexedInstanced(indexCount, instanceCount, startIndexLocation, baseVertexLocation, startInstanceLocation)
+    );
     mCommandsPending = true;
 }
 
 void RenderContext::drawIndexed(
     GraphicsState* pState,
-    GraphicsVars* pVars,
+    ProgramVars* pVars,
     uint32_t indexCount,
     uint32_t startIndexLocation,
     int32_t baseVertexLocation
 )
 {
     auto encoder = drawCallCommon(pState, pVars);
-    encoder->drawIndexed(indexCount, startIndexLocation, baseVertexLocation);
+    FALCOR_GFX_CALL(encoder->drawIndexed(indexCount, startIndexLocation, baseVertexLocation));
     mCommandsPending = true;
 }
 
 void RenderContext::drawIndirect(
     GraphicsState* pState,
-    GraphicsVars* pVars,
+    ProgramVars* pVars,
     uint32_t maxCommandCount,
     const Buffer* pArgBuffer,
     uint64_t argBufferOffset,
@@ -489,16 +497,19 @@ void RenderContext::drawIndirect(
 {
     resourceBarrier(pArgBuffer, Resource::State::IndirectArg);
     auto encoder = drawCallCommon(pState, pVars);
-    encoder->drawIndirect(
-        maxCommandCount, pArgBuffer->getGfxBufferResource(), argBufferOffset, pCountBuffer ? pCountBuffer->getGfxBufferResource() : nullptr,
+    FALCOR_GFX_CALL(encoder->drawIndirect(
+        maxCommandCount,
+        pArgBuffer->getGfxBufferResource(),
+        argBufferOffset,
+        pCountBuffer ? pCountBuffer->getGfxBufferResource() : nullptr,
         countBufferOffset
-    );
+    ));
     mCommandsPending = true;
 }
 
 void RenderContext::drawIndexedIndirect(
     GraphicsState* pState,
-    GraphicsVars* pVars,
+    ProgramVars* pVars,
     uint32_t maxCommandCount,
     const Buffer* pArgBuffer,
     uint64_t argBufferOffset,
@@ -508,14 +519,17 @@ void RenderContext::drawIndexedIndirect(
 {
     resourceBarrier(pArgBuffer, Resource::State::IndirectArg);
     auto encoder = drawCallCommon(pState, pVars);
-    encoder->drawIndexedIndirect(
-        maxCommandCount, pArgBuffer->getGfxBufferResource(), argBufferOffset, pCountBuffer ? pCountBuffer->getGfxBufferResource() : nullptr,
+    FALCOR_GFX_CALL(encoder->drawIndexedIndirect(
+        maxCommandCount,
+        pArgBuffer->getGfxBufferResource(),
+        argBufferOffset,
+        pCountBuffer ? pCountBuffer->getGfxBufferResource() : nullptr,
         countBufferOffset
-    );
+    ));
     mCommandsPending = true;
 }
 
-void RenderContext::raytrace(RtProgram* pProgram, RtProgramVars* pVars, uint32_t width, uint32_t height, uint32_t depth)
+void RenderContext::raytrace(Program* pProgram, RtProgramVars* pVars, uint32_t width, uint32_t height, uint32_t depth)
 {
     auto pRtso = pProgram->getRtso(pVars);
 
@@ -524,7 +538,7 @@ void RenderContext::raytrace(RtProgram* pProgram, RtProgramVars* pVars, uint32_t
 
     auto rtEncoder = mpLowLevelData->getRayTracingCommandEncoder();
     FALCOR_GFX_CALL(rtEncoder->bindPipelineWithRootObject(pRtso->getGfxPipelineState(), pVars->getShaderObject()));
-    rtEncoder->dispatchRays(0, pVars->getShaderTable(), width, height, depth);
+    FALCOR_GFX_CALL(rtEncoder->dispatchRays(0, pVars->getShaderTable(), width, height, depth));
     mCommandsPending = true;
 }
 
@@ -544,8 +558,12 @@ void RenderContext::resolveSubresource(const ref<Texture>& pSrc, uint32_t srcSub
     dstRange.mipLevelCount = 1;
 
     resourceEncoder->resolveResource(
-        pSrc->getGfxTextureResource(), gfx::ResourceState::ResolveSource, srcRange, pDst->getGfxTextureResource(),
-        gfx::ResourceState::ResolveDestination, dstRange
+        pSrc->getGfxTextureResource(),
+        gfx::ResourceState::ResolveSource,
+        srcRange,
+        pDst->getGfxTextureResource(),
+        gfx::ResourceState::ResolveDestination,
+        dstRange
     );
     mCommandsPending = true;
 }
@@ -561,8 +579,12 @@ void RenderContext::resolveResource(const ref<Texture>& pSrc, const ref<Texture>
     gfx::SubresourceRange dstRange = {};
 
     resourceEncoder->resolveResource(
-        pSrc->getGfxTextureResource(), gfx::ResourceState::ResolveSource, srcRange, pDst->getGfxTextureResource(),
-        gfx::ResourceState::ResolveDestination, dstRange
+        pSrc->getGfxTextureResource(),
+        gfx::ResourceState::ResolveSource,
+        srcRange,
+        pDst->getGfxTextureResource(),
+        gfx::ResourceState::ResolveDestination,
+        dstRange
     );
     mCommandsPending = true;
 }
@@ -606,7 +628,7 @@ void RenderContext::copyAccelerationStructure(
     mCommandsPending = true;
 }
 
-gfx::IRenderCommandEncoder* RenderContext::drawCallCommon(GraphicsState* pState, GraphicsVars* pVars)
+gfx::IRenderCommandEncoder* RenderContext::drawCallCommon(GraphicsState* pState, ProgramVars* pVars)
 {
     // Insert barriers for bound resources.
     pVars->prepareDescriptorSets(this);
@@ -647,18 +669,12 @@ gfx::IRenderCommandEncoder* RenderContext::drawCallCommon(GraphicsState* pState,
         {
             auto bufferLayout = pVertexLayout->getBufferLayout(i);
             auto vertexBuffer = pVao->getVertexBuffer(i).get();
-            encoder->setVertexBuffer(
-                i, pVao->getVertexBuffer(i)->getGfxBufferResource(),
-                bufferLayout->getElementOffset(0) + (uint32_t)vertexBuffer->getGpuAddressOffset()
-            );
+            encoder->setVertexBuffer(i, pVao->getVertexBuffer(i)->getGfxBufferResource(), bufferLayout->getElementOffset(0));
         }
         if (pVao->getIndexBuffer())
         {
             auto indexBuffer = pVao->getIndexBuffer().get();
-            encoder->setIndexBuffer(
-                indexBuffer->getGfxBufferResource(), getGFXFormat(pVao->getIndexBufferFormat()),
-                (uint32_t)indexBuffer->getGpuAddressOffset()
-            );
+            encoder->setIndexBuffer(indexBuffer->getGfxBufferResource(), getGFXFormat(pVao->getIndexBufferFormat()));
         }
         encoder->setPrimitiveTopology(getGFXPrimitiveTopology(pVao->getPrimitiveTopology()));
         encoder->setViewports(
@@ -674,7 +690,33 @@ gfx::IRenderCommandEncoder* RenderContext::drawCallCommon(GraphicsState* pState,
 
 FALCOR_SCRIPT_BINDING(CopyContext)
 {
+    using namespace pybind11::literals;
+
+    FALCOR_SCRIPT_BINDING_DEPENDENCY(Resource)
+    FALCOR_SCRIPT_BINDING_DEPENDENCY(Buffer)
+    FALCOR_SCRIPT_BINDING_DEPENDENCY(Texture)
+
     pybind11::class_<CopyContext> copyContext(m, "CopyContext");
+
+    copyContext.def("submit", &CopyContext::submit, "wait"_a = false);
+
+#if FALCOR_HAS_CUDA
+    copyContext.def(
+        "wait_for_cuda",
+        [](CopyContext& self, uint64_t stream = 0) { self.waitForCuda(reinterpret_cast<cudaStream_t>(stream)); },
+        "stream"_a = 0
+    );
+    copyContext.def(
+        "wait_for_falcor",
+        [](CopyContext& self, uint64_t stream = 0) { self.waitForFalcor(reinterpret_cast<cudaStream_t>(stream)); },
+        "stream"_a = 0
+    );
+#endif
+
+    copyContext.def("uav_barrier", &CopyContext::uavBarrier, "resource"_a);
+    copyContext.def("copy_resource", &CopyContext::copyResource, "dst"_a, "src"_a);
+    copyContext.def("copy_subresource", &CopyContext::copySubresource, "dst"_a, "dst_subresource_idx"_a, "src"_a, "src_subresource_idx"_a);
+    copyContext.def("copy_buffer_region", &CopyContext::copyBufferRegion, "dst"_a, "dst_offset"_a, "src"_a, "src_offset"_a, "num_bytes"_a);
 }
 
 FALCOR_SCRIPT_BINDING(ComputeContext)

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -30,8 +30,10 @@
 
 #ifdef HOST_CODE
 #include "MaterialTypes.slang"
+#include "TextureHandle.slang"
 #else
 __exported import MaterialTypes;
+__exported import TextureHandle;
 #endif
 
 BEGIN_NAMESPACE_FALCOR
@@ -182,6 +184,12 @@ struct MaterialHeader
 
     /// Get index of refraction.
     float16_t getIoR() CONST_FUNCTION { return asfloat16((uint16_t)EXTRACT_BITS(kIoRBits, kIoROffset, packedData.z)); }
+
+    /// Set the alpha mask texture handle.
+    SETTER_DECL void setAlphaTextureHandle(TextureHandle handle) { packedData.w = handle.packedData; }
+
+    /// Get the alpha mask texture handle.
+    TextureHandle getAlphaTextureHandle() CONST_FUNCTION { return TextureHandle(packedData.w); }
 
 #ifdef HOST_CODE
     friend bool operator==(const MaterialHeader& lhs, const MaterialHeader& rhs);

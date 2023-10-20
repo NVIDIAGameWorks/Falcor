@@ -29,6 +29,8 @@
 #include "Utils/Math/FalcorMath.h"
 #include "Utils/UI/TextRenderer.h"
 
+FALCOR_EXPORT_D3D12_AGILITY_SDK
+
 static const float4 kClearColor(0.38f, 0.52f, 0.10f, 1);
 static const std::string kDefaultScene = "Arcade/Arcade.pyscene";
 
@@ -40,7 +42,7 @@ void HelloDXR::onLoad(RenderContext* pRenderContext)
 {
     if (getDevice()->isFeatureSupported(Device::SupportedFeatures::Raytracing) == false)
     {
-        throw RuntimeError("Device does not support raytracing!");
+        FALCOR_THROW("Device does not support raytracing!");
     }
 
     loadScene(kDefaultScene, getTargetFbo().get());
@@ -58,9 +60,8 @@ void HelloDXR::onResize(uint32_t width, uint32_t height)
         mpCamera->setAspectRatio(aspectRatio);
     }
 
-    mpRtOut = Texture::create2D(
-        getDevice(), width, height, ResourceFormat::RGBA16Float, 1, 1, nullptr,
-        Resource::BindFlags::UnorderedAccess | Resource::BindFlags::ShaderResource
+    mpRtOut = getDevice()->createTexture2D(
+        width, height, ResourceFormat::RGBA16Float, 1, 1, nullptr, ResourceBindFlags::UnorderedAccess | ResourceBindFlags::ShaderResource
     );
 }
 
@@ -72,7 +73,9 @@ void HelloDXR::onFrameRender(RenderContext* pRenderContext, const ref<Fbo>& pTar
     {
         Scene::UpdateFlags updates = mpScene->update(pRenderContext, getGlobalClock().getTime());
         if (is_set(updates, Scene::UpdateFlags::GeometryChanged))
-            throw RuntimeError("This sample does not support scene geometry changes.");
+            FALCOR_THROW("This sample does not support scene geometry changes.");
+        if (is_set(updates, Scene::UpdateFlags::RecompileNeeded))
+            FALCOR_THROW("This sample does not support scene changes that require shader recompilation.");
 
         if (mRayTrace)
             renderRT(pRenderContext, pTargetFbo);
@@ -143,7 +146,7 @@ void HelloDXR::loadScene(const std::filesystem::path& path, const Fbo* pTargetFb
 
     // Create raster pass.
     // This utility wraps the creation of the program and vars, and sets the necessary scene defines.
-    Program::Desc rasterProgDesc;
+    ProgramDesc rasterProgDesc;
     rasterProgDesc.addShaderModules(shaderModules);
     rasterProgDesc.addShaderLibrary("Samples/HelloDXR/HelloDXR.3d.slang").vsEntry("vsMain").psEntry("psMain");
     rasterProgDesc.addTypeConformances(typeConformances);
@@ -151,17 +154,17 @@ void HelloDXR::loadScene(const std::filesystem::path& path, const Fbo* pTargetFb
     mpRasterPass = RasterPass::create(getDevice(), rasterProgDesc, defines);
 
     // We'll now create a raytracing program. To do that we need to setup two things:
-    // - A program description (RtProgram::Desc). This holds all shader entry points, compiler flags, macro defintions,
+    // - A program description (ProgramDesc). This holds all shader entry points, compiler flags, macro defintions,
     // etc.
     // - A binding table (RtBindingTable). This maps shaders to geometries in the scene, and sets the ray generation and
     // miss shaders.
     //
-    // After setting up these, we can create the RtProgram and associated RtProgramVars that holds the variable/resource
-    // bindings. The RtProgram can be reused for different scenes, but RtProgramVars needs to binding table which is
+    // After setting up these, we can create the Program and associated RtProgramVars that holds the variable/resource
+    // bindings. The Program can be reused for different scenes, but RtProgramVars needs to binding table which is
     // Scene-specific and needs to be re-created when switching scene. In this example, we re-create both the program
     // and vars when a scene is loaded.
 
-    RtProgram::Desc rtProgDesc;
+    ProgramDesc rtProgDesc;
     rtProgDesc.addShaderModules(shaderModules);
     rtProgDesc.addShaderLibrary("Samples/HelloDXR/HelloDXR.rt.slang");
     rtProgDesc.addTypeConformances(typeConformances);
@@ -180,7 +183,7 @@ void HelloDXR::loadScene(const std::filesystem::path& path, const Fbo* pTargetFb
     sbt->setHitGroup(0, mpScene->getGeometryIDs(Scene::GeometryType::TriangleMesh), primary);
     sbt->setHitGroup(1, mpScene->getGeometryIDs(Scene::GeometryType::TriangleMesh), shadow);
 
-    mpRaytraceProgram = RtProgram::create(getDevice(), rtProgDesc, defines);
+    mpRaytraceProgram = Program::create(getDevice(), rtProgDesc, defines);
     mpRtVars = RtProgramVars::create(getDevice(), mpRaytraceProgram, sbt);
 }
 
@@ -217,7 +220,7 @@ void HelloDXR::renderRT(RenderContext* pRenderContext, const ref<Fbo>& pTargetFb
     pRenderContext->blit(mpRtOut->getSRV(), pTargetFbo->getRenderTargetView(0));
 }
 
-int main(int argc, char** argv)
+int runMain(int argc, char** argv)
 {
     SampleAppConfig config;
     config.windowDesc.title = "HelloDXR";
@@ -225,4 +228,9 @@ int main(int argc, char** argv)
 
     HelloDXR helloDXR(config);
     return helloDXR.run();
+}
+
+int main(int argc, char** argv)
+{
+    return catchAndReportAllExceptions([&]() { return runMain(argc, argv); });
 }

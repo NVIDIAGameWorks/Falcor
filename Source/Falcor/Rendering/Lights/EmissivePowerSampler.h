@@ -66,7 +66,7 @@ namespace Falcor
         /** Bind the light sampler data to a given shader variable.
             \param[in] var Shader variable.
         */
-        virtual void setShaderData(const ShaderVar& var) const override;
+        virtual void bindShaderData(const ShaderVar& var) const override;
 
     protected:
         /** Generate an alias table

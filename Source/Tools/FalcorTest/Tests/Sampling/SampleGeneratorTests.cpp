@@ -78,10 +78,10 @@ void testSampleGenerator(GPUUnitTestContext& ctx, uint32_t type, const double me
     // Setup GPU test.
     // We defer the creation of the vars until after shader specialization.
     auto defines = pSampleGenerator->getDefines();
-    ctx.createProgram(kShaderFile, "test", defines, Program::CompilerFlags::None, "6_2");
+    ctx.createProgram(kShaderFile, "test", defines, SlangCompilerFlags::None, ShaderModel::SM6_2);
 
     pSampleGenerator->beginFrame(ctx.getRenderContext(), uint2(kDispatchDim.x, kDispatchDim.y));
-    pSampleGenerator->setShaderData(ctx.vars().getRootVar());
+    pSampleGenerator->bindShaderData(ctx.vars().getRootVar());
 
     const size_t numSamples = kDispatchDim.x * kDispatchDim.y * kDispatchDim.z * kDimensions;
     ctx.allocateStructuredBuffer("result", uint32_t(numSamples));

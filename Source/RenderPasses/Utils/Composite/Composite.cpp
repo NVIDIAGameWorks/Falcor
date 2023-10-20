@@ -30,35 +30,38 @@
 
 namespace
 {
-    const std::string kShaderFile("RenderPasses/Utils/Composite/Composite.cs.slang");
+const std::string kShaderFile("RenderPasses/Utils/Composite/Composite.cs.slang");
 
-    const std::string kInputA = "A";
-    const std::string kInputB = "B";
-    const std::string kOutput = "out";
+const std::string kInputA = "A";
+const std::string kInputB = "B";
+const std::string kOutput = "out";
 
-    const std::string kMode = "mode";
-    const std::string kScaleA = "scaleA";
-    const std::string kScaleB = "scaleB";
-    const std::string kOutputFormat = "outputFormat";
+const std::string kMode = "mode";
+const std::string kScaleA = "scaleA";
+const std::string kScaleB = "scaleB";
+const std::string kOutputFormat = "outputFormat";
 
-    const Gui::DropdownList kModeList =
-    {
-        { (uint32_t)Composite::Mode::Add, "Add" },
-        { (uint32_t)Composite::Mode::Multiply, "Multiply" },
-    };
-}
+const Gui::DropdownList kModeList = {
+    {(uint32_t)Composite::Mode::Add, "Add"},
+    {(uint32_t)Composite::Mode::Multiply, "Multiply"},
+};
+} // namespace
 
-Composite::Composite(ref<Device> pDevice, const Properties& props)
-    : RenderPass(pDevice)
+Composite::Composite(ref<Device> pDevice, const Properties& props) : RenderPass(pDevice)
 {
     // Parse dictionary.
     for (const auto& [key, value] : props)
     {
-        if (key == kMode) mMode = value;
-        else if (key == kScaleA) mScaleA = value;
-        else if (key == kScaleB) mScaleB = value;
-        else if (key == kOutputFormat) mOutputFormat = value;
-        else logWarning("Unknown property '{}' in Composite pass properties.", key);
+        if (key == kMode)
+            mMode = value;
+        else if (key == kScaleA)
+            mScaleA = value;
+        else if (key == kScaleB)
+            mScaleB = value;
+        else if (key == kOutputFormat)
+            mOutputFormat = value;
+        else
+            logWarning("Unknown property '{}' in Composite pass properties.", key);
     }
 
     // Create resources.
@@ -71,7 +74,8 @@ Properties Composite::getProperties() const
     props[kMode] = mMode;
     props[kScaleA] = mScaleA;
     props[kScaleB] = mScaleB;
-    if (mOutputFormat != ResourceFormat::Unknown) props[kOutputFormat] = mOutputFormat;
+    if (mOutputFormat != ResourceFormat::Unknown)
+        props[kOutputFormat] = mOutputFormat;
     return props;
 }
 

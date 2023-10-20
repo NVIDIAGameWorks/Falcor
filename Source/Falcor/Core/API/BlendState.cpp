@@ -54,7 +54,7 @@ BlendState::Desc& BlendState::Desc::setRtParams(
     BlendFunc dstAlphaFunc
 )
 {
-    checkArgument(rtIndex < mRtDesc.size(), "'rtIndex' ({}) is out of range.  Must be smaller than {}.", rtIndex, mRtDesc.size());
+    FALCOR_CHECK(rtIndex < mRtDesc.size(), "'rtIndex' ({}) is out of range.  Must be smaller than {}.", rtIndex, mRtDesc.size());
 
     mRtDesc[rtIndex].rgbBlendOp = rgbOp;
     mRtDesc[rtIndex].alphaBlendOp = alphaOp;
@@ -73,7 +73,7 @@ BlendState::Desc& BlendState::Desc::setRenderTargetWriteMask(
     bool writeAlpha
 )
 {
-    checkArgument(rtIndex < mRtDesc.size(), "'rtIndex' ({}) is out of range.  Must be smaller than {}.", rtIndex, mRtDesc.size());
+    FALCOR_CHECK(rtIndex < mRtDesc.size(), "'rtIndex' ({}) is out of range.  Must be smaller than {}.", rtIndex, mRtDesc.size());
 
     mRtDesc[rtIndex].writeMask.writeRed = writeRed;
     mRtDesc[rtIndex].writeMask.writeGreen = writeGreen;

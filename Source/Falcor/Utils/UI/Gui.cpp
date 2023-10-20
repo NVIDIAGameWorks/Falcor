@@ -32,7 +32,7 @@
 #include "Core/API/VertexLayout.h"
 #include "Core/API/RenderContext.h"
 #include "Core/State/GraphicsState.h"
-#include "Core/Program/GraphicsProgram.h"
+#include "Core/Program/Program.h"
 #include "Core/Program/ProgramVars.h"
 #include "Utils/Logger.h"
 #include "Utils/StringUtils.h"
@@ -57,11 +57,15 @@ public:
 private:
     friend class Gui;
     void init(Gui* pGui, float scaleFactor);
-    void createVao(uint32_t vertexCount, uint32_t indexCount);
+    const ref<Vao>& getNextVao(uint32_t vertexCount, uint32_t indexCount);
     void compileFonts();
 
     // Helper to create multiple inline text boxes
     bool addCheckboxes(const char label[], bool* pData, uint32_t numCheckboxes, bool sameLine);
+
+    // Use 3 rotating VAOs to avoid stalling the GPU.
+    // A better way would be to upload the data using an upload heap.
+    static constexpr uint32_t kVaoCount = 3;
 
     struct ComboData
     {
@@ -83,13 +87,14 @@ private:
 
     ref<Device> mpDevice;
     ImGuiContext* mpContext;
-    ref<Vao> mpVao;
+    ref<Vao> mpVaos[kVaoCount];
+    uint32_t mVaoIndex = 0;
     ref<VertexLayout> mpLayout;
     ref<GraphicsState> mpPipelineState;
     uint32_t mGroupStackSize = 0;
 
-    ref<GraphicsProgram> mpProgram;
-    ref<GraphicsVars> mpProgramVars;
+    ref<Program> mpProgram;
+    ref<ProgramVars> mpProgramVars;
     ParameterBlockReflection::BindLocation mGuiImageLoc;
     float mScaleFactor = 1.0f;
     std::unordered_map<std::string, ImFont*> mFontMap;
@@ -338,15 +343,20 @@ GuiImpl::GuiImpl(ref<Device> pDevice, float scaleFactor) : mpDevice(pDevice), mS
     mpPipelineState = GraphicsState::create(mpDevice);
 
     // Create the program
-    mpProgram = GraphicsProgram::createFromFile(mpDevice, "Utils/UI/Gui.slang", "vsMain", "psMain");
-    mpProgramVars = GraphicsVars::create(mpDevice, mpProgram->getReflector());
+    mpProgram = Program::createGraphics(mpDevice, "Utils/UI/Gui.slang", "vsMain", "psMain");
+    mpProgramVars = ProgramVars::create(mpDevice, mpProgram->getReflector());
     mpPipelineState->setProgram(mpProgram);
 
     // Create the blend state
     BlendState::Desc blendDesc;
     blendDesc.setRtBlend(0, true).setRtParams(
-        0, BlendState::BlendOp::Add, BlendState::BlendOp::Add, BlendState::BlendFunc::SrcAlpha, BlendState::BlendFunc::OneMinusSrcAlpha,
-        BlendState::BlendFunc::OneMinusSrcAlpha, BlendState::BlendFunc::Zero
+        0,
+        BlendState::BlendOp::Add,
+        BlendState::BlendOp::Add,
+        BlendState::BlendFunc::SrcAlpha,
+        BlendState::BlendFunc::OneMinusSrcAlpha,
+        BlendState::BlendFunc::OneMinusSrcAlpha,
+        BlendState::BlendFunc::Zero
     );
     mpPipelineState->setBlendState(BlendState::create(blendDesc));
 
@@ -374,7 +384,7 @@ GuiImpl::GuiImpl(ref<Device> pDevice, float scaleFactor) : mpDevice(pDevice), mS
     mGuiImageLoc = mpProgram->getReflector()->getDefaultParameterBlock()->getResourceBinding("guiImage");
 }
 
-void GuiImpl::createVao(uint32_t vertexCount, uint32_t indexCount)
+const ref<Vao>& GuiImpl::getNextVao(uint32_t vertexCount, uint32_t indexCount)
 {
     static_assert(sizeof(ImDrawIdx) == sizeof(uint16_t), "ImDrawIdx expected size is a word");
     FALCOR_ASSERT(vertexCount > 0 && indexCount > 0);
@@ -383,28 +393,29 @@ void GuiImpl::createVao(uint32_t vertexCount, uint32_t indexCount)
     bool createVB = true;
     bool createIB = true;
 
-    if (mpVao)
+    auto& pVao = mpVaos[mVaoIndex];
+    mVaoIndex = (mVaoIndex + 1) % kVaoCount;
+
+    if (pVao)
     {
-        FALCOR_ASSERT(mpVao->getVertexBuffer(0) && mpVao->getIndexBuffer());
-        createVB = mpVao->getVertexBuffer(0)->getSize() < requiredVbSize;
-        createIB = mpVao->getIndexBuffer()->getSize() < requiredIbSize;
+        FALCOR_ASSERT(pVao->getVertexBuffer(0) && pVao->getIndexBuffer());
+        createVB = pVao->getVertexBuffer(0)->getSize() < requiredVbSize;
+        createIB = pVao->getIndexBuffer()->getSize() < requiredIbSize;
 
         if (!createIB && !createVB)
-        {
-            return;
-        }
+            return pVao;
     }
 
     // Need to create a new VAO
     std::vector<ref<Buffer>> pVB(1);
-    pVB[0] = createVB
-                 ? Buffer::create(
-                       mpDevice, requiredVbSize + sizeof(ImDrawVert) * 1000, Buffer::BindFlags::Vertex, Buffer::CpuAccess::Write, nullptr
-                   )
-                 : mpVao->getVertexBuffer(0);
-    ref<Buffer> pIB = createIB ? Buffer::create(mpDevice, requiredIbSize, Buffer::BindFlags::Index, Buffer::CpuAccess::Write, nullptr)
-                               : mpVao->getIndexBuffer();
-    mpVao = Vao::create(Vao::Topology::TriangleList, mpLayout, pVB, pIB, ResourceFormat::R16Uint);
+    pVB[0] =
+        createVB
+            ? mpDevice->createBuffer(requiredVbSize + sizeof(ImDrawVert) * 1000, ResourceBindFlags::Vertex, MemoryType::Upload, nullptr)
+            : pVao->getVertexBuffer(0);
+    ref<Buffer> pIB =
+        createIB ? mpDevice->createBuffer(requiredIbSize, ResourceBindFlags::Index, MemoryType::Upload, nullptr) : pVao->getIndexBuffer();
+    pVao = Vao::create(Vao::Topology::TriangleList, mpLayout, pVB, pIB, ResourceFormat::R16Uint);
+    return pVao;
 }
 
 void GuiImpl::compileFonts()
@@ -414,7 +425,7 @@ void GuiImpl::compileFonts()
 
     // Initialize font data
     ImGui::GetIO().Fonts->GetTexDataAsAlpha8(&pFontData, &width, &height);
-    ref<Texture> pTexture = Texture::create2D(mpDevice, width, height, ResourceFormat::R8Unorm, 1, 1, pFontData);
+    ref<Texture> pTexture = mpDevice->createTexture2D(width, height, ResourceFormat::R8Unorm, 1, 1, pFontData);
     mpProgramVars->setTexture("gFont", pTexture);
 }
 
@@ -837,7 +848,7 @@ const Texture* GuiImpl::loadImage(const std::filesystem::path& path)
 
     ref<Texture> pTex = Texture::createFromFile(mpDevice, path, false, true);
     if (!pTex)
-        throw RuntimeError("Failed to load GUI image from '{}'.", path);
+        FALCOR_THROW("Failed to load GUI image from '{}'.", path);
     return mLoadedImages.emplace(path, pTex).first->second.get();
 }
 
@@ -1204,7 +1215,7 @@ void Gui::addFont(const std::string& name, const std::filesystem::path& path)
     float size = 14.0f * mpWrapper->mScaleFactor;
     ImFont* pFont = ImGui::GetIO().Fonts->AddFontFromFileTTF(path.string().c_str(), size);
     if (!pFont)
-        throw RuntimeError("Failed to load font from '{}'.", path);
+        FALCOR_THROW("Failed to load font from '{}'.", path);
     mpWrapper->mFontMap[name] = pFont;
     mpWrapper->compileFonts();
 }
@@ -1252,23 +1263,23 @@ void Gui::render(RenderContext* pContext, const ref<Fbo>& pFbo, float elapsedTim
     if (pDrawData->CmdListsCount > 0)
     {
         // Update the VAO
-        mpWrapper->createVao(pDrawData->TotalVtxCount, pDrawData->TotalIdxCount);
-        mpWrapper->mpPipelineState->setVao(mpWrapper->mpVao);
+        const ref<Vao>& pVao = mpWrapper->getNextVao(pDrawData->TotalVtxCount, pDrawData->TotalIdxCount);
+        mpWrapper->mpPipelineState->setVao(pVao);
 
         // Upload the data
-        ImDrawVert* pVerts = (ImDrawVert*)mpWrapper->mpVao->getVertexBuffer(0)->map(Buffer::MapType::WriteDiscard);
-        uint16_t* pIndices = (uint16_t*)mpWrapper->mpVao->getIndexBuffer()->map(Buffer::MapType::WriteDiscard);
+        ImDrawVert* pVerts = (ImDrawVert*)pVao->getVertexBuffer(0)->map(Buffer::MapType::Write);
+        uint16_t* pIndices = (uint16_t*)pVao->getIndexBuffer()->map(Buffer::MapType::Write);
 
         for (int n = 0; n < pDrawData->CmdListsCount; n++)
         {
             const ImDrawList* pCmdList = pDrawData->CmdLists[n];
-            memcpy(pVerts, pCmdList->VtxBuffer.Data, pCmdList->VtxBuffer.Size * sizeof(ImDrawVert));
-            memcpy(pIndices, pCmdList->IdxBuffer.Data, pCmdList->IdxBuffer.Size * sizeof(ImDrawIdx));
+            std::memcpy(pVerts, pCmdList->VtxBuffer.Data, pCmdList->VtxBuffer.Size * sizeof(ImDrawVert));
+            std::memcpy(pIndices, pCmdList->IdxBuffer.Data, pCmdList->IdxBuffer.Size * sizeof(ImDrawIdx));
             pVerts += pCmdList->VtxBuffer.Size;
             pIndices += pCmdList->IdxBuffer.Size;
         }
-        mpWrapper->mpVao->getVertexBuffer(0)->unmap();
-        mpWrapper->mpVao->getIndexBuffer()->unmap();
+        pVao->getVertexBuffer(0)->unmap();
+        pVao->getIndexBuffer()->unmap();
         mpWrapper->mpPipelineState->setFbo(pFbo);
 
         // Setup viewport

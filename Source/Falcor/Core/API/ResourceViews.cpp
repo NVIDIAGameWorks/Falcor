@@ -95,6 +95,7 @@ ref<ShaderResourceView> ShaderResourceView::create(
     uint32_t arraySize
 )
 {
+    FALCOR_CHECK(is_set(pTexture->getBindFlags(), ResourceBindFlags::ShaderResource), "Texture does not have SRV bind flag set.");
     Slang::ComPtr<gfx::IResourceView> handle;
     gfx::IResourceView::Desc desc = {};
     desc.format = getGFXFormat(depthToColorFormat(pTexture->getFormat()));
@@ -166,6 +167,7 @@ ref<DepthStencilView> DepthStencilView::create(
     uint32_t arraySize
 )
 {
+    FALCOR_CHECK(is_set(pTexture->getBindFlags(), ResourceBindFlags::DepthStencil), "Texture does not have DSV bind flag set.");
     Slang::ComPtr<gfx::IResourceView> handle;
     gfx::IResourceView::Desc desc = {};
     desc.format = getGFXFormat(pTexture->getFormat());
@@ -193,6 +195,7 @@ ref<UnorderedAccessView> UnorderedAccessView::create(
     uint32_t arraySize
 )
 {
+    FALCOR_CHECK(is_set(pTexture->getBindFlags(), ResourceBindFlags::UnorderedAccess), "Texture does not have UAV bind flag set.");
     Slang::ComPtr<gfx::IResourceView> handle;
     gfx::IResourceView::Desc desc = {};
     desc.format = getGFXFormat(pTexture->getFormat());
@@ -212,7 +215,9 @@ ref<UnorderedAccessView> UnorderedAccessView::create(Device* pDevice, Buffer* pB
     desc.type = gfx::IResourceView::Type::UnorderedAccess;
     fillBufferViewDesc(desc, pBuffer, firstElement, elementCount);
     FALCOR_GFX_CALL(pDevice->getGfxDevice()->createBufferView(
-        pBuffer->getGfxBufferResource(), pBuffer->getUAVCounter() ? pBuffer->getUAVCounter()->getGfxBufferResource() : nullptr, desc,
+        pBuffer->getGfxBufferResource(),
+        pBuffer->getUAVCounter() ? pBuffer->getUAVCounter()->getGfxBufferResource() : nullptr,
+        desc,
         handle.writeRef()
     ));
     return ref<UnorderedAccessView>(new UnorderedAccessView(pDevice, pBuffer, handle, firstElement, elementCount));
@@ -231,6 +236,7 @@ ref<RenderTargetView> RenderTargetView::create(
     uint32_t arraySize
 )
 {
+    FALCOR_CHECK(is_set(pTexture->getBindFlags(), ResourceBindFlags::RenderTarget), "Texture does not have RTV bind flag set.");
     Slang::ComPtr<gfx::IResourceView> handle;
     gfx::IResourceView::Desc desc = {};
     desc.format = getGFXFormat(pTexture->getFormat());

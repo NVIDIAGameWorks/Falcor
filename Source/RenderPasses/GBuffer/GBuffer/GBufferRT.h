@@ -32,9 +32,10 @@
 
 using namespace Falcor;
 
-/** Ray traced G-buffer pass.
-    This pass renders a fixed set of G-buffer channels using ray tracing.
-*/
+/**
+ * Ray traced G-buffer pass.
+ * This pass renders a fixed set of G-buffer channels using ray tracing.
+ */
 class GBufferRT : public GBuffer
 {
 public:
@@ -57,22 +58,26 @@ private:
     void executeCompute(RenderContext* pRenderContext, const RenderData& renderData);
 
     DefineList getShaderDefines(const RenderData& renderData) const;
-    void setShaderData(const ShaderVar& var, const RenderData& renderData);
+    void bindShaderData(const ShaderVar& var, const RenderData& renderData);
     void recreatePrograms();
 
     // Internal state
-    bool mComputeDOF = false;           ///< Flag indicating if depth-of-field is computed for the current frame.
+
+    /// Flag indicating if depth-of-field is computed for the current frame.
+    bool mComputeDOF = false;
     ref<SampleGenerator> mpSampleGenerator;
 
     // UI variables
+
     TexLODMode mLODMode = TexLODMode::Mip0;
     bool mUseTraceRayInline = false;
-    bool mUseDOF = true;                ///< Option for enabling depth-of-field when camera's aperture radius is nonzero.
+    /// Option for enabling depth-of-field when camera's aperture radius is nonzero.
+    bool mUseDOF = true;
 
     // Ray tracing resources
     struct
     {
-        ref<RtProgram> pProgram;
+        ref<Program> pProgram;
         ref<RtProgramVars> pVars;
     } mRaytrace;
 

@@ -29,7 +29,7 @@
 #include "Core/Macros.h"
 #include "Core/API/Buffer.h"
 #include "Core/State/ComputeState.h"
-#include "Core/Program/ComputeProgram.h"
+#include "Core/Program/Program.h"
 #include "Core/Program/ProgramVars.h"
 #include <memory>
 
@@ -72,11 +72,11 @@ private:
 
     ref<ComputeState> mpComputeState;
 
-    ref<ComputeProgram> mpPrefixSumGroupProgram;
-    ref<ComputeVars> mpPrefixSumGroupVars;
+    ref<Program> mpPrefixSumGroupProgram;
+    ref<ProgramVars> mpPrefixSumGroupVars;
 
-    ref<ComputeProgram> mpPrefixSumFinalizeProgram;
-    ref<ComputeVars> mpPrefixSumFinalizeVars;
+    ref<Program> mpPrefixSumFinalizeProgram;
+    ref<ProgramVars> mpPrefixSumFinalizeVars;
 
     ref<Buffer> mpPrefixGroupSums; ///< Temporary buffer for prefix sum computation.
     ref<Buffer> mpTotalSum;        ///< Temporary buffer for total sum of an iteration.

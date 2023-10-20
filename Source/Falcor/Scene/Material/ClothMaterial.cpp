@@ -45,12 +45,12 @@ namespace Falcor
         mTextureSlotInfo[(uint32_t)TextureSlot::Normal] = { "normal", TextureChannelFlags::RGB, false };
     }
 
-    Program::ShaderModuleList ClothMaterial::getShaderModules() const
+    ProgramDesc::ShaderModuleList ClothMaterial::getShaderModules() const
     {
-        return { Program::ShaderModule(kShaderFile) };
+        return { ProgramDesc::ShaderModule::fromFile(kShaderFile) };
     }
 
-    Program::TypeConformanceList ClothMaterial::getTypeConformances() const
+    TypeConformanceList ClothMaterial::getTypeConformances() const
     {
         return { {{"ClothMaterial", "IMaterial"}, (uint32_t)MaterialType::Cloth} };
     }

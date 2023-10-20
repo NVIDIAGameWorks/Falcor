@@ -31,7 +31,7 @@
 #include "Core/Macros.h"
 #include "Core/Object.h"
 #include "Core/API/fwd.h"
-#include "Core/API/ShaderType.h"
+#include "Core/API/Types.h"
 #include "Core/API/Handles.h"
 #include <memory>
 #include <string>
@@ -101,7 +101,7 @@ public:
             Slang::ComPtr<ISlangBlob> pDiagnostics;
             if (SLANG_FAILED(mLinkedSlangEntryPoint->getEntryPointCode(0, 0, mpBlob.writeRef(), pDiagnostics.writeRef())))
             {
-                throw RuntimeError(std::string("Shader compilation failed. \n") + (const char*)pDiagnostics->getBufferPointer());
+                FALCOR_THROW(std::string("Shader compilation failed. \n") + (const char*)pDiagnostics->getBufferPointer());
             }
         }
 
@@ -279,10 +279,10 @@ public:
     slang::ISession* getSlangSession() const;
     slang::IComponentType* getSlangGlobalScope() const;
     slang::IComponentType* getSlangEntryPoint(uint32_t index) const;
+    const std::vector<Slang::ComPtr<slang::IComponentType>>& getSlangEntryPoints() const { return mpSlangEntryPoints; }
 
 protected:
     friend class Program;
-    friend class RtProgram;
     friend class ProgramManager;
 
     static ref<ProgramVersion> createEmpty(Program* pProgram, slang::IComponentType* pSlangGlobalScope);

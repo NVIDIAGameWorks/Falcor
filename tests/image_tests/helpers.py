@@ -1,3 +1,5 @@
+import falcor
+
 def render_frames(m, name, frames=[1], framerate=60, resolution=[640,360]):
     m.resizeFrameBuffer(*resolution)
     m.ui = False
@@ -12,4 +14,6 @@ def render_frames(m, name, frames=[1], framerate=60, resolution=[640,360]):
             frame += 1
             m.clock.frame = frame
             m.renderFrame()
+        if "IMAGE_TEST_RUN_ONLY" in falcor.__dict__:
+            continue
         m.frameCapture.capture()

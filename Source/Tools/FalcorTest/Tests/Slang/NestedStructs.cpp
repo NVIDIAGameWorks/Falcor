@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -42,19 +42,19 @@ GPU_TEST(NestedStructs)
     ShaderVar var = ctx.vars().getRootVar()["CB"];
 
     var["a"] = 1.1f;
-    var["s3"]["a"] = 17;
+    var["s3"]["a"] = 17u;
     var["s3"]["b"] = true;
     var["s3"]["s2"]["a"] = bool3(true, false, true);
     var["s3"]["s2"]["s1"]["a"] = float2(9.3f, 2.1f);
-    var["s3"]["s2"]["s1"]["b"] = 23;
+    var["s3"]["s2"]["s1"]["b"] = 23u;
     var["s3"]["s2"]["b"] = 0.99f;
     var["s3"]["s2"]["c"] = uint2(4, 8);
     var["s3"]["c"] = float3(0.1f, 0.2f, 0.3f);
     var["s3"]["s1"]["a"] = float2(1.88f, 1.99f);
-    var["s3"]["s1"]["b"] = 711;
+    var["s3"]["s1"]["b"] = 711u;
     var["s2"]["a"] = bool3(false, true, false);
     var["s2"]["s1"]["a"] = float2(0.55f, 8.31f);
-    var["s2"]["s1"]["b"] = 431;
+    var["s2"]["s1"]["b"] = 431u;
     var["s2"]["b"] = 1.65f;
     var["s2"]["c"] = uint2(7, 3);
 

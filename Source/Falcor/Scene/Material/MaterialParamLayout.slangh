@@ -1,0 +1,100 @@
+/***************************************************************************
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ #
+ # Redistribution and use in source and binary forms, with or without
+ # modification, are permitted provided that the following conditions
+ # are met:
+ #  * Redistributions of source code must retain the above copyright
+ #    notice, this list of conditions and the following disclaimer.
+ #  * Redistributions in binary form must reproduce the above copyright
+ #    notice, this list of conditions and the following disclaimer in the
+ #    documentation and/or other materials provided with the distribution.
+ #  * Neither the name of NVIDIA CORPORATION nor the names of its
+ #    contributors may be used to endorse or promote products derived
+ #    from this software without specific prior written permission.
+ #
+ # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS "AS IS" AND ANY
+ # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ # IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ # PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ # CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ # EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ # PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ # PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ **************************************************************************/
+#pragma once
+
+#include "Utils/HostDeviceShared.slangh"
+
+#ifdef HOST_CODE
+
+#include "MaterialParamLayout.h"
+
+namespace Falcor
+{
+namespace detail
+{
+static constexpr float kMaterialParamEpsilon = 1e-4f;
+template<typename T>
+T clampMaterialParam(T value, T min = T(kMaterialParamEpsilon), T max = T(1.f - kMaterialParamEpsilon))
+{
+    return math::clamp(value, min, max);
+}
+} // namespace detail
+} // namespace Falcor
+
+#define _EMIT_MATERIAL_PARAM_LAYOUT_ENTRY(type, offset, name, getter, setter, pythonName, ...) \
+    MaterialParamLayoutEntry{#name, pythonName, sizeof(type) / 4, offset},
+
+#define _EMIT_MATERIAL_PARAM_SERIALIZE(type, offset, name, getter, setter, pythonName, ...) \
+    {                                                                                       \
+        type value = material->getter();                                                    \
+        params.write(value, offset);                                                        \
+    }
+
+#define _EMIT_MATERIAL_PARAM_DESERIALIZE(type, offset, name, getter, setter, pythonName, ...) \
+    {                                                                                         \
+        type value;                                                                           \
+        params.read(value, offset);                                                           \
+        if (clamp)                                                                            \
+            value = detail::clampMaterialParam(value, ##__VA_ARGS__);                         \
+        material->setter(value);                                                              \
+    }
+
+#define DEFINE_MATERIAL_PARAM_LAYOUT(materialName_, params_)                                                        \
+    struct materialName_##ParamLayout                                                                               \
+    {                                                                                                               \
+        static const MaterialParamLayout& layout()                                                                  \
+        {                                                                                                           \
+            static MaterialParamLayout layout = {params_(_EMIT_MATERIAL_PARAM_LAYOUT_ENTRY)};                       \
+            return layout;                                                                                          \
+        }                                                                                                           \
+        static SerializedMaterialParams serialize(const materialName_* material)                                    \
+        {                                                                                                           \
+            SerializedMaterialParams params;                                                                        \
+            params.fill(0.f);                                                                                       \
+            params_(_EMIT_MATERIAL_PARAM_SERIALIZE);                                                                \
+            return params;                                                                                          \
+        }                                                                                                           \
+        static void deserialize(materialName_* material, const SerializedMaterialParams& params, bool clamp = true) \
+        {                                                                                                           \
+            params_(_EMIT_MATERIAL_PARAM_DESERIALIZE);                                                              \
+        }                                                                                                           \
+    };
+
+#else // HOST_CODE
+
+import Scene.Material.MaterialParamLayout;
+
+#define _EMIT_MATERIAL_PARAM_FIELD(type, offset, name, getter, setter, pythonName, ...) static MaterialParamLayoutEntry name = {offset};
+
+#define DEFINE_MATERIAL_PARAM_LAYOUT(materialName_, params_) \
+    struct materialName_##ParamLayout                        \
+    {                                                        \
+        params_(_EMIT_MATERIAL_PARAM_FIELD)                  \
+    };
+
+#endif // HOST_CODE

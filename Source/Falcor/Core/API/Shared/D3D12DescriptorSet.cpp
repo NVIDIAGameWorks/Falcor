@@ -54,7 +54,7 @@ D3D12DescriptorSet::CpuHandle D3D12DescriptorSet::getCpuHandle(uint32_t rangeInd
 
 D3D12DescriptorSet::GpuHandle D3D12DescriptorSet::getGpuHandle(uint32_t rangeIndex, uint32_t descInRange) const
 {
-    throw RuntimeError("Not supported.");
+    FALCOR_THROW("Not supported.");
 }
 
 void D3D12DescriptorSet::setCpuHandle(uint32_t rangeIndex, uint32_t descIndex, const CpuHandle& handle)
@@ -67,7 +67,7 @@ void D3D12DescriptorSet::setCpuHandle(uint32_t rangeIndex, uint32_t descIndex, c
 void D3D12DescriptorSet::setSrv(uint32_t rangeIndex, uint32_t descIndex, const ShaderResourceView* pSrv)
 {
     auto type = getRange(rangeIndex).type;
-    checkInvariant(
+    FALCOR_CHECK(
         type == Type::TextureSrv || type == Type::RawBufferSrv || type == Type::TypedBufferSrv || type == Type::StructuredBufferSrv ||
             type == Type::AccelerationStructureSrv,
         "Unexpected descriptor range type in setSrv()"
@@ -78,7 +78,7 @@ void D3D12DescriptorSet::setSrv(uint32_t rangeIndex, uint32_t descIndex, const S
 void D3D12DescriptorSet::setUav(uint32_t rangeIndex, uint32_t descIndex, const UnorderedAccessView* pUav)
 {
     auto type = getRange(rangeIndex).type;
-    checkInvariant(
+    FALCOR_CHECK(
         type == Type::TextureUav || type == Type::RawBufferUav || type == Type::TypedBufferUav || type == Type::StructuredBufferUav,
         "Unexpected descriptor range type in setUav()"
     );
@@ -87,7 +87,7 @@ void D3D12DescriptorSet::setUav(uint32_t rangeIndex, uint32_t descIndex, const U
 
 void D3D12DescriptorSet::setSampler(uint32_t rangeIndex, uint32_t descIndex, const Sampler* pSampler)
 {
-    checkInvariant(getRange(rangeIndex).type == Type::Sampler, "Unexpected descriptor range type in setSampler()");
+    FALCOR_CHECK(getRange(rangeIndex).type == Type::Sampler, "Unexpected descriptor range type in setSampler()");
     setCpuHandle(rangeIndex, descIndex, pSampler->getNativeHandle().as<D3D12_CPU_DESCRIPTOR_HANDLE>());
 }
 
@@ -169,7 +169,7 @@ void D3D12DescriptorSet::bindForCompute(CopyContext* pCtx, const D3D12RootSignat
 
 void D3D12DescriptorSet::setCbv(uint32_t rangeIndex, uint32_t descIndex, D3D12ConstantBufferView* pView)
 {
-    checkInvariant(getRange(rangeIndex).type == Type::Cbv, "Unexpected descriptor range type in setCbv()");
+    FALCOR_CHECK(getRange(rangeIndex).type == Type::Cbv, "Unexpected descriptor range type in setCbv()");
     setCpuHandle(rangeIndex, descIndex, pView->getD3D12CpuHeapHandle());
 }
 
@@ -230,7 +230,7 @@ D3D12DescriptorSet::D3D12DescriptorSet(ref<Device> pDevice, ref<D3D12DescriptorP
 
     // Allocation failed again, there is nothing else we can do.
     if (mpApiData->pAllocation == nullptr)
-        throw RuntimeError("Failed to create descriptor set");
+        FALCOR_THROW("Failed to create descriptor set");
 
     mpApiData->descriptorCount = count;
 }

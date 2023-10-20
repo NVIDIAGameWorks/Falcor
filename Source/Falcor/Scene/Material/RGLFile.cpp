@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,7 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "RGLFile.h"
-#include "Core/Errors.h"
+#include "Core/Error.h"
 
 namespace Falcor
 {
@@ -61,7 +61,7 @@ namespace Falcor
             field.numElems *= shape[i];
         }
         size_t N = fieldSize(type);
-        if (N == 0) throw RuntimeError("RGLFile::fieldSize: Invalid field type");
+        if (N == 0) FALCOR_THROW("RGLFile::fieldSize: Invalid field type");
 
         field.data.reset(new uint8_t[N * field.numElems]);
         std::memcpy(field.data.get(), data, N * field.numElems);
@@ -83,28 +83,28 @@ namespace Falcor
 
         if (!thetaI || thetaI->type != Float32 || thetaI->dim != 1)
         {
-            throw RuntimeError("theta_i field missing or invalid");
+            FALCOR_THROW("theta_i field missing or invalid");
         }
 
         if (!phiI || phiI->type != Float32 || phiI->dim != 1)
         {
-            throw RuntimeError("phi_i field missing or invalid");
+            FALCOR_THROW("phi_i field missing or invalid");
         }
 
         if (!sigma || sigma->type != Float32 || sigma->dim != 2)
         {
-            throw RuntimeError("sigma field missing or invalid");
+            FALCOR_THROW("sigma field missing or invalid");
         }
 
         if (!ndf || ndf->type != Float32 || ndf->dim != 2)
         {
-            throw RuntimeError("ndf field missing or invalid");
+            FALCOR_THROW("ndf field missing or invalid");
         }
 
         if (!vndf || vndf->type != Float32 || vndf->dim != 4 || vndf->shape[0] != phiI->shape[0]
             || vndf->shape[1] != thetaI->shape[0])
         {
-            throw RuntimeError("vndf field missing or invalid");
+            FALCOR_THROW("vndf field missing or invalid");
         }
 
         if (!luminance || luminance->type != Float32 || luminance->dim != 4
@@ -112,19 +112,19 @@ namespace Falcor
             || luminance->shape[1] != thetaI->shape[0]
             || luminance->shape[2] != luminance->shape[3])
         {
-            throw RuntimeError("luminance field missing or invalid");
+            FALCOR_THROW("luminance field missing or invalid");
         }
 
         if (!rgb || rgb->type != Float32 || rgb->dim != 5 || rgb->shape[0] != phiI->shape[0]
             || rgb->shape[1] != thetaI->shape[0] || rgb->shape[2] != 3
             || rgb->shape[3] != luminance->shape[2] || rgb->shape[4] != luminance->shape[3])
         {
-            throw RuntimeError("rgb field missing or invalid");
+            FALCOR_THROW("rgb field missing or invalid");
         }
 
         if (!description || description->type != UInt8)
         {
-            throw RuntimeError("Description field missing or invalid");
+            FALCOR_THROW("Description field missing or invalid");
         }
 
         bool isotropic = phiI->shape[0] <= 2;
@@ -151,11 +151,11 @@ namespace Falcor
 
         if (strcmp(reinterpret_cast<const char*>(header), "tensor_file"))
         {
-            throw RuntimeError("Invalid file header");
+            FALCOR_THROW("Invalid file header");
         }
         if (version[0] != 1 || version[1] != 0)
         {
-            throw RuntimeError("Unsupported file version");
+            FALCOR_THROW("Unsupported file version");
         }
 
         for (uint32_t i = 0; i < fieldCount; ++i)
@@ -182,7 +182,7 @@ namespace Falcor
             field.shape.reset(new uint64_t[fieldDim]);
             readBytes(field.shape.get(), 8 * fieldDim);
 
-            if (!in.good()) throw RuntimeError("Error parsing RGL field: File truncated");
+            if (!in.good()) FALCOR_THROW("Error parsing RGL field: File truncated");
 
             size_t elemSize = fieldSize(FieldType(fieldType));
             if (elemSize == 0)

@@ -50,7 +50,7 @@ namespace
 {
 const std::string kViewerExecutableName = "Mogwai";
 const std::string kScriptSwitch = "--script";
-const std::string kDefaultPassIcon = "framework/images/pass-icon.png";
+const std::filesystem::path kDefaultPassIcon = getRuntimeDirectory() / "data/framework/images/pass-icon.png";
 } // namespace
 
 RenderGraphEditor::RenderGraphEditor(const SampleAppConfig& config, const Options& options)
@@ -79,7 +79,7 @@ void RenderGraphEditor::onLoad(RenderContext* pRenderContext)
 {
     mpDefaultIconTex = Texture::createFromFile(getDevice(), kDefaultPassIcon, false, false);
     if (!mpDefaultIconTex)
-        throw RuntimeError("Failed to load icon");
+        FALCOR_THROW("Failed to load icon");
 
     PluginManager::instance().loadAllPlugins();
 
@@ -352,7 +352,8 @@ void RenderGraphEditor::onGuiRender(Gui* pGui)
         catch (const std::exception& e)
         {
             openViewer = msgBox(
-                             "Error", std::string("Graph is invalid :\n ") + e.what() + "\n Are you sure you want to attempt preview?",
+                             "Error",
+                             std::string("Graph is invalid :\n ") + e.what() + "\n Are you sure you want to attempt preview?",
                              MsgBoxType::OkCancel
                          ) == MsgBoxButton::Ok;
         }

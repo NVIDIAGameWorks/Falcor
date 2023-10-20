@@ -38,7 +38,7 @@
 #include "Vector.h"
 #include "Quaternion.h"
 
-#include "Core/Assert.h"
+#include "Core/Error.h"
 
 #include <fmt/core.h>
 
@@ -230,8 +230,10 @@ template<typename T>
 {
     T oneOverDet = T(1) / determinant(m);
     return matrix<T, 2, 2>{
-        +m[1][1] * oneOverDet, -m[0][1] * oneOverDet, // row 0
-        -m[1][0] * oneOverDet, +m[0][0] * oneOverDet  // row 1
+        +m[1][1] * oneOverDet, // 0,0
+        -m[0][1] * oneOverDet, // 0,1
+        -m[1][0] * oneOverDet, // 1,0
+        +m[0][0] * oneOverDet, // 1,1
     };
 }
 

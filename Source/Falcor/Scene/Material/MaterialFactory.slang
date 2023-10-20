@@ -27,7 +27,6 @@
  **************************************************************************/
 __exported import Rendering.Materials.IMaterial;
 import Scene.Material.ShadingUtils;
-import Scene.Material.AlphaTest;
 import Utils.Math.ShadingFrame;
 
 /** Extension to add shading and material factory to MaterialSystem.
@@ -65,7 +64,7 @@ extension MaterialSystem
         \return A material instance.
     */
     IMaterialInstance getMaterialInstance<L:ITextureSampler>(const ShadingData sd, L lod, const uint hints = (uint)MaterialInstanceHints::None)
-    {        
+    {
         let material = getMaterial(sd.materialID);
         return material.setupMaterialInstance(this, sd, lod, hints);
     }
@@ -97,56 +96,13 @@ extension MaterialSystem
         sd.curveRadius = v.curveRadius;
 
         // Material data
-        const MaterialDataBlob m = materialData[materialID];
-
-        sd.mtl = m.header;
+        sd.mtl = materialData[materialID].header;
         sd.materialID = materialID;
 
         // Assume the default IoR for vacuum on the front-facing side.
         // The renderer may override this for nested dielectrics.
         sd.IoR = 1.f;
 
-        // Create IMaterial instance.
-        let material = getMaterial(materialID);
-
-        // Query material to evaluate opacity.
-        sd.opacity = material.evalOpacity(this, v, lod);
-
         return sd;
-    }
-
-    /** Perform alpha test at a hit point and return the result.
-        \param[in] v Interpolated vertex data.
-        \param[in] materialID Material ID at the hit.
-        \param[in] lod Method for computing texture level-of-detail, must implement the `ITextureSampler` interface.
-        \return True if hit should be ignored/discarded.
-    */
-    bool alphaTest<L:ITextureSampler>(const VertexData v, const uint materialID, L lod)
-    {
-        // Load the material header first and early out if alpha test not supported.
-        const MaterialHeader header = materialData[materialID].header;
-
-        if (header.getAlphaMode() != AlphaMode::Mask) return false;
-
-        // Create IMaterial instance in order to evaluate opacity.
-        let material = getMaterial(materialID);
-
-        float alpha = material.evalOpacity(this, v, lod);
-        float alphaThreshold = header.getAlphaThreshold();
-
-        return evalAlphaTest(alpha, alphaThreshold, v.posW);
-    }
-
-    /** Perform alpha test at a hit point and return the result.
-        This version samples alpha at a fixed level of detail.
-        \param[in] v Interpolated vertex data.
-        \param[in] materialID Material ID at the hit.
-        \param[in] lod Fixed texture level of detail.
-        \return True if hit should be ignored/discarded.
-    */
-    bool alphaTest(const VertexData v, const uint materialID, const float lod)
-    {
-        ExplicitLodTextureSampler explicitLOD = { lod };
-        return alphaTest(v, materialID, explicitLOD);
     }
 }

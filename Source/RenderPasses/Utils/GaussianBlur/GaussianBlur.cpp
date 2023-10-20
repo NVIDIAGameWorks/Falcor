@@ -30,14 +30,14 @@
 
 namespace
 {
-    const char kSrc[] = "src";
-    const char kDst[] = "dst";
+const char kSrc[] = "src";
+const char kDst[] = "dst";
 
-    const char kKernelWidth[] = "kernelWidth";
-    const char kSigma[] = "sigma";
+const char kKernelWidth[] = "kernelWidth";
+const char kSigma[] = "sigma";
 
-    const char kShaderFilename[] = "RenderPasses/Utils/GaussianBlur/GaussianBlur.ps.slang";
-}
+const char kShaderFilename[] = "RenderPasses/Utils/GaussianBlur/GaussianBlur.ps.slang";
+} // namespace
 
 void GaussianBlur::registerBindings(pybind11::module& m)
 {
@@ -46,19 +46,22 @@ void GaussianBlur::registerBindings(pybind11::module& m)
     pass.def_property(kSigma, &GaussianBlur::getSigma, &GaussianBlur::setSigma);
 }
 
-GaussianBlur::GaussianBlur(ref<Device> pDevice, const Properties& props)
-    : RenderPass(pDevice)
+GaussianBlur::GaussianBlur(ref<Device> pDevice, const Properties& props) : RenderPass(pDevice)
 {
     mpFbo = Fbo::create(mpDevice);
     Sampler::Desc samplerDesc;
-    samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Point).setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
-    mpSampler = Sampler::create(mpDevice, samplerDesc);
+    samplerDesc.setFilterMode(TextureFilteringMode::Linear, TextureFilteringMode::Linear, TextureFilteringMode::Point)
+        .setAddressingMode(TextureAddressingMode::Clamp, TextureAddressingMode::Clamp, TextureAddressingMode::Clamp);
+    mpSampler = mpDevice->createSampler(samplerDesc);
 
     for (const auto& [key, value] : props)
     {
-        if (key == kKernelWidth) mKernelWidth = value;
-        else if (key == kSigma) mSigma = value;
-        else logWarning("Unknown property '{}' in a GaussianBlur properties.", key);
+        if (key == kKernelWidth)
+            mKernelWidth = value;
+        else if (key == kSigma)
+            mSigma = value;
+        else
+            logWarning("Unknown property '{}' in a GaussianBlur properties.", key);
     }
 }
 
@@ -86,9 +89,8 @@ RenderPassReflection GaussianBlur::reflect(const CompileData& compileData)
         uint32_t srcMipCount = edge->getMipCount();
         uint32_t srcArraySize = edge->getArraySize();
 
-        auto formatField = [=](RenderPassReflection::Field& f) {
-            return f.format(srcFormat).resourceType(srcType, srcWidth, srcHeight, srcDepth, srcSampleCount, srcMipCount, srcArraySize);
-        };
+        auto formatField = [=](RenderPassReflection::Field& f)
+        { return f.format(srcFormat).resourceType(srcType, srcWidth, srcHeight, srcDepth, srcSampleCount, srcMipCount, srcArraySize); };
 
         formatField(reflector.addInput(kSrc, "input image to be blurred"));
         formatField(reflector.addOutput(kDst, "output blurred image"));
@@ -104,12 +106,13 @@ RenderPassReflection GaussianBlur::reflect(const CompileData& compileData)
 
 void GaussianBlur::compile(RenderContext* pRenderContext, const CompileData& compileData)
 {
-    if (!mReady) throw RuntimeError("GaussianBlur: Missing incoming reflection information");
+    FALCOR_CHECK(mReady, "GaussianBlur: Missing incoming reflection information");
 
     uint32_t arraySize = compileData.connectedResources.getField(kSrc)->getArraySize();
     DefineList defines;
     defines.add("_KERNEL_WIDTH", std::to_string(mKernelWidth));
-    if (arraySize > 1) defines.add("_USE_TEX2D_ARRAY");
+    if (arraySize > 1)
+        defines.add("_USE_TEX2D_ARRAY");
 
     uint32_t layerMask = (arraySize > 1) ? ((1 << arraySize) - 1) : 0;
     defines.add("_HORIZONTAL_BLUR");
@@ -153,10 +156,9 @@ void GaussianBlur::createTmpFbo(const Texture* pSrc)
 
     if (createFbo == false)
     {
-        createFbo = (pSrc->getWidth() != mpTmpFbo->getWidth()) ||
-            (pSrc->getHeight() != mpTmpFbo->getHeight()) ||
-            (srcFormat != mpTmpFbo->getColorTexture(0)->getFormat()) ||
-            pSrc->getArraySize() != mpTmpFbo->getColorTexture(0)->getArraySize();
+        createFbo = (pSrc->getWidth() != mpTmpFbo->getWidth()) || (pSrc->getHeight() != mpTmpFbo->getHeight()) ||
+                    (srcFormat != mpTmpFbo->getColorTexture(0)->getFormat()) ||
+                    pSrc->getArraySize() != mpTmpFbo->getColorTexture(0)->getArraySize();
     }
 
     if (createFbo)
@@ -169,8 +171,10 @@ void GaussianBlur::createTmpFbo(const Texture* pSrc)
 
 void GaussianBlur::renderUI(Gui::Widgets& widget)
 {
-    if (widget.var("Kernel Width", (int&)mKernelWidth, 1, 15, 2)) setKernelWidth(mKernelWidth);
-    if (widget.slider("Sigma", mSigma, 0.001f, mKernelWidth / 2.f)) setSigma(mSigma);
+    if (widget.var("Kernel Width", (int&)mKernelWidth, 1, 15, 2))
+        setKernelWidth(mKernelWidth);
+    if (widget.slider("Sigma", mSigma, 0.001f, mKernelWidth / 2.f))
+        setSigma(mSigma);
 }
 
 void GaussianBlur::setKernelWidth(uint32_t kernelWidth)
@@ -188,7 +192,7 @@ void GaussianBlur::setSigma(float sigma)
 float getCoefficient(float sigma, float kernelWidth, float x)
 {
     float sigmaSquared = sigma * sigma;
-    float p = -(x*x) / (2 * sigmaSquared);
+    float p = -(x * x) / (2 * sigmaSquared);
     float e = std::exp(p);
 
     float a = 2 * (float)M_PI * sigmaSquared;
@@ -206,7 +210,7 @@ void GaussianBlur::updateKernel()
         sum += (i == 0) ? weights[i] : 2 * weights[i];
     }
 
-    ref<Buffer> pBuf = Buffer::createTyped<float>(mpDevice, mKernelWidth, Resource::BindFlags::ShaderResource);
+    ref<Buffer> pBuf = mpDevice->createTypedBuffer<float>(mKernelWidth, ResourceBindFlags::ShaderResource);
 
     for (uint32_t i = 0; i <= center; i++)
     {

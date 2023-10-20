@@ -47,15 +47,22 @@ public:
 
 private:
     virtual void createProgram() override;
-    ref<Texture> mpArrowTex; // A texture storing a 16x16 grayscale arrow
+
+    /// A texture storing a 16x16 grayscale arrow
+    ref<Texture> mpArrowTex;
 
     // Mouse parameters
-    bool mMouseOverDivider = false; ///< Is the mouse over the divider?
-    int2 mMousePos = int2(0, 0); ///< Where was mouse in last mouse event processed
-    bool mDividerGrabbed = false; ///< Are we grabbing the divider?
 
-    bool mDrawArrows = false; ///< When hovering over divider, show arrows?
+    /// Is the mouse over the divider?
+    bool mMouseOverDivider = false;
+    /// Where was mouse in last mouse event processed
+    int2 mMousePos = int2(0, 0);
+    /// Are we grabbing the divider?
+    bool mDividerGrabbed = false;
 
-    // Double-click detection Parameters
-    CpuTimer::TimePoint mTimeOfLastClick {}; ///< Time since mouse was last clicked
+    /// When hovering over divider, show arrows?
+    bool mDrawArrows = false;
+
+    /// Time of last mouse click (double-click detection)
+    CpuTimer::TimePoint mTimeOfLastClick{};
 };

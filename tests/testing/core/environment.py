@@ -57,6 +57,12 @@ class Environment:
         '''
         Loads the environment from the JSON file and sets up derived variables.
         '''
+
+        self.project_dir = Path(__file__).parents[3].resolve()
+
+        if json_file == None:
+            json_file = self.project_dir / config.DEFAULT_ENVIRONMENT
+
         # Load JSON config.
         if not Path(json_file).exists():
             raise Exception(f'Environment config file "{json_file}" not found.')
@@ -90,7 +96,6 @@ class Environment:
 
         # Setup environment variables.
         self.name = env['name']
-        self.project_dir = Path(__file__).parents[3].resolve()
         self.build_dir = self.project_dir / config.BUILD_CONFIGS[build_config]['build_dir']
         self.cmake_exe = self.project_dir / config.CMAKE_EXE
         # Ideally this information would be parsed from CMakePresets.json, rather than this roundabout way

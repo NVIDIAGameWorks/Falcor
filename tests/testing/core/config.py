@@ -5,7 +5,10 @@ Common testing environment configuration.
 import os
 
 # Default environment configuration file.
-DEFAULT_ENVIRONMENT="environment/default.json"
+DEFAULT_ENVIRONMENT="tests/environment/default.json"
+
+# Default platforms to run image tests on.
+DEFAULT_PLATFORMS = ["windows-x86_64", "linux-x86_64"]
 
 # Default image comparison tolerance.
 DEFAULT_TOLERANCE = 0.0
@@ -81,6 +84,7 @@ BUILD_CONFIGS = {
 }
 
 if os.name == 'nt':
+    PLATFORM = "windows-x86_64"
     # Executables.
     CMAKE_EXE = "tools/.packman/cmake/bin/cmake.exe"
     FALCOR_LIB = 'Falcor.dll'
@@ -92,6 +96,7 @@ if os.name == 'nt':
     SUPPORTED_DEVICE_TYPES = ["d3d12", "vulkan"]
 
 elif os.name == 'posix':
+    PLATFORM = "linux-x86_64"
     # Executables.
     CMAKE_EXE = "tools/.packman/cmake/bin/cmake"
     FALCOR_LIB = 'libFalcor.so'

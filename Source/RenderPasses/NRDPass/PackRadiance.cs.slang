@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -40,11 +40,11 @@ import Utils.Color.ColorHelpers;
 
 cbuffer PerImageCB
 {
-    float4  gHitDistParams;
-    float   gMaxIntensity;
+    float4 gHitDistParams;
+    float gMaxIntensity;
 
-    Texture2D<float>    gViewZ;
-    Texture2D<float4>   gNormalRoughness;
+    Texture2D<float> gViewZ;
+    Texture2D<float4> gNormalRoughness;
 
     RWTexture2D<float4> gDiffuseRadianceHitDist;
     RWTexture2D<float4> gSpecularRadianceHitDist;
@@ -68,7 +68,7 @@ void clampRadiance(inout float3 diffuseRadiance, inout float3 specularRadiance)
 }
 
 [numthreads(16, 16, 1)]
-void main(uint3 dispatchThreadId : SV_DispatchThreadID)
+void main(uint3 dispatchThreadId: SV_DispatchThreadID)
 {
     int2 ipos = dispatchThreadId.xy;
 

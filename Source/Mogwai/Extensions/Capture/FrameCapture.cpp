@@ -162,7 +162,7 @@ namespace Mogwai
         const std::string basename = getOutputNamePrefix(outputName) + std::to_string(mpRenderer->getGlobalClock().getFrame());
 
         const ref<Texture> pOutput = pGraph->getOutput(outputIndex)->asTexture();
-        if (!pOutput) throw RuntimeError("Graph output {} is not a texture", outputName);
+        if (!pOutput) FALCOR_THROW("Graph output {} is not a texture", outputName);
 
         const ResourceFormat format = pOutput->getFormat();
         const uint32_t channels = getFormatChannelCount(format);
@@ -237,7 +237,7 @@ namespace Mogwai
                 }
 
                 // Copy color channel into temporary texture.
-                pTex = Texture::create2D(mpRenderer->getDevice(), pOutput->getWidth(), pOutput->getHeight(), outputFormat, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
+                pTex = mpRenderer->getDevice()->createTexture2D(pOutput->getWidth(), pOutput->getHeight(), outputFormat, 1, 1, nullptr, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess);
                 mpImageProcessing->copyColorChannel(pRenderContext, pOutput->getSRV(0, 1, 0, 1), pTex->getUAV(), mask);
             }
 
@@ -260,7 +260,7 @@ namespace Mogwai
     void FrameCapture::addFrames(const std::string& graphName, const uint64_vec& frames)
     {
         auto pGraph = mpRenderer->getGraph(graphName).get();
-        if (!pGraph) throw RuntimeError("Can't find a graph named '{}'", graphName);
+        if (!pGraph) FALCOR_THROW("Can't find a graph named '{}'", graphName);
         this->addFrames(pGraph, frames);
     }
 

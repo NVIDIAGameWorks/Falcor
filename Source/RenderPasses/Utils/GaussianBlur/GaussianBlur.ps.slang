@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,9 +26,9 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #ifdef _USE_TEX2D_ARRAY
-    Texture2DArray gSrcTex;
+Texture2DArray gSrcTex;
 #else
-    texture2D gSrcTex;
+texture2D gSrcTex;
 #endif
 
 SamplerState gSampler;
@@ -58,15 +58,17 @@ float4 blur(float2 texC)
 #error Please define either _HORIZONTAL_BLUR or _VERTICAL_BLUR
 #endif
 
-   const int2 offset = -(_KERNEL_WIDTH / 2) * dir;
+    const int2 offset = -(_KERNEL_WIDTH / 2) * dir;
 
-    float4 c = float4(0,0,0,0);
-    $for(i in Range(_KERNEL_WIDTH))
+    float4 c = float4(0, 0, 0, 0);
+
+    [ForceUnroll]
+    for (int i = 0; i < _KERNEL_WIDTH; i++)
     {
 #ifdef _USE_TEX2D_ARRAY
-        c += gSrcTex.SampleLevel(gSampler, float3(texC, arrayIndex), 0, offset + i*dir)*weights[i];
+        c += gSrcTex.SampleLevel(gSampler, float3(texC, arrayIndex), 0, offset + i * dir) * weights[i];
 #else
-        c += gSrcTex.SampleLevel(gSampler, texC, 0, offset + i*dir)*weights[i];
+        c += gSrcTex.SampleLevel(gSampler, texC, 0, offset + i * dir) * weights[i];
 #endif
     }
     return c;

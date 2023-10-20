@@ -56,7 +56,7 @@ GPU_TEST(JenkinsHash_CompareToCPU)
     ref<Device> pDevice = ctx.getDevice();
 
     // Allocate results buffer (64k dwords).
-    ref<Buffer> pResultBuffer = Buffer::createTyped<uint32_t>(pDevice, 1 << 16, ResourceBindFlags::UnorderedAccess);
+    ref<Buffer> pResultBuffer = pDevice->createTypedBuffer<uint32_t>(1 << 16, ResourceBindFlags::UnorderedAccess);
     ctx.getRenderContext()->clearUAV(pResultBuffer->getUAV().get(), uint4(0));
 
     // Setup and run GPU test.
@@ -65,13 +65,11 @@ GPU_TEST(JenkinsHash_CompareToCPU)
     ctx.runProgram(1 << 16, 1, 1);
 
     // Verify that the generated hashes match the CPU version.
-    const uint32_t* result = (const uint32_t*)pResultBuffer->map(Buffer::MapType::Read);
-    FALCOR_ASSERT(result);
+    std::vector<uint32_t> result = pResultBuffer->getElements<uint32_t>();
     for (uint32_t i = 0; i < pResultBuffer->getElementCount(); i++)
     {
         EXPECT_EQ(result[i], jenkinsHash(i)) << "i = " << i;
     }
-    pResultBuffer->unmap();
 }
 
 #ifdef RUN_PERFECT_HASH_TESTS
@@ -101,7 +99,7 @@ GPU_TEST(JenkinsHash_PerfectHashGPU, "Disabled for performance reasons")
     ref<Device> pDevice = ctx.getDevice();
 
     // Allocate results buffer (2^27 dwords).
-    ref<Buffer> pResultBuffer = Buffer::createTyped<uint32_t>(pDevice, 1 << 27, ResourceBindFlags::UnorderedAccess);
+    ref<Buffer> pResultBuffer = pDevice->createTypedBuffer<uint32_t>(1 << 27, ResourceBindFlags::UnorderedAccess);
     ctx.getRenderContext()->clearUAV(pResultBuffer->getUAV().get(), uint4(0));
 
     // Setup and run GPU test.
@@ -110,12 +108,10 @@ GPU_TEST(JenkinsHash_PerfectHashGPU, "Disabled for performance reasons")
     ctx.runProgram(1 << 16, 1 << 16, 1);
 
     // Verify that all possible 32-bit hashes has occured (all bits set).
-    const uint32_t* result = (const uint32_t*)pResultBuffer->map(Buffer::MapType::Read);
-    FALCOR_ASSERT(result);
-    for (uint32_t i = 0; i < pResultBuffer->getElementCount(); i++)
+    std::vector<uint32_t> result = pResultBuffer->getElements<uint32_t>();
+    for (uint32_t i = 0; i < result.size(); i++)
     {
         EXPECT_EQ(result[i], 0xffffffff) << "i = " << i;
     }
-    pResultBuffer->unmap();
 }
 } // namespace Falcor

@@ -31,54 +31,54 @@
 
 namespace
 {
-    const char kSrc[] = "src";
-    const char kDst[] = "dst";
+const char kSrc[] = "src";
+const char kDst[] = "dst";
 
-    // Scripting options.
-    const char kOutputSize[] = "outputSize";
-    const char kOutputFormat[] = "outputFormat";
-    const char kFixedOutputSize[] = "fixedOutputSize";
+// Scripting options.
+const char kOutputSize[] = "outputSize";
+const char kOutputFormat[] = "outputFormat";
+const char kFixedOutputSize[] = "fixedOutputSize";
 
-    const char kUseSceneMetadata[] = "useSceneMetadata";
-    const char kExposureCompensation[] = "exposureCompensation";
-    const char kAutoExposure[] = "autoExposure";
-    const char kExposureValue[] = "exposureValue";
-    const char kFilmSpeed[] = "filmSpeed";
-    const char kFNumber[] = "fNumber";
-    const char kShutter[] = "shutter";
-    const char kExposureMode[] = "exposureMode";
+const char kUseSceneMetadata[] = "useSceneMetadata";
+const char kExposureCompensation[] = "exposureCompensation";
+const char kAutoExposure[] = "autoExposure";
+const char kExposureValue[] = "exposureValue";
+const char kFilmSpeed[] = "filmSpeed";
+const char kFNumber[] = "fNumber";
+const char kShutter[] = "shutter";
+const char kExposureMode[] = "exposureMode";
 
-    const char kWhiteBalance[] = "whiteBalance";
-    const char kWhitePoint[] = "whitePoint";
+const char kWhiteBalance[] = "whiteBalance";
+const char kWhitePoint[] = "whitePoint";
 
-    const char kOperator[] = "operator";
-    const char kClamp[] = "clamp";
-    const char kWhiteMaxLuminance[] = "whiteMaxLuminance";
-    const char kWhiteScale[] = "whiteScale";
+const char kOperator[] = "operator";
+const char kClamp[] = "clamp";
+const char kWhiteMaxLuminance[] = "whiteMaxLuminance";
+const char kWhiteScale[] = "whiteScale";
 
-    const char kLuminanceFile[] = "RenderPasses/ToneMapper/Luminance.ps.slang";
-    const char kToneMappingFile[] = "RenderPasses/ToneMapper/ToneMapping.ps.slang";
+const char kLuminanceFile[] = "RenderPasses/ToneMapper/Luminance.ps.slang";
+const char kToneMappingFile[] = "RenderPasses/ToneMapper/ToneMapping.ps.slang";
 
-    const float kExposureCompensationMin = -12.f;
-    const float kExposureCompensationMax = 12.f;
+const float kExposureCompensationMin = -12.f;
+const float kExposureCompensationMax = 12.f;
 
-    const float kFilmSpeedMin = 1.f;
-    const float kFilmSpeedMax = 6400.f;
+const float kFilmSpeedMin = 1.f;
+const float kFilmSpeedMax = 6400.f;
 
-    const float kFNumberMin = 0.1f;          // Minimum fNumber, > 0 to avoid numerical issues (i.e., non-physical values are allowed)
-    const float kFNumberMax = 100.f;
+const float kFNumberMin = 0.1f; // Minimum fNumber, > 0 to avoid numerical issues (i.e., non-physical values are allowed)
+const float kFNumberMax = 100.f;
 
-    const float kShutterMin = 0.1f;          // Min reciprocal shutter time
-    const float kShutterMax = 10000.f;       // Max reciprocal shutter time
+const float kShutterMin = 0.1f;    // Min reciprocal shutter time
+const float kShutterMax = 10000.f; // Max reciprocal shutter time
 
-    // EV is ultimately derived from shutter and fNumber; set its range based on that of its inputs
-    const float kExposureValueMin = std::log2(kShutterMin * kFNumberMin * kFNumberMin);
-    const float kExposureValueMax = std::log2(kShutterMax * kFNumberMax * kFNumberMax);
+// EV is ultimately derived from shutter and fNumber; set its range based on that of its inputs
+const float kExposureValueMin = std::log2(kShutterMin * kFNumberMin * kFNumberMin);
+const float kExposureValueMax = std::log2(kShutterMax * kFNumberMax * kFNumberMax);
 
-    // Note: Color temperatures < ~1905K are out-of-gamut in Rec.709.
-    const float kWhitePointMin = 1905.f;
-    const float kWhitePointMax = 25000.f;
-}
+// Note: Color temperatures < ~1905K are out-of-gamut in Rec.709.
+const float kWhitePointMin = 1905.f;
+const float kWhitePointMax = 25000.f;
+} // namespace
 
 static void regToneMapper(pybind11::module& m)
 {
@@ -89,18 +89,20 @@ static void regToneMapper(pybind11::module& m)
     pass.def_property(kFilmSpeed, &ToneMapper::getFilmSpeed, &ToneMapper::setFilmSpeed);
     pass.def_property(kWhiteBalance, &ToneMapper::getWhiteBalance, &ToneMapper::setWhiteBalance);
     pass.def_property(kWhitePoint, &ToneMapper::getWhitePoint, &ToneMapper::setWhitePoint);
-    pass.def_property(kOperator,
+    pass.def_property(
+        kOperator,
         [](const ToneMapper& self) { return enumToString(self.getOperator()); },
-        [](ToneMapper& self, const std::string& value) {self.setOperator(stringToEnum<ToneMapper::Operator>(value)); }
+        [](ToneMapper& self, const std::string& value) { self.setOperator(stringToEnum<ToneMapper::Operator>(value)); }
     );
     pass.def_property(kClamp, &ToneMapper::getClamp, &ToneMapper::setClamp);
     pass.def_property(kWhiteMaxLuminance, &ToneMapper::getWhiteMaxLuminance, &ToneMapper::setWhiteMaxLuminance);
     pass.def_property(kWhiteScale, &ToneMapper::getWhiteScale, &ToneMapper::setWhiteScale);
     pass.def_property(kFNumber, &ToneMapper::getFNumber, &ToneMapper::setFNumber);
     pass.def_property(kShutter, &ToneMapper::getShutter, &ToneMapper::setShutter);
-    pass.def_property(kExposureMode,
+    pass.def_property(
+        kExposureMode,
         [](const ToneMapper& self) { return enumToString(self.getExposureMode()); },
-        [](ToneMapper& self, const std::string& value) {self.setExposureMode(stringToEnum<ToneMapper::ExposureMode>(value)); }
+        [](ToneMapper& self, const std::string& value) { self.setExposureMode(stringToEnum<ToneMapper::ExposureMode>(value)); }
     );
 }
 
@@ -110,8 +112,7 @@ extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registr
     ScriptBindings::registerBinding(regToneMapper);
 }
 
-ToneMapper::ToneMapper(ref<Device> pDevice, const Properties& props)
-    : RenderPass(pDevice)
+ToneMapper::ToneMapper(ref<Device> pDevice, const Properties& props) : RenderPass(pDevice)
 {
     parseProperties(props);
 
@@ -121,33 +122,50 @@ ToneMapper::ToneMapper(ref<Device> pDevice, const Properties& props)
     updateWhiteBalanceTransform();
 
     Sampler::Desc samplerDesc;
-    samplerDesc.setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point);
-    mpPointSampler = Sampler::create(mpDevice, samplerDesc);
-    samplerDesc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Point);
-    mpLinearSampler = Sampler::create(mpDevice, samplerDesc);
+    samplerDesc.setFilterMode(TextureFilteringMode::Point, TextureFilteringMode::Point, TextureFilteringMode::Point);
+    mpPointSampler = mpDevice->createSampler(samplerDesc);
+    samplerDesc.setFilterMode(TextureFilteringMode::Linear, TextureFilteringMode::Linear, TextureFilteringMode::Point);
+    mpLinearSampler = mpDevice->createSampler(samplerDesc);
 }
 
 void ToneMapper::parseProperties(const Properties& props)
 {
     for (const auto& [key, value] : props)
     {
-        if (key == kOutputSize) mOutputSizeSelection = value;
-        else if (key == kOutputFormat) mOutputFormat = value;
-        else if (key == kFixedOutputSize) mFixedOutputSize = value;
-        else if (key == kUseSceneMetadata) mUseSceneMetadata = value;
-        else if (key == kExposureCompensation) setExposureCompensation(value);
-        else if (key == kAutoExposure) setAutoExposure(value);
-        else if (key == kFilmSpeed) setFilmSpeed(value);
-        else if (key == kWhiteBalance) setWhiteBalance(value);
-        else if (key == kWhitePoint) setWhitePoint(value);
-        else if (key == kOperator) setOperator(value);
-        else if (key == kClamp) setClamp(value);
-        else if (key == kWhiteMaxLuminance) setWhiteMaxLuminance(value);
-        else if (key == kWhiteScale) setWhiteScale(value);
-        else if (key == kFNumber) setFNumber(value);
-        else if (key == kShutter) setShutter(value);
-        else if (key == kExposureMode) setExposureMode(value);
-        else logWarning("Unknown property '{}' in a ToneMapping properties.", key);
+        if (key == kOutputSize)
+            mOutputSizeSelection = value;
+        else if (key == kOutputFormat)
+            mOutputFormat = value;
+        else if (key == kFixedOutputSize)
+            mFixedOutputSize = value;
+        else if (key == kUseSceneMetadata)
+            mUseSceneMetadata = value;
+        else if (key == kExposureCompensation)
+            setExposureCompensation(value);
+        else if (key == kAutoExposure)
+            setAutoExposure(value);
+        else if (key == kFilmSpeed)
+            setFilmSpeed(value);
+        else if (key == kWhiteBalance)
+            setWhiteBalance(value);
+        else if (key == kWhitePoint)
+            setWhitePoint(value);
+        else if (key == kOperator)
+            setOperator(value);
+        else if (key == kClamp)
+            setClamp(value);
+        else if (key == kWhiteMaxLuminance)
+            setWhiteMaxLuminance(value);
+        else if (key == kWhiteScale)
+            setWhiteScale(value);
+        else if (key == kFNumber)
+            setFNumber(value);
+        else if (key == kShutter)
+            setShutter(value);
+        else if (key == kExposureMode)
+            setExposureMode(value);
+        else
+            logWarning("Unknown property '{}' in a ToneMapping properties.", key);
     }
 }
 
@@ -155,8 +173,10 @@ Properties ToneMapper::getProperties() const
 {
     Properties props;
     props[kOutputSize] = mOutputSizeSelection;
-    if (mOutputSizeSelection == RenderPassHelpers::IOSize::Fixed) props[kFixedOutputSize] = mFixedOutputSize;
-    if (mOutputFormat != ResourceFormat::Unknown) props[kOutputFormat] = mOutputFormat;
+    if (mOutputSizeSelection == RenderPassHelpers::IOSize::Fixed)
+        props[kFixedOutputSize] = mFixedOutputSize;
+    if (mOutputFormat != ResourceFormat::Unknown)
+        props[kOutputFormat] = mOutputFormat;
     props[kUseSceneMetadata] = mUseSceneMetadata;
     props[kExposureCompensation] = mExposureCompensation;
     props[kAutoExposure] = mAutoExposure;
@@ -263,9 +283,8 @@ void ToneMapper::createLuminanceFbo(const ref<Texture>& pSrc)
 
     if (createFbo == false)
     {
-        createFbo = (requiredWidth != mpLuminanceFbo->getWidth()) ||
-            (requiredHeight != mpLuminanceFbo->getHeight()) ||
-            (luminanceFormat != mpLuminanceFbo->getColorTexture(0)->getFormat());
+        createFbo = (requiredWidth != mpLuminanceFbo->getWidth()) || (requiredHeight != mpLuminanceFbo->getHeight()) ||
+                    (luminanceFormat != mpLuminanceFbo->getColorTexture(0)->getFormat());
     }
 
     if (createFbo)
@@ -286,15 +305,19 @@ void ToneMapper::renderUI(Gui::Widgets& widget)
 {
     // Controls for output size.
     // When output size requirements change, we'll trigger a graph recompile to update the render pass I/O sizes.
-    if (widget.dropdown("Output size", mOutputSizeSelection)) requestRecompile();
+    if (widget.dropdown("Output size", mOutputSizeSelection))
+        requestRecompile();
     if (mOutputSizeSelection == RenderPassHelpers::IOSize::Fixed)
     {
-        if (widget.var("Size in pixels", mFixedOutputSize, 32u, 16384u)) requestRecompile();
+        if (widget.var("Size in pixels", mFixedOutputSize, 32u, 16384u))
+            requestRecompile();
     }
 
     if (auto exposureGroup = widget.group("Exposure", true))
     {
-        mUpdateToneMapPass |= exposureGroup.var("Exposure Compensation", mExposureCompensation, kExposureCompensationMin, kExposureCompensationMax, 0.1f, false, "%.1f");
+        mUpdateToneMapPass |= exposureGroup.var(
+            "Exposure Compensation", mExposureCompensation, kExposureCompensationMin, kExposureCompensationMax, 0.1f, false, "%.1f"
+        );
 
         mRecreateToneMapPass |= exposureGroup.checkbox("Auto Exposure", mAutoExposure);
 
@@ -371,9 +394,12 @@ void ToneMapper::setScene(RenderContext* pRenderContext, const ref<Scene>& pScen
     {
         const Scene::Metadata& metadata = pScene->getMetadata();
 
-        if (metadata.filmISO) setFilmSpeed(metadata.filmISO.value());
-        if (metadata.fNumber) setFNumber(metadata.fNumber.value());
-        if (metadata.shutterSpeed) setShutter(metadata.shutterSpeed.value());
+        if (metadata.filmISO)
+            setFilmSpeed(metadata.filmISO.value());
+        if (metadata.fNumber)
+            setFNumber(metadata.fNumber.value());
+        if (metadata.shutterSpeed)
+            setShutter(metadata.shutterSpeed.value());
     }
 }
 
@@ -491,8 +517,10 @@ void ToneMapper::createToneMapPass()
 {
     DefineList defines;
     defines.add("_TONE_MAPPER_OPERATOR", std::to_string(static_cast<uint32_t>(mOperator)));
-    if (mAutoExposure) defines.add("_TONE_MAPPER_AUTO_EXPOSURE");
-    if (mClamp) defines.add("_TONE_MAPPER_CLAMP");
+    if (mAutoExposure)
+        defines.add("_TONE_MAPPER_AUTO_EXPOSURE");
+    if (mClamp)
+        defines.add("_TONE_MAPPER_CLAMP");
 
     mpToneMapPass = FullScreenPass::create(mpDevice, kToneMappingFile, defines);
 }

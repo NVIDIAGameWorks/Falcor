@@ -112,7 +112,7 @@ ref<Buffer> createSeed(ref<Device> pDevice, size_t elements, std::vector<uint32_
 
     // Upload seeds to the GPU.
     ref<Buffer> pSeedBuf =
-        Buffer::create(pDevice, seed.size() * sizeof(seed[0]), Resource::BindFlags::ShaderResource, Buffer::CpuAccess::None, seed.data());
+        pDevice->createBuffer(seed.size() * sizeof(seed[0]), ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, seed.data());
     FALCOR_ASSERT(pSeedBuf);
     return pSeedBuf;
 }

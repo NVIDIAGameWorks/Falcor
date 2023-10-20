@@ -53,7 +53,7 @@ namespace Falcor
     MERLFile::MERLFile(const std::filesystem::path& path)
     {
         if (!loadBRDF(path))
-            throw RuntimeError("Failed to load MERL BRDF from '{}'", path);
+            FALCOR_THROW("Failed to load MERL BRDF from '{}'", path);
     }
 
     bool MERLFile::loadBRDF(const std::filesystem::path& path)
@@ -147,7 +147,7 @@ namespace Falcor
         if (!mAlbedoLUT.empty())
             return mAlbedoLUT;
 
-        checkInvariant(!mDesc.path.empty(), "No BRDF loaded");
+        FALCOR_CHECK(!mDesc.path.empty(), "No BRDF loaded");
         const auto texPath = mDesc.path.replace_extension("dds");
 
         // Try loading cached albedo lookup table.

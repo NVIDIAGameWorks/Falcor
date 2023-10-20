@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -100,8 +100,14 @@ public:
         auto image = create(FreeImage_GetWidth(floatBitmap), FreeImage_GetHeight(floatBitmap));
         int bytesPerPixel = 4 * sizeof(float);
         FreeImage_ConvertToRawBits(
-            reinterpret_cast<BYTE*>(image->getData()), floatBitmap, bytesPerPixel * image->getWidth(), bytesPerPixel * 8, FI_RGBA_RED_MASK,
-            FI_RGBA_GREEN_MASK, FI_RGBA_BLUE_MASK, true
+            reinterpret_cast<BYTE*>(image->getData()),
+            floatBitmap,
+            bytesPerPixel * image->getWidth(),
+            bytesPerPixel * 8,
+            FI_RGBA_RED_MASK,
+            FI_RGBA_GREEN_MASK,
+            FI_RGBA_BLUE_MASK,
+            true
         );
         FreeImage_Unload(floatBitmap);
 
@@ -436,8 +442,12 @@ int main(int argc, char** argv)
     }
 
     bool success = compareImages(
-        args::get(image1), args::get(image2), metric, thresholdFlag ? args::get(thresholdFlag) : 0.f,
-        alphaFlag ? args::get(alphaFlag) : false, heatMapFlag ? args::get(heatMapFlag) : ""
+        args::get(image1),
+        args::get(image2),
+        metric,
+        thresholdFlag ? args::get(thresholdFlag) : 0.f,
+        alphaFlag ? args::get(alphaFlag) : false,
+        heatMapFlag ? args::get(heatMapFlag) : ""
     );
     return success ? 0 : 1;
 }

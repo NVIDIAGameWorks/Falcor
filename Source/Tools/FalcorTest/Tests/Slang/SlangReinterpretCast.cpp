@@ -48,7 +48,7 @@ GPU_TEST(SlangReinterpretCast)
 {
     ref<Device> pDevice = ctx.getDevice();
 
-    ctx.createProgram("Tests/Slang/SlangReinterpretCast.cs.slang", "main", DefineList(), Program::CompilerFlags::None, "6_5");
+    ctx.createProgram("Tests/Slang/SlangReinterpretCast.cs.slang", "main", DefineList(), SlangCompilerFlags::None, ShaderModel::SM6_5);
     ctx.allocateStructuredBuffer("resultA", kElems);
     ctx.allocateStructuredBuffer("resultB", kElems);
     ctx.allocateStructuredBuffer("resultC", kElems);
@@ -76,7 +76,7 @@ GPU_TEST(SlangReinterpretCast)
 
     ShaderVar var = ctx.vars().getRootVar();
     var["data"] =
-        Buffer::createStructured(pDevice, sizeof(A), kElems, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, data.data());
+        pDevice->createStructuredBuffer(sizeof(A), kElems, ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, data.data());
 
     ctx.runProgram(kElems);
 

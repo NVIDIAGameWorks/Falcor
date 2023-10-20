@@ -27,7 +27,7 @@
  **************************************************************************/
 #pragma once
 #include "Core/Macros.h"
-#include "Core/Assert.h"
+#include "Core/Error.h"
 #include "Core/Program/ProgramVersion.h"
 #if FALCOR_HAS_NVAPI
 #include <d3d12.h>

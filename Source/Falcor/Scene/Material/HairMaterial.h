@@ -53,8 +53,8 @@ namespace Falcor
 
         HairMaterial(ref<Device> pDevice, const std::string& name);
 
-        Program::ShaderModuleList getShaderModules() const override;
-        Program::TypeConformanceList getTypeConformances() const override;
+        ProgramDesc::ShaderModuleList getShaderModules() const override;
+        TypeConformanceList getTypeConformances() const override;
 
         /** Compute sigmaA from eumelanin and pheomelanin concentration.
         */

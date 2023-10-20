@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -29,7 +29,7 @@ import "RenderPasses/DebugPasses/Comparison.ps";
 
 struct SideBySide : ICalcPixelColor
 {
-	float2x4 calcColors(uint2 pixelPos)
+    float2x4 calcColors(uint2 pixelPos)
     {
         float2x4 colors;
         colors[0] = gLeftInput[uint2(pixelPos.x + gLeftBound, pixelPos.y)];
@@ -38,8 +38,8 @@ struct SideBySide : ICalcPixelColor
     }
 };
 
-float4 main(float2 texC : TEXCOORD, float4 pos : SV_Position) : SV_Target0
+float4 main(float2 texC: TEXCOORD, float4 pos: SV_Position) : SV_Target0
 {
-    SideBySide comp = { };
+    SideBySide comp = {};
     return compare(texC, pos, comp);
 }

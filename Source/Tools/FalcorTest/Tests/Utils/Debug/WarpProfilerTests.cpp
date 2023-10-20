@@ -34,13 +34,13 @@ GPU_TEST(WarpProfiler, Device::Type::D3D12)
 {
     WarpProfiler profiler(ctx.getDevice(), 4);
 
-    Program::Desc desc;
+    ProgramDesc desc;
     desc.addShaderLibrary("Tests/Utils/Debug/WarpProfilerTests.cs.slang").csEntry("main");
-    desc.setShaderModel("6_5"); // Minimum required shader model.
+    desc.setShaderModel(ShaderModel::SM6_5); // Minimum required shader model.
     ctx.createProgram(desc);
 
     auto var = ctx.vars().getRootVar();
-    profiler.setShaderData(var);
+    profiler.bindShaderData(var);
     profiler.begin(ctx.getRenderContext());
 
     ctx.runProgram(256, 256, 16); // Launch 2^20 threads = 32768 warps.

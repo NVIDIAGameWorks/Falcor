@@ -26,7 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "AssimpImporter.h"
-#include "Core/Assert.h"
+#include "Core/Error.h"
 #include "Core/API/Device.h"
 #include "Utils/Logger.h"
 #include "Utils/StringUtils.h"
@@ -79,10 +79,9 @@ enum class ImportMode
     GLTF2,
 };
 
-float4x4 aiCast(const aiMatrix4x4& aiMat)
+float4x4 aiCast(const aiMatrix4x4& ai)
 {
-    float4x4 m{aiMat.a1, aiMat.a2, aiMat.a3, aiMat.a4, aiMat.b1, aiMat.b2, aiMat.b3, aiMat.b4,
-               aiMat.c1, aiMat.c2, aiMat.c3, aiMat.c4, aiMat.d1, aiMat.d2, aiMat.d3, aiMat.d4};
+    float4x4 m{ai.a1, ai.a2, ai.a3, ai.a4, ai.b1, ai.b2, ai.b3, ai.b4, ai.c1, ai.c2, ai.c3, ai.c4, ai.d1, ai.d2, ai.d3, ai.d4};
 
     return m;
 }
@@ -246,7 +245,8 @@ void createAnimation(ImporterData& data, const aiAnimation* pAiAnim, ImportMode 
         for (uint32_t j = 0; j < data.getNodeInstanceCount(pAiNode->mNodeName.C_Str()); j++)
         {
             ref<Animation> pAnimation = Animation::create(
-                std::string(pAiNode->mNodeName.C_Str()) + "." + std::to_string(j), data.getFalcorNodeID(pAiNode->mNodeName.C_Str(), j),
+                std::string(pAiNode->mNodeName.C_Str()) + "." + std::to_string(j),
+                data.getFalcorNodeID(pAiNode->mNodeName.C_Str(), j),
                 durationInSeconds
             );
             animations.push_back(pAnimation);
@@ -588,7 +588,9 @@ void createMeshes(ImporterData& data)
     std::vector<SceneBuilder::ProcessedMesh> processedMeshes(meshes.size());
     auto range = NumericRange<size_t>(0, meshes.size());
     std::for_each(
-        std::execution::par, range.begin(), range.end(),
+        std::execution::par,
+        range.begin(),
+        range.end(),
         [&](size_t i)
         {
             const aiMesh* pAiMesh = meshes[i];
@@ -1069,17 +1071,23 @@ void dumpAssimpData(ImporterData& data)
 
             for (uint32_t j = 0; j < pChannel->mNumPositionKeys; j++)
                 out += fmt::format(
-                    "      position key[{}]: time {}, value {}\n", j, pChannel->mPositionKeys[j].mTime,
+                    "      position key[{}]: time {}, value {}\n",
+                    j,
+                    pChannel->mPositionKeys[j].mTime,
                     aiCast(pChannel->mPositionKeys[j].mValue)
                 );
             for (uint32_t j = 0; j < pChannel->mNumRotationKeys; j++)
                 out += fmt::format(
-                    "      rotation key[{}]: time {}, value {}\n", j, pChannel->mRotationKeys[j].mTime,
+                    "      rotation key[{}]: time {}, value {}\n",
+                    j,
+                    pChannel->mRotationKeys[j].mTime,
                     aiCast(pChannel->mRotationKeys[j].mValue)
                 );
             for (uint32_t j = 0; j < pChannel->mNumScalingKeys; j++)
                 out += fmt::format(
-                    "      scaling key[{}]: time {}, value {}\n", j, pChannel->mScalingKeys[j].mTime,
+                    "      scaling key[{}]: time {}, value {}\n",
+                    j,
+                    pChannel->mScalingKeys[j].mTime,
                     aiCast(pChannel->mScalingKeys[j].mValue)
                 );
         }
@@ -1181,7 +1189,11 @@ std::unique_ptr<Importer> AssimpImporter::create()
     return std::make_unique<AssimpImporter>();
 }
 
-void AssimpImporter::importScene(const std::filesystem::path& path, SceneBuilder& builder, const pybind11::dict& dict)
+void AssimpImporter::importScene(
+    const std::filesystem::path& path,
+    SceneBuilder& builder,
+    const std::map<std::string, std::string>& materialToShortName
+)
 {
     importInternal(nullptr, 0, path, builder);
 }
@@ -1191,7 +1203,7 @@ void AssimpImporter::importSceneFromMemory(
     size_t byteSize,
     std::string_view extension,
     SceneBuilder& builder,
-    const pybind11::dict& dict
+    const std::map<std::string, std::string>& materialToShortName
 )
 {
     importInternal(buffer, byteSize, {}, builder);

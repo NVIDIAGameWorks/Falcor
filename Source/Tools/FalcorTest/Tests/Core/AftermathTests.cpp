@@ -49,7 +49,7 @@ GPU_TEST(AftermathCatchTDR)
 
     ctx.getRenderContext()->addAftermathMarker("after");
 
-    pDevice->flushAndSync();
+    pDevice->wait();
 
     // At this point we have lost the device, so submitting another dispatch should terminate the application.
     ctx.runProgram(1024, 1024);

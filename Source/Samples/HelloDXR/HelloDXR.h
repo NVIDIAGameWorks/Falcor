@@ -56,7 +56,7 @@ private:
 
     ref<RasterPass> mpRasterPass;
 
-    ref<RtProgram> mpRaytraceProgram;
+    ref<Program> mpRaytraceProgram;
     ref<RtProgramVars> mpRtVars;
     ref<Texture> mpRtOut;
 

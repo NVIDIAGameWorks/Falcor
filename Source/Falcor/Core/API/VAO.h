@@ -29,7 +29,7 @@
 #include "VertexLayout.h"
 #include "Buffer.h"
 #include "Core/Macros.h"
-#include "Core/Assert.h"
+#include "Core/Error.h"
 #include "Core/Object.h"
 #include <vector>
 

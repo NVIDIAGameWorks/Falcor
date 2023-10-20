@@ -179,10 +179,12 @@ CPU_TEST(Matrix_transpose)
 CPU_TEST(Matrix_translate)
 {
     float4x4 m({
-        1, 0, 0, 10,  //
-        0, -1, 0, 20, //
-        0, 0, 1, 30,  //
-        0, 0, 0, 1    //
+        // clang-format off
+        1,  0, 0, 10,
+        0, -1, 0, 20,
+        0,  0, 1, 30,
+        0,  0, 0, 1
+        // clang-format on
     });
     float4x4 m2 = translate(m, float3(1, 2, 3));
     EXPECT_ALMOST_EQ(m2[0], float4(1, 0, 0, 11));
@@ -194,10 +196,12 @@ CPU_TEST(Matrix_translate)
 CPU_TEST(Matrix_rotate)
 {
     float4x4 m({
-        1, 0, 0, 10,  //
-        0, -1, 0, 20, //
-        0, 0, 1, 30,  //
-        0, 0, 0, 1    //
+        // clang-format off
+        1,  0, 0, 10,
+        0, -1, 0, 20,
+        0,  0, 1, 30,
+        0,  0, 0, 1
+        // clang-format on
     });
     float4x4 m2 = rotate(m, math::radians(90.f), float3(0, 1, 0));
     EXPECT_ALMOST_EQ(m2[0], float4(0, 0, 1, 10));
@@ -209,10 +213,12 @@ CPU_TEST(Matrix_rotate)
 CPU_TEST(Matrix_scale)
 {
     float4x4 m({
-        1, 0, 0, 10,  //
-        0, -1, 0, 20, //
-        0, 0, 1, 30,  //
-        0, 0, 0, 1    //
+        // clang-format off
+        1,  0, 0, 10,
+        0, -1, 0, 20,
+        0,  0, 1, 30,
+        0,  0, 0, 1
+        // clang-format on
     });
     float4x4 m2 = scale(m, float3(2, 3, 4));
     EXPECT_ALMOST_EQ(m2[0], float4(2, 0, 0, 10));
@@ -280,10 +286,12 @@ CPU_TEST(Matrix_extractEulerAngleXYZ)
     {
         // float4x4 m = math::matrixFromRotationXYZ(math::radians(45.f), math::radians(45.f), math::radians(45.f));
         float4x4 m = float4x4({
-            0.5f, -0.5f, 0.707107f, 0.f,      //
-            0.853553f, 0.146446f, -0.5f, 0.f, //
-            0.146446f, 0.853553f, 0.5f, 0.f,  //
-            0.f, 0.f, 0.f, 1.f                //
+            // clang-format off
+            0.5f, -0.5f, 0.707107f, 0.f,
+            0.853553f, 0.146446f, -0.5f, 0.f,
+            0.146446f, 0.853553f, 0.5f, 0.f,
+            0.f, 0.f, 0.f, 1.f
+            // clang-format on
         });
         float3 angles;
         math::extractEulerAngleXYZ(m, angles.x, angles.y, angles.z);
@@ -293,10 +301,12 @@ CPU_TEST(Matrix_extractEulerAngleXYZ)
     {
         // float4x4 m = math::matrixFromRotationXYZ(math::radians(20.f), math::radians(40.f), math::radians(60.f));
         float4x4 m = float4x4({
-            0.383022f, -0.663414f, 0.642787f, 0.f, //
-            0.923720f, 0.279453f, -0.262002f, 0.f, //
-            -0.005813f, 0.694109f, 0.719846f, 0.f, //
-            0.f, 0.f, 0.f, 1.f                     //
+            // clang-format off
+            0.383022f, -0.663414f, 0.642787f, 0.f,
+            0.923720f, 0.279453f, -0.262002f, 0.f,
+            -0.005813f, 0.694109f, 0.719846f, 0.f,
+            0.f, 0.f, 0.f, 1.f
+            // clang-format on
         });
         float3 angles;
         math::extractEulerAngleXYZ(m, angles.x, angles.y, angles.z);
@@ -306,8 +316,13 @@ CPU_TEST(Matrix_extractEulerAngleXYZ)
 
 CPU_TEST(Matrix_decompose)
 {
-    const auto testDecompose = [&](float4x4 m, float3 expectedScale, quatf expectedOrientation, float3 expectedTranslation,
-                                   float3 expectedSkew, float4 expectedPerspective, bool expectedResult = true)
+    const auto testDecompose = [&](float4x4 m,
+                                   float3 expectedScale,
+                                   quatf expectedOrientation,
+                                   float3 expectedTranslation,
+                                   float3 expectedSkew,
+                                   float4 expectedPerspective,
+                                   bool expectedResult = true)
     {
         float3 scale;
         quatf orientation;
@@ -350,10 +365,12 @@ CPU_TEST(Matrix_decompose)
     // Scale only
     testDecompose(
         float4x4({
-            2.f, 0.f, 0.f, 0.f, // row 0
-            0.f, 3.f, 0.f, 0.f, // row 1
-            0.f, 0.f, 4.f, 0.f, // row 2
-            0.f, 0.f, 0.f, 1.f  // row 3
+            // clang-format off
+            2.f, 0.f, 0.f, 0.f,
+            0.f, 3.f, 0.f, 0.f,
+            0.f, 0.f, 4.f, 0.f,
+            0.f, 0.f, 0.f, 1.f
+            // clang-format on
         }),
         float3(2.f, 3.f, 4.f),     // scale
         quatf::identity(),         // orientation
@@ -366,10 +383,12 @@ CPU_TEST(Matrix_decompose)
     // float4x4 m = math::matrixFromRotationX(math::radians(45.f));
     testDecompose(
         float4x4({
-            1.f, 0.f, 0.f, 0.f,              // row 0
-            0.f, 0.707107f, -0.707107f, 0.f, // row 1
-            0.f, 0.707107f, 0.707107f, 0.f,  // row 2
-            0.f, 0.f, 0.f, 1.f               // row 3
+            // clang-format off
+            1.f, 0.f, 0.f, 0.f,
+            0.f, 0.707107f, -0.707107f, 0.f,
+            0.f, 0.707107f, 0.707107f, 0.f,
+            0.f, 0.f, 0.f, 1.f
+            // clang-format on
         }),
         float3(1.f, 1.f, 1.f),                // scale
         quatf(0.382683f, 0.f, 0.f, 0.92388f), // orientation
@@ -381,10 +400,12 @@ CPU_TEST(Matrix_decompose)
     // Translation only
     testDecompose(
         float4x4({
-            1.f, 0.f, 0.f, 1.f, // row 0
-            0.f, 1.f, 0.f, 2.f, // row 1
-            0.f, 0.f, 1.f, 3.f, // row 2
-            0.f, 0.f, 0.f, 1.f  // row 3
+            // clang-format off
+            1.f, 0.f, 0.f, 1.f,
+            0.f, 1.f, 0.f, 2.f,
+            0.f, 0.f, 1.f, 3.f,
+            0.f, 0.f, 0.f, 1.f
+            // clang-format off
         }),
         float3(1.f, 1.f, 1.f),     // scale
         quatf::identity(),         // orientation
@@ -396,10 +417,12 @@ CPU_TEST(Matrix_decompose)
     // Skew only
     testDecompose(
         float4x4({
-            1.f, 2.f, 3.f, 0.f, // row 0
-            0.f, 1.f, 4.f, 0.f, // row 1
-            0.f, 0.f, 1.f, 0.f, // row 2
-            0.f, 0.f, 0.f, 1.f  // row 3
+            // clang-format off
+            1.f, 2.f, 3.f, 0.f,
+            0.f, 1.f, 4.f, 0.f,
+            0.f, 0.f, 1.f, 0.f,
+            0.f, 0.f, 0.f, 1.f
+            // clang-format on
         }),
         float3(1.f, 1.f, 1.f),     // scale
         quatf::identity(),         // orientation
@@ -411,10 +434,12 @@ CPU_TEST(Matrix_decompose)
     // Perspective only
     testDecompose(
         float4x4({
-            1.f, 0.f, 0.f, 0.f,   // row 0
-            0.f, 1.f, 0.f, 0.f,   // row 1
-            0.f, 0.f, 1.f, 0.f,   // row 2
-            0.1f, 0.2f, 0.3f, 1.f // row 3
+            // clang-format off
+            1.f, 0.f, 0.f, 0.f,
+            0.f, 1.f, 0.f, 0.f,
+            0.f, 0.f, 1.f, 0.f,
+            0.1f, 0.2f, 0.3f, 1.f
+            // clang-format on
         }),
         float3(1.f, 1.f, 1.f),        // scale
         quatf::identity(),            // orientation
@@ -430,10 +455,12 @@ CPU_TEST(Matrix_decompose)
     m = mul(math::matrixFromTranslation(float3(1.f, 2.f, 3.f)), m);
     testDecompose(
         float4x4({
-            2.f, 0.f, 0.f, 1.f,            // row 0
-            0.f, 2.12132f, -2.82843f, 2.f, // row 1
-            0.f, 2.12132f, 2.82843f, 3.f,  // row 2
-            0.f, 0.f, 0.f, 1.f             // row 3
+            // clang-format off
+            2.f, 0.f, 0.f, 1.f,
+            0.f, 2.12132f, -2.82843f, 2.f,
+            0.f, 2.12132f, 2.82843f, 3.f,
+            0.f, 0.f, 0.f, 1.f
+            // clang-format on
         }),
         float3(2.f, 3.f, 4.f),                // scale
         quatf(0.382683f, 0.f, 0.f, 0.92388f), // orientation

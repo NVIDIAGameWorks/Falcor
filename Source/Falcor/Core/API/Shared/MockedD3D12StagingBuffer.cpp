@@ -26,6 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "MockedD3D12StagingBuffer.h"
+#include "Core/API/Device.h"
 #include "Core/API/Buffer.h"
 #include "Core/API/NativeHandleTraits.h"
 
@@ -34,9 +35,7 @@ namespace Falcor
 void MockedD3D12StagingBuffer::resize(ref<Device> pDevice, size_t size)
 {
     mData.resize(size);
-    mpGpuBuffer = Buffer::create(
-        pDevice, size, Resource::BindFlags::Constant | Resource::BindFlags::ShaderResource, Falcor::Buffer::CpuAccess::Write
-    );
+    mpGpuBuffer = pDevice->createBuffer(size, ResourceBindFlags::Constant | ResourceBindFlags::ShaderResource, Falcor::MemoryType::Upload);
 }
 
 HRESULT __stdcall MockedD3D12StagingBuffer::QueryInterface(REFIID riid, void** ppvObject)

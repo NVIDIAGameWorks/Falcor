@@ -12,6 +12,7 @@ DerivePointerAlignment: false
 PointerAlignment: Left
 FixNamespaceComments: true
 
+BinPackArguments: false
 AllowAllConstructorInitializersOnNextLine: true
 BreakConstructorInitializers: BeforeComma
 AlwaysBreakTemplateDeclarations: true
@@ -62,6 +63,7 @@ DerivePointerAlignment: false
 PointerAlignment: Left
 FixNamespaceComments: true
 
+BinPackArguments: false
 AllowAllConstructorInitializersOnNextLine: true
 BreakConstructorInitializers: BeforeComma
 AlwaysBreakTemplateDeclarations: true

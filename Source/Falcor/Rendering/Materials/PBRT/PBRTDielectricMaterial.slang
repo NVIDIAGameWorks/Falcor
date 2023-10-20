@@ -62,9 +62,10 @@ struct PBRTDielectricMaterial : MaterialBase, IMaterial
         return mi;
     }
 
-    float evalOpacity(const MaterialSystem ms, const VertexData v, const ITextureSampler lod)
+    [Differentiable]
+    PBRTDielectricMaterialInstance setupDiffMaterialInstance(out DiffMaterialData diffData, const MaterialSystem ms, const ShadingData sd, const ITextureSampler lod, const uint hints)
     {
-        SamplerState s = ms.getTextureSampler(header.getDefaultTextureSamplerID());
-        return ms.sampleTexture(data.texBaseColor, s, v.texC, data.baseColor, lod).a;
+        diffData = DiffMaterialData();
+        return no_diff setupMaterialInstance(ms, sd, lod, hints);
     }
 };

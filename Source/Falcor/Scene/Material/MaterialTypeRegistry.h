@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -28,6 +28,7 @@
 #pragma once
 #include "Core/Macros.h"
 #include "MaterialTypes.slang"
+#include "MaterialParamLayout.h"
 #include <fmt/format.h>
 
 namespace Falcor
@@ -53,6 +54,10 @@ FALCOR_API std::string to_string(MaterialType type);
     \return Total number of registered material types.
 */
 FALCOR_API size_t getMaterialTypeCount();
+
+/** Return the material parameter layout of serialized material parameters (for differentiable materials).
+*/
+FALCOR_API MaterialParamLayout getMaterialParamLayout(MaterialType type);
 }
 
 template<>

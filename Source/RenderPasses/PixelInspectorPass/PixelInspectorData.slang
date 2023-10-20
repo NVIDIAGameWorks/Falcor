@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -36,8 +36,9 @@ __exported import Scene.HitInfoType;
 
 BEGIN_NAMESPACE_FALCOR
 
-/** Pixel data read out by the PixelInspectorPass.
-*/
+/**
+ * Pixel data read out by the PixelInspectorPass.
+ */
 struct PixelData
 {
     static const uint kInvalidIndex = 0xffffffff;
@@ -60,14 +61,14 @@ struct PixelData
 
     // Material instance properties
     float3 emission;
-    float  roughness;
+    float roughness;
     float3 guideNormal;
     float3 diffuseReflectionAlbedo;
     float3 diffuseTransmissionAlbedo;
     float3 specularReflectionAlbedo;
     float3 specularTransmissionAlbedo;
     float3 specularReflectance;
-    int    isTransmissive;
+    int isTransmissive;
 
     // Output data
     float4 linearColor;
@@ -75,7 +76,7 @@ struct PixelData
     float luminance;
 
     // Visibility data
-    uint hitType;      ///< Type of hit, see enum HitType. Only valid if instanceID != kInvalidIndex.
+    uint hitType; ///< Type of hit, see enum HitType. Only valid if instanceID != kInvalidIndex.
     uint instanceID;
     uint primitiveIndex;
     float2 barycentrics;

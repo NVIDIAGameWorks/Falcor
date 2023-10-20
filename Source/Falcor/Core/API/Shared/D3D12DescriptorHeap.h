@@ -27,7 +27,7 @@
  **************************************************************************/
 #pragma once
 #include "D3D12Handles.h"
-#include "Core/Assert.h"
+#include "Core/Error.h"
 #include "Core/Object.h"
 #include "Core/API/fwd.h"
 #include <d3d12.h>

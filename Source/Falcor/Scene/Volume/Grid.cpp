@@ -91,24 +91,23 @@ namespace Falcor
 
     ref<Grid> Grid::createFromFile(ref<Device> pDevice, const std::filesystem::path& path, const std::string& gridname)
     {
-        std::filesystem::path fullPath;
-        if (!findFileInDataDirectories(path, fullPath))
+        if (!std::filesystem::exists(path))
         {
-            logWarning("Error when loading grid. Can't find grid file '{}'.", path);
+            logWarning("Error when loading grid. Can't open grid file '{}'.", path);
             return nullptr;
         }
 
-        if (hasExtension(fullPath, "nvdb"))
+        if (hasExtension(path, "nvdb"))
         {
-            return createFromNanoVDBFile(pDevice, fullPath, gridname);
+            return createFromNanoVDBFile(pDevice, path, gridname);
         }
-        else if (hasExtension(fullPath, "vdb"))
+        else if (hasExtension(path, "vdb"))
         {
-            return createFromOpenVDBFile(pDevice, fullPath, gridname);
+            return createFromOpenVDBFile(pDevice, path, gridname);
         }
         else
         {
-            logWarning("Error when loading grid. Unsupported grid file '{}'.", fullPath);
+            logWarning("Error when loading grid. Unsupported grid file '{}'.", path);
             return nullptr;
         }
     }
@@ -125,7 +124,7 @@ namespace Falcor
         widget.text(oss.str());
     }
 
-    void Grid::setShaderData(const ShaderVar& var)
+    void Grid::bindShaderData(const ShaderVar& var)
     {
         var["buf"] = mpBuffer;
         var["rangeTex"] = mBrickedGrid.range;
@@ -215,12 +214,11 @@ namespace Falcor
         }
 
         // Keep both NanoVDB and brick textures resident in GPU memory for simplicity for now (~15% increased footprint).
-        mpBuffer = Buffer::createStructured(
-            mpDevice,
+        mpBuffer = mpDevice->createStructuredBuffer(
             sizeof(uint32_t),
             uint32_t(div_round_up(mGridHandle.size(), sizeof(uint32_t))),
             ResourceBindFlags::UnorderedAccess | ResourceBindFlags::ShaderResource,
-            Buffer::CpuAccess::None,
+            MemoryType::DeviceLocal,
             mGridHandle.data()
         );
         using NanoVDBGridConverter = NanoVDBConverterBC4;
@@ -329,7 +327,7 @@ namespace Falcor
 
         auto createFromFile = [] (const std::filesystem::path& path, const std::string& gridname)
         {
-            return Grid::createFromFile(accessActivePythonSceneBuilder().getDevice(), path, gridname);
+            return Grid::createFromFile(accessActivePythonSceneBuilder().getDevice(), getActiveAssetResolver().resolvePath(path), gridname);
         };
         grid.def_static("createFromFile", createFromFile, "path"_a, "gridname"_a); // PYTHONDEPRECATED
     }

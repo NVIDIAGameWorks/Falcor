@@ -26,7 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "BlitContext.h"
-#include "Core/Assert.h"
+#include "Core/Error.h"
 #include "Core/API/Device.h"
 #include "Core/Program/Program.h"
 #include "Core/Pass/FullScreenPass.h"
@@ -44,7 +44,7 @@ BlitContext::BlitContext(Device* pDevice)
         {"SRC_INT", "0"},
         {"DST_INT", "0"},
     };
-    Program::Desc d;
+    ProgramDesc d;
     d.addShaderLibrary("Core/API/BlitReduction.3d.slang").vsEntry("vsMain").psEntry("psMain");
     pPass = FullScreenPass::create(ref<Device>(pDevice), d, defines);
     pPass->breakStrongReferenceToDevice();
@@ -59,29 +59,29 @@ BlitContext::BlitContext(Device* pDevice)
     prevSrcReftScale = float2(-1.0f);
 
     Sampler::Desc desc;
-    desc.setAddressingMode(Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp, Sampler::AddressMode::Clamp);
-    desc.setReductionMode(Sampler::ReductionMode::Standard);
-    desc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Point);
-    pLinearSampler = Sampler::create(ref<Device>(pDevice), desc);
+    desc.setAddressingMode(TextureAddressingMode::Clamp, TextureAddressingMode::Clamp, TextureAddressingMode::Clamp);
+    desc.setReductionMode(TextureReductionMode::Standard);
+    desc.setFilterMode(TextureFilteringMode::Linear, TextureFilteringMode::Linear, TextureFilteringMode::Point);
+    pLinearSampler = pDevice->createSampler(desc);
     pLinearSampler->breakStrongReferenceToDevice();
-    desc.setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point);
-    pPointSampler = Sampler::create(ref<Device>(pDevice), desc);
+    desc.setFilterMode(TextureFilteringMode::Point, TextureFilteringMode::Point, TextureFilteringMode::Point);
+    pPointSampler = pDevice->createSampler(desc);
     pPointSampler->breakStrongReferenceToDevice();
     // Min reductions.
-    desc.setReductionMode(Sampler::ReductionMode::Min);
-    desc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Point);
-    pLinearMinSampler = Sampler::create(ref<Device>(pDevice), desc);
+    desc.setReductionMode(TextureReductionMode::Min);
+    desc.setFilterMode(TextureFilteringMode::Linear, TextureFilteringMode::Linear, TextureFilteringMode::Point);
+    pLinearMinSampler = pDevice->createSampler(desc);
     pLinearMinSampler->breakStrongReferenceToDevice();
-    desc.setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point);
-    pPointMinSampler = Sampler::create(ref<Device>(pDevice), desc);
+    desc.setFilterMode(TextureFilteringMode::Point, TextureFilteringMode::Point, TextureFilteringMode::Point);
+    pPointMinSampler = pDevice->createSampler(desc);
     pPointMinSampler->breakStrongReferenceToDevice();
     // Max reductions.
-    desc.setReductionMode(Sampler::ReductionMode::Max);
-    desc.setFilterMode(Sampler::Filter::Linear, Sampler::Filter::Linear, Sampler::Filter::Point);
-    pLinearMaxSampler = Sampler::create(ref<Device>(pDevice), desc);
+    desc.setReductionMode(TextureReductionMode::Max);
+    desc.setFilterMode(TextureFilteringMode::Linear, TextureFilteringMode::Linear, TextureFilteringMode::Point);
+    pLinearMaxSampler = pDevice->createSampler(desc);
     pLinearMaxSampler->breakStrongReferenceToDevice();
-    desc.setFilterMode(Sampler::Filter::Point, Sampler::Filter::Point, Sampler::Filter::Point);
-    pPointMaxSampler = Sampler::create(ref<Device>(pDevice), desc);
+    desc.setFilterMode(TextureFilteringMode::Point, TextureFilteringMode::Point, TextureFilteringMode::Point);
+    pPointMaxSampler = pDevice->createSampler(desc);
     pPointMaxSampler->breakStrongReferenceToDevice();
 
     const auto& pDefaultBlockReflection = pPass->getProgram()->getReflector()->getDefaultParameterBlock();

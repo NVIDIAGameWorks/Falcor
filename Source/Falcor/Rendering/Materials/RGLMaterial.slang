@@ -81,6 +81,10 @@ struct RGLMaterial : MaterialBase, IMaterial
         return RGLMaterialInstance(sf, slice, sigmaEval, albedo, data);
     }
 
-    // Alpha testing is not supported by this material.
-    float evalOpacity(const MaterialSystem ms, const VertexData v, const ITextureSampler lod) { return 1.f; }
+    [Differentiable]
+    RGLMaterialInstance setupDiffMaterialInstance(out DiffMaterialData diffData, const MaterialSystem ms, const ShadingData sd, const ITextureSampler lod, const uint hints)
+    {
+        diffData = DiffMaterialData();
+        return no_diff setupMaterialInstance(ms, sd, lod, hints);
+    }
 };

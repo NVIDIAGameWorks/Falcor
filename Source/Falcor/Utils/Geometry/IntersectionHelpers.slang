@@ -40,7 +40,16 @@ import Utils.Math.MathHelpers;
  * @param[out] t Distance to the closest intersection.
  * @return True if the ray intersects the sphere.
  */
-bool intersectRaySphere(const float3 rayOrigin, const float3 rayDir, const float3 sphereCenter, const float sphereRadius, out float t)
+bool intersectRaySphere(
+    const float3 rayOrigin,
+    const float3 rayDir,
+    const float3 sphereCenter,
+    const float sphereRadius,
+    out float t,
+    const float tMin = 0.f,
+    const float tMax = 1e36f,
+    const bool backfaceCull = false
+)
 {
     t = {};
 
@@ -55,10 +64,10 @@ bool intersectRaySphere(const float3 rayOrigin, const float3 rayDir, const float
         return false;
 
     // If b and discriminant are both 0, then the ray's origin lies on the sphere
-    if (b == 0 && discriminant == 0)
+    if (b == 0 && discriminant == 0 && tMin <= 0)
     {
         t = 0.f;
-        return true;
+        return (t <= tMax);
     }
 
     // There are two solutions t0 and t1, but one or both may be negative.
@@ -68,12 +77,12 @@ bool intersectRaySphere(const float3 rayOrigin, const float3 rayDir, const float
     float t0 = c / q;
     float t1 = q / a;
 
-    float tc = t0 < 0.f ? t1 : t0; // tc is the closest hit we care about
-    if (tc < 0.f)
+    float tc = (t0 < tMin && !backfaceCull) ? t1 : t0; // tc is the closest hit we care about
+    if (tc < tMin)
         return false;
 
     t = tc;
-    return true;
+    return (t <= tMax);
 }
 
 /**

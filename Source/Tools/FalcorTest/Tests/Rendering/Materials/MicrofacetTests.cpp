@@ -118,8 +118,8 @@ void setupSamplingTest(GPUUnitTestContext& ctx, const SamplingTestSpec& spec, co
         float theta = M_PI * spec.incidentAngles[i] / 180.f;
         testWi.push_back({std::sin(theta), 0.f, std::cos(theta)});
     }
-    auto pTestWiBuffer = Buffer::createStructured(
-        pDevice, var["testWi"], testCount, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, testWi.data()
+    auto pTestWiBuffer = pDevice->createStructuredBuffer(
+        var["testWi"], testCount, ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, testWi.data()
     );
     var["testWi"] = pTestWiBuffer;
 }
@@ -134,25 +134,22 @@ std::vector<std::vector<double>> tabulateHistogram(GPUUnitTestContext& ctx, cons
     setupSamplingTest(ctx, spec, "tabulateHistogram");
 
     auto var = ctx.vars().getRootVar()["gMicrofacetSamplingTest"];
-    auto pHistogramBuffer = Buffer::createStructured(pDevice, var["histogramSampling"], testCount * binCount);
+    auto pHistogramBuffer = pDevice->createStructuredBuffer(var["histogramSampling"], testCount * binCount);
     var["histogramSampling"] = pHistogramBuffer;
     ctx.getRenderContext()->clearUAV(pHistogramBuffer->getUAV().get(), uint4(0));
 
     ctx.runProgram(spec.sampleCount / spec.threadSampleCount, 1, testCount);
 
-    auto pHistogramData = reinterpret_cast<const uint32_t*>(pHistogramBuffer->map(Buffer::MapType::Read));
-
+    std::vector<uint32_t> histogramData = pHistogramBuffer->getElements<uint32_t>();
     std::vector<std::vector<double>> histograms;
 
     for (uint32_t testIndex = 0; testIndex < testCount; ++testIndex)
     {
         std::vector<double> histogram(binCount);
         for (uint32_t i = 0; i < binCount; ++i)
-            histogram[i] = (double)pHistogramData[testIndex * binCount + i];
+            histogram[i] = (double)histogramData[testIndex * binCount + i];
         histograms.push_back(histogram);
     }
-
-    pHistogramBuffer->unmap();
 
     return histograms;
 }
@@ -167,22 +164,19 @@ std::vector<std::vector<double>> tabulatePdf(GPUUnitTestContext& ctx, const Samp
     setupSamplingTest(ctx, spec, "tabulatePdf");
 
     auto var = ctx.vars().getRootVar()["gMicrofacetSamplingTest"];
-    auto pHistogramBuffer = Buffer::createStructured(pDevice, var["histogramPdf"], testCount * binCount);
+    auto pHistogramBuffer = pDevice->createStructuredBuffer(var["histogramPdf"], testCount * binCount);
     var["histogramPdf"] = pHistogramBuffer;
 
     ctx.runProgram(spec.phiBinCount, spec.cosThetaBinCount, testCount);
 
-    auto pHistogramData = reinterpret_cast<const double*>(pHistogramBuffer->map(Buffer::MapType::Read));
-
+    std::vector<double> histogramData = pHistogramBuffer->getElements<double>();
     std::vector<std::vector<double>> histograms;
 
     for (uint32_t testIndex = 0; testIndex < testCount; ++testIndex)
     {
         size_t offset = testIndex * binCount;
-        histograms.push_back(std::vector<double>(pHistogramData + offset, pHistogramData + offset + binCount));
+        histograms.push_back(std::vector<double>(histogramData.data() + offset, histogramData.data() + offset + binCount));
     }
-
-    pHistogramBuffer->unmap();
 
     return histograms;
 }

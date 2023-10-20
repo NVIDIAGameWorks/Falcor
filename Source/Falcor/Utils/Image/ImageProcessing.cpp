@@ -48,9 +48,9 @@ void ImageProcessing::copyColorChannel(
     // Validate arguments.
     FALCOR_ASSERT(pSrc && pDst);
     if (pSrc->getResource()->getType() != Resource::Type::Texture2D)
-        throw RuntimeError("Source resource type must be Texture2D");
+        FALCOR_THROW("Source resource type must be Texture2D");
     if (pDst->getResource()->getType() != Resource::Type::Texture2D)
-        throw RuntimeError("Source resource type must be Texture2D");
+        FALCOR_THROW("Source resource type must be Texture2D");
 
     auto pSrcTex = pSrc->getResource()->asTexture();
     auto pDstTex = pDst->getResource()->asTexture();
@@ -62,9 +62,9 @@ void ImageProcessing::copyColorChannel(
     bool dstIsInt = isIntegerFormat(pDstTex->getFormat());
 
     if (any(srcDim != dstDim))
-        throw RuntimeError("Source and destination views must have matching dimensions");
+        FALCOR_THROW("Source and destination views must have matching dimensions");
     if (srcIsInt != dstIsInt)
-        throw RuntimeError("Source and destination texture must have matching format type");
+        FALCOR_THROW("Source and destination texture must have matching format type");
 
     uint channelIndex = 0;
     switch (srcMask)
@@ -82,7 +82,7 @@ void ImageProcessing::copyColorChannel(
         channelIndex = 3;
         break;
     default:
-        throw RuntimeError("'channelMask' parameter must be a single color channel.");
+        FALCOR_THROW("'channelMask' parameter must be a single color channel.");
     }
 
     // Prepare and execute program to copy color channel.

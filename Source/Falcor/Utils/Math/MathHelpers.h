@@ -29,7 +29,7 @@
 
 #include "Vector.h"
 #include "Matrix.h"
-#include "Core/Errors.h"
+#include "Core/Error.h"
 #include "Utils/Logger.h"
 
 namespace Falcor
@@ -52,6 +52,21 @@ inline float3 perp_stark(const float3& u)
     uint32_t zm = 1 ^ (xm | ym); // 1 ^ (xm & ym)
     float3 v = normalize(cross(u, float3(xm, ym, zm)));
     return v;
+}
+
+/**
+ * @brief Generates full OrthoNormalBasis based on the normal, without branches or sqrt.
+ *
+ * From https://graphics.pixar.com/library/OrthonormalB/paper.pdf
+ */
+inline void branchlessONB(const float3 n, float3& b1, float3& b2)
+{
+    // can't use just `sign` because we need 0 to go into -1/+1, but not 0
+    float sign = (n.z >= 0 ? 1 : -1);
+    const float a = -1.0f / (sign + n.z);
+    const float b = n.x * n.y * a;
+    b1 = float3(1.0f + sign * n.x * n.x * a, sign * b, -sign * n.x);
+    b2 = float3(b, sign + n.y * n.y * a, -n.y);
 }
 
 /**
@@ -119,7 +134,7 @@ inline float4x4 validateTransformMatrix(const float4x4& transform)
 
     if (!isMatrixValid(newMatrix))
     {
-        throw RuntimeError("Transform matrix has inf/nan values!");
+        FALCOR_THROW("Transform matrix has inf/nan values!");
     }
 
     if (!isMatrixAffine(newMatrix))

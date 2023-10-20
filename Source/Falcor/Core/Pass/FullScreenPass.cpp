@@ -56,7 +56,7 @@ struct FullScreenPass::SharedData
     SharedData(ref<Device> pDevice)
     {
         const uint32_t vbSize = (uint32_t)(sizeof(Vertex) * std::size(kVertices));
-        pVertexBuffer = Buffer::create(pDevice, vbSize, Buffer::BindFlags::Vertex, Buffer::CpuAccess::Write, (void*)kVertices);
+        pVertexBuffer = pDevice->createBuffer(vbSize, ResourceBindFlags::Vertex, MemoryType::Upload, (void*)kVertices);
         pVertexBuffer->breakStrongReferenceToDevice();
 
         ref<VertexLayout> pLayout = VertexLayout::create();
@@ -72,7 +72,7 @@ struct FullScreenPass::SharedData
 
 static SharedCache<FullScreenPass::SharedData, Device*> sSharedCache;
 
-FullScreenPass::FullScreenPass(ref<Device> pDevice, const Program::Desc& progDesc, const DefineList& programDefines)
+FullScreenPass::FullScreenPass(ref<Device> pDevice, const ProgramDesc& progDesc, const DefineList& programDefines)
     : BaseGraphicsPass(pDevice, progDesc, programDefines)
 {
     // Get shared VB and VAO.
@@ -88,9 +88,9 @@ FullScreenPass::FullScreenPass(ref<Device> pDevice, const Program::Desc& progDes
 
 FullScreenPass::~FullScreenPass() = default;
 
-ref<FullScreenPass> FullScreenPass::create(ref<Device> pDevice, const Program::Desc& desc, const DefineList& defines, uint32_t viewportMask)
+ref<FullScreenPass> FullScreenPass::create(ref<Device> pDevice, const ProgramDesc& desc, const DefineList& defines, uint32_t viewportMask)
 {
-    Program::Desc d = desc;
+    ProgramDesc d = desc;
     DefineList defs = defines;
     std::string gs;
 
@@ -113,7 +113,7 @@ ref<FullScreenPass> FullScreenPass::create(
     uint32_t viewportMask
 )
 {
-    Program::Desc desc;
+    ProgramDesc desc;
     desc.addShaderLibrary(path).psEntry("main");
     return create(pDevice, desc, defines, viewportMask);
 }

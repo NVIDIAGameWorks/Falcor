@@ -29,7 +29,11 @@
 
 __exported import Rendering.Materials.IMaterialInstance;
 __exported import Rendering.Materials.BSDFs.StandardBSDF;
+__exported import DiffRendering.SceneGradients;
+__exported import DiffRendering.GradientIOWrapper;
 import Utils.Math.MathHelpers;
+import Rendering.Volumes.PhaseFunction;
+import Scene.Material.VolumeProperties;
 
 /** Implementation of Falcor's standard surface BSDF.
 
@@ -43,7 +47,7 @@ import Utils.Math.MathHelpers;
 
     The BSDF is a linear combination of the above lobes.
 */
-struct StandardMaterialInstance : IMaterialInstance
+struct StandardMaterialInstance : MaterialInstanceBase, IMaterialInstance
 {
     ShadingFrame sf;            ///< Shading frame in world space.
     StandardBSDFData data;      ///< BSDF parameters.
@@ -66,6 +70,20 @@ struct StandardMaterialInstance : IMaterialInstance
         StandardBSDF bsdf = StandardBSDF(wiLocal, sd.mtl, data);
 
         return bsdf.eval(wiLocal, woLocal, sg);
+    }
+
+    [Differentiable]
+    float3 evalAD<S : ISampleGenerator>(const DiffMaterialData diffData, const ShadingData sd, const float3 wo, inout S sg)
+    {
+        float3 wiLocal = diffData.sf.toLocal(sd.V);
+        float3 woLocal = diffData.sf.toLocal(wo);
+
+        if (!isValidHemisphereReflectionOrTransmission(sd, sf, wiLocal, woLocal, wo)) return float3(0.f);
+
+        StandardBSDFData dataAD = StandardBSDFData(diffData);
+        StandardBSDF bsdfAD = StandardBSDF(wiLocal, sd.mtl, dataAD);
+
+        return bsdfAD.eval(wiLocal, woLocal, sg);
     }
 
     bool sample<S : ISampleGenerator>(const ShadingData sd, inout S sg, out BSDFSample result, bool useImportanceSampling = true)
@@ -141,6 +159,32 @@ struct StandardMaterialInstance : IMaterialInstance
         return StandardBSDF::getLobeTypes(data);
     }
 
+    bool hasVolumeProperties()
+    {
+        return data.hasEntryPointVolumeProperties;
+    }
+
+    VolumeProperties getVolumeProperties()
+    {
+        VolumeProperties result;
+        if (data.hasSigmaSGreaterZero)
+        {
+            // Convert color to sigmaA. See MxLayeredMaterialInstance fro details
+            const float g = data.volumeAnsiotropy;
+            const float3 c = data.diffuse;
+            const float3 s = 4.09712f + 4.20863f*c - sqrt(9.59217f + 41.6808f * c + 17.7126 * c * c);
+            const float3 alpha = (1.f - s*s) / (1.f - g * s*s);
+
+            result.sigmaA = select(alpha > 0.f, (1.f - alpha) * (data.volumeScattering) / alpha, 0.f);
+        }
+        else
+            result.sigmaA = 0.f;
+
+        result.sigmaS = data.volumeScattering;
+        result.phaseFunction = NullPhaseFunction(); // g is taken from the volume and set in InternalPathTracer
+        return result;
+
+    }
 
     // Additional functions
 
@@ -157,6 +201,9 @@ struct StandardMaterialInstance : IMaterialInstance
     */
     bool sampleReference<S : ISampleGenerator>(const ShadingData sd, const float3 wi, out float3 wo, out float pdf, out float3 weight, out uint lobeType, inout S sg)
     {
+        weight = {};
+        lobeType = {};
+
         const bool isTransmissive = (getLobeTypes(sd) & (uint)LobeType::Transmission) != 0;
 
         wo = sample_cosine_hemisphere_concentric(sampleNext2D(sg), pdf); // pdf = cos(theta) / pi

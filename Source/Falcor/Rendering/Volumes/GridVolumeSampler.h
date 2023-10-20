@@ -80,7 +80,7 @@ namespace Falcor
         /** Bind the grid volume sampler to a given shader variable.
             \param[in] var Shader variable.
         */
-        void setShaderData(const ShaderVar& var) const;
+        void bindShaderData(const ShaderVar& var) const;
 
         /** Render the GUI.
             \return True if options were changed, false otherwise.
@@ -90,6 +90,8 @@ namespace Falcor
         /** Returns the current configuration.
         */
         const Options& getOptions() const { return mOptions; }
+
+        void setOptions(const Options& options) { mOptions = options; }
 
     protected:
         ref<Scene>              mpScene;            ///< Scene.

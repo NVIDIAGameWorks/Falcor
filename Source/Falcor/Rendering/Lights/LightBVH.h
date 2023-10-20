@@ -50,7 +50,7 @@ namespace Falcor
         The data can be both used on the CPU (using traverseBVH() or on the GPU by:
           1. import LightBVH;
           2. Declare a variable of type LightBVH in your shader.
-          3. Call setShaderData() to bind the BVH resources.
+          3. Call bindShaderData() to bind the BVH resources.
 
         TODO: Rename all things 'triangle' to 'light' as the BVH can be used for other light types.
     */
@@ -120,7 +120,7 @@ namespace Falcor
         /** Bind the light BVH into a shader variable.
             \param[in] var The shader variable to set the data into.
         */
-        void setShaderData(const ShaderVar& var) const;
+        void bindShaderData(const ShaderVar& var) const;
 
     protected:
         void finalize();

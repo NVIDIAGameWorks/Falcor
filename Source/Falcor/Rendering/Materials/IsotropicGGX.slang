@@ -26,9 +26,9 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "Utils/Math/MathConstants.slangh"
- #include "BSDFConfig.slangh"
+#include "BSDFConfig.slangh"
 
- /** Evaluates the GGX (Trowbridge-Reitz) normal distribution function (D).
+/** Evaluates the GGX (Trowbridge-Reitz) normal distribution function (D).
 
     Introduced by Trowbridge and Reitz, "Average irregularity representation of a rough surface for ray reflection", Journal of the Optical Society of America, vol. 65(5), 1975.
     See the correct normalization factor in Walter et al. https://dl.acm.org/citation.cfm?id=2383874
@@ -42,6 +42,7 @@
     \param[in] cosTheta Dot product between shading normal and half vector, in positive hemisphere.
     \return D(h)
 */
+[Differentiable]
 float evalNdfGGX(float alpha, float cosTheta)
 {
     float a2 = alpha * alpha;
@@ -56,6 +57,7 @@ float evalNdfGGX(float alpha, float cosTheta)
     \param[in] cosTheta Dot product between shading normal and half vector, in positive hemisphere.
     \return D(h) * cosTheta
 */
+[Differentiable]
 float evalPdfGGX_NDF(float alpha, float cosTheta)
 {
     return evalNdfGGX(alpha, cosTheta) * cosTheta;
@@ -146,6 +148,7 @@ float3 sampleGGX_VNDF(float alpha, float3 wi, float2 u, out float pdf)
     \param[in] alphaSqr Squared GGX width parameter.
     \param[in] cosTheta Dot product between shading normal and evaluated direction, in the positive hemisphere.
 */
+[Differentiable]
 float evalG1GGX(float alphaSqr, float cosTheta)
 {
     if (cosTheta <= 0) return 0;
@@ -160,6 +163,7 @@ float evalG1GGX(float alphaSqr, float cosTheta)
     \param[in] alphaSqr Squared GGX width parameter.
     \param[in] cosTheta Dot product between shading normal and the evaluated direction, in the positive hemisphere.
 */
+[Differentiable]
 float evalLambdaGGX(float alphaSqr, float cosTheta)
 {
     if (cosTheta <= 0) return 0;
@@ -176,6 +180,7 @@ float evalLambdaGGX(float alphaSqr, float cosTheta)
     \param[in] cosThetaO Dot product between shading normal and outgoing direction, in positive hemisphere.
     \return G(cosThetaI, cosThetaO)
 */
+[Differentiable]
 float evalMaskingSmithGGXSeparable(float alpha, float cosThetaI, float cosThetaO)
 {
     float alphaSqr = alpha * alpha;
@@ -195,6 +200,7 @@ float evalMaskingSmithGGXSeparable(float alpha, float cosThetaI, float cosThetaO
     \param[in] cosThetaO Dot product between shading normal and outgoing direction, in positive hemisphere.
     \return G(cosThetaI, cosThetaO)
 */
+[Differentiable]
 float evalMaskingSmithGGXCorrelated(float alpha, float cosThetaI, float cosThetaO)
 {
     float alphaSqr = alpha * alpha;

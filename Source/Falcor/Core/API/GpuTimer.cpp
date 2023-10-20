@@ -32,7 +32,7 @@
 #include "RenderContext.h"
 #include "GFXAPI.h"
 
-#include "Core/Assert.h"
+#include "Core/Error.h"
 #include "Core/ObjectPython.h"
 #include "Utils/Logger.h"
 #include "Utils/Scripting/ScriptBindings.h"
@@ -49,9 +49,9 @@ GpuTimer::GpuTimer(ref<Device> pDevice) : mpDevice(pDevice)
 {
     FALCOR_ASSERT(mpDevice);
 
-    mpResolveBuffer = Buffer::create(mpDevice, sizeof(uint64_t) * 2, Buffer::BindFlags::None, Buffer::CpuAccess::None, nullptr);
+    mpResolveBuffer = mpDevice->createBuffer(sizeof(uint64_t) * 2, ResourceBindFlags::None, MemoryType::DeviceLocal, nullptr);
     mpResolveBuffer->breakStrongReferenceToDevice();
-    mpResolveStagingBuffer = Buffer::create(mpDevice, sizeof(uint64_t) * 2, Buffer::BindFlags::None, Buffer::CpuAccess::Read, nullptr);
+    mpResolveStagingBuffer = mpDevice->createBuffer(sizeof(uint64_t) * 2, ResourceBindFlags::None, MemoryType::ReadBack, nullptr);
     mpResolveStagingBuffer->breakStrongReferenceToDevice();
 
     // Create timestamp query heap upon first use.
@@ -59,7 +59,7 @@ GpuTimer::GpuTimer(ref<Device> pDevice) : mpDevice(pDevice)
     mEnd = mpDevice->getTimestampQueryHeap()->allocate();
     if (mStart == QueryHeap::kInvalidIndex || mEnd == QueryHeap::kInvalidIndex)
     {
-        throw RuntimeError("Can't create GPU timer, no available timestamp queries.");
+        FALCOR_THROW("Can't create GPU timer, no available timestamp queries.");
     }
     FALCOR_ASSERT(mEnd == (mStart + 1));
 }
@@ -117,7 +117,7 @@ void GpuTimer::resolve()
 
     if (mStatus == Status::Begin)
     {
-        throw RuntimeError("GpuTimer::resolve() was called but the GpuTimer::end() wasn't called.");
+        FALCOR_THROW("GpuTimer::resolve() was called but the GpuTimer::end() wasn't called.");
     }
 
     FALCOR_ASSERT(mStatus == Status::End);

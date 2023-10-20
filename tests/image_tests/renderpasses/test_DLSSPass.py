@@ -1,4 +1,6 @@
 IMAGE_TEST = {
+    # The test uses GBufferRaster which is not supported on Vulkan.
+    "device_types": ["d3d12"],
     'tolerance': 1e-7
 }
 
@@ -13,7 +15,7 @@ from graphs.DLSS import DLSS as g
 from falcor import *
 
 m.addGraph(g)
-m.loadScene('Cerberus/Standard/Cerberus.pyscene')
+m.loadScene('test_scenes/cesium_man/CesiumMan.pyscene')
 
 # default
 render_frames(m, 'default', frames=[64, 128, 192, 256])

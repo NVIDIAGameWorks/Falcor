@@ -33,26 +33,22 @@
 #include <optix_function_table_definition.h>
 
 // Some debug macros
-#define OPTIX_CHECK( call )                                             \
-  {                                                                     \
-    OptixResult res = call;                                             \
-    if( res != OPTIX_SUCCESS )                                          \
-      {                                                                 \
-        char buf[1024]; \
-        sprintf( buf, "Optix call (%s) failed with code %d (line %d)\n", #call, res, __LINE__ ); \
-        Falcor::reportFatalError(std::string(buf));                     \
-      }                                                                 \
-  }
-#define CUDA_CHECK(call)							                    \
-    {							                                		\
-      cudaError_t rc = call;                                            \
-      if (rc != cudaSuccess) {                                          \
-        std::stringstream txt;                                          \
-        cudaError_t err =  rc; /*cudaGetLastError();*/                  \
-        txt << "CUDA Error " << cudaGetErrorName(err)                   \
-            << " (" << cudaGetErrorString(err) << ")";                  \
-        Falcor::reportFatalError(txt.str());                            \
-      }                                                                 \
+#define OPTIX_CHECK(call)                                                                                                            \
+    {                                                                                                                                \
+        OptixResult result = call;                                                                                                   \
+        if (result != OPTIX_SUCCESS)                                                                                                 \
+        {                                                                                                                            \
+            FALCOR_THROW("Optix call {} failed with error {} ({}).", #call, optixGetErrorName(result), optixGetErrorString(result)); \
+        }                                                                                                                            \
+    }
+
+#define CUDA_CHECK(call)                                                                                                          \
+    {                                                                                                                             \
+        cudaError_t result = call;                                                                                                \
+        if (result != cudaSuccess)                                                                                                \
+        {                                                                                                                         \
+            FALCOR_THROW("CUDA call {} failed with error {} ({}).", #call, cudaGetErrorName(result), cudaGetErrorString(result)); \
+        }                                                                                                                         \
     }
 
 void optixLogCallback(unsigned int level, const char* tag, const char* message, void*)
@@ -62,44 +58,20 @@ void optixLogCallback(unsigned int level, const char* tag, const char* message, 
 
 // This initialization now seems verbose / excessive as CUDA and OptiX initialization
 // has evolved.  TODO: Simplify?
-bool initOptix(OptixDeviceContext& optixContext)
+OptixDeviceContext initOptix(Falcor::Device* pDevice)
 {
-    // Initialize CUDA
-    uint32_t devices = initCuda();
-    if (devices <= 0) return false;
+    FALCOR_CHECK(pDevice->initCudaDevice(), "Failed to initialize CUDA device.");
 
-    // Initialize Optix.
     OPTIX_CHECK(optixInit());
 
-    // Check if we have a valid OptiX function table.  If not, return now.
-    if (!g_optixFunctionTable.optixDeviceContextCreate) return false;
-
-    // Setup which device to work on.  Hard coded to device #0
-    int32_t deviceId = 0;
-    CUDA_CHECK(cudaSetDevice(deviceId));
-
-    // Create a CUDA stream
-    CUstream stream;
-    CUDA_CHECK(cudaStreamCreate(&stream));
-
-    // Get device information
-    cudaDeviceProp deviceProps;
-    cudaGetDeviceProperties(&deviceProps, deviceId);
-
-    // Get the current context
-    CUcontext cudaContext;
-    CUresult cuRes = cuCtxGetCurrent(&cudaContext);
+    FALCOR_CHECK(g_optixFunctionTable.optixDeviceContextCreate, "OptiX function table not initialized.");
 
     // Build our OptiX context
-    OPTIX_CHECK(optixDeviceContextCreate(cudaContext, 0, &optixContext));
-
-    // Given the OPTIX_CHECK() and CUDA_CHECK() wrappers above that simply log errors,
-    // explicitly check for successful initialization by seeing if we have a non-null context
-    if (optixContext == nullptr) return false;
+    OptixDeviceContext optixContext;
+    OPTIX_CHECK(optixDeviceContextCreate(pDevice->getCudaDevice()->getContext(), 0, &optixContext));
 
     // Tell Optix how to write to our Falcor log.
-    OPTIX_CHECK(optixDeviceContextSetLogCallback(optixContext,
-        optixLogCallback, nullptr, 4));
+    OPTIX_CHECK(optixDeviceContextSetLogCallback(optixContext, optixLogCallback, nullptr, 4));
 
-    return true;
+    return optixContext;
 }

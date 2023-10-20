@@ -26,45 +26,53 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "ImageLoader.h"
+#include "Core/AssetResolver.h"
 
 namespace
 {
-    const std::string kDst = "dst";
+const std::string kDst = "dst";
 
-    const std::string kOutputSize = "outputSize";
-    const std::string kOutputFormat = "outputFormat";
-    const std::string kImage = "filename";
-    const std::string kMips = "mips";
-    const std::string kSrgb = "srgb";
-    const std::string kArraySlice = "arrayIndex";
-    const std::string kMipLevel = "mipLevel";
-}
+const std::string kOutputSize = "outputSize";
+const std::string kOutputFormat = "outputFormat";
+const std::string kImage = "filename";
+const std::string kMips = "mips";
+const std::string kSrgb = "srgb";
+const std::string kArraySlice = "arrayIndex";
+const std::string kMipLevel = "mipLevel";
+} // namespace
 
 extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registry)
 {
     registry.registerClass<RenderPass, ImageLoader>();
 }
 
-ImageLoader::ImageLoader(ref<Device> pDevice, const Properties& props)
-    : RenderPass(pDevice)
+ImageLoader::ImageLoader(ref<Device> pDevice, const Properties& props) : RenderPass(pDevice)
 {
     for (const auto& [key, value] : props)
     {
-        if (key == kOutputSize) mOutputSizeSelection = value;
-        else if (key == kOutputFormat) mOutputFormat = value;
-        else if (key == kImage) mImagePath = value.operator std::filesystem::path();
-        else if (key == kSrgb) mLoadSRGB = value;
-        else if (key == kMips) mGenerateMips = value;
-        else if (key == kArraySlice) mArraySlice = value;
-        else if (key == kMipLevel) mMipLevel = value;
-        else logWarning("Unknown property '{}' in a ImageLoader properties.", key);
+        if (key == kOutputSize)
+            mOutputSizeSelection = value;
+        else if (key == kOutputFormat)
+            mOutputFormat = value;
+        else if (key == kImage)
+            mImagePath = value.operator std::filesystem::path();
+        else if (key == kSrgb)
+            mLoadSRGB = value;
+        else if (key == kMips)
+            mGenerateMips = value;
+        else if (key == kArraySlice)
+            mArraySlice = value;
+        else if (key == kMipLevel)
+            mMipLevel = value;
+        else
+            logWarning("Unknown property '{}' in a ImageLoader properties.", key);
     }
 
     if (!mImagePath.empty())
     {
         if (!loadImage(mImagePath))
         {
-            throw RuntimeError("ImageLoader: Failed to load image from '{}'", mImagePath);
+            FALCOR_THROW("ImageLoader: Failed to load image from '{}'", mImagePath);
         }
     }
 }
@@ -83,8 +91,9 @@ Properties ImageLoader::getProperties() const
 {
     Properties props;
     props[kOutputSize] = mOutputSizeSelection;
-    if (mOutputFormat != ResourceFormat::Unknown) props[kOutputFormat] = mOutputFormat;
-    props[kImage] = stripDataDirectories(mImagePath);
+    if (mOutputFormat != ResourceFormat::Unknown)
+        props[kOutputFormat] = mOutputFormat;
+    props[kImage] = mImagePath;
     props[kMips] = mGenerateMips;
     props[kSrgb] = mLoadSRGB;
     props[kArraySlice] = mArraySlice;
@@ -94,7 +103,7 @@ Properties ImageLoader::getProperties() const
 
 void ImageLoader::compile(RenderContext* pRenderContext, const CompileData& compileData)
 {
-    if (!mpTex) throw RuntimeError("ImageLoader: No image loaded");
+    FALCOR_CHECK(mpTex, "ImageLoader: No image loaded");
 }
 
 void ImageLoader::execute(RenderContext* pRenderContext, const RenderData& renderData)
@@ -102,7 +111,7 @@ void ImageLoader::execute(RenderContext* pRenderContext, const RenderData& rende
     const auto& pDstTex = renderData.getTexture(kDst);
     FALCOR_ASSERT(pDstTex);
     mOutputFormat = pDstTex->getFormat();
-    mOutputSize = { pDstTex->getWidth(), pDstTex->getHeight() };
+    mOutputSize = {pDstTex->getWidth(), pDstTex->getHeight()};
 
     if (!mpTex)
     {
@@ -118,11 +127,15 @@ void ImageLoader::execute(RenderContext* pRenderContext, const RenderData& rende
 void ImageLoader::renderUI(Gui::Widgets& widget)
 {
     // When output size requirements change, we'll trigger a graph recompile to update the render pass I/O sizes.
-    if (widget.dropdown("Output size", mOutputSizeSelection)) requestRecompile();
-    widget.tooltip("Specifies the pass output size.\n"
+    if (widget.dropdown("Output size", mOutputSizeSelection))
+        requestRecompile();
+    widget.tooltip(
+        "Specifies the pass output size.\n"
         "'Default' means that the output is sized based on requirements of connected passes.\n"
         "'Fixed' means the output is always at the image's native size.\n"
-        "If the output is of a different size than the native image resolution, the image will be rescaled bilinearly." , true);
+        "If the output is of a different size than the native image resolution, the image will be rescaled bilinearly.",
+        true
+    );
 
     widget.text("Image File: " + mImagePath.string());
     bool reloadImage = false;
@@ -136,10 +149,12 @@ void ImageLoader::renderUI(Gui::Widgets& widget)
 
     if (mpTex)
     {
-        if (mpTex->getMipCount() > 1) widget.slider("Mip Level", mMipLevel, 0u, mpTex->getMipCount() - 1);
-        if (mpTex->getArraySize() > 1) widget.slider("Array Slice", mArraySlice, 0u, mpTex->getArraySize() - 1);
+        if (mpTex->getMipCount() > 1)
+            widget.slider("Mip Level", mMipLevel, 0u, mpTex->getMipCount() - 1);
+        if (mpTex->getArraySize() > 1)
+            widget.slider("Array Slice", mArraySlice, 0u, mpTex->getArraySize() - 1);
 
-        widget.image(mImagePath.string().c_str(), mpTex.get(), { 320, 320 });
+        widget.image(mImagePath.string().c_str(), mpTex.get(), {320, 320});
         widget.text("Image format: " + to_string(mpTex->getFormat()));
         widget.text("Image size: (" + std::to_string(mpTex->getWidth()) + ", " + std::to_string(mpTex->getHeight()) + ")");
         widget.text("Output format: " + to_string(mOutputFormat));
@@ -149,14 +164,16 @@ void ImageLoader::renderUI(Gui::Widgets& widget)
     if (reloadImage && !mImagePath.empty())
     {
         uint2 prevSize = {};
-        if (mpTex) prevSize = { mpTex->getWidth(), mpTex->getHeight() };
+        if (mpTex)
+            prevSize = {mpTex->getWidth(), mpTex->getHeight()};
 
         if (!loadImage(mImagePath))
         {
             msgBox("Error", fmt::format("Failed to load image from '{}'", mImagePath), MsgBoxType::Ok, MsgBoxIcon::Warning);
         }
 
-        // If output is set to native size and image dimensions have changed, we'll trigger a graph recompile to update the render pass I/O sizes.
+        // If output is set to native size and image dimensions have changed,
+        // we'll trigger a graph recompile to update the render pass I/O sizes.
         if (mOutputSizeSelection == RenderPassHelpers::IOSize::Fixed && mpTex != nullptr &&
             (mpTex->getWidth() != prevSize.x || mpTex->getHeight() != prevSize.y))
         {
@@ -167,15 +184,14 @@ void ImageLoader::renderUI(Gui::Widgets& widget)
 
 bool ImageLoader::loadImage(const std::filesystem::path& path)
 {
-    if (path.empty()) return false;
+    if (path.empty())
+        return false;
 
-    // Find the full path of the specified image.
-    // We retain this for later as the search paths may change during execution.
-    std::filesystem::path fullPath;
-    if (findFileInDataDirectories(mImagePath, fullPath))
+    std::filesystem::path resolvedPath = AssetResolver::getDefaultResolver().resolvePath(path);
+    if (std::filesystem::exists(resolvedPath))
     {
-        mImagePath = fullPath;
-        mpTex = Texture::createFromFile(mpDevice, mImagePath, mGenerateMips, mLoadSRGB);
+        mImagePath = path;
+        mpTex = Texture::createFromFile(mpDevice, resolvedPath, mGenerateMips, mLoadSRGB);
         return mpTex != nullptr;
     }
     else

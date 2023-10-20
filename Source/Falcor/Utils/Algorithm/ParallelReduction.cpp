@@ -27,7 +27,7 @@
  **************************************************************************/
 #include "ParallelReduction.h"
 #include "ParallelReductionType.slangh"
-#include "Core/Assert.h"
+#include "Core/Error.h"
 #include "Core/API/RenderContext.h"
 #include "Utils/Math/Common.h"
 #include "Utils/Timing/Profiler.h"
@@ -41,9 +41,9 @@ ParallelReduction::ParallelReduction(ref<Device> pDevice) : mpDevice(pDevice)
     // Create the programs.
     // Set defines to avoid compiler warnings about undefined macros. Proper values will be assigned at runtime.
     DefineList defines = {{"REDUCTION_TYPE", "1"}, {"FORMAT_CHANNELS", "1"}, {"FORMAT_TYPE", "1"}};
-    mpInitialProgram = ComputeProgram::createFromFile(mpDevice, kShaderFile, "initialPass", defines);
-    mpFinalProgram = ComputeProgram::createFromFile(mpDevice, kShaderFile, "finalPass", defines);
-    mpVars = ComputeVars::create(mpDevice, mpInitialProgram.get());
+    mpInitialProgram = Program::createCompute(mpDevice, kShaderFile, "initialPass", defines);
+    mpFinalProgram = Program::createCompute(mpDevice, kShaderFile, "finalPass", defines);
+    mpVars = ProgramVars::create(mpDevice, mpInitialProgram.get());
 
     // Check assumptions on thread group sizes. The initial pass is a 2D dispatch, the final pass a 1D.
     FALCOR_ASSERT(mpInitialProgram->getReflector()->getThreadGroupSize().z == 1);
@@ -59,14 +59,14 @@ void ParallelReduction::allocate(uint32_t elementCount, uint32_t elementSize)
     if (mpBuffers[0] == nullptr || mpBuffers[0]->getElementCount() < elementCount * elementSize)
     {
         // Buffer 0 has one element per tile.
-        mpBuffers[0] = Buffer::createTyped<uint4>(mpDevice, elementCount * elementSize);
+        mpBuffers[0] = mpDevice->createTypedBuffer<uint4>(elementCount * elementSize);
         mpBuffers[0]->setName("ParallelReduction::mpBuffers[0]");
 
         // Buffer 1 has one element per N elements in buffer 0.
         const uint32_t numElem1 = div_round_up(elementCount, mpFinalProgram->getReflector()->getThreadGroupSize().x);
         if (mpBuffers[1] == nullptr || mpBuffers[1]->getElementCount() < numElem1 * elementSize)
         {
-            mpBuffers[1] = Buffer::createTyped<uint4>(mpDevice, numElem1 * elementSize);
+            mpBuffers[1] = mpDevice->createTypedBuffer<uint4>(numElem1 * elementSize);
             mpBuffers[1]->setName("ParallelReduction::mpBuffers[1]");
         }
     }
@@ -87,7 +87,7 @@ void ParallelReduction::execute(
     // Check texture array/mip/sample count.
     if (pInput->getArraySize() != 1 || pInput->getMipCount() != 1 || pInput->getSampleCount() != 1)
     {
-        throw RuntimeError("ParallelReduction::execute() - Input texture is unsupported.");
+        FALCOR_THROW("ParallelReduction::execute() - Input texture is unsupported.");
     }
 
     // Check texture format.
@@ -106,7 +106,7 @@ void ParallelReduction::execute(
         formatType = FORMAT_TYPE_UINT;
         break;
     default:
-        throw RuntimeError("ParallelReduction::execute() - Input texture format unsupported.");
+        FALCOR_THROW("ParallelReduction::execute() - Input texture format unsupported.");
     }
 
     // Check that reduction type T is compatible with the resource format.
@@ -117,7 +117,7 @@ void ParallelReduction::execute(
         (formatType == FORMAT_TYPE_UINT &&
          (!std::is_integral<typename T::value_type>::value || !std::is_unsigned<typename T::value_type>::value)))
     {
-        throw RuntimeError("ParallelReduction::execute() - Template type T is not compatible with resource format.");
+        FALCOR_THROW("ParallelReduction::execute() - Template type T is not compatible with resource format.");
     }
 
     uint32_t reductionType = REDUCTION_TYPE_UNKNOWN;
@@ -133,7 +133,7 @@ void ParallelReduction::execute(
         elementSize = 2;
         break;
     default:
-        throw RuntimeError("ParallelReduction::execute() - Unknown reduction type.");
+        FALCOR_THROW("ParallelReduction::execute() - Unknown reduction type.");
     }
 
     // Allocate intermediate buffers if needed.
@@ -200,7 +200,7 @@ void ParallelReduction::execute(
     {
         if (resultOffset + resultSize > pResultBuffer->getSize())
         {
-            throw RuntimeError("ParallelReduction::execute() - Results buffer is too small.");
+            FALCOR_THROW("ParallelReduction::execute() - Results buffer is too small.");
         }
 
         pRenderContext->copyBufferRegion(pResultBuffer.get(), resultOffset, mpBuffers[inputsBufferIndex].get(), 0, resultSize);
@@ -209,10 +209,7 @@ void ParallelReduction::execute(
     // Read back the result to the CPU.
     if (pResult)
     {
-        const T* pBuf = static_cast<const T*>(mpBuffers[inputsBufferIndex]->map(Buffer::MapType::Read));
-        FALCOR_ASSERT(pBuf);
-        std::memcpy(pResult, pBuf, resultSize);
-        mpBuffers[inputsBufferIndex]->unmap();
+        mpBuffers[inputsBufferIndex]->getBlob(pResult, 0, resultSize);
     }
 }
 

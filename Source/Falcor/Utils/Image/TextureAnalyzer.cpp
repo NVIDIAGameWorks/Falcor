@@ -131,15 +131,15 @@ void TextureAnalyzer::checkFormatSupport(const ref<Texture> pInput, uint32_t mip
     // Validate that input is supported.
     if (pInput->getDepth() > 1)
     {
-        throw RuntimeError("3D textures are not supported");
+        FALCOR_THROW("3D textures are not supported");
     }
     if (mipLevel >= pInput->getMipCount() || arraySlice >= pInput->getArraySize())
     {
-        throw RuntimeError("Mip level and/or array slice is out of range");
+        FALCOR_THROW("Mip level and/or array slice is out of range");
     }
     if (pInput->getSampleCount() != 1)
     {
-        throw RuntimeError("Multi-sampled textures are not supported");
+        FALCOR_THROW("Multi-sampled textures are not supported");
     }
 
     auto format = pInput->getFormat();
@@ -152,10 +152,10 @@ void TextureAnalyzer::checkFormatSupport(const ref<Texture> pInput, uint32_t mip
         break;
     case FormatType::Sint:
     case FormatType::Uint:
-        throw RuntimeError("Format {} is not supported", to_string(format));
+        FALCOR_THROW("Format {} is not supported", to_string(format));
     default:
         FALCOR_ASSERT(false);
-        throw RuntimeError("Unknown format type");
+        FALCOR_THROW("Unknown format type");
     }
 }
 } // namespace Falcor

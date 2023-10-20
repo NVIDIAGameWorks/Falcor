@@ -27,9 +27,6 @@
  **************************************************************************/
 #pragma once
 
-#include "Utils.h"
-#include "USDHelpers.h"
-#include "PreviewSurfaceConverter.h"
 #include "Scene/SceneIDs.h"
 #include "Scene/SceneBuilder.h"
 #include "Scene/Animation/Animation.h"
@@ -37,6 +34,11 @@
 #include "Utils/Math/Vector.h"
 #include "Utils/Math/Matrix.h"
 #include "Utils/Timing/TimeReport.h"
+
+#include "USDUtils/USDUtils.h"
+#include "USDUtils/USDHelpers.h"
+#include "USDUtils/PreviewSurfaceConverter/PreviewSurfaceConverter.h"
+
 
 BEGIN_DISABLE_USD_WARNINGS
 #include <pxr/usd/usdGeom/xformCommonAPI.h>
@@ -46,8 +48,6 @@ BEGIN_DISABLE_USD_WARNINGS
 #include <pxr/usd/usdSkel/cache.h>
 #include <pxr/usd/usdGeom/pointInstancer.h>
 END_DISABLE_USD_WARNINGS
-
-#include <pybind11/pytypes.h>
 
 #include <filesystem>
 #include <limits>
@@ -236,7 +236,7 @@ namespace Falcor
     // Importer data and helper functions
     struct ImporterContext
     {
-        ImporterContext(const std::filesystem::path& stagePath, UsdStageRefPtr pStage, SceneBuilder& builder, const pybind11::dict& dict, TimeReport& timeReport, bool useInstanceProxies = false);
+        ImporterContext(const std::filesystem::path& stagePath, UsdStageRefPtr pStage, SceneBuilder& builder, const std::map<std::string, std::string>& materialToShortName, TimeReport& timeReport, bool useInstanceProxies = false);
 
         // Get pointer to default material for the given prim, based on its type, creating it if it doesn't already exist.
         // Thread-safe.
@@ -339,8 +339,8 @@ namespace Falcor
 
         std::filesystem::path stagePath;                                                             ///< Path of the USD stage being imported.
         UsdStageRefPtr pStage;                                                                       ///< USD stage being imported.
-        const pybind11::dict& dict;                                                                  ///< Input map from material path to material short name.
-        std::map<std::string, std::string> localDict;                                                ///< Local input map from material path to
+        const std::map<std::string, std::string>& materialToShortName;                               ///< Input map from material path to material short name.
+        std::map<std::string, std::string> localMaterialToShortName;                                 ///< Local input map from material path to
         TimeReport& timeReport;                                                                      ///< Timer object to use when importing.
         SceneBuilder& builder;                                                                       ///< Scene builder for this import session.
         std::vector<NodeID> nodeStack;                                                               ///< Stack of SceneBuilder node IDs

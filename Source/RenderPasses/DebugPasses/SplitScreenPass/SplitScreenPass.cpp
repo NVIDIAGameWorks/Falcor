@@ -29,38 +29,39 @@
 
 namespace
 {
-    // Divider colors
-    const float4 kColorUnselected = float4(0, 0, 0, 1);
-    const float4 kColorSelected = float4(1, 1, 1, 1);
+// Divider colors
+const float4 kColorUnselected = float4(0, 0, 0, 1);
+const float4 kColorSelected = float4(1, 1, 1, 1);
 
-    // A simple character array representing a 16x16 grayscale arrow
-    const unsigned char kArrowArray[256] = {
-        0, 0, 0, 0,  0, 0, 0, 0,    87, 13, 0, 0,       0, 0, 0, 0,
-        0, 0, 0, 0,  0, 0, 0, 212,  255, 255, 34, 0,    0, 0, 0, 0,
-        0, 0, 0, 0,  0, 0, 0, 255,  255, 255, 255, 32,  0, 0, 0, 0,
-        0, 0, 0, 0,  0, 0, 0, 78,   255, 255, 255, 255, 33, 0, 0, 0,
-        0, 0, 0, 0,  0, 0, 0, 0,    81, 255, 255, 255,  255, 32, 0, 0,
-        0, 0, 0, 0,  0, 0, 0, 0,    0, 72, 255, 255,    255, 255, 34, 0,
-        31, 158, 156, 156,   156, 156, 156, 156,  156, 146, 212, 255,  255, 255, 255, 34,
-        241, 255, 255, 255,  255, 255, 255, 255,  255, 255, 255, 255,  255, 255, 255, 240,
-        241, 255, 255, 255,  255, 255, 255, 255,  255, 255, 255, 255,  255, 255, 255, 240,
-        31, 158, 156, 156,   156, 156, 156, 156,  156, 146, 212, 255,  255, 255, 255, 33,
-        0, 0, 0, 0,  0, 0, 0, 0,   0, 73, 255, 255,     255, 255, 34, 0,
-        0, 0, 0, 0,  0, 0, 0, 0,   81, 255, 255, 255,   255, 31, 0, 0,
-        0, 0, 0, 0,  0, 0, 0, 79,  255, 255, 255 ,255,  32, 0, 0, 0,
-        0, 0, 0, 0,  0, 0, 0, 255, 255, 255, 255, 31,   0, 0, 0, 0,
-        0, 0, 0, 0,  0, 0, 0, 212, 255, 255, 33, 0,     0, 0, 0, 0,
-        0, 0, 0, 0,  0, 0, 0, 0,   87, 12, 0, 0,        0, 0, 0, 0
-    };
+// A simple character array representing a 16x16 grayscale arrow
+const unsigned char kArrowArray[256] = {
+    // clang-format off
+    0,  0,  0,  0,  0,  0,  0,  0,  87, 13, 0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  212,255,255,34, 0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  255,255,255,255,32, 0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  78, 255,255,255,255,33, 0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  81, 255,255,255,255,32, 0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  72, 255,255,255,255,34, 0,
+    31, 158,156,156,156,156,156,156,156,146,212,255,255,255,255,34,
+    241,255,255,255,255,255,255,255,255,255,255,255,255,255,255,240,
+    241,255,255,255,255,255,255,255,255,255,255,255,255,255,255,240,
+    31, 158,156,156,156,156,156,156,156,146,212,255,255,255,255,33,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  73, 255,255,255,255,34, 0,
+    0,  0,  0,  0,  0,  0,  0,  0,  81, 255,255,255,255,31, 0,  0,
+    0,  0,  0,  0,  0,  0,  0,  79, 255,255,255,255,32, 0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  255,255,255,255,31, 0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  212,255,255,33, 0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  87, 12, 0,  0,  0,  0,  0,  0
+    // clang-format on
+};
 
-    // Where is our shader located?
-    const std::string kSplitShader = "RenderPasses/DebugPasses/SplitScreenPass/SplitScreen.ps.slang";
-}
+// Where is our shader located?
+const std::string kSplitShader = "RenderPasses/DebugPasses/SplitScreenPass/SplitScreen.ps.slang";
+} // namespace
 
-SplitScreenPass::SplitScreenPass(ref<Device> pDevice, const Properties& props)
-    : ComparisonPass(pDevice)
+SplitScreenPass::SplitScreenPass(ref<Device> pDevice, const Properties& props) : ComparisonPass(pDevice)
 {
-    mpArrowTex = Texture::create2D(mpDevice, 16, 16, ResourceFormat::R8Unorm, 1, Texture::kMaxPossible, kArrowArray);
+    mpArrowTex = mpDevice->createTexture2D(16, 16, ResourceFormat::R8Unorm, 1, Texture::kMaxPossible, kArrowArray);
     createProgram();
 
     for (const auto& [key, value] : props)
@@ -106,8 +107,10 @@ bool SplitScreenPass::onMouseEvent(const MouseEvent& mouseEvent)
         mDividerGrabbed = true;
         handled = true;
 
-        if (CpuTimer::calcDuration(mTimeOfLastClick, CpuTimer::getCurrentTimePoint()) < 100.0) mSplitLoc = 0.5f;
-        else mTimeOfLastClick = CpuTimer::getCurrentTimePoint();
+        if (CpuTimer::calcDuration(mTimeOfLastClick, CpuTimer::getCurrentTimePoint()) < 100.0)
+            mSplitLoc = 0.5f;
+        else
+            mTimeOfLastClick = CpuTimer::getCurrentTimePoint();
     }
     else if (mDividerGrabbed)
     {

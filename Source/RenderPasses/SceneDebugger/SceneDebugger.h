@@ -33,10 +33,11 @@
 
 using namespace Falcor;
 
-/** Scene debugger render pass.
-
-    This pass helps identify asset issues such as incorrect normals.
-*/
+/**
+ * Scene debugger render pass.
+ *
+ * This pass helps identify asset issues such as incorrect normals.
+ */
 class SceneDebugger : public RenderPass
 {
 public:
@@ -64,13 +65,16 @@ private:
     void initInstanceInfo();
 
     // Internal state
-    ref<Scene>              mpScene;
-    SceneDebuggerParams     mParams;
-    ref<ComputePass>        mpDebugPass;
-    ref<GpuFence>           mpFence;
-    ref<Buffer>             mpPixelData;            ///< Buffer for recording pixel data at the selected pixel.
-    ref<Buffer>             mpPixelDataStaging;     ///< Readback buffer.
-    ref<Buffer>             mpMeshToBlasID;
-    ref<Buffer>             mpInstanceInfo;
-    bool                    mPixelDataAvailable = false;
+
+    ref<Scene> mpScene;
+    SceneDebuggerParams mParams;
+    ref<ComputePass> mpDebugPass;
+    ref<Fence> mpFence;
+    /// Buffer for recording pixel data at the selected pixel.
+    ref<Buffer> mpPixelData;
+    /// Readback buffer.
+    ref<Buffer> mpPixelDataStaging;
+    ref<Buffer> mpMeshToBlasID;
+    ref<Buffer> mpInstanceInfo;
+    bool mPixelDataAvailable = false;
 };

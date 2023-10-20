@@ -68,7 +68,7 @@ private:
 
     struct
     {
-        ref<RtProgram> pProgram;
+        ref<Program> pProgram;
         ref<RtProgramVars> pVars;
     } mRT;
 };

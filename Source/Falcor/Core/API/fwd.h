@@ -44,6 +44,18 @@ class Texture;
 
 class Sampler;
 
+struct FenceDesc;
+class Fence;
+
+struct ComputeStateObjectDesc;
+class ComputeStateObject;
+
+struct GraphicsStateObjectDesc;
+class GraphicsStateObject;
+
+struct RtStateObjectDesc;
+class RtStateObject;
+
 class ShaderResourceView;
 class UnorderedAccessView;
 

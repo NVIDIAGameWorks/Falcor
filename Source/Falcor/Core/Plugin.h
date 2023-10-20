@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -28,7 +28,7 @@
 #pragma once
 
 #include "Core/Macros.h"
-#include "Core/Errors.h"
+#include "Core/Error.h"
 #include "Core/Platform/OS.h"
 
 #include <filesystem>
@@ -225,7 +225,7 @@ private:
         std::lock_guard<std::mutex> lock(mClassDescsMutex);
 
         if (findClassDesc<BaseT>(type) != nullptr)
-            throw RuntimeError(
+            FALCOR_THROW(
                 "A plugin class with type name '{}' (base class type '{}') has already been registered.", type, BaseT::getPluginBaseType()
             );
 

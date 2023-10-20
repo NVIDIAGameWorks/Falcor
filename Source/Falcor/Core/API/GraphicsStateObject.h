@@ -38,10 +38,9 @@
 
 namespace Falcor
 {
-class FALCOR_API GraphicsStateObject : public Object
+
+struct GraphicsStateObjectDesc
 {
-    FALCOR_OBJECT(GraphicsStateObject)
-public:
     static constexpr uint32_t kSampleMaskAll = -1;
 
     /**
@@ -56,102 +55,48 @@ public:
         Patch,
     };
 
-    class FALCOR_API Desc
+    Fbo::Desc fboDesc;
+    ref<const VertexLayout> pVertexLayout;
+    ref<const ProgramKernels> pProgramKernels;
+    ref<RasterizerState> pRasterizerState;
+    ref<DepthStencilState> pDepthStencilState;
+    ref<BlendState> pBlendState;
+    uint32_t sampleMask = kSampleMaskAll;
+    PrimitiveType primitiveType = PrimitiveType::Undefined;
+
+    bool operator==(const GraphicsStateObjectDesc& other) const
     {
-    public:
-        Desc& setVertexLayout(ref<const VertexLayout> pLayout)
-        {
-            mpLayout = pLayout;
-            return *this;
-        }
+        bool result = true;
+        result = result && (fboDesc == other.fboDesc);
+        result = result && (pVertexLayout == other.pVertexLayout);
+        result = result && (pProgramKernels == other.pProgramKernels);
+        result = result && (sampleMask == other.sampleMask);
+        result = result && (primitiveType == other.primitiveType);
+        result = result && (pRasterizerState == other.pRasterizerState);
+        result = result && (pBlendState == other.pBlendState);
+        result = result && (pDepthStencilState == other.pDepthStencilState);
+        return result;
+    }
+};
 
-        Desc& setFboFormats(const Fbo::Desc& fboFormats)
-        {
-            mFboDesc = fboFormats;
-            return *this;
-        }
-
-        Desc& setProgramKernels(ref<const ProgramKernels> pProgram)
-        {
-            mpProgram = pProgram;
-            return *this;
-        }
-
-        Desc& setBlendState(ref<BlendState> pBlendState)
-        {
-            mpBlendState = pBlendState;
-            return *this;
-        }
-
-        Desc& setRasterizerState(ref<RasterizerState> pRasterizerState)
-        {
-            mpRasterizerState = pRasterizerState;
-            return *this;
-        }
-
-        Desc& setDepthStencilState(ref<DepthStencilState> pDepthStencilState)
-        {
-            mpDepthStencilState = pDepthStencilState;
-            return *this;
-        }
-
-        Desc& setSampleMask(uint32_t sampleMask)
-        {
-            mSampleMask = sampleMask;
-            return *this;
-        }
-
-        Desc& setPrimitiveType(PrimitiveType type)
-        {
-            mPrimType = type;
-            return *this;
-        }
-
-        ref<BlendState> getBlendState() const { return mpBlendState; }
-        ref<RasterizerState> getRasterizerState() const { return mpRasterizerState; }
-        ref<DepthStencilState> getDepthStencilState() const { return mpDepthStencilState; }
-        ref<const ProgramKernels> getProgramKernels() const { return mpProgram; }
-        uint32_t getSampleMask() const { return mSampleMask; }
-        ref<const VertexLayout> getVertexLayout() const { return mpLayout; }
-        PrimitiveType getPrimitiveType() const { return mPrimType; }
-        Fbo::Desc getFboDesc() const { return mFboDesc; }
-
-        bool operator==(const Desc& other) const;
-
-    private:
-        friend class GraphicsStateObject;
-        Fbo::Desc mFboDesc;
-        ref<const VertexLayout> mpLayout;
-        ref<const ProgramKernels> mpProgram;
-        ref<RasterizerState> mpRasterizerState;
-        ref<DepthStencilState> mpDepthStencilState;
-        ref<BlendState> mpBlendState;
-        uint32_t mSampleMask = kSampleMaskAll;
-        PrimitiveType mPrimType = PrimitiveType::Undefined;
-    };
-
+class FALCOR_API GraphicsStateObject : public Object
+{
+    FALCOR_OBJECT(GraphicsStateObject)
+public:
+    GraphicsStateObject(ref<Device> pDevice, const GraphicsStateObjectDesc& desc);
     ~GraphicsStateObject();
-
-    /**
-     * Create a graphics state object.
-     * @param[in] desc State object description.
-     * @return New object, or throws an exception if creation failed.
-     */
-    static ref<GraphicsStateObject> create(ref<Device> pDevice, const Desc& desc);
 
     gfx::IPipelineState* getGfxPipelineState() const { return mGfxPipelineState; }
 
-    const Desc& getDesc() const { return mDesc; }
+    const GraphicsStateObjectDesc& getDesc() const { return mDesc; }
 
     gfx::IRenderPassLayout* getGFXRenderPassLayout() const { return mpGFXRenderPassLayout.get(); }
 
     void breakStrongReferenceToDevice();
 
 private:
-    GraphicsStateObject(ref<Device> pDevice, const Desc& desc);
-
     BreakableReference<Device> mpDevice;
-    Desc mDesc;
+    GraphicsStateObjectDesc mDesc;
     Slang::ComPtr<gfx::IPipelineState> mGfxPipelineState;
 
     Slang::ComPtr<gfx::IInputLayout> mpGFXInputLayout;

@@ -48,8 +48,6 @@ class FALCOR_API Resource : public Object
 {
     FALCOR_OBJECT(Resource)
 public:
-    using BindFlags = ResourceBindFlags;
-
     /**
      * Resource types. Notice there are no array types. Array are controlled using the array size parameter on texture creation.
      */
@@ -104,7 +102,7 @@ public:
     /**
      * Get the bind flags
      */
-    BindFlags getBindFlags() const { return mBindFlags; }
+    ResourceBindFlags getBindFlags() const { return mBindFlags; }
 
     bool isStateGlobal() const { return mState.isGlobal; }
 
@@ -191,11 +189,11 @@ public:
 protected:
     friend class CopyContext;
 
-    Resource(ref<Device> pDevice, Type type, BindFlags bindFlags, uint64_t size);
+    Resource(ref<Device> pDevice, Type type, ResourceBindFlags bindFlags, uint64_t size);
 
     BreakableReference<Device> mpDevice;
     Type mType;
-    BindFlags mBindFlags;
+    ResourceBindFlags mBindFlags;
     struct
     {
         bool isGlobal = true;
@@ -207,7 +205,6 @@ protected:
     void setGlobalState(State newState) const;
 
     size_t mSize = 0; ///< Size of the resource in bytes.
-    GpuAddress mGpuVaOffset = 0;
     std::string mName;
     mutable SharedResourceApiHandle mSharedApiHandle = 0;
 

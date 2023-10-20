@@ -27,7 +27,7 @@
  **************************************************************************/
 #pragma once
 #include "Core/Macros.h"
-#include "Core/Errors.h"
+#include "Core/Error.h"
 #include "Core/API/Formats.h"
 #include "Core/API/Resource.h"
 #include "Core/API/Texture.h"
@@ -214,7 +214,7 @@ inline RenderPassReflection::Field::Type resourceTypeToFieldType(Resource::Type 
     case Resource::Type::TextureCube:
         return RenderPassReflection::Field::Type::TextureCube;
     default:
-        throw RuntimeError("resourceTypeToFieldType - No RenderPassReflection::Field::Type exists for Resource::Type::{}", to_string(t));
+        FALCOR_THROW("resourceTypeToFieldType - No RenderPassReflection::Field::Type exists for Resource::Type::{}", to_string(t));
     }
 }
 } // namespace Falcor

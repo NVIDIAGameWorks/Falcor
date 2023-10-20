@@ -26,7 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "CurveTessellation.h"
-#include "Core/Assert.h"
+#include "Core/Error.h"
 #include "Utils/Math/Common.h"
 #include "Utils/Math/MathHelpers.h"
 #include "Utils/Math/CubicSpline.h"
@@ -37,9 +37,9 @@
 namespace Falcor
 {
     struct StrandArrays {
-        std::vector<float3> controlPoints;
-        std::vector<float>  widths;
-        std::vector<float2> UVs;
+        fast_vector<float3> controlPoints;
+        fast_vector<float>  widths;
+        fast_vector<float2> UVs;
         uint32_t vertexCount { 0 };
     };
 
@@ -91,6 +91,13 @@ namespace Falcor
 #endif
         }
 
+        /// Sanitize radius so it is never 0, as non-zero radius is used to distinguish
+        /// between mesh-from-curves and native mesh, which is used intersection and epsilon calculations.
+        inline float sanitizeWidth(float w)
+        {
+            return std::max(w, (float)std::numeric_limits<float16_t>::min());
+        }
+
         void optimizeStrandGeometry(CubicSplineCache& splineCache, const CurveArrays& curveArrays, StrandArrays& strandArrays, StrandArrays& optimizedStrandArrays, uint32_t pointOffset, uint32_t subdivPerSegment, uint32_t keepOneEveryXVerticesPerStrand, float widthScale)
         {
             strandArrays.controlPoints.clear();
@@ -127,7 +134,7 @@ namespace Falcor
                     {
                         float t = (float)k / (float)subdivPerSegment;
                         optimizedStrandArrays.controlPoints.push_back(splinePoints.interpolate(j, t));
-                        optimizedStrandArrays.widths.push_back(kMeshCompensationScale * widthScale * splineWidths.interpolate(j, t));
+                        optimizedStrandArrays.widths.push_back(sanitizeWidth(kMeshCompensationScale * widthScale * splineWidths.interpolate(j, t)));
                     }
                     tmpCount++;
                 }
@@ -135,7 +142,7 @@ namespace Falcor
 
             // Always keep the last vertex.
             optimizedStrandArrays.controlPoints.push_back(splinePoints.interpolate(optimizedStrandArrays.vertexCount - 2, 1.f));
-            optimizedStrandArrays.widths.push_back(kMeshCompensationScale * widthScale * splineWidths.interpolate(optimizedStrandArrays.vertexCount - 2, 1.f));
+            optimizedStrandArrays.widths.push_back(sanitizeWidth(kMeshCompensationScale * widthScale * splineWidths.interpolate(optimizedStrandArrays.vertexCount - 2, 1.f)));
 
             // Texture coordinates.
             if (curveArrays.UVs)
@@ -164,7 +171,7 @@ namespace Falcor
         {
             float3 prevFwd;
 
-            if (j <= 0 || j >= strandArrays.controlPoints.size())
+            if (j <= 0 || j >= strandArrays.controlPoints.size() || strandArrays.controlPoints.size() == 2)
             {
                 // The forward tangents should be the same, meaning s & t are also the same
                 prevFwd = fwd;
@@ -188,10 +195,15 @@ namespace Falcor
             // Use quaternions to smoothly rotate the other vectors and update s & t vectors.
             quatf rotQuat = math::quatFromRotationBetweenVectors(prevFwd, fwd);
             s = mul(rotQuat, s);
-            t = mul(rotQuat, t);
+            t = normalize(cross(fwd, s));
+            s = normalize(cross(t, fwd));
+
+            FALCOR_ASSERT_LT(std::abs(length(fwd) - 1.f), 1e-3f);
+            FALCOR_ASSERT_LT(std::abs(length(s) - 1.f), 1e-3f);
+            FALCOR_ASSERT_LT(std::abs(length(t) - 1.f), 1e-3f);
         }
 
-        void updateMeshResultBuffers(CurveTessellation::MeshResult& result, const CurveArrays& curveArrays, StrandArrays& optimizedStrandArrays, const float3& fwd, const float3& s, const float3& t, uint32_t pointCountPerCrossSection, const float& widthScale, uint32_t j)
+        void updateMeshResultBuffers(CurveTessellation::MeshResult& result, const CurveArrays& curveArrays, StrandArrays& optimizedStrandArrays, const float3& fwd, const float3& s, const float3& t, uint32_t pointCountPerCrossSection, uint32_t j)
         {
             // Mesh vertices, normals, tangents, and texCrds (if any).
             for (uint32_t k = 0; k < pointCountPerCrossSection; k++)
@@ -287,7 +299,7 @@ namespace Falcor
                         result.indices.push_back((uint32_t)result.points.size());
 
                         // Pre-transform curve points.
-                        float4 sph = transformSphere(xform, float4(splinePoints.interpolate(j, t), splineWidths.interpolate(j, t) * 0.5f * widthScale));
+                        float4 sph = transformSphere(xform, float4(splinePoints.interpolate(j, t), sanitizeWidth(splineWidths.interpolate(j, t) * 0.5f * widthScale)));
 
                         result.points.push_back(sph.xyz());
                         result.radius.push_back(sph.w);
@@ -297,7 +309,7 @@ namespace Falcor
             }
 
             // Always keep the last vertex.
-            float4 sph = transformSphere(xform, float4(splinePoints.interpolate(optimizedStrandArrays.vertexCount - 2, 1.f), splineWidths.interpolate(optimizedStrandArrays.vertexCount - 2, 1.f) * 0.5f * widthScale));
+            float4 sph = transformSphere(xform, float4(splinePoints.interpolate(optimizedStrandArrays.vertexCount - 2, 1.f), sanitizeWidth(splineWidths.interpolate(optimizedStrandArrays.vertexCount - 2, 1.f) * 0.5f * widthScale)));
             result.points.push_back(sph.xyz());
             result.radius.push_back(sph.w);
 
@@ -377,6 +389,7 @@ namespace Falcor
             // Build the initial frame.
             float3 fwd, s, t;
             fwd = normalize(optimizedStrandArrays.controlPoints[1] - optimizedStrandArrays.controlPoints[0]);
+            FALCOR_ASSERT_LT(std::abs(length(fwd) - 1.f), 1e-3f);
             buildFrame(fwd, s, t);
 
             // Create mesh.
@@ -386,7 +399,7 @@ namespace Falcor
                 updateCurveFrame(optimizedStrandArrays, fwd, s, t, j);
 
                 // Mesh vertices, normals, tangents, and texCrds (if any).
-                updateMeshResultBuffers(result, curveArrays, optimizedStrandArrays, fwd, s, t, pointCountPerCrossSection, widthScale, j);
+                updateMeshResultBuffers(result, curveArrays, optimizedStrandArrays, fwd, s, t, pointCountPerCrossSection, j);
 
                 // Mesh faces.
                 if (j < optimizedStrandArrays.controlPoints.size() - 1)
@@ -398,6 +411,7 @@ namespace Falcor
 
             meshVertexOffset += pointCountPerCrossSection * (uint32_t)optimizedStrandArrays.controlPoints.size();
         }
+
         return result;
     }
 

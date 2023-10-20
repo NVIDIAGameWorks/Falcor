@@ -26,6 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "ScriptBindings.h"
+#include "Core/Error.h"
 #include "Core/Plugin.h"
 #include "Utils/Scripting/Scripting.h"
 #include "Utils/Math/Vector.h"
@@ -113,7 +114,7 @@ void registerBinding(RegisterBindingFunc f)
         catch (const std::exception& e)
         {
             PyErr_SetString(PyExc_ImportError, e.what());
-            reportError(e.what());
+            reportErrorAndContinue(e.what());
             return;
         }
     }
@@ -130,7 +131,7 @@ void registerDeferredBinding(const std::string& name, RegisterBindingFunc f)
             deferredBindings.begin(), deferredBindings.end(), [&name](const DeferredBinding& binding) { return binding.name == name; }
         ) != deferredBindings.end())
     {
-        throw RuntimeError("A script binding with the name '{}' already exists!", name);
+        FALCOR_THROW("A script binding with the name '{}' already exists!", name);
     }
     deferredBindings.emplace_back(name, f);
 }
@@ -182,6 +183,31 @@ void defineVecType(pybind11::class_<VecT>& vec)
         vec.def(pybind11::init(initVector), "x"_a, "y"_a, "z"_a, "w"_a);
     }
 
+    // Initialization from array (to allow implicit conversion from python lists).
+    auto initArray = [](std::array<ScalarT, length> a)
+    {
+        VecT v;
+        for (size_t i = 0; i < VecT::length(); ++i)
+            v[i] = a[i];
+        return v;
+    };
+    vec.def(pybind11::init(initArray));
+    pybind11::implicitly_convertible<std::array<ScalarT, length>, VecT>();
+
+    // Initialization from integer array (to allow implicit conversion from python lists).
+    if constexpr (std::is_floating_point_v<ScalarT>)
+    {
+        auto initIntArray = [](std::array<int64_t, length> a)
+        {
+            VecT v;
+            for (size_t i = 0; i < VecT::length(); ++i)
+                v[i] = ScalarT(a[i]);
+            return v;
+        };
+        vec.def(pybind11::init(initIntArray));
+        pybind11::implicitly_convertible<std::array<int64_t, length>, VecT>();
+    }
+
     // Casting float16_t <-> float vectors.
     // This allows explicit casts, e.g., float16_t3(c), where c is a float3 in python.
     if constexpr (std::is_same<ScalarT, float16_t>::value)
@@ -229,7 +255,7 @@ void defineVecType(pybind11::class_<VecT>& vec)
         [&](pybind11::tuple t)
         {
             if (t.size() != length)
-                throw RuntimeError("Invalid state!");
+                FALCOR_THROW("Invalid state!");
             VecT v;
             for (auto i = 0; i < length; ++i)
                 v[i] = t[i].cast<ScalarT>();
@@ -315,6 +341,7 @@ void initModule(pybind11::module& m)
     // float3x3, float4x4
     // Note: We register these as simple data types without any operations because semantics may change in the future.
     pybind11::class_<float3x3>(m, "float3x3");
+    pybind11::class_<float3x4>(m, "float3x4");
     pybind11::class_<float4x4>(m, "float4x4");
 
     // ObjectID

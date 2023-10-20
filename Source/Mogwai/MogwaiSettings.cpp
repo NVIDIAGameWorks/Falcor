@@ -223,13 +223,17 @@ namespace Mogwai
             g.text("Program compilation:\n");
 
             const auto& s = mpRenderer->getDevice()->getProgramManager()->getCompilationStats();
+            double totalTime, downstreamTime;
+            mpRenderer->getDevice()->getSlangGlobalSession()->getCompilerElapsedTime(&totalTime, &downstreamTime);
             std::ostringstream oss;
             oss << "Program version count: " << s.programVersionCount << std::endl
                 << "Program kernels count: " << s.programKernelsCount << std::endl
                 << "Program version time (total): " << s.programVersionTotalTime << " s" << std::endl
                 << "Program kernels time (total): " << s.programKernelsTotalTime << " s" << std::endl
                 << "Program version time (max): " << s.programVersionMaxTime << " s" << std::endl
-                << "Program kernels time (max): " << s.programKernelsMaxTime << " s" << std::endl;
+                << "Program kernels time (max): " << s.programKernelsMaxTime << " s" << std::endl
+                << "Total shader code-gen time: " << totalTime << " s" << std::endl
+                << "Downstream compilation time: " << downstreamTime << " s" << std::endl;
             g.text(oss.str());
 
             if (g.button("Reset"))

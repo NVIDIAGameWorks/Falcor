@@ -97,18 +97,7 @@ public:
         {
             Device::Desc desc = mDefaultDesc;
             desc.type = deviceType;
-            ref<Device> device = make_ref<Device>(desc);
-
-            // Set global shader defines
-            DefineList globalDefines = {
-                {"FALCOR_NVAPI_AVAILABLE", (FALCOR_NVAPI_AVAILABLE && device->getType() == Device::Type::D3D12) ? "1" : "0"},
-#if FALCOR_NVAPI_AVAILABLE
-                {"NV_SHADER_EXTN_SLOT", "u999"},
-#endif
-            };
-            device->getProgramManager()->addGlobalDefines(globalDefines);
-
-            return device;
+            return make_ref<Device>(desc);
         }
         auto device = devices.back();
         devices.pop_back();
@@ -286,7 +275,7 @@ inline TestResult runTest(const Test& test, DevicePool& devicePool)
     if (pDevice)
     {
         pDevice->endFrame();
-        pDevice->flushAndSync();
+        pDevice->wait();
         devicePool.releaseDevice(std::move(pDevice));
     }
 
@@ -486,8 +475,12 @@ inline int32_t runTestsSerial(const RunOptions& options)
         writeXmlReport(options.xmlReportPath, report);
 
     reportLine(
-        "[==========] {} test{} from {} test suite{} ran. ({} ms total)", testCount, plural(testCount, "s"), suiteCount,
-        plural(suiteCount, "s"), totalMS
+        "[==========] {} test{} from {} test suite{} ran. ({} ms total)",
+        testCount,
+        plural(testCount, "s"),
+        suiteCount,
+        plural(suiteCount, "s"),
+        totalMS
     );
     reportLine("[  PASSED  ] {} test{}.", testCount - failureCount, plural(testCount - failureCount, "s"));
     if (failureCount > 0)
@@ -566,7 +559,8 @@ std::vector<Test> enumerateTests()
 
     // Sort by suite name first, followed by test name.
     std::sort(
-        tests.begin(), tests.end(),
+        tests.begin(),
+        tests.end(),
         [](const Test& a, const Test& b)
         {
             if (a.suiteName == b.suiteName)
@@ -644,6 +638,9 @@ void UnitTestContext::reportFailure(const std::string& message)
         return;
     reportLine("{}", message);
     mFailureMessages.push_back(message);
+
+    if (isDebuggerPresent())
+        debugBreak();
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -652,13 +649,13 @@ void GPUUnitTestContext::createProgram(
     const std::filesystem::path& path,
     const std::string& entry,
     const DefineList& programDefines,
-    Program::CompilerFlags flags,
-    const std::string& shaderModel,
+    SlangCompilerFlags flags,
+    ShaderModel shaderModel,
     bool createShaderVars
 )
 {
     // Create program.
-    mpProgram = ComputeProgram::createFromFile(mpDevice, path, entry, programDefines, flags, shaderModel);
+    mpProgram = Program::createCompute(mpDevice, path, entry, programDefines, flags, shaderModel);
     mpState = ComputeState::create(mpDevice);
     mpState->setProgram(mpProgram);
 
@@ -667,10 +664,10 @@ void GPUUnitTestContext::createProgram(
         createVars();
 }
 
-void GPUUnitTestContext::createProgram(const Program::Desc& desc, const DefineList& programDefines, bool createShaderVars)
+void GPUUnitTestContext::createProgram(const ProgramDesc& desc, const DefineList& programDefines, bool createShaderVars)
 {
     // Create program.
-    mpProgram = ComputeProgram::create(mpDevice, desc, programDefines);
+    mpProgram = Program::create(mpDevice, desc, programDefines);
     mpState = ComputeState::create(mpDevice);
     mpState->setProgram(mpProgram);
 
@@ -683,7 +680,7 @@ void GPUUnitTestContext::createVars()
 {
     // Create shader variables.
     ref<const ProgramReflection> pReflection = mpProgram->getReflector();
-    mpVars = ComputeVars::create(mpDevice, pReflection);
+    mpVars = ProgramVars::create(mpDevice, pReflection);
     FALCOR_ASSERT(mpVars);
 
     // Try to use shader reflection to query thread group size.
@@ -694,8 +691,8 @@ void GPUUnitTestContext::createVars()
 
 void GPUUnitTestContext::allocateStructuredBuffer(const std::string& name, uint32_t nElements, const void* pInitData, size_t initDataSize)
 {
-    checkInvariant(mpVars != nullptr, "Program vars not created");
-    mStructuredBuffers[name] = Buffer::createStructured(mpDevice, mpProgram.get(), name, nElements);
+    FALCOR_CHECK(mpVars != nullptr, "Program vars not created");
+    mStructuredBuffers[name] = mpDevice->createStructuredBuffer(mpVars->getRootVar()[name], nElements);
     if (pInitData)
     {
         ref<Buffer> buffer = mStructuredBuffers[name];
@@ -710,7 +707,7 @@ void GPUUnitTestContext::allocateStructuredBuffer(const std::string& name, uint3
 
 void GPUUnitTestContext::runProgram(const uint3& dimensions)
 {
-    checkInvariant(mpVars != nullptr, "Program vars not created");
+    FALCOR_CHECK(mpVars != nullptr, "Program vars not created");
     for (const auto& buffer : mStructuredBuffers)
     {
         mpVars->setBuffer(buffer.first, buffer.second);
@@ -741,6 +738,10 @@ CPU_TEST(TestCPUTest)
     EXPECT_GT(2, 1);
     EXPECT_LE(2, 2);
     EXPECT_GE(3, 2);
+
+    // Commented out to not have the debugger break if break-on-exception is enabled.
+    // EXPECT_THROW({ throw std::runtime_error("Test"); });
+    // EXPECT_THROW_AS({ throw std::runtime_error("Test"); }, std::runtime_error);
 }
 
 CPU_TEST(TestSingleEval)

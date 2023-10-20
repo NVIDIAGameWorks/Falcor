@@ -77,8 +77,7 @@ public:
 
     /**
      * Create a new object from file.
-     * @param[in] path Path to load from. If the file can't be found relative to the current directory, Falcor will search for it in the
-     * common directories.
+     * @param[in] path Path to load from (absolute or relative to working directory).
      * @param[in] isTopDown Control the memory layout of the image. If true, the top-left pixel is the first pixel in the buffer, otherwise
      * the bottom-left pixel is first.
      * @return If loading was successful, a new object. Otherwise, nullptr.

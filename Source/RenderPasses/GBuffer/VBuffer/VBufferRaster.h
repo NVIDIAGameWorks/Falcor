@@ -30,12 +30,13 @@
 
 using namespace Falcor;
 
-/** Rasterized V-buffer pass.
-
-    This pass renders a visibility buffer using ray tracing.
-    The visibility buffer encodes the mesh instance ID and primitive index,
-    as well as the barycentrics at the hit point.
-*/
+/**
+ * Rasterized V-buffer pass.
+ *
+ * This pass renders a visibility buffer using ray tracing.
+ * The visibility buffer encodes the mesh instance ID and primitive index,
+ * as well as the barycentrics at the hit point.
+ */
 class VBufferRaster : public GBufferBase
 {
 public:
@@ -50,13 +51,15 @@ public:
     void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
 
 private:
+    void recreatePrograms();
+
     // Internal state
     ref<Fbo> mpFbo;
 
     struct
     {
         ref<GraphicsState> pState;
-        ref<GraphicsProgram> pProgram;
-        ref<GraphicsVars> pVars;
+        ref<Program> pProgram;
+        ref<ProgramVars> pVars;
     } mRaster;
 };

@@ -31,8 +31,9 @@
 
 using namespace Falcor;
 
-/** Simple pass for time-dependent fading between two buffers.
-*/
+/**
+ * Simple pass for time-dependent fading between two buffers.
+ */
 class CrossFade : public RenderPass
 {
 public:
@@ -50,17 +51,18 @@ public:
     virtual void renderUI(Gui::Widgets& widget) override;
 
 private:
-    uint2                       mFrameDim = { 0, 0 };
-    float                       mScaleA = 1.f;
-    float                       mScaleB = 1.f;
-    ResourceFormat              mOutputFormat = ResourceFormat::RGBA32Float;
+    uint2 mFrameDim = {0, 0};
+    float mScaleA = 1.f;
+    float mScaleB = 1.f;
+    ResourceFormat mOutputFormat = ResourceFormat::RGBA32Float;
 
-    ref<ComputePass>            mpFadePass;
+    ref<ComputePass> mpFadePass;
 
-    ref<Scene>                  mpScene;
-    uint32_t                    mMixFrame = 0;
-    bool                        mEnableAutoFade = true;
-    uint32_t                    mWaitFrameCount = 10;
-    uint32_t                    mFadeFrameCount = 100;
-    float                       mFadeFactor = 0.5f; ///< Fixed fade factor (t) used when auto-fade is disabled. The output is: (1-t)*A + t*B.
+    ref<Scene> mpScene;
+    uint32_t mMixFrame = 0;
+    bool mEnableAutoFade = true;
+    uint32_t mWaitFrameCount = 10;
+    uint32_t mFadeFrameCount = 100;
+    /// Fixed fade factor (t) used when auto-fade is disabled. The output is: (1-t)*A + t*B.
+    float mFadeFactor = 0.5f;
 };

@@ -46,17 +46,17 @@ void testRayFlags(GPUUnitTestContext& ctx, bool useDXR_1_1)
     };
 
     DefineList defines;
-    std::string shaderModel = "6_3";
+    ShaderModel shaderModel = ShaderModel::SM6_3;
 
     if (useDXR_1_1)
     {
         expected.push_back((uint32_t)RayFlags::SkipTriangles);
         expected.push_back((uint32_t)RayFlags::SkipProceduralPrimitives);
         defines.add("DXR_1_1");
-        shaderModel = "6_5";
+        shaderModel = ShaderModel::SM6_5;
     }
 
-    ctx.createProgram("Tests/Slang/TraceRayFlags.cs.slang", "testRayFlags", defines, Program::CompilerFlags::None, shaderModel);
+    ctx.createProgram("Tests/Slang/TraceRayFlags.cs.slang", "testRayFlags", defines, SlangCompilerFlags::None, shaderModel);
     ctx.allocateStructuredBuffer("result", (uint32_t)expected.size());
     ctx.runProgram(1, 1, 1);
 

@@ -29,7 +29,7 @@
 #include "PixelDebugTypes.slang"
 #include "Core/Macros.h"
 #include "Core/API/Buffer.h"
-#include "Core/API/GpuFence.h"
+#include "Core/API/Fence.h"
 #include "Core/Program/Program.h"
 #include "Utils/UI/Gui.h"
 #include <memory>
@@ -68,9 +68,10 @@ public:
     /**
      * Constructor. Throws an exception on error.
      * @param[in] pDevice GPU device.
-     * @param[in] logSize Number of shader print() and assert() statements per frame.
+     * @param[in] printCapacity Maximum number of shader print() statements per frame.
+     * @param[in] assertCapacity Maximum number of shader assert() statements per frame.
      */
-    PixelDebug(ref<Device> pDevice, uint32_t logSize = 100);
+    PixelDebug(ref<Device> pDevice, uint32_t printCapacity = 100, uint32_t assertCapacity = 100);
 
     void beginFrame(RenderContext* pRenderContext, const uint2& frameDim);
     void endFrame(RenderContext* pRenderContext);
@@ -93,11 +94,11 @@ protected:
     // Internal state
     ref<Device> mpDevice;
     ref<Program> mpReflectProgram; ///< Program for reflection of types.
-    ref<Buffer> mpPixelLog;        ///< Pixel log on the GPU with UAV counter.
-    ref<Buffer> mpAssertLog;       ///< Assert log on the GPU with UAV counter.
-    ref<Buffer> mpCounterBuffer;   ///< Staging buffer for async readback of UAV counters.
-    ref<Buffer> mpDataBuffer;      ///< Staging buffer for async readback of logged data.
-    ref<GpuFence> mpFence;         ///< GPU fence for sychronizing readback.
+    ref<Buffer> mpCounterBuffer;   ///< Counter buffer (print, assert) on the GPU.
+    ref<Buffer> mpPrintBuffer;     ///< Print buffer on the GPU.
+    ref<Buffer> mpAssertBuffer;    ///< Assert buffer on the GPU.
+    ref<Buffer> mpReadbackBuffer;  ///< Staging buffer for async readback of all data.
+    ref<Fence> mpFence;            ///< GPU fence for sychronizing readback.
 
     // Configuration
     bool mEnabled = false;         ///< Enable debugging features.
@@ -112,9 +113,10 @@ protected:
 
     std::unordered_map<uint32_t, std::string> mHashToString; ///< Map of string hashes to string values.
 
-    std::vector<PixelLogValue> mPixelLogData;   ///< Pixel log data read back from the GPU.
-    std::vector<AssertLogValue> mAssertLogData; ///< Assert log data read back from the GPU.
+    std::vector<PrintRecord> mPrintData;   ///< Print data read back from the GPU.
+    std::vector<AssertRecord> mAssertData; ///< Assert log data read back from the GPU.
 
-    const uint32_t mLogSize = 0; ///< Size of the log buffers in elements.
+    const uint32_t mPrintCapacity = 0;  ///< Capacity of the print buffer in elements.
+    const uint32_t mAssertCapacity = 0; ///< Capacity of the assert buffer in elements.
 };
 } // namespace Falcor

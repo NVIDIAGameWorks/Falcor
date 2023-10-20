@@ -393,6 +393,23 @@ float3 sample_triangle(float2 u)
     return float3(1.f - b.x - b.y, b.x, b.y);
 }
 
+/**
+ * Sample from the von-Mises Fisher distribution.
+ * @param[in] u Uniform random numbers in [0,1)^2.
+ * @param[in] kappa VMF concentration parameter.
+ * @return Sampled direction in the local frame (+z axis up).
+ */
+[PreferRecompute]
+float3 sampleVonMisesFisher(float2 u, float kappa)
+{
+    float sy = max(1.f - u.y, 1e-6f);
+    float phi = M_2PI * u.x;
+    float cosTheta = 1.f + log(exp(-2.f * kappa) * (1.f - sy) + sy) / kappa;
+    float sinTheta = sqrt(1.f - cosTheta * cosTheta);
+    float3 d = float3(cos(phi) * sinTheta, sin(phi) * sinTheta, cosTheta);
+    return d;
+}
+
 /******************************************************************************
 
     Motion vectors
@@ -472,6 +489,49 @@ float3x3 inverse(float3x3 M)
 }
 
 /**
+ * Inverts a 4x4 matrix.
+ */
+float4x4 inverse(float4x4 m)
+{
+    float n11 = m[0][0], n12 = m[1][0], n13 = m[2][0], n14 = m[3][0];
+    float n21 = m[0][1], n22 = m[1][1], n23 = m[2][1], n24 = m[3][1];
+    float n31 = m[0][2], n32 = m[1][2], n33 = m[2][2], n34 = m[3][2];
+    float n41 = m[0][3], n42 = m[1][3], n43 = m[2][3], n44 = m[3][3];
+
+    float t11 = n23 * n34 * n42 - n24 * n33 * n42 + n24 * n32 * n43 - n22 * n34 * n43 - n23 * n32 * n44 + n22 * n33 * n44;
+    float t12 = n14 * n33 * n42 - n13 * n34 * n42 - n14 * n32 * n43 + n12 * n34 * n43 + n13 * n32 * n44 - n12 * n33 * n44;
+    float t13 = n13 * n24 * n42 - n14 * n23 * n42 + n14 * n22 * n43 - n12 * n24 * n43 - n13 * n22 * n44 + n12 * n23 * n44;
+    float t14 = n14 * n23 * n32 - n13 * n24 * n32 - n14 * n22 * n33 + n12 * n24 * n33 + n13 * n22 * n34 - n12 * n23 * n34;
+
+    float det = n11 * t11 + n21 * t12 + n31 * t13 + n41 * t14;
+    float idet = 1.0f / det;
+
+    float4x4 ret;
+
+    ret[0][0] = t11 * idet;
+    ret[0][1] = (n24 * n33 * n41 - n23 * n34 * n41 - n24 * n31 * n43 + n21 * n34 * n43 + n23 * n31 * n44 - n21 * n33 * n44) * idet;
+    ret[0][2] = (n22 * n34 * n41 - n24 * n32 * n41 + n24 * n31 * n42 - n21 * n34 * n42 - n22 * n31 * n44 + n21 * n32 * n44) * idet;
+    ret[0][3] = (n23 * n32 * n41 - n22 * n33 * n41 - n23 * n31 * n42 + n21 * n33 * n42 + n22 * n31 * n43 - n21 * n32 * n43) * idet;
+
+    ret[1][0] = t12 * idet;
+    ret[1][1] = (n13 * n34 * n41 - n14 * n33 * n41 + n14 * n31 * n43 - n11 * n34 * n43 - n13 * n31 * n44 + n11 * n33 * n44) * idet;
+    ret[1][2] = (n14 * n32 * n41 - n12 * n34 * n41 - n14 * n31 * n42 + n11 * n34 * n42 + n12 * n31 * n44 - n11 * n32 * n44) * idet;
+    ret[1][3] = (n12 * n33 * n41 - n13 * n32 * n41 + n13 * n31 * n42 - n11 * n33 * n42 - n12 * n31 * n43 + n11 * n32 * n43) * idet;
+
+    ret[2][0] = t13 * idet;
+    ret[2][1] = (n14 * n23 * n41 - n13 * n24 * n41 - n14 * n21 * n43 + n11 * n24 * n43 + n13 * n21 * n44 - n11 * n23 * n44) * idet;
+    ret[2][2] = (n12 * n24 * n41 - n14 * n22 * n41 + n14 * n21 * n42 - n11 * n24 * n42 - n12 * n21 * n44 + n11 * n22 * n44) * idet;
+    ret[2][3] = (n13 * n22 * n41 - n12 * n23 * n41 - n13 * n21 * n42 + n11 * n23 * n42 + n12 * n21 * n43 - n11 * n22 * n43) * idet;
+
+    ret[3][0] = t14 * idet;
+    ret[3][1] = (n13 * n24 * n31 - n14 * n23 * n31 + n14 * n21 * n33 - n11 * n24 * n33 - n13 * n21 * n34 + n11 * n23 * n34) * idet;
+    ret[3][2] = (n14 * n22 * n31 - n12 * n24 * n31 - n14 * n21 * n32 + n11 * n24 * n32 + n12 * n21 * n34 - n11 * n22 * n34) * idet;
+    ret[3][3] = (n12 * n23 * n31 - n13 * n22 * n31 + n13 * n21 * n32 - n11 * n23 * n32 - n12 * n21 * n33 + n11 * n22 * n33) * idet;
+
+    return ret;
+}
+
+/**
  * Generate a vector that is orthogonal to the input vector.
  * This can be used to invent a tangent frame for meshes that don't have real tangents/bitangents.
  * @param[in] u Unit vector.
@@ -491,11 +551,26 @@ float3 perp_stark(float3 u)
     return v;
 }
 
+/**
+ * @brief Generates full OrthoNormalBasis based on the normal, without branches or sqrt.
+ *
+ * From https://graphics.pixar.com/library/OrthonormalB/paper.pdf
+ */
+void branchlessONB(const float3 n, out float3 b1, out float3 b2)
+{
+    // can't use just `sign` because we need 0 to go into -1/+1, but not 0
+    float sign = (n.z >= 0 ? 1 : -1);
+    const float a = -1.0f / (sign + n.z);
+    const float b = n.x * n.y * a;
+    b1 = float3(1.0f + sign * n.x * n.x * a, sign * b, -sign * n.x);
+    b2 = float3(b, sign + n.y * n.y * a, -n.y);
+}
+
 // clang-format off
-float sqr(float v) { return v * v; }
-float2 sqr(float2 v) { return v * v; }
-float3 sqr(float3 v) { return v * v; }
-float4 sqr(float4 v) { return v * v; }
+[Differentiable] float sqr(float v) { return v * v; }
+[Differentiable] float2 sqr(float2 v) { return v * v; }
+[Differentiable] float3 sqr(float3 v) { return v * v; }
+[Differentiable] float4 sqr(float4 v) { return v * v; }
 // clang-format on
 
 /**
@@ -579,8 +654,13 @@ float lgamma(float x_)
     // Maxiumum error: 2 x 10^-10.
     const float g = 5.0;
     const float coeffs[7] = {
-        1.000000000190015,  76.18009172947146,     -86.50532032941677,  24.01409824083091,
-        -1.231739572450155, 0.1208650973866179e-2, -0.5395239384953e-5,
+        1.000000000190015,
+        76.18009172947146,
+        -86.50532032941677,
+        24.01409824083091,
+        -1.231739572450155,
+        0.1208650973866179e-2,
+        -0.5395239384953e-5,
     };
 
     bool reflect = x_ < 0.5f;
@@ -672,4 +752,17 @@ float3 rotate_z(const float3 v, const float angle)
     float c, s;
     sincos(angle, s, c);
     return float3(v.x * c - v.y * s, v.x * s + v.y * c, v.z);
+}
+
+/**
+ * Normalize a 3D vector, but return 0 if the vector is zero.
+ * @param[in] v Original vector.
+ * @return Normalized vector, or 0 if the vector is zero.
+ */
+[Differentiable]
+[PreferRecompute]
+float3 normalizeSafe(float3 v)
+{
+    float len = length(v);
+    return len > 0.f ? v / len : float3(0.f);
 }

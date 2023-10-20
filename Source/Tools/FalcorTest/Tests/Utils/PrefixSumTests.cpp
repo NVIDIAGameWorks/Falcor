@@ -59,13 +59,13 @@ void testPrefixSum(GPUUnitTestContext& ctx, PrefixSum& prefixSum, uint32_t numEl
     for (auto& it : testData)
         it = r() % maxVal;
 
-    ref<Buffer> pTestDataBuffer = Buffer::create(
-        pDevice, numElems * sizeof(uint32_t), Resource::BindFlags::UnorderedAccess, Buffer::CpuAccess::None, testData.data()
-    );
+    ref<Buffer> pTestDataBuffer =
+        pDevice->createBuffer(numElems * sizeof(uint32_t), ResourceBindFlags::UnorderedAccess, MemoryType::DeviceLocal, testData.data());
 
     // Allocate buffer for the total sum on the GPU.
     uint32_t nullValue = 0;
-    ref<Buffer> pSumBuffer = Buffer::create(pDevice, 4, ResourceBindFlags::ShaderResource, Buffer::CpuAccess::None, &nullValue);
+    ref<Buffer> pSumBuffer =
+        pDevice->createBuffer(sizeof(uint32_t), ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, &nullValue);
 
     // Execute prefix sum on the GPU.
     uint32_t sum = 0;
@@ -77,18 +77,14 @@ void testPrefixSum(GPUUnitTestContext& ctx, PrefixSum& prefixSum, uint32_t numEl
     // Compare results.
     EXPECT_EQ(sum, refSum);
 
-    uint32_t* resultSum = (uint32_t*)pSumBuffer->map(Buffer::MapType::Read);
-    FALCOR_ASSERT(resultSum);
-    EXPECT_EQ(resultSum[0], refSum);
-    pSumBuffer->unmap();
+    uint32_t resultSum = pSumBuffer->getElement<uint32_t>(0);
+    EXPECT_EQ(resultSum, refSum);
 
-    const uint32_t* result = (const uint32_t*)pTestDataBuffer->map(Buffer::MapType::Read);
-    FALCOR_ASSERT(result);
+    std::vector<uint32_t> result = pTestDataBuffer->getElements<uint32_t>();
     for (uint32_t i = 0; i < numElems; i++)
     {
         EXPECT_EQ(testData[i], result[i]) << "i = " << i;
     }
-    pTestDataBuffer->unmap();
 }
 } // namespace
 

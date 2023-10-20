@@ -26,7 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "Console.h"
-#include "Core/Assert.h"
+#include "Core/Error.h"
 #include "Utils/UI/InputTypes.h"
 #include "Utils/UI/Gui.h"
 #include "Utils/Scripting/Scripting.h"
@@ -107,9 +107,12 @@ void Console::render(Gui* pGui, bool& show)
     // Stick focus to console text input.
     ImGui::SetKeyboardFocusHere();
     if (ImGui::InputText(
-            "##console", mCmdBuffer, std::size(mCmdBuffer),
+            "##console",
+            mCmdBuffer,
+            std::size(mCmdBuffer),
             ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackHistory | ImGuiInputTextFlags_CallbackCharFilter,
-            &inputTextCallback, this
+            &inputTextCallback,
+            this
         ))
     {
         enterCommand();

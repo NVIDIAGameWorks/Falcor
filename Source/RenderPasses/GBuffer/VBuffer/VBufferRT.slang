@@ -32,7 +32,7 @@ import Utils.Math.MathHelpers;
 import Utils.Sampling.SampleGenerator;
 
 RWTexture2D<PackedHitInfo> gVBuffer;
-RWTexture2D<float>  gDepth;
+RWTexture2D<float> gDepth;
 RWTexture2D<float2> gMotionVector;
 RWTexture2D<float4> gViewW;
 RWTexture2D<uint> gTime;
@@ -101,7 +101,8 @@ struct VBufferRT
             prevPosW = gScene.getPrevPosWFromSDFGrid(sdfGridHit, v.posW);
         }
 
-        if (hit.getType() == HitType::Triangle || hit.getType() == HitType::DisplacedTriangle || hit.getType() == HitType::Curve || hit.getType() == HitType::SDFGrid)
+        if (hit.getType() == HitType::Triangle || hit.getType() == HitType::DisplacedTriangle || hit.getType() == HitType::Curve ||
+            hit.getType() == HitType::SDFGrid)
         {
             // Compute depth similar to raster (NDC).
             float4 curPosH = mul(gScene.camera.data.viewProjMatNoJitter, float4(v.posW, 1.f));
@@ -110,36 +111,46 @@ struct VBufferRT
             // Compute motion vector.
             float2 pixelPos = pixel + float2(0.5f, 0.5f);
             float4 prevPosH = mul(gScene.camera.data.prevViewProjMatNoJitter, float4(prevPosW, 1.f));
-            motionVector = calcMotionVector(pixelPos, prevPosH, frameDim) + float2(gScene.camera.data.jitterX, -gScene.camera.data.jitterY); // Remove camera jitter from motion vector
+            // Remove camera jitter from motion vector
+            motionVector = calcMotionVector(pixelPos, prevPosH, frameDim) + float2(gScene.camera.data.jitterX, -gScene.camera.data.jitterY);
         }
 
-        if (is_valid(gDepth))           gDepth[pixel]           = depth;
-        if (is_valid(gMotionVector))    gMotionVector[pixel]    = motionVector;
-        if (is_valid(gMask))            gMask[pixel]            = 1.0f;
+        if (is_valid(gDepth))
+            gDepth[pixel] = depth;
+        if (is_valid(gMotionVector))
+            gMotionVector[pixel] = motionVector;
+        if (is_valid(gMask))
+            gMask[pixel] = 1.0f;
     }
 
     void writeMiss(uint2 pixel, float3 rayOrigin, float3 rayDir)
     {
         gVBuffer[pixel] = {};
 
-        if (is_valid(gDepth))           gDepth[pixel]           = 1.f;
-        if (is_valid(gMotionVector))    gMotionVector[pixel]    = {};
-        if (is_valid(gMask))            gMask[pixel]            = 0.0f;
+        if (is_valid(gDepth))
+            gDepth[pixel] = 1.f;
+        if (is_valid(gMotionVector))
+            gMotionVector[pixel] = {};
+        if (is_valid(gMask))
+            gMask[pixel] = 0.0f;
     }
 
     void writeAux(uint2 pixel, const Ray ray)
     {
         // Write view direction.
-        if (is_valid(gViewW)) gViewW[pixel] = float4(-ray.dir, 0.f);
+        if (is_valid(gViewW))
+            gViewW[pixel] = float4(-ray.dir, 0.f);
     }
 
     void beginTime(inout GpuTimer timer)
     {
-        if (is_valid(gTime)) timer.start();
+        if (is_valid(gTime))
+            timer.start();
     }
 
     void endTime(uint2 pixel, inout GpuTimer timer)
     {
-        if (is_valid(gTime)) gTime[pixel] = timer.getElapsed();
+        if (is_valid(gTime))
+            gTime[pixel] = timer.getElapsed();
     }
 };

@@ -26,6 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "WarpProfiler.h"
+#include "Core/API/Device.h"
 #include "Core/API/RenderContext.h"
 #include "Core/Program/ShaderVar.h"
 #include <fstream>
@@ -35,24 +36,22 @@ namespace Falcor
 
 WarpProfiler::WarpProfiler(ref<Device> pDevice, const uint32_t binCount) : mBinCount(binCount)
 {
-    mpFence = GpuFence::create(pDevice);
+    mpFence = pDevice->createFence();
     uint32_t elemCount = binCount * kWarpSize;
-    mpHistogramBuffer = Buffer::createStructured(
-        pDevice, 4, elemCount, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, Buffer::CpuAccess::None, nullptr,
-        false
+    mpHistogramBuffer = pDevice->createStructuredBuffer(
+        4, elemCount, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess, MemoryType::DeviceLocal, nullptr, false
     );
-    mpHistogramStagingBuffer =
-        Buffer::createStructured(pDevice, 4, elemCount, ResourceBindFlags::None, Buffer::CpuAccess::Read, nullptr, false);
+    mpHistogramStagingBuffer = pDevice->createStructuredBuffer(4, elemCount, ResourceBindFlags::None, MemoryType::ReadBack, nullptr, false);
 }
 
-void WarpProfiler::setShaderData(const ShaderVar& var) const
+void WarpProfiler::bindShaderData(const ShaderVar& var) const
 {
     var["gWarpHistogram"] = mpHistogramBuffer;
 }
 
 void WarpProfiler::begin(RenderContext* pRenderContext)
 {
-    checkInvariant(!mActive, "WarpProfiler: begin() already called.");
+    FALCOR_CHECK(!mActive, "WarpProfiler: begin() already called.");
 
     pRenderContext->clearUAV(mpHistogramBuffer->getUAV().get(), uint4(0));
 
@@ -62,13 +61,13 @@ void WarpProfiler::begin(RenderContext* pRenderContext)
 
 void WarpProfiler::end(RenderContext* pRenderContext)
 {
-    checkInvariant(mActive, "WarpProfiler: end() called without preceding begin().");
+    FALCOR_CHECK(mActive, "WarpProfiler: end() called without preceding begin().");
 
     pRenderContext->copyResource(mpHistogramStagingBuffer.get(), mpHistogramBuffer.get());
 
     // Submit command list and insert signal.
-    pRenderContext->flush(false);
-    mpFence->gpuSignal(pRenderContext->getLowLevelData()->getCommandQueue());
+    pRenderContext->submit(false);
+    pRenderContext->signal(mpFence.get());
 
     mActive = false;
     mDataWaiting = true;
@@ -78,8 +77,8 @@ std::vector<uint32_t> WarpProfiler::getWarpHistogram(const uint32_t binIndex, co
 {
     readBackData();
 
-    checkArgument(binIndex + binCount <= mBinCount, "WarpProfiler: Bin index out of range.");
-    checkInvariant(!mHistograms.empty(), "WarpProfiler: No available data. Did you call begin()/end()?");
+    FALCOR_CHECK(binIndex + binCount <= mBinCount, "WarpProfiler: Bin index out of range.");
+    FALCOR_CHECK(!mHistograms.empty(), "WarpProfiler: No available data. Did you call begin()/end()?");
 
     std::vector<uint32_t> histogram(kWarpSize, 0);
     for (size_t i = binIndex; i < binIndex + binCount; i++)
@@ -121,8 +120,8 @@ void WarpProfiler::readBackData()
     if (!mDataWaiting)
         return;
 
-    checkInvariant(!mActive, "WarpProfiler: readBackData() called without preceding before()/end() calls.");
-    mpFence->syncCpu();
+    FALCOR_CHECK(!mActive, "WarpProfiler: readBackData() called without preceding before()/end() calls.");
+    mpFence->wait();
     mHistograms.resize(mBinCount * kWarpSize);
 
     const uint32_t* data = reinterpret_cast<const uint32_t*>(mpHistogramStagingBuffer->map(Buffer::MapType::Read));

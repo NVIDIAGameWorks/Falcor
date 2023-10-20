@@ -28,8 +28,8 @@
 #pragma once
 #include <cuda.h>
 #include "Falcor.h"
-#include "FalcorCUDA.h"
 #include "Core/SampleApp.h"
+#include <cuda_runtime.h>
 
 using namespace Falcor;
 
