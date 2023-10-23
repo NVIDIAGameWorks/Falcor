@@ -5,7 +5,32 @@ on:
     branches: ["master"]
 
 jobs:
-  windows:
+  windows-vs2022:
+    name: Windows VS2022
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        include:
+          - config: Release
+          - config: Debug
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+      - name: Setup MSVC
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+          sdk: 10.0.19041.0
+          toolset: 14.30
+      - name: Configure
+        run: setup_vs2022.bat
+        shell: cmd
+      - name: Build
+        run: msbuild.exe build\windows-vs2022\Falcor.sln /p:Configuration=${{ matrix.config }}
+        shell: cmd
+  windows-ninja-msvc:
     name: Windows Ninja/MSVC
     runs-on: windows-latest
     env:
@@ -21,21 +46,21 @@ jobs:
         uses: actions/checkout@v3
         with:
           submodules: recursive
-      - name: Setup
-        run: setup.bat
-        shell: cmd
       - name: Setup MSVC
         uses: ilammy/msvc-dev-cmd@v1
         with:
           arch: x64
           sdk: 10.0.19041.0
           toolset: 14.30
+      - name: Configure
+        run: setup.bat
+        shell: cmd
       - name: Build
         run: |
           %CMAKE_EXE% --preset %CMAKE_BUILD_PRESET%
           %CMAKE_EXE% --build build/%CMAKE_BUILD_PRESET% --config ${{ matrix.config }}
         shell: cmd
-  linux:
+  linux-gcc:
     name: Linux/GCC
     runs-on: ubuntu-22.04
     env:
@@ -51,10 +76,10 @@ jobs:
         uses: actions/checkout@v3
         with:
           submodules: recursive
-      - name: Install system dependencies
+      - name: Setup system dependencies
         run: sudo apt install -y xorg-dev libgtk-3-dev
         shell: bash
-      - name: Setup
+      - name: Configure
         run: ./setup.sh
         shell: bash
       - name: Build
