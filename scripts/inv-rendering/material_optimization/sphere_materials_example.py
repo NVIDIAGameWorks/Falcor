@@ -7,7 +7,8 @@ import sys
 import os
 import dataclasses
 
-sys.path.append("..")
+CUR_DIR = os.path.dirname(__file__)
+sys.path.append(os.path.join(CUR_DIR, ".."))
 import common
 import material_utils
 from diff_render_module import DiffRenderModule
@@ -27,7 +28,7 @@ class SphereMaterialsExample:
     spp_grad: int = 32                 # Sample count for the gradient (backward) pass
 
     output_dir: str = (                # Output directory
-        "../results/sphere_materials/"
+        CUR_DIR + "/results/"
     )
 
     ref_scene_filepath: str = (

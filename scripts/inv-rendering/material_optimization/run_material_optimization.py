@@ -10,7 +10,7 @@ import datetime
 import glob
 import argparse
 
-sys.path.append("..")
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 import common
 import material_utils
 from loss import compute_render_loss_L1, compute_render_loss_L2
