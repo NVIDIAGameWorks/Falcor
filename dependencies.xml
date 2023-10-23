@@ -41,6 +41,9 @@
     <dependency name="agility-sdk" linkPath="external/packman/agility-sdk">
         <package name="agility-sdk" version="1.4.10" platforms="windows-x86_64"/>
     </dependency>
+    <dependency name="nvapi" linkPath="external/packman/nvapi">
+        <package name="nvapi" version="r535-developer-${platform}" platforms="windows-x86_64" />
+    </dependency>
     <dependency name="nvtt" linkPath="external/packman/nvtt">
         <package name="nvtt" version="3.1.6-${platform}" platforms="windows-x86_64 linux-x86_64" />
     </dependency>
