@@ -69,10 +69,6 @@ For more information on how to use Falcor as a Python module see [Falcor In Pyth
 ## Microsoft DirectX 12 Agility SDK
 Falcor uses the [Microsoft DirectX 12 Agility SDK](https://devblogs.microsoft.com/directx/directx12agility/) to get access to the latest DirectX 12 features. Applications can enable the Agility SDK by putting `FALCOR_EXPORT_D3D12_AGILITY_SDK` in the main `.cpp` file. `Mogwai`, `FalcorTest` and `RenderGraphEditor` have the Agility SDK enabled by default.
 
-## NVAPI
-To enable NVAPI support, head over to https://developer.nvidia.com/nvapi and download the latest version of NVAPI (this build is tested against version R535).
-Extract the content of the zip file into `external/packman/` and rename `R535-developer` to `nvapi`.
-
 ## NSight Aftermath
 To enable NSight Aftermath support, head over to https://developer.nvidia.com/nsight-aftermath and download the latest version of Aftermath (this build is tested against version 2023.1).
 Extract the content of the zip file into `external/packman/aftermath`.
