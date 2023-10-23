@@ -2,7 +2,8 @@ import torch
 import falcor
 
 import sys
-sys.path.append("..")
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 import common
 import material_utils
 
