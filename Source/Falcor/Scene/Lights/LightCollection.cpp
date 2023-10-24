@@ -660,7 +660,7 @@ namespace Falcor
 
         FALCOR_ASSERT(mStagingBufferValid);
         FALCOR_ASSERT(mpTriangleData && mpFluxData);
-        const void* mappedData = mpStagingBuffer->map(Buffer::MapType::Read);
+        const void* mappedData = mpStagingBuffer->map();
 
         uint64_t offset = 0;
         const PackedEmissiveTriangle* triangleData = reinterpret_cast<const PackedEmissiveTriangle*>(reinterpret_cast<uintptr_t>(mappedData) + offset);

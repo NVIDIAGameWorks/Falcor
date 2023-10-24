@@ -144,7 +144,7 @@ namespace Falcor
 
             // Copy surface containing voxels count from staging buffer to CPU.
             mpReadbackFence->wait();
-            const uint32_t* pSurfaceContainingVoxels = reinterpret_cast<const uint32_t*>(mpSurfaceVoxelCounterStagingBuffer->map(Buffer::MapType::Read));
+            const uint32_t* pSurfaceContainingVoxels = reinterpret_cast<const uint32_t*>(mpSurfaceVoxelCounterStagingBuffer->map());
             std::memcpy(&finestLevelVoxelCount, pSurfaceContainingVoxels, sizeof(uint32_t));
             mpSurfaceVoxelCounterStagingBuffer->unmap();
         }
@@ -310,7 +310,7 @@ namespace Falcor
 
         // Copy child count from staging buffer to CPU.
         mpReadbackFence->wait();
-        const uint32_t* pVoxelCountPerLevel = reinterpret_cast<const uint32_t*>(mpVoxelCountPerLevelStagingBuffer->map(Buffer::MapType::Read));
+        const uint32_t* pVoxelCountPerLevel = reinterpret_cast<const uint32_t*>(mpVoxelCountPerLevelStagingBuffer->map());
         std::memcpy(voxelCountsPerLevel.data(), pVoxelCountPerLevel, sizeof(uint32_t) * (mLevelCount - 1));
         mpVoxelCountPerLevelStagingBuffer->unmap();
 

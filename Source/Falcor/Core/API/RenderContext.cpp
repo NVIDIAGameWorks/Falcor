@@ -544,6 +544,10 @@ void RenderContext::raytrace(Program* pProgram, RtProgramVars* pVars, uint32_t w
 
 void RenderContext::resolveSubresource(const ref<Texture>& pSrc, uint32_t srcSubresource, const ref<Texture>& pDst, uint32_t dstSubresource)
 {
+    // TODO it would be better to just use barriers on the subresources.
+    resourceBarrier(pSrc.get(), Resource::State::ResolveSource);
+    resourceBarrier(pDst.get(), Resource::State::ResolveDest);
+
     auto resourceEncoder = getLowLevelData()->getResourceCommandEncoder();
     gfx::SubresourceRange srcRange = {};
     srcRange.baseArrayLayer = pSrc->getSubresourceArraySlice(srcSubresource);
@@ -570,13 +574,27 @@ void RenderContext::resolveSubresource(const ref<Texture>& pSrc, uint32_t srcSub
 
 void RenderContext::resolveResource(const ref<Texture>& pSrc, const ref<Texture>& pDst)
 {
+    FALCOR_CHECK(pSrc->getType() == Resource::Type::Texture2DMultisample, "Source texture must be multi-sampled.");
+    FALCOR_CHECK(pDst->getType() == Resource::Type::Texture2D, "Destination texture must not be multi-sampled.");
+    FALCOR_CHECK(pSrc->getFormat() == pDst->getFormat(), "Source and destination textures must have the same format.");
+    FALCOR_CHECK(
+        pSrc->getWidth() == pDst->getWidth() && pSrc->getHeight() == pDst->getHeight(),
+        "Source and destination textures must have the same dimensions."
+    );
+    FALCOR_CHECK(pSrc->getArraySize() == pDst->getArraySize(), "Source and destination textures must have the same array size.");
+    FALCOR_CHECK(pSrc->getMipCount() == pDst->getMipCount(), "Source and destination textures must have the same mip count.");
+
     resourceBarrier(pSrc.get(), Resource::State::ResolveSource);
     resourceBarrier(pDst.get(), Resource::State::ResolveDest);
 
     auto resourceEncoder = getLowLevelData()->getResourceCommandEncoder();
 
     gfx::SubresourceRange srcRange = {};
+    srcRange.layerCount = pSrc->getArraySize();
+    srcRange.mipLevelCount = pSrc->getMipCount();
     gfx::SubresourceRange dstRange = {};
+    dstRange.layerCount = pDst->getArraySize();
+    dstRange.mipLevelCount = pDst->getMipCount();
 
     resourceEncoder->resolveResource(
         pSrc->getGfxTextureResource(),

@@ -272,7 +272,7 @@ namespace Falcor
             if (mEnabled)
             {
                 // Map the stats buffer.
-                const uint4* result = static_cast<const uint4*>(mpReductionResult->map(Buffer::MapType::Read));
+                const uint4* result = static_cast<const uint4*>(mpReductionResult->map());
                 FALCOR_ASSERT(result);
 
                 const uint32_t totalPathLength = result[kRayTypeCount].x;

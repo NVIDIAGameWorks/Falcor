@@ -73,6 +73,8 @@ void MultiSampling::onLoad(RenderContext* pRenderContext)
         128, 128, ResourceFormat::RGBA32Float, kSampleCount, 1, ResourceBindFlags::ShaderResource | ResourceBindFlags::RenderTarget
     );
     mpFbo->attachColorTarget(tex, 0);
+
+    mpResolvedTexture = getDevice()->createTexture2D(128, 128, ResourceFormat::RGBA32Float, 1, 1);
 }
 
 void MultiSampling::onFrameRender(RenderContext* pRenderContext, const ref<Fbo>& pTargetFbo)
@@ -83,7 +85,17 @@ void MultiSampling::onFrameRender(RenderContext* pRenderContext, const ref<Fbo>&
     mpRasterPass->getState()->setVao(mpVao);
     mpRasterPass->draw(pRenderContext, kTriangleCount * 3, 0);
 
-    pRenderContext->blit(mpFbo->getColorTexture(0)->getSRV(), pTargetFbo->getRenderTargetView(0));
+    if (mFrame++ % 2 == 0)
+    {
+        // For even frames, resolve to texture and then blit.
+        pRenderContext->resolveResource(mpFbo->getColorTexture(0), mpResolvedTexture);
+        pRenderContext->blit(mpResolvedTexture->getSRV(), pTargetFbo->getRenderTargetView(0));
+    }
+    else
+    {
+        // For odd frames, blit directly.
+        pRenderContext->blit(mpFbo->getColorTexture(0)->getSRV(), pTargetFbo->getRenderTargetView(0));
+    }
 }
 
 int runMain(int argc, char** argv)

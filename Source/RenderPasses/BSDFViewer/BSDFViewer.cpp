@@ -244,7 +244,7 @@ void BSDFViewer::readPixelData()
     {
         mpFence->wait();
         FALCOR_ASSERT(mpPixelStagingBuffer);
-        mPixelData = *static_cast<const PixelData*>(mpPixelStagingBuffer->map(Buffer::MapType::Read));
+        mPixelData = *static_cast<const PixelData*>(mpPixelStagingBuffer->map());
         mpPixelStagingBuffer->unmap();
 
         mPixelDataAvailable = false;

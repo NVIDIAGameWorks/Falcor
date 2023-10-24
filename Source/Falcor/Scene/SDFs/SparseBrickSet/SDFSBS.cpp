@@ -1019,7 +1019,7 @@ namespace Falcor
         pRenderContext->submit(true);
 
         // Read back final results.
-        uint32_t finalResults = *reinterpret_cast<uint32_t*>(mpCountStagingBuffer->map(Buffer::MapType::Read));
+        uint32_t finalResults = *reinterpret_cast<uint32_t*>(mpCountStagingBuffer->map());
         mpCountStagingBuffer->unmap();
         return finalResults;
     }

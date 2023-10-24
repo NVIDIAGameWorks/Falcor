@@ -391,7 +391,7 @@ namespace Falcor
 
         // Wait for results to become available. Then optimize the materials.
         mpFence->wait();
-        const TextureAnalyzer::Result* results = static_cast<const TextureAnalyzer::Result*>(pResultsStaging->map(Buffer::MapType::Read));
+        const TextureAnalyzer::Result* results = static_cast<const TextureAnalyzer::Result*>(pResultsStaging->map());
         Material::TextureOptimizationStats stats = {};
 
         for (size_t i = 0; i < textures.size(); i++)

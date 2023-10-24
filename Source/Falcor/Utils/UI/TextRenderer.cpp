@@ -150,7 +150,7 @@ void TextRenderer::renderText(RenderContext* pRenderContext, const std::string& 
     setCbData(pDstFbo);
     const auto& pVao = mpVaos[mVaoIndex];
     const auto& pVb = pVao->getVertexBuffer(0);
-    Vertex* verts = reinterpret_cast<Vertex*>(pVb->map(Buffer::MapType::Write));
+    Vertex* verts = reinterpret_cast<Vertex*>(pVb->map());
 
     float startX = pos.x;
     uint32_t vertexCount = 0; // Not the same as text.size(), since some special characters are ignored
