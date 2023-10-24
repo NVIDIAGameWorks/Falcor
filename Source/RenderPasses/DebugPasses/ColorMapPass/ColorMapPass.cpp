@@ -189,7 +189,7 @@ std::optional<std::pair<double, double>> ColorMapPass::AutoRanging::getMinMax(
     {
         mpFence->wait();
 
-        const void* values = mpReductionResult->map(Buffer::MapType::Read);
+        const void* values = mpReductionResult->map();
 
         switch (formatType)
         {

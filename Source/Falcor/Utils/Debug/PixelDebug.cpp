@@ -258,7 +258,7 @@ bool PixelDebug::copyDataToCPU()
         if (mEnabled)
         {
             // Copy data from readback buffer to CPU buffers.
-            const uint8_t* data = reinterpret_cast<const uint8_t*>(mpReadbackBuffer->map(Buffer::MapType::Read));
+            const uint8_t* data = reinterpret_cast<const uint8_t*>(mpReadbackBuffer->map());
             const uint32_t* counterData = reinterpret_cast<const uint32_t*>(data);
             data += mpCounterBuffer->getSize();
             const PrintRecord* printData = reinterpret_cast<const PrintRecord*>(data);

@@ -262,7 +262,7 @@ void Buffer::setBlob(const void* pData, size_t offset, size_t size)
     if (mMemoryType == MemoryType::Upload)
     {
         bool wasMapped = mMappedPtr != nullptr;
-        uint8_t* pDst = (uint8_t*)map(MapType::Write) + offset;
+        uint8_t* pDst = (uint8_t*)map() + offset;
         std::memcpy(pDst, pData, size);
         if (!wasMapped)
             unmap();
@@ -286,7 +286,7 @@ void Buffer::getBlob(void* pData, size_t offset, size_t size) const
     if (mMemoryType == MemoryType::ReadBack)
     {
         bool wasMapped = mMappedPtr != nullptr;
-        const uint8_t* pSrc = (const uint8_t*)map(MapType::Read) + offset;
+        const uint8_t* pSrc = (const uint8_t*)map() + offset;
         std::memcpy(pData, pSrc, size);
         if (!wasMapped)
             unmap();
@@ -301,16 +301,12 @@ void Buffer::getBlob(void* pData, size_t offset, size_t size) const
     }
 }
 
-void* Buffer::map(MapType type) const
+void* Buffer::map() const
 {
-    if (type == MapType::WriteDiscard)
-        FALCOR_THROW("MapType::WriteDiscard not supported anymore");
-
-    if (type == MapType::Write && mMemoryType != MemoryType::Upload)
-        FALCOR_THROW("Trying to map a buffer for writing, but it wasn't created with the write permissions.");
-
-    if (type == MapType::Read && mMemoryType != MemoryType::ReadBack)
-        FALCOR_THROW("Trying to map a buffer for reading, but it wasn't created with the read permissions.");
+    FALCOR_CHECK(
+        mMemoryType == MemoryType::Upload || mMemoryType == MemoryType::ReadBack,
+        "Trying to map a buffer that wasn't created with the upload or readback flags."
+    );
 
     if (!mMappedPtr)
         FALCOR_GFX_CALL(mGfxBufferResource->map(nullptr, &mMappedPtr));

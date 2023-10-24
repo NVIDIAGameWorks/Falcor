@@ -154,7 +154,7 @@ double GpuTimer::getElapsedTime()
     if (mDataPending)
     {
         uint64_t result[2];
-        uint64_t* pRes = (uint64_t*)mpResolveStagingBuffer->map(Buffer::MapType::Read);
+        uint64_t* pRes = (uint64_t*)mpResolveStagingBuffer->map();
         result[0] = pRes[0];
         result[1] = pRes[1];
         mpResolveStagingBuffer->unmap();

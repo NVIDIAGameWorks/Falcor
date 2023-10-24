@@ -128,7 +128,7 @@ GPU_TEST(BufferUploadWrite)
 GPU_TEST(BufferUploadMap)
 {
     ref<Buffer> pBuffer = createTestBuffer(ctx, MemoryType::Upload, false);
-    uint32_t* pData = reinterpret_cast<uint32_t*>(pBuffer->map(Buffer::MapType::Write));
+    uint32_t* pData = reinterpret_cast<uint32_t*>(pBuffer->map());
     for (uint32_t i = 0; i < kElementCount; ++i)
         pData[i] = kTestData[i];
     pBuffer->unmap();
@@ -150,7 +150,7 @@ GPU_TEST(BufferReadbackMap)
     ref<Buffer> pBuffer = createTestBuffer(ctx, MemoryType::ReadBack, false);
     initBufferIndirect(ctx, pBuffer);
 
-    const uint32_t* pData = reinterpret_cast<const uint32_t*>(pBuffer->map(Buffer::MapType::Read));
+    const uint32_t* pData = reinterpret_cast<const uint32_t*>(pBuffer->map());
     checkData(ctx, pData);
     pBuffer->unmap();
 }

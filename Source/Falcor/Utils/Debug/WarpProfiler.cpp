@@ -124,7 +124,7 @@ void WarpProfiler::readBackData()
     mpFence->wait();
     mHistograms.resize(mBinCount * kWarpSize);
 
-    const uint32_t* data = reinterpret_cast<const uint32_t*>(mpHistogramStagingBuffer->map(Buffer::MapType::Read));
+    const uint32_t* data = reinterpret_cast<const uint32_t*>(mpHistogramStagingBuffer->map());
     std::memcpy(mHistograms.data(), data, mHistograms.size() * sizeof(uint32_t));
     mpHistogramStagingBuffer->unmap();
 

@@ -145,13 +145,6 @@ class FALCOR_API Buffer : public Resource
 {
     FALCOR_OBJECT(Buffer)
 public:
-    enum class MapType
-    {
-        Read,         ///< Map the buffer for read access.
-        Write,        ///< Map the buffer for write access.
-        WriteDiscard, ///< Deprecated and not supported.
-    };
-
     /// Constructor for raw buffer.
     Buffer(ref<Device> pDevice, size_t size, ResourceBindFlags bindFlags, MemoryType memoryType, const void* pInitData);
 
@@ -272,11 +265,8 @@ public:
 
     /**
      * Map the buffer.
-     * Only buffers with MemoryType::Upload or MemoryType::ReadBack can be mapped.
-     * To map a buffer with MemoryType::Upload, use MapType::Write.
-     * To map a buffer with MemoryType::ReadBack, use MapType::Read.
      */
-    void* map(MapType Type) const;
+    void* map() const;
 
     /**
      * Unmap the buffer
@@ -364,20 +354,4 @@ inline std::string to_string(MemoryType c)
 #undef a2s
 }
 
-inline std::string to_string(Buffer::MapType mt)
-{
-#define t2s(t_)               \
-    case Buffer::MapType::t_: \
-        return #t_;
-    switch (mt)
-    {
-        t2s(Read);
-        t2s(Write);
-        t2s(WriteDiscard);
-    default:
-        FALCOR_UNREACHABLE();
-        return "";
-    }
-#undef t2s
-}
 } // namespace Falcor

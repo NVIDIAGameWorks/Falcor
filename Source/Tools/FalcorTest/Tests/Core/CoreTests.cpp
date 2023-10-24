@@ -50,7 +50,7 @@ GPU_TEST(TransientHeapRecycling)
     // is missed.
     pRenderContext->copyBufferRegion(B.get(), 0, A.get(), 0, 4);
     pRenderContext->submit(true);
-    // A->map(Buffer::MapType::Read);
+    // A->map();
     // A->unmap();
 }
 } // namespace Falcor

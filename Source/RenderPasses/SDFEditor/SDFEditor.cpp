@@ -1233,7 +1233,7 @@ void SDFEditor::execute(RenderContext* pRenderContext, const RenderData& renderD
 
     // Wait for the picking info from the previous frame.
     mpReadbackFence->wait();
-    mPickingInfo = *reinterpret_cast<const SDFPickingInfo*>(mpPickingInfoReadBack->map(Buffer::MapType::Read));
+    mPickingInfo = *reinterpret_cast<const SDFPickingInfo*>(mpPickingInfoReadBack->map());
     mpPickingInfoReadBack->unmap();
 
     setup2DGUI();
