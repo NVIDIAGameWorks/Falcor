@@ -159,7 +159,8 @@ void AAPathTracer::execute(RenderContext* pRenderContext, const RenderData& rend
     var["CB"]["gFrameCount"] = mFrameCount;
     var["CB"]["gPRNGDimension"] = dict.keyExists(kRenderPassPRNGDimension) ? dict[kRenderPassPRNGDimension] : 0u;
 
-    // 绑定 I/O buffers. 这需要在每帧都进行一次, 因为 buffers 随时都可能改变
+    // 绑定 I/O buffers
+    // 这需要在每帧都进行一次, 因为 buffers 随时都可能改变
     for (auto channel : kInputChannels)
         if(!channel.texname.empty())
             var[channel.texname] = renderData.getTexture(channel.name);
@@ -167,11 +168,11 @@ void AAPathTracer::execute(RenderContext* pRenderContext, const RenderData& rend
         if(!channel.texname.empty())
             var[channel.texname] = renderData.getTexture(channel.name);
 
-    // 获取 ray dispatch 的维度
+    // 获取 ray dispatch 的尺寸, 即屏幕的大小
     const uint2 targetDim = renderData.getDefaultTextureDims();
     FALCOR_ASSERT(targetDim.x > 0 && targetDim.y > 0);
 
-    // 生成 ray
+    // 使用 ray tracing 进行渲染
     mpScene->raytrace(pRenderContext, mTracer.pProgram.get(), mTracer.pVars, uint3(targetDim, 1));
 
     // 帧数++

@@ -375,7 +375,7 @@ void scatterTriangleMeshAnyHit(inout ScatterRayData rayData, BuiltInTriangleInte
     GeometryInstanceID instanceID = getGeometryInstanceID();
     VertexData v = getVertexData(instanceID, PrimitiveIndex(), attribs);
     const uint materialID = gScene.getMaterialID(instanceID);
-    // 对于不透明物体, 进行alpha检测
+    // 对于透明物体, 进行alpha检测
     if (gScene.materials.alphaTest(v, materialID, 0.f)) IgnoreHit();
 }
 
@@ -385,6 +385,7 @@ void scatterTriangleMeshClosestHit(inout ScatterRayData rayData, BuiltInTriangle
     triangleHit.instanceID = getGeometryInstanceID();
     triangleHit.primitiveIndex = PrimitiveIndex();
     triangleHit.barycentrics = attribs.barycentrics;
+    // 对于透明物体, 进行alpha检测
     handleHit(HitInfo(triangleHit), rayData);
 }
 
@@ -393,7 +394,7 @@ void shadowTriangleMeshAnyHit(inout ShadowRayData rayData, BuiltInTriangleInters
     GeometryInstanceID instanceID = getGeometryInstanceID();
     VertexData v = getVertexData(instanceID, PrimitiveIndex(), attribs);
     const uint materialID = gScene.getMaterialID(instanceID);
-    // 进行 alpha test
+    // 对于透明物体, 进行alpha检测
     if (gScene.materials.alphaTest(v, materialID, 0.f)) IgnoreHit();
 }
 
