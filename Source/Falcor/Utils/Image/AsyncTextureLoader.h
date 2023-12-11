@@ -69,6 +69,7 @@ public:
      * @param[in] path List of full paths of all mips, starting from mip0.
      * @param[in] loadAsSRGB Load the texture as sRGB format if supported, otherwise linear color.
      * @param[in] bindFlags The bind flags for the texture resource.
+     * @param[in] importFlags Optional flags for the file import.
      * @param[in] callback Function called after the texture load has finished.
      * @return A future to a new texture, or nullptr if the texture failed to load.
      */
@@ -76,6 +77,7 @@ public:
         fstd::span<const std::filesystem::path> paths,
         bool loadAsSRGB,
         ResourceBindFlags bindFlags = ResourceBindFlags::ShaderResource,
+        Bitmap::ImportFlags importFlags = Bitmap::ImportFlags::None,
         LoadCallback callback = {}
     );
 
@@ -85,6 +87,7 @@ public:
      * @param[in] generateMipLevels Whether the full mip-chain should be generated.
      * @param[in] loadAsSRGB Load the texture as sRGB format if supported, otherwise linear color.
      * @param[in] bindFlags The bind flags for the texture resource.
+     * @param[in] importFlags Optional flags for the file import.
      * @param[in] callback Function called after the texture load has finished.
      * @return A future to a new texture, or nullptr if the texture failed to load.
      */
@@ -93,6 +96,7 @@ public:
         bool generateMipLevels,
         bool loadAsSRGB,
         ResourceBindFlags bindFlags = ResourceBindFlags::ShaderResource,
+        Bitmap::ImportFlags importFlags = Bitmap::ImportFlags::None,
         LoadCallback callback = {}
     );
 
@@ -107,6 +111,7 @@ private:
         bool generateMipLevels;
         bool loadAsSRGB;
         ResourceBindFlags bindFlags;
+        Bitmap::ImportFlags importFlags;
         LoadCallback callback;
         std::promise<ref<Texture>> promise;
     };

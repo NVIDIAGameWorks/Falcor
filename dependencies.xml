@@ -14,7 +14,7 @@
     </dependency>
     <!-- Media -->
     <dependency name="media" linkPath="media">
-        <package name="falcor_media" version="7accd221" />
+        <package name="falcor_media" version="9365c893" />
     </dependency>
     <!-- Libraries -->
     <dependency name="falcor_dependencies" linkPath="external/packman/deps">
@@ -23,8 +23,8 @@
     <remote name="github-slang-windows" type="https" packageLocation="github.com/shader-slang/slang/releases/download/v${version}/slang-${version}-win64.zip"/>
     <remote name="github-slang-linux" type="https" packageLocation="github.com/shader-slang/slang/releases/download/v${version}/slang-${version}-linux-x86_64.zip"/>
     <dependency name="slang" linkPath="external/packman/slang">
-        <package name="slang" version="2023.3.20" remotes="github-slang-windows" platforms="windows-x86_64"/>
-        <package name="slang" version="2023.3.20" remotes="github-slang-linux" platforms="linux-x86_64" />
+        <package name="slang" version="2023.5.0" remotes="github-slang-windows" platforms="windows-x86_64"/>
+        <package name="slang" version="2023.5.0" remotes="github-slang-linux" platforms="linux-x86_64" />
     </dependency>
     <dependency name="pix" linkPath="external/packman/pix">
         <package name="WinPixEventRuntime" version="1.0.190604001" platforms="windows-x86_64" />
@@ -40,9 +40,6 @@
     </dependency>
     <dependency name="agility-sdk" linkPath="external/packman/agility-sdk">
         <package name="agility-sdk" version="1.4.10" platforms="windows-x86_64"/>
-    </dependency>
-    <dependency name="nvapi" linkPath="external/packman/nvapi">
-        <package name="nvapi" version="r535-developer-${platform}" platforms="windows-x86_64" />
     </dependency>
     <dependency name="nvtt" linkPath="external/packman/nvtt">
         <package name="nvtt" version="3.1.6-${platform}" platforms="windows-x86_64 linux-x86_64" />

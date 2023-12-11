@@ -182,6 +182,11 @@ namespace Falcor
         */
         MaterialID addMaterial(const ref<Material>& pMaterial);
 
+        /** Remove a material.
+            \param[in] materialID The ID of the material to remove.
+        */
+        void removeMaterial(const MaterialID materialID);
+
         /** Replace a material.
             \param materialID The ID of the material to replace.
             \param pReplacement The material to replace it with.

@@ -188,7 +188,7 @@ GPU_TEST(BufferWrite)
 
         if (!useInitData)
         {
-            uint4* data = reinterpret_cast<uint4*>(bufA->map(Buffer::MapType::Write));
+            uint4* data = reinterpret_cast<uint4*>(bufA->map());
             std::memcpy(data, &testData, 16);
             bufA->unmap();
         }
@@ -203,7 +203,7 @@ GPU_TEST(BufferWrite)
         uint4 testData2 = testData * 10u;
 
         {
-            uint4* data = reinterpret_cast<uint4*>(bufA->map(Buffer::MapType::Write));
+            uint4* data = reinterpret_cast<uint4*>(bufA->map());
             std::memcpy(data, &testData2, 16);
             bufA->unmap();
         }

@@ -77,8 +77,8 @@ float3 evalAD_PBRTDiffuse(uint2 pixelID)
     UniformSampleGenerator sg = UniformSampleGenerator(pixelID, 0);
 
     // Setup differentiable wo.
-    uint hashIndex = hashFunction(sd.threadID, gSceneGradients.getHashSize(GradientType::Geometry));
-    GradientIOWrapper gradIO = GradientIOWrapper(GradientType::Geometry, sd.geometryGradOffset, hashIndex);
+    uint hashIndex = hashFunction(sd.threadID, gSceneGradients.getHashSize(GradientType::MeshNormal));
+    GradientIOWrapper gradIO = GradientIOWrapper(GradientType::MeshNormal, sd.geometryGradOffset, hashIndex);
     float3 wo = gradIO.getFloat(gWo, 0);
 
     float3 value = mi.evalAD(diffData, sd, wo, sg);
@@ -94,6 +94,6 @@ void testDiffPBRTDiffuse(uint3 threadID: SV_DispatchThreadID)
     for (uint i = 0; i < 3; i++)
     {
         materialGrad[i] = gSceneGradients.getGrad(GradientType::Material, i, 0);
-        geometryGrad[i] = gSceneGradients.getGrad(GradientType::Geometry, i, 0);
+        geometryGrad[i] = gSceneGradients.getGrad(GradientType::MeshNormal, i, 0);
     }
 }

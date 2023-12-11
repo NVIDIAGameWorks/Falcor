@@ -45,4 +45,6 @@ private:
     ref<RasterPass> mpRasterPass;
     ref<Vao> mpVao;
     ref<Fbo> mpFbo;
+    ref<Texture> mpResolvedTexture;
+    uint32_t mFrame = 0;
 };

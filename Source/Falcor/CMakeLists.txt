@@ -154,11 +154,12 @@ target_sources(Falcor PRIVATE
     Core/State/StateGraph.h
 
     DiffRendering/AggregateGradients.cs.slang
-    DiffRendering/DiffDebug.slang
+    DiffRendering/DiffDebugParams.slang
     DiffRendering/DiffMaterialData.slang
     DiffRendering/DiffSceneIO.slang
     DiffRendering/DiffSceneQuery.slang
     DiffRendering/GradientIOWrapper.slang
+    DiffRendering/InverseOptimizationParams.slang
     DiffRendering/SceneGradientInfo.slang
     DiffRendering/SceneGradients.cpp
     DiffRendering/SceneGradients.h
@@ -543,6 +544,7 @@ target_sources(Falcor PRIVATE
     Utils/Dictionary.h
     Utils/fast_vector.h
     Utils/HostDeviceShared.slangh
+    Utils/IndexedVector.h
     Utils/Logger.cpp
     Utils/Logger.h
     Utils/NumericRange.h
@@ -554,13 +556,13 @@ target_sources(Falcor PRIVATE
     Utils/PathResolving.h
     Utils/Properties.cpp
     Utils/Properties.h
-    Utils/Settings.cpp
-    Utils/Settings.h
     Utils/SharedCache.h
     Utils/SlangUtils.slang
     Utils/StringFormatters.h
     Utils/StringUtils.cpp
     Utils/StringUtils.h
+    Utils/TaskManager.cpp
+    Utils/TaskManager.h
     Utils/TermColor.cpp
     Utils/TermColor.h
     Utils/Threading.cpp
@@ -699,6 +701,13 @@ target_sources(Falcor PRIVATE
     Utils/SDF/SDF3DShapes.slang
     Utils/SDF/SDFOperations.slang
     Utils/SDF/SDFOperationType.slang
+
+    Utils/Settings/AttributeFilters.cpp
+    Utils/Settings/AttributeFilters.h
+    Utils/Settings/Attributes.h
+    Utils/Settings/Settings.cpp
+    Utils/Settings/Settings.h
+    Utils/Settings/SettingsUtils.h
 
     Utils/Timing/Clock.cpp
     Utils/Timing/Clock.h
@@ -923,6 +932,7 @@ target_compile_definitions(Falcor
         $<$<CXX_COMPILER_ID:MSVC>:_SCL_SECURE_NO_WARNINGS>
         $<$<CXX_COMPILER_ID:MSVC>:_CRT_SECURE_NO_WARNINGS>
         $<$<CXX_COMPILER_ID:MSVC>:_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING>
+        $<$<CXX_COMPILER_ID:MSVC>:_SILENCE_ALL_MS_EXT_DEPRECATION_WARNINGS>
         # Clang.
         $<$<CXX_COMPILER_ID:Clang>:_MSC_EXTENSIONS> # enable MS extensions
         # Falcor feature flags.
@@ -963,7 +973,7 @@ target_link_libraries(Falcor
         $<$<BOOL:${FALCOR_HAS_CUDA}>:CUDA::cudart_static>
     PRIVATE
         git_version
-        FreeImage assimp OpenEXR OpenVDB lz4 zlib pugixml
+        FreeImage assimp OpenEXR OpenVDB lz4 zlib pugixml opensubdiv
         glfw mikktspace nvtt
         $<$<BOOL:${FALCOR_HAS_D3D12}>:d3d12>
         $<$<BOOL:${FALCOR_HAS_D3D12_AGILITY_SDK}>:agility-sdk>

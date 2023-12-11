@@ -52,7 +52,7 @@
 #include "Utils/Math/Vector.h"
 #include "Utils/Math/Matrix.h"
 #include "Utils/UI/Gui.h"
-#include "Utils/Settings.h"
+#include "Utils/Settings/Settings.h"
 
 #include <functional>
 #include <memory>
@@ -434,7 +434,7 @@ namespace Falcor
             uint64_t gridVoxelCount = 0;                ///< Total number of voxels in all grids.
             uint64_t gridMemoryInBytes = 0;             ///< Total memory in bytes used by the grids.
 
-            /** Get the total memory usage.
+            /** Get the total memory usage in bytes.
             */
             uint64_t getTotalMemory() const
             {
@@ -1118,6 +1118,8 @@ namespace Falcor
         NodeID getParentNodeID(NodeID nodeID) const;
 
         std::string getScript(const std::string& sceneVar);
+
+        uint64_t getMemoryUsageInBytes() const { return getSceneStats().getTotalMemory(); }
 
     private:
         friend class AnimationController;

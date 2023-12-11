@@ -35,7 +35,7 @@
 #include "RenderGraph/RenderPassStandardFlags.h"
 #include "Utils/Scripting/Scripting.h"
 #include "Utils/Timing/TimeReport.h"
-#include "Utils/Settings.h"
+#include "Utils/Settings/Settings.h"
 
 #include <args.hxx>
 

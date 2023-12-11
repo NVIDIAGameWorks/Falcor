@@ -1,3 +1,7 @@
+IMAGE_TEST = {
+    'tolerance': 1e-8
+}
+
 import sys
 sys.path.append('..')
 from falcor import *

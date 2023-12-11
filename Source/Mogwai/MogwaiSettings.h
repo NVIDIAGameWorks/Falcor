@@ -43,7 +43,7 @@ namespace Mogwai
         bool keyboardEvent(const KeyboardEvent& e) override;
         bool gamepadEvent(const GamepadEvent& e) override;
 
-        void onOptionsChange(const SettingsProperties& settings) override;
+        void onOptionsChange(const Settings::Options& settings) override;
     private:
         MogwaiSettings(Renderer* pRenderer) : Extension(pRenderer, "Settings") {}
 

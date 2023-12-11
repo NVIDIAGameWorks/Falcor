@@ -40,7 +40,7 @@
 #include "Utils/Scripting/Scripting.h"
 #include "Utils/Scripting/ScriptBindings.h"
 #include "Utils/UI/TextRenderer.h"
-#include "Utils/Settings.h"
+#include "Utils/Settings/Settings.h"
 #include "Utils/StringUtils.h"
 
 #include <imgui.h>

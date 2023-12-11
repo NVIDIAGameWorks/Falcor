@@ -27,71 +27,58 @@
  **************************************************************************/
 #pragma once
 
-#include <pxr/base/vt/array.h>
-#include <unordered_map>
+#include "Core/Macros.h"
+
+#include <BS_thread_pool.hpp>
+
+#include <functional>
+#include <mutex>
+#include <condition_variable>
+#include <vector>
+#include <atomic>
+#include <exception>
 
 namespace Falcor
 {
-
-/**
- * @brief Class to convert vector of possibly-duplicate items to a vector of indices into a set of unique data items.
- *
- * @tparam T Underlying type
- * @tparam I Index value type
- * @tparam H Hash object on type T, used to determine data item equivalence
- */
-template<typename T, typename I, typename H, typename E = std::equal_to<T>>
-class IndexedVector
+class RenderContext;
+class FALCOR_API TaskManager
 {
 public:
-    /**
-     * @brief Append data item.
-     * @param[in] v Data item to append
-     */
-    void append(const T& v)
-    {
-        uint32_t idx;
-        append(v, idx);
-    }
+    using CpuTask = std::function<void()>;
+    using GpuTask = std::function<void(RenderContext* renderContext)>;
 
-    /**
-     * @brief Append data item.
-     *
-     * @param[in] v Data item to append
-     * @param[out] idx Index of the unique item corresponding to v
-     * @return True if @p v was newly inserted into the set of unique data item
-     */
-    bool append(const T& v, uint32_t& outIdx)
-    {
-        bool insertedNew = false;
-        auto iter = mIndexMap.find(v);
-        if (iter == mIndexMap.end())
-        {
-            iter = mIndexMap.insert(std::make_pair(v, I(mValues.size()))).first;
-            outIdx = mValues.size();
-            mValues.push_back(v);
-            insertedNew = true;
-        }
-        else
-        {
-            outIdx = iter->second;
-        }
-        mIndices.push_back(iter->second);
-        return insertedNew;
-    }
-    /**
-     * @brief Get the set of unique data items.
-     */
-    const pxr::VtArray<T>& getValues() const { return mValues; }
+public:
+    TaskManager(bool startPaused = false);
 
-    /**
-     * @brief Get the ordered list of item indices.
-     */
-    const pxr::VtArray<I>& getIndices() const { return mIndices; }
+    /// Adds a CPU only task to the manager, if unpaused, the task starts right away
+    void addTask(CpuTask&& task);
+    /// Adds a GPU task to the manager, GPU tasks only start in the finish call and are sequential
+    void addTask(GpuTask&& task);
+
+    /// Unpauses and waits for all tasks to finish.
+    /// The renderContext might be needed even if the TaskManager contains no GPU tasks,
+    /// as those could be spawned from the CPU tasks
+    void finish(RenderContext* renderContext);
 
 private:
-    std::unordered_map<T, I, H, E> mIndexMap;
-    pxr::VtArray<T> mValues;
-    pxr::VtArray<I> mIndices;
+    /// Thread safe way to store an exception
+    void storeException();
+    /// Thread safe way to retrow a stored exception
+    void rethrowException();
+    /// CPU task execution wrapped so it stores exception if the task throws
+    void executeCpuTask(CpuTask&& task);
+
+private:
+    BS::thread_pool mThreadPool;
+    std::atomic_size_t mCurrentlyRunning{0};
+    std::atomic_size_t mCurrentlyScheduled{0};
+
+    std::mutex mTaskMutex;
+    std::condition_variable mGpuTaskCond;
+    std::vector<GpuTask> mGpuTasks;
+
+    std::mutex mExceptionMutex;
+    std::exception_ptr mException;
 };
+
 } // namespace Falcor

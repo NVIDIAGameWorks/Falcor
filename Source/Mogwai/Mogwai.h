@@ -67,7 +67,7 @@ namespace Mogwai
         virtual void setActiveGraph(RenderGraph* pGraph) {};
         virtual void removeGraph(RenderGraph* pGraph) {};
         virtual void activeGraphChanged(RenderGraph* pNewGraph, RenderGraph* pPrevGraph) {};
-        virtual void onOptionsChange(const SettingsProperties& settings){}
+        virtual void onOptionsChange(const Settings::Options& options){}
 
     protected:
         Extension(Renderer* pRenderer, const std::string& name) : mpRenderer(pRenderer), mName(name) {}

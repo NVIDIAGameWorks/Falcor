@@ -78,6 +78,7 @@ public:
     void setdLdI(const ref<Buffer>& buf) { mpdLdI = buf; }
 
     void setDiffDebugParams(DiffVariableType varType, uint2 id, uint32_t offset, float4 grad);
+    void setInvOptParams(uint32_t meshID) { mInvOptParams.meshID = meshID; }
 
 private:
     struct TracePass
@@ -172,6 +173,8 @@ private:
     StaticParams mStaticParams;
     /// Differentiable rendering debug parameters.
     DiffDebugParams mDiffDebugParams;
+    /// Inverse rendering optimization parameters.
+    InverseOptimizationParams mInvOptParams;
 
     /// Switch to enable/disable the path tracer. When disabled the pass outputs are cleared.
     bool mEnabled = true;

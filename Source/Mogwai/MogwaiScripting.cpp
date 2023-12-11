@@ -31,8 +31,9 @@
 #include "RenderGraph/RenderGraphImportExport.h"
 #include "Utils/Scripting/Scripting.h"
 #include "Utils/Scripting/ScriptWriter.h"
-#include "Utils/Settings.h"
+#include "Utils/Settings/Settings.h"
 #include <fstream>
+#include <pybind11/pybind11.h>
 
 namespace Mogwai
 {
@@ -209,6 +210,10 @@ namespace Mogwai
         {
             r->getSettings().addFilteredAttributes(d);
         }, "dict"_a = pybind11::dict());
+        renderer.def("addFilteredAttributes", [](Renderer* r, pybind11::list l = pybind11::list{0})
+        {
+            r->getSettings().addFilteredAttributes(l);
+        }, "list"_a = pybind11::list());
         renderer.def("clearOptions", [](Renderer* r)
         {
             r->getSettings().clearOptions();

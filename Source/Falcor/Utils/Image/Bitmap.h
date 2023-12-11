@@ -50,6 +50,12 @@ public:
         Uncompressed = 1u << 2, //< Prefer faster load to a more compact file size
     };
 
+    enum class ImportFlags : uint32_t
+    {
+        None = 0u,                  ///< Default.
+        ConvertToFloat16 = 1u << 0, ///< Convert HDR images to 16-bit float per channel on import.
+    };
+
     enum class FileFormat
     {
         PngFile,  //< PNG file for lossless compressed 8-bits images with optional alpha
@@ -57,7 +63,7 @@ public:
         TgaFile,  //< TGA file for lossless uncompressed 8-bits images with optional alpha
         BmpFile,  //< BMP file for lossless uncompressed 8-bits images with optional alpha
         PfmFile,  //< PFM file for floating point HDR images with 32-bit float per channel
-        ExrFile,  //< EXR file for floating point HDR images with 16-bit float per channel
+        ExrFile,  //< EXR file for floating point HDR images with 16/32-bit float per channel
         DdsFile,  //< DDS file for storing GPU resource formats, including block compressed formats
                   //< See ImageIO. TODO: Remove(?) Bitmap IO implementation when ImageIO supports other formats
     };
@@ -80,9 +86,10 @@ public:
      * @param[in] path Path to load from (absolute or relative to working directory).
      * @param[in] isTopDown Control the memory layout of the image. If true, the top-left pixel is the first pixel in the buffer, otherwise
      * the bottom-left pixel is first.
+     * @param[in] importFlags Flags to control how the file is imported. See ImportFlags above.
      * @return If loading was successful, a new object. Otherwise, nullptr.
      */
-    static UniqueConstPtr createFromFile(const std::filesystem::path& path, bool isTopDown);
+    static UniqueConstPtr createFromFile(const std::filesystem::path& path, bool isTopDown, ImportFlags importFlags = ImportFlags::None);
 
     /**
      * Store a memory buffer to a file.
@@ -155,12 +162,13 @@ protected:
     Bitmap(uint32_t width, uint32_t height, ResourceFormat format, const uint8_t* pData);
 
     std::unique_ptr<uint8_t[]> mpData;
-    uint32_t mWidth = 0;
-    uint32_t mHeight = 0;
-    uint32_t mRowPitch = 0;
-    uint32_t mSize = 0;
+    uint32_t mWidth = 0;    ///< Width in pixels.
+    uint32_t mHeight = 0;   ///< Height in pixels.
+    uint32_t mRowPitch = 0; ///< Row pitch in bytes.
+    uint32_t mSize = 0;     ///< Total size in bytes.
     ResourceFormat mFormat = ResourceFormat::Unknown;
 };
 
 FALCOR_ENUM_CLASS_OPERATORS(Bitmap::ExportFlags);
+FALCOR_ENUM_CLASS_OPERATORS(Bitmap::ImportFlags);
 } // namespace Falcor

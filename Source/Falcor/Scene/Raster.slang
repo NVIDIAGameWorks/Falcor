@@ -94,7 +94,7 @@ VSOut defaultVS(VSIn vIn)
     GeometryInstanceData instance = gScene.getGeometryInstance(instanceID);
     if (instance.isDynamic())
     {
-        uint prevVertexIndex = gScene.meshes[instance.geometryIndex].prevVbOffset + vIn.vertexID;
+        uint prevVertexIndex = gScene.meshes[instance.geometryID].prevVbOffset + vIn.vertexID;
         prevPos = gScene.prevVertices[prevVertexIndex].position;
     }
     float3 prevPosW = mul(gScene.getPrevWorldMatrix(instanceID), float4(prevPos, 1.f)).xyz;

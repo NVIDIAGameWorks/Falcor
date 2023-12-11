@@ -37,6 +37,8 @@ std::string getModeDesc(SceneDebuggerMode mode)
 {
     switch (mode)
     {
+    case SceneDebuggerMode::FlatShaded:
+        return "Flat shaded";
     // Geometry
     case SceneDebuggerMode::HitType:
         return "Hit type in pseudocolor";
@@ -70,12 +72,8 @@ std::string getModeDesc(SceneDebuggerMode mode)
     case SceneDebuggerMode::TexCoords:
         return "Texture coordinates in RG color wrapped to [0,1]";
     // Material properties
-    case SceneDebuggerMode::GuideNormal:
-        return "Guide normal in RGB color";
-    case SceneDebuggerMode::Roughness:
-        return "Material roughness estimate";
-    case SceneDebuggerMode::FlatShaded:
-        return "Flat shaded";
+    case SceneDebuggerMode::BSDFProperties:
+        return "BSDF properties";
     default:
         FALCOR_UNREACHABLE();
         return "";
@@ -238,11 +236,16 @@ void SceneDebugger::renderUI(Gui::Widgets& widget)
     widget.dropdown("Mode", reinterpret_cast<SceneDebuggerMode&>(mParams.mode));
     widget.tooltip("Selects visualization mode");
 
+    if (mParams.mode == (uint32_t)SceneDebuggerMode::BSDFProperties)
+    {
+        widget.dropdown("BSDF property", reinterpret_cast<SceneDebuggerBSDFProperty&>(mParams.bsdfProperty));
+        widget.var("BSDF index", mParams.bsdfIndex, 0u, 15u, 1u);
+    }
+
     widget.checkbox("Clamp to [0,1]", mParams.clamp);
     widget.tooltip("Clamp pixel values to [0,1] before output.");
 
     if ((SceneDebuggerMode)mParams.mode == SceneDebuggerMode::FaceNormal ||
-        (SceneDebuggerMode)mParams.mode == SceneDebuggerMode::GuideNormal ||
         (SceneDebuggerMode)mParams.mode == SceneDebuggerMode::ShadingNormal ||
         (SceneDebuggerMode)mParams.mode == SceneDebuggerMode::ShadingTangent ||
         (SceneDebuggerMode)mParams.mode == SceneDebuggerMode::ShadingBitangent ||

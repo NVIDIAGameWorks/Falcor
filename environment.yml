@@ -12,3 +12,4 @@ dependencies:
     - pip
     - pip:
         - pyexr
+        - largesteps

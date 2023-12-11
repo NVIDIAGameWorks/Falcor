@@ -78,7 +78,7 @@ struct SheenBSDF : IBSDF
     float G(float NdotO, float NdotI)
     {
         // this is the full visibility function; note that we have the questionable terminator softening from equ. 4
-        return 1.f / ((1.f + pow(lambda(NdotO), 1.f + 2.f * pow(1.f - NdotO, 8)) + lambda(NdotI)) * (4.f * NdotO * NdotI));
+        return 1.f / (1.f + pow(lambda(NdotO), 1.f + 2.f * pow(1.f - NdotO, 8)) + lambda(NdotI));
     }
 
     float3 eval<S : ISampleGenerator>(const float3 wi, const float3 wo, inout S sg)
@@ -90,8 +90,8 @@ struct SheenBSDF : IBSDF
         float NdotH = wh.z;
 
         const float3 D = SheenD(NdotH);
-
-        float3 Fr = D * G(wo.z, wi.z) * color * wo.z * M_PI;
+        // We multiply by wo.z
+        float3 Fr = D * G(wo.z, wi.z) * color / (4.f * wi.z);
 
         return Fr;
     }
@@ -104,11 +104,11 @@ struct SheenBSDF : IBSDF
         pdf = {};
         lobeType = {};
 
-        float3 albedoT = evalAlbedo(wi, LobeType::All).transmission;
-
         // Without a baselayer, this BSDF should be transparent. Until we can overwrite local importance sampling with the lobetypes, we
         // will pretend for sample() that there is no transparency. This is a performance optimisation for the LayeredMaterialInstance.
-        /* const float selectionWeight = luminance(albedoT);
+        /*
+        float3 albedoT = evalAlbedo(wi, LobeType::All).transmission;
+        const float selectionWeight = luminance(albedoT);
         if (sampleNext1D(sg) < selectionWeight)
         {
             wo = float3(-wi.x, -wi.y, -wi.z);
@@ -145,17 +145,17 @@ struct SheenBSDF : IBSDF
     AlbedoContributions evalAlbedo(const float3 wi, const LobeType lobetype)
     {
         const float coefficients[11][5] = {
-            { 1.00519, 164.794, -8.91257, 0.000614987, -1.00615 },
-            { 1.07632, 121.269, -2.6416, 0.000548297, -1.04411 },
-            { 1.20174, 9.90325, -1.32211, 0.0238483, -1.11425 },
-            { 4.55388, 0.0233967, 1.12007, 0.431478, -5.41286 },
-            { 3.67585, 0.104744, -3.88354, 0.155255, -4.3272 },
-            { 2.84549, 0.182875, -5.17779, 0.132618, -3.40558 },
-            { 5.1483, 0.110417, -6.03901, 0.114556, -5.63637 },
-            { 4.24518, 0.152001, -6.80592, 0.101996, -4.68505 },
-            { 4.43179, 0.154597, -5.59283, 0.0928506, -4.83838 },
-            { 4.52583, 0.157636, -6.06809, 0.0861137, -4.90953 },
-            { 4.53904, 0.160742, -9.04844, 0.0820168, -4.91045 }
+            { 1.01108, 75.2286, -9.4671, 0.000973445, -1.01325 },
+            { 8.44447, 0.0135054, 1.11637, 0.479139, -9.30873 },
+            { 5.67124, 0.0194668, 1.12489, 0.453551, -6.53104 },
+            { 4.50086, 0.0237758, 1.09376, 0.423665, -5.36521 },
+            { 3.77781, 0.0273286, 1.0666, 0.400267, -4.65601 },
+            { 3.35338, 0.0307392, 0.989189, 0.371074, -4.24089 },
+            { 3.39605, 0.0308828, 0.845455, 0.333813, -4.28662 },
+            { 3.62583, 0.0303531, 0.79754, 0.325588, -4.51725 },
+            { 4.11524, 0.0172797, 0.701166, 0.275242, -5.04394 },
+            { 4.4012, 0.0159469, 0.685892, 0.270221, -5.32997 },
+            { 5.8912, 0.0171461, 0.66366, 0.288735, -6.78867 }
         };
 
         // fit was [1, 21] for cosI(0) = 21
@@ -171,9 +171,9 @@ struct SheenBSDF : IBSDF
                                coefficients[indexB][0] / (1.f + coefficients[indexB][1] * pow(x, coefficients[indexB][2]));
         const float albedoTT = coefficients[indexT][4] + pow(x, coefficients[indexT][3]) +
                                coefficients[indexT][0] / (1.f + coefficients[indexT][1] * pow(x, coefficients[indexT][2]));
-        const float albedoT = 1.f - clamp(albedoTB * indexInt + albedoTT * (1.f - indexInt), 0.f, 1.f);
+        const float albedoR = 1.f - clamp(albedoTB * indexInt + albedoTT * (1.f - indexInt), 0.f, 1.f);
 
-        return AlbedoContributions(color * albedoT, (albedoT - 1.f) * (color - 1.f), albedoT, 0.f);
+        return AlbedoContributions(color * albedoR, albedoR - (albedoR * color), (1.f - albedoR), 0.f);
     }
 
     RoughnessInformation getRoughnessInformation(const float3 wi)

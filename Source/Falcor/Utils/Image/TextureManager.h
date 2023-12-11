@@ -36,6 +36,7 @@
 #include <condition_variable>
 #include <limits>
 #include <map>
+#include <set>
 #include <memory>
 #include <mutex>
 #include <thread>
@@ -103,6 +104,7 @@ public:
         uint32_t getID() const { return mID; }
         bool isUdim() const { return mIsUdim; }
 
+        bool operator<(const CpuTextureHandle& other) const { return mID < other.mID; }
         bool operator==(const CpuTextureHandle& other) const { return mID == other.mID && mIsUdim == other.mIsUdim; }
 
         TextureHandle toGpuHandle() const
@@ -164,6 +166,7 @@ public:
      * @param[in] loadAsSRGB Load the texture as sRGB format if supported, otherwise linear color.
      * @param[in] bindFlags The bind flags for the texture resource.
      * @param[in] async Load asynchronously, otherwise the function blocks until the texture data is loaded.
+     * @param[in] importFlags Optional flags for the file import.
      * @param[in] assetResolver Optional asset resolver for resolving file paths.
      * @param[out] loadedTextureCount Optionally can provided the number of actually loaded textures (2+ can happen with UDIMs)
      * @return Unique handle to the texture, or an invalid handle if the texture can't be found.
@@ -174,22 +177,10 @@ public:
         bool loadAsSRGB,
         ResourceBindFlags bindFlags = ResourceBindFlags::ShaderResource,
         bool async = true,
+        Bitmap::ImportFlags importFlags = Bitmap::ImportFlags::None,
         const AssetResolver* assetResolver = nullptr,
-        size_t* loadedTextureCount = nullptr
-    );
-
-    /**
-     * Same as loadTexture, but explicitly handles Udim textures. If the texture isn't Udim, it falls back to loadTexture.
-     * Also, loadTexture will detect UDIM and call loadUdimTexture if needed.
-     */
-    CpuTextureHandle loadUdimTexture(
-        const std::filesystem::path& path,
-        bool generateMipLevels,
-        bool loadAsSRGB,
-        ResourceBindFlags bindFlags = ResourceBindFlags::ShaderResource,
-        bool async = true,
-        const AssetResolver* assetResolver = nullptr,
-        size_t* loadedTextureCount = nullptr
+        size_t* loadedTextureCount = nullptr,
+        const Object* owner = nullptr
     );
 
     /**
@@ -221,6 +212,12 @@ public:
     void removeTexture(const CpuTextureHandle& handle);
 
     /**
+     * Remove all textures loaded by the given object.
+     * @param[in] object The object for which to remove textures.
+     */
+    void removeTextures(const Object* object);
+
+    /**
      * Get a loaded texture. Call getTextureDesc() for more info.
      * This function handles non-UDIM textures. If UDIMs are expected, supply UDIM ID or uv coordinate.
      * @param[in] handle Texture handle.
@@ -245,6 +242,12 @@ public:
     {
         return getTextureDesc(resolveUdimTexture(handle, udimID));
     }
+
+    /**
+     * Get list of UDIM IDs for a texture.
+     * If the texture is not using UDIMs, an empty list is returned.
+     */
+    std::vector<uint32_t> getUdimIDs(const CpuTextureHandle& handle) const;
 
     /**
      * Get texture desc count.
@@ -279,9 +282,26 @@ public:
 private:
     size_t getUdimRange(size_t requiredSize);
     void freeUdimRange(size_t rangeStart);
+    void removeTextureInternal(const CpuTextureHandle& handle);
     void removeUdimTexture(const CpuTextureHandle& handle);
+    void removeNonUdimTexture(const CpuTextureHandle& handle);
     CpuTextureHandle resolveUdimTexture(const CpuTextureHandle& handle, const float2& uv) const;
     CpuTextureHandle resolveUdimTexture(const CpuTextureHandle& handle, const uint32_t udimID) const;
+
+    /**
+     * Same as loadTexture, but explicitly handles Udim textures. If the texture isn't Udim, it falls back to loadTexture.
+     * Also, loadTexture will detect UDIM and call loadUdimTexture if needed.
+     */
+    CpuTextureHandle loadUdimTexture(
+        const std::filesystem::path& path,
+        bool generateMipLevels,
+        bool loadAsSRGB,
+        ResourceBindFlags bindFlags = ResourceBindFlags::ShaderResource,
+        bool async = true,
+        Bitmap::ImportFlags importFlags = Bitmap::ImportFlags::None,
+        const AssetResolver* assetResolver = nullptr,
+        size_t* loadedTextureCount = nullptr
+    );
 
     /**
      * Key to uniquely identify a managed texture.
@@ -292,9 +312,16 @@ private:
         bool generateMipLevels;
         bool loadAsSRGB;
         ResourceBindFlags bindFlags;
+        Bitmap::ImportFlags importFlags;
 
-        TextureKey(const std::vector<std::filesystem::path>& paths, bool mips, bool srgb, ResourceBindFlags flags)
-            : fullPaths(paths), generateMipLevels(mips), loadAsSRGB(srgb), bindFlags(flags)
+        TextureKey(
+            const std::vector<std::filesystem::path>& paths,
+            bool mips,
+            bool srgb,
+            ResourceBindFlags flags,
+            Bitmap::ImportFlags importFlags
+        )
+            : fullPaths(paths), generateMipLevels(mips), loadAsSRGB(srgb), bindFlags(flags), importFlags(importFlags)
         {}
 
         bool operator<(const TextureKey& rhs) const
@@ -305,6 +332,8 @@ private:
                 return generateMipLevels < rhs.generateMipLevels;
             else if (loadAsSRGB != rhs.loadAsSRGB)
                 return loadAsSRGB < rhs.loadAsSRGB;
+            else if (importFlags != rhs.importFlags)
+                return importFlags < rhs.importFlags;
             else
                 return bindFlags < rhs.bindFlags;
         }
@@ -312,6 +341,7 @@ private:
 
     CpuTextureHandle addDesc(const TextureDesc& desc);
     TextureDesc& getDesc(const CpuTextureHandle& handle);
+    void registerOwner(const CpuTextureHandle& handle, const Object* owner);
 
     ref<Device> mpDevice;
 
@@ -332,6 +362,11 @@ private:
 
     mutable bool mUdimIndirectionDirty = true;
     mutable ref<Buffer> mpUdimIndirection;
+
+    using Objects = std::set<const Object*>;
+    using Handles = std::set<CpuTextureHandle>;
+    std::map<CpuTextureHandle, Objects> mHandleToObjects; ///< Map from texture handle to set of objects using the handle.
+    std::map<const Object*, Handles> mObjectToHandles;    ///< Map from object to set of texture handles used by the object.
 
     bool mUseDeferredLoading = false;
 

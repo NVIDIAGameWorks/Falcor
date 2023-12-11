@@ -81,7 +81,7 @@ void testCopyRegion(GPUUnitTestContext& ctx, size_t bufferSize)
     ctx.getRenderContext()->submit(true);
 
     // Check the result.
-    const uint32_t* result = static_cast<const uint32_t*>(pReadback->map(Buffer::MapType::Read));
+    const uint32_t* result = static_cast<const uint32_t*>(pReadback->map());
     for (size_t i = 0; i < data.size(); i++)
     {
         EXPECT_EQ(result[i], data[i]) << "i = " << i;

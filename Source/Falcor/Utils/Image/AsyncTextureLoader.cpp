@@ -52,11 +52,12 @@ std::future<ref<Texture>> AsyncTextureLoader::loadMippedFromFiles(
     fstd::span<const std::filesystem::path> paths,
     bool loadAsSrgb,
     ResourceBindFlags bindFlags,
+    Bitmap::ImportFlags importFlags,
     LoadCallback callback
 )
 {
     std::lock_guard<std::mutex> lock(mMutex);
-    mLoadRequestQueue.push(LoadRequest{{paths.begin(), paths.end()}, false, loadAsSrgb, bindFlags, callback});
+    mLoadRequestQueue.push(LoadRequest{{paths.begin(), paths.end()}, false, loadAsSrgb, bindFlags, importFlags, callback});
     mCondition.notify_one();
     return mLoadRequestQueue.back().promise.get_future();
 }
@@ -66,11 +67,12 @@ std::future<ref<Texture>> AsyncTextureLoader::loadFromFile(
     bool generateMipLevels,
     bool loadAsSrgb,
     ResourceBindFlags bindFlags,
+    Bitmap::ImportFlags importFlags,
     LoadCallback callback
 )
 {
     std::lock_guard<std::mutex> lock(mMutex);
-    mLoadRequestQueue.push(LoadRequest{{path}, generateMipLevels, loadAsSrgb, bindFlags, callback});
+    mLoadRequestQueue.push(LoadRequest{{path}, generateMipLevels, loadAsSrgb, bindFlags, importFlags, callback});
     mCondition.notify_one();
     return mLoadRequestQueue.back().promise.get_future();
 }
@@ -134,12 +136,13 @@ void AsyncTextureLoader::runWorker()
         ref<Texture> pTexture;
         if (request.paths.size() == 1)
         {
-            pTexture =
-                Texture::createFromFile(mpDevice, request.paths[0], request.generateMipLevels, request.loadAsSRGB, request.bindFlags);
+            pTexture = Texture::createFromFile(
+                mpDevice, request.paths[0], request.generateMipLevels, request.loadAsSRGB, request.bindFlags, request.importFlags
+            );
         }
         else
         {
-            pTexture = Texture::createMippedFromFiles(mpDevice, request.paths, request.loadAsSRGB, request.bindFlags);
+            pTexture = Texture::createMippedFromFiles(mpDevice, request.paths, request.loadAsSRGB, request.bindFlags, request.importFlags);
         }
 
         request.promise.set_value(pTexture);

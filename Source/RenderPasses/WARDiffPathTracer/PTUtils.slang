@@ -119,10 +119,12 @@ ShadingData loadShadingData(
     // Overwrite some fields to enable auto-diff.
     sd.V = -rayDir;
     bool valid;
-    sd.frame = ShadingFrame::createSafe(isect.normalW, v.tangentW, valid);
+    float4 tangentW = float4(isect.tangentW, v.tangentW.w);
+    sd.frame = ShadingFrame::createSafe(isect.normalW, tangentW, valid);
 
     // Set offset value for the material gradient propagation.
     sd.materialGradOffset = materialID * DiffMaterialData::kMaterialParamCount;
+    sd.threadID = sceneQuery.gradInfo.pixelID;
 
     return sd;
 }
@@ -152,7 +154,7 @@ bool generateScatterRay(
 {
     // Sample material.
     BSDFSample bsdfSample = {};
-    if (mi.sample(sd, sg, bsdfSample, kUseBSDFSampling))
+    if (mi.sample(sd, sg, bsdfSample, kUseBSDFSampling) && bsdfSample.pdf > 0.f)
     {
         ray.direction = bsdfSample.wo;
         ray.origin = computeRayOrigin(isect.posW, ((sd.frontFacing) ? sd.faceN : -sd.faceN));
@@ -163,14 +165,14 @@ bool generateScatterRay(
             pathData.thp *= weight;
         }
 
-        float3 weight = mi.evalAD(diffData, sd, ray.direction, sg) / bsdfSample.pdf;
-        pathData.thp *= weight;
+        float3 bsdfWeight = mi.evalAD(diffData, sd, ray.direction, sg) / bsdfSample.pdf;
+        pathData.thp *= bsdfWeight;
 
         // Save normal and pdf for MIS.
         pathData.normal = sd.getOrientedFaceNormal();
         pathData.pdf = bsdfSample.pdf;
 
-        return any(weight > 0.f);
+        return any(pathData.thp > 0.f);
     }
 
     return false;
@@ -276,10 +278,12 @@ void handleHit(
     // Create differentiable material instance.
     DiffMaterialData diffData;
     let mi = getDiffMaterialInstance(diffData, sd, lod);
+    BSDFProperties bsdfProperties = mi.getProperties(sd);
 
     // Add emitted light.
     const bool isPrimaryHit = pathData.length == 0;
-    if (isPrimaryHit || kUseEmissiveLights && (!kUseNEE || kUseMIS))
+    bool computeEmissive = isPrimaryHit || kUseEmissiveLights && (!kUseNEE || kUseMIS);
+    if (computeEmissive && any(bsdfProperties.emission > 0.f))
     {
         float misWeight = 1.f;
 
@@ -302,7 +306,7 @@ void handleHit(
         }
 
         // TODO: support differentiable for the emission of lights.
-        pathData.radiance += pathData.thp * mi.getProperties(sd).emission * misWeight;
+        pathData.radiance += pathData.thp * bsdfProperties.emission * misWeight;
     }
 
     // Check whether to terminate based on max depth.

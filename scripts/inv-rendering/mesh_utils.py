@@ -47,7 +47,6 @@ class Mesh:
     def init_falcor(
         self,
         device: falcor.Device,
-        scene: falcor.Scene,
         vertex_count: int,
         triangle_count: int,
     ):
@@ -71,7 +70,7 @@ class Mesh:
         mesh = scene.get_mesh(mesh_id)
 
         self.init_falcor(
-            device, scene, mesh.vertex_count, mesh.triangle_count
+            device, mesh.vertex_count, mesh.triangle_count
         )
         scene.get_mesh_vertices_and_indices(mesh_id, self.buffers)
 
@@ -102,8 +101,9 @@ class Mesh:
         scene.set_mesh_vertices(mesh_id, self.buffers)
 
     def compute_shading_frame(self):
-        self.compute_normals()
-        self.compute_tangents()
+        normals = self.compute_normals()
+        tangents = self.compute_tangents()
+        return normals, tangents
 
     # From nvdiffrec.
     # Compute smooth vertex normals.
@@ -134,6 +134,7 @@ class Mesh:
             assert torch.all(torch.isfinite(v_normals))
 
         self.v_norm = v_normals
+        return v_normals
 
     # From nvdiffrec.
     # Compute tangent space from texture map coordinates.
@@ -194,3 +195,4 @@ class Mesh:
             assert torch.all(torch.isfinite(v_tangents))
 
         self.v_tangent = v_tangents
+        return v_tangents

@@ -36,7 +36,7 @@ import Utils.Math.BitTricks;
  * This generator has only 32 bit state and sub-optimal statistical properties.
  * Do not use for anything critical; correlation artifacts may be prevalent.
  */
-public struct TinyUniformSampleGenerator : ISampleGenerator
+export struct TinyUniformSampleGenerator : ISampleGenerator
 {
     struct Padded
     {

@@ -66,7 +66,7 @@
 #include "EnvMapConverter.h"
 #include "Core/Error.h"
 #include "Core/API/Device.h"
-#include "Utils/Settings.h"
+#include "Utils/Settings/Settings.h"
 #include "Utils/Logger.h"
 #include "Utils/Timing/TimeReport.h"
 #include "Utils/Math/FalcorMath.h"

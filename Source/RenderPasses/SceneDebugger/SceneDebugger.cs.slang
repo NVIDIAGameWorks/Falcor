@@ -181,10 +181,6 @@ struct SceneDebugger
         // Load shading data.
         const ShadingData sd = gScene.materials.prepareShadingData(v, materialID, -dir, lod);
 
-        // Create material instance and query its properties.
-        let mi = gScene.materials.getMaterialInstance(sd, lod);
-        let bsdfProperties = mi.getProperties(sd);
-
         // Write pixel data for the selected pixel.
         if (all(pixel == params.selectedPixel))
         {
@@ -217,6 +213,14 @@ struct SceneDebugger
 
         switch ((SceneDebuggerMode)params.mode)
         {
+        case SceneDebuggerMode::FlatShaded:
+        {
+            // DEMO21:
+            // FIXME: Parameterize this
+            const float3 frontN = faceforward(sd.faceN, dir, sd.faceN);
+            const float v = 0.8f * saturate(dot(-frontN, dir)) + 0.2;
+            return float3(v, v, v);
+        }
         // Geometry
         case SceneDebuggerMode::HitType:
             return pseudocolor(uint(hit.getType()));
@@ -267,18 +271,34 @@ struct SceneDebugger
         case SceneDebuggerMode::TexCoords:
             return float3(frac(remapVector(sd.uv)), 0.f);
         // Material properties
-        case SceneDebuggerMode::GuideNormal:
-            return remapVector(bsdfProperties.guideNormal);
-        case SceneDebuggerMode::Roughness:
-            return float3(bsdfProperties.roughness);
-        case SceneDebuggerMode::FlatShaded:
+        case SceneDebuggerMode::BSDFProperties:
         {
-            // DEMO21:
-            // FIXME: Parameterize this
-            const float3 frontN = faceforward(sd.faceN, dir, sd.faceN);
-            const float v = 0.8f * saturate(dot(-frontN, dir)) + 0.2;
-            return float3(v, v, v);
+            // Create material instance and query its properties.
+            let mi = gScene.materials.getMaterialInstance(sd, lod);
+            let bsdfProperties = mi.getProperties(sd);
+            switch ((SceneDebuggerBSDFProperty)params.bsdfProperty)
+            {
+            case SceneDebuggerBSDFProperty::Emission:
+                return bsdfProperties.emission;
+            case SceneDebuggerBSDFProperty::Roughness:
+                return float3(bsdfProperties.roughness);
+            case SceneDebuggerBSDFProperty::GuideNormal:
+                return remapVector(bsdfProperties.guideNormal);
+            case SceneDebuggerBSDFProperty::DiffuseReflectionAlbedo:
+                return bsdfProperties.diffuseReflectionAlbedo;
+            case SceneDebuggerBSDFProperty::DiffuseTransmissionAlbedo:
+                return bsdfProperties.diffuseTransmissionAlbedo;
+            case SceneDebuggerBSDFProperty::SpecularReflectionAlbedo:
+                return bsdfProperties.specularReflectionAlbedo;
+            case SceneDebuggerBSDFProperty::SpecularTransmissionAlbedo:
+                return bsdfProperties.specularTransmissionAlbedo;
+            case SceneDebuggerBSDFProperty::SpecularReflectance:
+                return bsdfProperties.specularReflectance;
+            case SceneDebuggerBSDFProperty::IsTransmissive:
+                return bsdfProperties.isTransmissive ? float3(0, 1, 0) : float3(1, 0, 0);
+            }
         }
+
         default:
             // Should not happen.
             return float3(1, 0, 0);

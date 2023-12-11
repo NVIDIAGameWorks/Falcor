@@ -222,7 +222,7 @@ bool TestPyTorchPass::verifyData(const uint3 dim, const uint32_t offset, TestPyT
     // Wait for results to be available.
     pRenderContext->submit(true);
 
-    const uint32_t counter = *reinterpret_cast<const uint32_t*>(mpCounterStagingBuffer->map(Buffer::MapType::Read));
+    const uint32_t counter = *reinterpret_cast<const uint32_t*>(mpCounterStagingBuffer->map());
     mpCounterStagingBuffer->unmap();
     FALCOR_ASSERT(counter <= elemCount);
 

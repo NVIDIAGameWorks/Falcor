@@ -264,7 +264,8 @@ ref<Texture> Texture::createMippedFromFiles(
     ref<Device> pDevice,
     fstd::span<const std::filesystem::path> paths,
     bool loadAsSrgb,
-    ResourceBindFlags bindFlags
+    ResourceBindFlags bindFlags,
+    Bitmap::ImportFlags importFlags
 )
 {
     std::vector<Bitmap::UniqueConstPtr> mips;
@@ -281,7 +282,7 @@ ref<Texture> Texture::createMippedFromFiles(
         }
         else
         {
-            pBitmap = Bitmap::createFromFile(path, kTopDown);
+            pBitmap = Bitmap::createFromFile(path, kTopDown, importFlags);
         }
         if (!pBitmap)
         {
@@ -335,7 +336,7 @@ ref<Texture> Texture::createMippedFromFiles(
         if (loadAsSrgb)
             texFormat = linearToSrgbFormat(texFormat);
 
-        // Create mip mapped latent texture
+        // Create mip mapped texture.
         pTex =
             pDevice->createTexture2D(mips[0]->getWidth(), mips[0]->getHeight(), texFormat, 1, mips.size(), combinedData.get(), bindFlags);
     }
@@ -343,6 +344,7 @@ ref<Texture> Texture::createMippedFromFiles(
     if (pTex != nullptr)
     {
         pTex->setSourcePath(fullPathMip0);
+        pTex->mImportFlags = importFlags;
 
         // Log debug info.
         std::string str = fmt::format(
@@ -364,7 +366,8 @@ ref<Texture> Texture::createFromFile(
     const std::filesystem::path& path,
     bool generateMipLevels,
     bool loadAsSrgb,
-    ResourceBindFlags bindFlags
+    ResourceBindFlags bindFlags,
+    Bitmap::ImportFlags importFlags
 )
 {
     if (!std::filesystem::exists(path))
@@ -387,7 +390,7 @@ ref<Texture> Texture::createFromFile(
     }
     else
     {
-        Bitmap::UniqueConstPtr pBitmap = Bitmap::createFromFile(path, kTopDown);
+        Bitmap::UniqueConstPtr pBitmap = Bitmap::createFromFile(path, kTopDown, importFlags);
         if (pBitmap)
         {
             ResourceFormat texFormat = pBitmap->getFormat();
@@ -411,6 +414,7 @@ ref<Texture> Texture::createFromFile(
     if (pTex != nullptr)
     {
         pTex->setSourcePath(path);
+        pTex->mImportFlags = importFlags;
 
         // Log debug info.
         std::string str = fmt::format(

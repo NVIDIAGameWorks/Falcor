@@ -383,7 +383,7 @@ void CopyContext::ReadTextureTask::getData(void* pData, size_t size) const
     mpFence->wait();
 
     uint8_t* pDst = reinterpret_cast<uint8_t*>(pData);
-    const uint8_t* pSrc = reinterpret_cast<const uint8_t*>(mpBuffer->map(Buffer::MapType::Read));
+    const uint8_t* pSrc = reinterpret_cast<const uint8_t*>(mpBuffer->map());
 
     for (uint32_t z = 0; z < mDepth; z++)
     {

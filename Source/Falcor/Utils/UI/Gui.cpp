@@ -1267,8 +1267,8 @@ void Gui::render(RenderContext* pContext, const ref<Fbo>& pFbo, float elapsedTim
         mpWrapper->mpPipelineState->setVao(pVao);
 
         // Upload the data
-        ImDrawVert* pVerts = (ImDrawVert*)pVao->getVertexBuffer(0)->map(Buffer::MapType::Write);
-        uint16_t* pIndices = (uint16_t*)pVao->getIndexBuffer()->map(Buffer::MapType::Write);
+        ImDrawVert* pVerts = (ImDrawVert*)pVao->getVertexBuffer(0)->map();
+        uint16_t* pIndices = (uint16_t*)pVao->getIndexBuffer()->map();
 
         for (int n = 0; n < pDrawData->CmdListsCount; n++)
         {

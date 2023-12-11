@@ -26,7 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 import DiffRendering.SceneGradients;
-import DiffRendering.DiffDebug;
+import DiffRendering.DiffDebugParams;
 import Scene.Material.MaterialParamLayout;
 import Utils.Math.HashUtils;
 
@@ -58,26 +58,26 @@ struct GradientIOWrapper
         this.hashIndex = _hashIndex;
     }
 
-    [ForwardDerivative(__fwd_d_getFloat)]
-    [BackwardDerivative(__bwd_d_getFloat)]
+    [ForwardDerivative(fwd_d_getFloat)]
+    [BackwardDerivative(bwd_d_getFloat)]
     float getFloat(float val, uint offset) { return val; }
 
     [TreatAsDifferentiable]
-    DifferentialPair<float> __fwd_d_getFloat(DifferentialPair<float> dpVal, uint offset) { return diffPair(dpVal.p, 0.f); }
+    DifferentialPair<float> fwd_d_getFloat(DifferentialPair<float> dpVal, uint offset) { return diffPair(dpVal.p, 0.f); }
 
     [TreatAsDifferentiable]
-    void __bwd_d_getFloat(inout DifferentialPair<float> dpVal, uint offset, float dOut)
+    void bwd_d_getFloat(inout DifferentialPair<float> dpVal, uint offset, float dOut)
     {
         offset += baseOffset;
         gSceneGradients.atomicAddGrad(gradType, offset, hashIndex, dOut);
     }
 
-    [ForwardDerivative(__fwd_d_getFloats)]
-    [BackwardDerivative(__bwd_d_getFloats)]
+    [ForwardDerivative(fwd_d_getFloats)]
+    [BackwardDerivative(bwd_d_getFloats)]
     __generic<let N : int> vector<float, N> getFloat(vector<float, N> val, uint offset) { return val; }
 
     [TreatAsDifferentiable]
-    __generic<let N : int> DifferentialPair<vector<float, N>> __fwd_d_getFloats(DifferentialPair<vector<float, N>> dpVal, uint offset)
+    __generic<let N : int> DifferentialPair<vector<float, N>> fwd_d_getFloats(DifferentialPair<vector<float, N>> dpVal, uint offset)
     {
         vector<float, N> d;
         [ForceUnroll]
@@ -97,7 +97,7 @@ struct GradientIOWrapper
     }
 
     [TreatAsDifferentiable]
-    __generic<let N : int> void __bwd_d_getFloats(inout DifferentialPair<vector<float, N>> dpVal, uint offset, vector<float, N> dOut)
+    __generic<let N : int> void bwd_d_getFloats(inout DifferentialPair<vector<float, N>> dpVal, uint offset, vector<float, N> dOut)
     {
         offset += baseOffset;
         [ForceUnroll]

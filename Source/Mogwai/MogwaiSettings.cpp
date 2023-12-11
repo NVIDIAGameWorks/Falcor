@@ -29,7 +29,7 @@
 #include "MogwaiSettings.h"
 #include "Core/Program/ProgramManager.h"
 #include "Utils/Scripting/Console.h"
-#include "Utils/Settings.h"
+#include "Utils/Settings/Settings.h"
 #include <iomanip>
 #include <sstream>
 
@@ -404,17 +404,14 @@ namespace Mogwai
         return false;
     }
 
-    void MogwaiSettings::onOptionsChange(const SettingsProperties& options)
+    void MogwaiSettings::onOptionsChange(const Settings::Options& options)
     {
-        if (auto local = options.get<SettingsProperties>("MogwaiSettings"))
-        {
-            mAutoHideMenu = local->get("mAutoHideMenu", mAutoHideMenu);
-            mShowFps      = local->get("mShowFps", mShowFps);
-            mShowGraphUI  = local->get("mShowGraphUI", mShowGraphUI);
-            mShowConsole  = local->get("mShowConsole", mShowConsole);
-            mShowTime     = local->get("mShowTime", mShowTime);
-            mShowWinSize  = local->get("mShowWinSize", mShowWinSize);
-        }
+        mAutoHideMenu = options.get("MogwaiSettings:mAutoHideMenu", mAutoHideMenu);
+        mShowFps      = options.get("MogwaiSettings:mShowFps", mShowFps);
+        mShowGraphUI  = options.get("MogwaiSettings:mShowGraphUI", mShowGraphUI);
+        mShowConsole  = options.get("MogwaiSettings:mShowConsole", mShowConsole);
+        mShowTime     = options.get("MogwaiSettings:mShowTime", mShowTime);
+        mShowWinSize  = options.get("MogwaiSettings:mShowWinSize", mShowWinSize);
     }
 
     MogwaiSettings::UniquePtr MogwaiSettings::create(Renderer* pRenderer)

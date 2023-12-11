@@ -129,7 +129,7 @@ namespace Falcor
         pRenderContext->submit(true);
 
         // Read back final results.
-        const float3* finalResults = reinterpret_cast<const float3*>(mpStagingBuffer->map(Buffer::MapType::Read));
+        const float3* finalResults = reinterpret_cast<const float3*>(mpStagingBuffer->map());
         std::vector<float3> output(finalResults, finalResults + gridCount);
         mpStagingBuffer->unmap();
 

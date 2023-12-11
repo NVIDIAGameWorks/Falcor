@@ -32,7 +32,10 @@ import Scene.Scene;
 import Scene.SceneTypes;
 
 __exported import DiffRendering.SceneGradientInfo;
-import DiffRendering.DiffDebug;
+import DiffRendering.DiffDebugParams;
+import DiffRendering.InverseOptimizationParams;
+import DiffRendering.SceneGradients;
+import DiffRendering.GradientIOWrapper;
 
 RWTexture2D<float4> gOutputDColor;
 
@@ -44,6 +47,15 @@ RWTexture2D<float4> gOutputDColor;
 // Scene IO wrapper for propagating gradients.
 struct DiffSceneIO
 {
+    // Returns the local vertex indices for a given triangle.
+    uint3 getVtxIndices(const GeometryInstanceID instanceID, const uint triangleID)
+    {
+        const GeometryInstanceData instance = gScene.getGeometryInstance(instanceID);
+        uint3 vtxIndices =
+            gScene.getLocalIndices(instance.ibOffset, triangleID, instance.flags & uint(GeometryInstanceFlags::Use16BitIndices));
+        return vtxIndices;
+    }
+
     // Vertex position
     [ForwardDerivative(fwd_loadVertexPositionsW)]
     [BackwardDerivative(bwd_loadVertexPositionsW)]
@@ -93,7 +105,21 @@ struct DiffSceneIO
         in float3.Differential dPos[3]
     )
     {
-#if DIFF_MODE == 3 // BackwardDiffDebug
+#if DIFF_MODE == 1                                                                                  // BackwardDiff
+        if (dpGradInfo.d.flag.gradMode == GradientMode.Scene && gInvOpt.meshID == instanceID.index) // Indicate which mesh to compute
+                                                                                                    // gradients for.
+        {
+            uint3 vtxIndices = getVtxIndices(instanceID, triangleID);
+            uint hashIndex = hashFunction(dpGradInfo.p.pixelID, gSceneGradients.getHashSize(GradientType::MeshPosition));
+            [ForceUnroll]
+            for (uint i = 0; i < 3; i++)
+            {
+                [ForceUnroll]
+                for (uint j = 0; j < 3; j++)
+                    gSceneGradients.atomicAddGrad(GradientType::MeshPosition, vtxIndices[i] * 3 + j, hashIndex, dPos[i][j]);
+            }
+        }
+#elif DIFF_MODE == 3 // BackwardDiffDebug
         // For visualizing a gradient image.
         if (dpGradInfo.d.flag.gradMode == GradientMode.Scene && gDiffDebug.varType == DiffVariableType::GeometryTranslation &&
             gDiffDebug.id.x == instanceID.index)
@@ -105,10 +131,10 @@ struct DiffSceneIO
 #endif
     }
 
-    // TODO: Add custom derivatives for the following functions.
-
     // Vertex normal
-    [Differentiable]
+    [ForwardDerivative(fwd_loadVertexNormalsW)]
+    [BackwardDerivative(bwd_loadVertexNormalsW)]
+    [PreferRecompute]
     void loadVertexNormalsW(SceneGradientInfo gradInfo, GeometryInstanceID instanceID, uint triangleID, out float3 n[3])
     {
         uint3 indices = gScene.getIndices(instanceID, triangleID);
@@ -120,6 +146,115 @@ struct DiffSceneIO
             var v = no_diff gScene.getVertex(indices[i]);
             n[i] = normalize(mul(mat, v.normal));
         }
+    }
+
+    [Differentiable]
+    [PreferRecompute]
+    void fwd_loadVertexNormalsW(
+        DifferentialPair<SceneGradientInfo> dpGradInfo,
+        GeometryInstanceID instanceID,
+        uint triangleID,
+        out DifferentialPair<float3[3]> dpNorm
+    )
+    {
+        float3 n[3];
+        loadVertexNormalsW(dpGradInfo.p, instanceID, triangleID, n);
+
+        float3.Differential dN[3];
+        [ForceUnroll]
+        for (uint i = 0; i < 3; i++)
+            dN[i] = float3(0.f);
+
+        dpNorm = diffPair(n, dN);
+    }
+
+    [Differentiable]
+    [PreferRecompute]
+    void bwd_loadVertexNormalsW(
+        inout DifferentialPair<SceneGradientInfo> dpGradInfo,
+        GeometryInstanceID instanceID,
+        uint triangleID,
+        in float3.Differential dNorm[3]
+    )
+    {
+#if DIFF_MODE == 1                                                                                  // BackwardDiff
+        if (dpGradInfo.d.flag.gradMode == GradientMode.Scene && gInvOpt.meshID == instanceID.index) // Indicate which mesh to compute
+                                                                                                    // gradients for.
+        {
+            uint3 vtxIndices = getVtxIndices(instanceID, triangleID);
+            uint hashIndex = hashFunction(dpGradInfo.p.pixelID, gSceneGradients.getHashSize(GradientType::MeshNormal));
+            [ForceUnroll]
+            for (uint i = 0; i < 3; i++)
+            {
+                [ForceUnroll]
+                for (uint j = 0; j < 3; j++)
+                    gSceneGradients.atomicAddGrad(GradientType::MeshNormal, vtxIndices[i] * 3 + j, hashIndex, dNorm[i][j]);
+            }
+        }
+#endif
+    }
+
+    // Vertex tangent
+    [ForwardDerivative(fwd_loadVertexTangentsW)]
+    [BackwardDerivative(bwd_loadVertexTangentsW)]
+    [PreferRecompute]
+    void loadVertexTangentsW(SceneGradientInfo gradInfo, GeometryInstanceID instanceID, uint triangleID, out float3 t[3])
+    {
+        uint3 indices = gScene.getIndices(instanceID, triangleID);
+        float3x3 mat = float3x3(no_diff gScene.getWorldMatrix(instanceID));
+
+        [ForceUnroll]
+        for (int i = 0; i < 3; i++)
+        {
+            var v = no_diff gScene.getVertex(indices[i]);
+            t[i] = normalize(mul(mat, v.tangent.xyz));
+        }
+    }
+
+    [Differentiable]
+    [PreferRecompute]
+    void fwd_loadVertexTangentsW(
+        DifferentialPair<SceneGradientInfo> dpGradInfo,
+        GeometryInstanceID instanceID,
+        uint triangleID,
+        out DifferentialPair<float3[3]> dpTang
+    )
+    {
+        float3 t[3];
+        loadVertexTangentsW(dpGradInfo.p, instanceID, triangleID, t);
+
+        float3.Differential dT[3];
+        [ForceUnroll]
+        for (uint i = 0; i < 3; i++)
+            dT[i] = float3(0.f);
+
+        dpTang = diffPair(t, dT);
+    }
+
+    [Differentiable]
+    [PreferRecompute]
+    void bwd_loadVertexTangentsW(
+        inout DifferentialPair<SceneGradientInfo> dpGradInfo,
+        GeometryInstanceID instanceID,
+        uint triangleID,
+        in float3.Differential dTang[3]
+    )
+    {
+#if DIFF_MODE == 1                                                                                  // BackwardDiff
+        if (dpGradInfo.d.flag.gradMode == GradientMode.Scene && gInvOpt.meshID == instanceID.index) // Indicate which mesh to compute
+                                                                                                    // gradients for.
+        {
+            uint3 vtxIndices = getVtxIndices(instanceID, triangleID);
+            uint hashIndex = hashFunction(dpGradInfo.p.pixelID, gSceneGradients.getHashSize(GradientType::MeshTangent));
+            [ForceUnroll]
+            for (uint i = 0; i < 3; i++)
+            {
+                [ForceUnroll]
+                for (uint j = 0; j < 3; j++)
+                    gSceneGradients.atomicAddGrad(GradientType::MeshTangent, vtxIndices[i] * 3 + j, hashIndex, dTang[i][j]);
+            }
+        }
+#endif
     }
 
     // Camera position

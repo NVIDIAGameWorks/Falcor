@@ -50,8 +50,7 @@ std::vector<std::string> toStrings(const nlohmann::json& value)
         result.push_back(value.get<std::string>());
         return result;
     }
-
-    if (value.is_array())
+    else if (value.is_array())
     {
         for (size_t i = 0; i < value.size(); ++i)
         {
@@ -80,41 +79,63 @@ Settings& Settings::getGlobalSettings()
     return globalSettings;
 }
 
+void Settings::addOptions(const nlohmann::json& options)
+{
+    nlohmann::json flattened = settings::detail::flattenDictionary(options);
+    for (auto& it : flattened.items())
+        getActive().mOptions.removePrefix(it.key());
+    getActive().mOptions.addDict(flattened);
+    updateSearchPaths(flattened);
+}
+
 void Settings::addOptions(const pybind11::dict& options)
 {
-    auto json = pyjson::to_json(options);
-    merge(getActive().mOptions, json);
-    updateSearchPaths(json);
+    addOptions(settings::detail::flattenDictionary(pyjson::to_json(options)));
 }
+
+void Settings::addOptions(const pybind11::list& options)
+{
+    addOptions(settings::detail::flattenDictionary(pyjson::to_json(options)));
+}
+
 
 bool Settings::addOptions(const std::filesystem::path& path)
 {
-    if (path.extension() == ".json")
-        return addOptionsJSON(path);
-    return false;
-}
+    if (path.extension() != ".json")
+        return false;
 
-bool Settings::addOptionsJSON(const std::filesystem::path& path)
-{
     if (!std::filesystem::exists(path))
         return false;
     std::ifstream ifs(path);
     if (!ifs)
         return false;
-    nlohmann::json jf = nlohmann::json::parse(ifs, nullptr /*callback*/, true /*allow exceptions*/, true /*ignore comments*/);
-    merge(getActive().mOptions, jf);
+    nlohmann::json jf = settings::detail::flattenDictionary(nlohmann::json::parse(ifs, nullptr /*callback*/, true /*allow exceptions*/, true /*ignore comments*/));
+    for (auto& it : jf.items())
+        getActive().mOptions.removePrefix(it.key());
+    getActive().mOptions.addDict(jf);
     updateSearchPaths(jf);
     return true;
 }
 
 void Settings::addFilteredAttributes(const pybind11::dict& attributes)
 {
-    merge(getActive().mFilteredAttributes, pyjson::to_json(attributes));
+    addFilteredAttributes(pyjson::to_json(attributes));
+}
+
+void Settings::addFilteredAttributes(const pybind11::list& attributes)
+{
+    addFilteredAttributes(pyjson::to_json(attributes));
+}
+
+void Settings::addFilteredAttributes(const nlohmann::json& attributes)
+{
+    FALCOR_CHECK(attributes.is_array() || attributes.is_object(), "The attributes must be a dictionary, or an array of dictionaries.");
+    getActive().mAttributeFilters.add(attributes);
 }
 
 void Settings::clearFilteredAttributes()
 {
-    getActive().mFilteredAttributes.clear();
+    getActive().mAttributeFilters.clear();
 }
 
 void Settings::updateSearchPaths(const nlohmann::json& update)
@@ -205,6 +226,7 @@ FALCOR_SCRIPT_BINDING(Settings)
     pybind11::class_<Settings> settings(m, "Settings");
     settings.def("addOptions", pybind11::overload_cast<const pybind11::dict&>(&Settings::addOptions), "dict"_a);
     settings.def("addFilteredAttributes", pybind11::overload_cast<const pybind11::dict&>(&Settings::addFilteredAttributes), "dict"_a);
+    settings.def("addFilteredAttributes", pybind11::overload_cast<const pybind11::list&>(&Settings::addFilteredAttributes), "list"_a);
     settings.def("clearOptions", &Settings::clearOptions);
     settings.def("clearFilteredAttributes", &Settings::clearFilteredAttributes);
 }

@@ -9,9 +9,9 @@ target_sources(USDUtils PRIVATE
     PreviewSurfaceConverter/SampleTexture.slang
     PreviewSurfaceConverter/StandardMaterialSpec.h
 
-    Tessellator/IndexedVector.h
     Tessellator/Tessellation.cpp
     Tessellator/Tessellation.h
+    Tessellator/UsdIndexedVector.h
 
     USDHelpers.h
     USDScene1Utils.cpp

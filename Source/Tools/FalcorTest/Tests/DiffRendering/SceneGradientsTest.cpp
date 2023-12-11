@@ -46,7 +46,8 @@ void testAggregateGradients(GPUUnitTestContext& ctx, const uint32_t hashSize)
     ref<Device> pDevice = ctx.getDevice();
     RenderContext* pRenderContext = pDevice->getRenderContext();
 
-    std::unique_ptr<SceneGradients> pSceneGradients = std::make_unique<SceneGradients>(pDevice, uint2(gradDim), uint2(hashSize));
+    std::unique_ptr<SceneGradients> pSceneGradients =
+        std::make_unique<SceneGradients>(pDevice, std::vector<SceneGradients::GradConfig>({{GradientType::Material, gradDim, hashSize}}));
     pSceneGradients->clearGrads(pRenderContext, GradientType::Material);
 
     ctx.createProgram(kShaderFile, "atomicAdd");

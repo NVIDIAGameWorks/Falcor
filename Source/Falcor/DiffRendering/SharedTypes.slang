@@ -53,7 +53,9 @@ FALCOR_ENUM_REGISTER(DiffMode);
 enum class GradientType : uint32_t
 {
     Material,
-    Geometry,
+    MeshPosition,
+    MeshNormal,
+    MeshTangent,
     Count,
 };
 
@@ -61,7 +63,9 @@ FALCOR_ENUM_INFO(
     GradientType,
     {
         { GradientType::Material, "Material" },
-        { GradientType::Geometry, "Geometry" },
+        { GradientType::MeshPosition, "MeshPosition" },
+        { GradientType::MeshNormal, "MeshNormal" },
+        { GradientType::MeshTangent, "MeshTangent" },
     }
 );
 FALCOR_ENUM_REGISTER(GradientType);
@@ -98,6 +102,14 @@ struct DiffDebugParams
     uint32_t offset;
 
     float4 grad;
+};
+
+// For inverse rendering optimization.
+
+struct InverseOptimizationParams
+{
+    uint32_t meshID;
+    uint3 _pad0;
 };
 
 END_NAMESPACE_FALCOR
