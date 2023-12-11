@@ -46,6 +46,8 @@ namespace Falcor
     MERLMaterial::MERLMaterial(ref<Device> pDevice, const std::string& name, const std::filesystem::path& path)
         : Material(pDevice, name, MaterialType::MERL)
     {
+        FALCOR_CHECK(!path.empty(), "Missing path.");
+
         MERLFile merlFile(path);
         init(merlFile);
 

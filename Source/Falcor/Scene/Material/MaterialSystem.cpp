@@ -236,17 +236,32 @@ namespace Falcor
         return materialID;
     }
 
+    void MaterialSystem::removeMaterial(const MaterialID materialID)
+    {
+        FALCOR_CHECK(materialID.isValid() && materialID.get() < mMaterials.size(), "Material ID is invalid.");
+
+        // Mark descriptors used by the deleted material as reserved.
+        // This is a workaround until we have dynamically sized descriptor arrays and proper resource tracking.
+        const auto& material = mMaterials[materialID.get()];
+        mReservedTextureDescCount += material->getMaxTextureCount();
+        mReservedBufferDescCount += material->getMaxBufferCount();
+        mReservedTexture3DDescCount += material->getMaxTexture3DCount();
+
+        // Remove textures that were used by the material and loaded via the texture manager.
+        mpTextureManager->removeTextures(material.get());
+
+        // Remove the material.
+        mMaterials[materialID.get()] = nullptr;
+        mMaterialsChanged = true;
+    }
+
     void MaterialSystem::replaceMaterial(const MaterialID materialID, const ref<Material>& pReplacement)
     {
         FALCOR_CHECK(materialID.isValid() && materialID.get() < mMaterials.size(), "Material ID is invalid.");
         FALCOR_CHECK(pReplacement != nullptr, "Replacement material is missing.");
 
-        // Mark descriptors used by the deleted material as reserved.
-        // This is a workaround until we have dynamically sized descriptor arrays and proper resource tracking.
-        const auto& prevMtl = mMaterials[materialID.get()];
-        mReservedTextureDescCount += prevMtl->getMaxTextureCount();
-        mReservedBufferDescCount += prevMtl->getMaxBufferCount();
-        mReservedTexture3DDescCount += prevMtl->getMaxTexture3DCount();
+        // Remove the previous material.
+        removeMaterial(materialID);
 
         // Prepare replacement material.
         if (pReplacement->getDefaultTextureSampler() == nullptr)
@@ -303,7 +318,7 @@ namespace Falcor
 
     const ref<Material>& MaterialSystem::getMaterial(const MaterialID materialID) const
     {
-        FALCOR_CHECK(materialID.get() < mMaterials.size(), "MaterialID is out of range.");
+        FALCOR_CHECK(materialID.get() < mMaterials.size(), "Material ID is out of range.");
         return mMaterials[materialID.get()];
     }
 
@@ -649,7 +664,7 @@ namespace Falcor
             {
                 if (auto it = defines.find(name); it != defines.end())
                 {
-                    FALCOR_CHECK(it->second == value, "Mismatching values '{}' and '{}' for material define '{}'.", name, it->second, value);
+                    FALCOR_CHECK(it->second == value, "Mismatching values '{}' and '{}' for material define '{}'.", it->second, value, name);
                 }
                 else
                 {

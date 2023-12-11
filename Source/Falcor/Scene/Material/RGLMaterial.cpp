@@ -53,6 +53,8 @@ namespace Falcor
     RGLMaterial::RGLMaterial(ref<Device> pDevice, const std::string& name, const std::filesystem::path& path)
         : Material(pDevice, name, MaterialType::RGL)
     {
+        FALCOR_CHECK(!path.empty(), "Missing path.");
+
         if (!loadBRDF(path))
         {
             FALCOR_THROW("RGLMaterial() - Failed to load BRDF from '{}'.", path);

@@ -166,13 +166,15 @@ public:
      * @param[in] paths List of full paths of all mips, starting from mip0.
      * @param[in] loadAsSrgb Load the texture using sRGB format. Only valid for 3 or 4 component textures.
      * @param[in] bindFlags The bind flags to create the texture with.
+     * @param[in] importFlags Optional flags for the file import.
      * @return A new texture, or nullptr if the texture failed to load.
      */
     static ref<Texture> createMippedFromFiles(
         ref<Device> pDevice,
         fstd::span<const std::filesystem::path> paths,
         bool loadAsSrgb,
-        ResourceBindFlags bindFlags = ResourceBindFlags::ShaderResource
+        ResourceBindFlags bindFlags = ResourceBindFlags::ShaderResource,
+        Bitmap::ImportFlags importFlags = Bitmap::ImportFlags::None
     );
 
     /**
@@ -181,6 +183,7 @@ public:
      * @param[in] generateMipLevels Whether the mip-chain should be generated.
      * @param[in] loadAsSrgb Load the texture using sRGB format. Only valid for 3 or 4 component textures.
      * @param[in] bindFlags The bind flags to create the texture with.
+     * @param[in] importFlags Optional flags for the file import.
      * @return A new texture, or nullptr if the texture failed to load.
      */
     static ref<Texture> createFromFile(
@@ -188,7 +191,8 @@ public:
         const std::filesystem::path& path,
         bool generateMipLevels,
         bool loadAsSrgb,
-        ResourceBindFlags bindFlags = ResourceBindFlags::ShaderResource
+        ResourceBindFlags bindFlags = ResourceBindFlags::ShaderResource,
+        Bitmap::ImportFlags importFlags = Bitmap::ImportFlags::None
     );
 
     gfx::ITextureResource* getGfxTextureResource() const { return mGfxTextureResource; }
@@ -307,6 +311,11 @@ public:
     const std::filesystem::path& getSourcePath() const { return mSourcePath; }
 
     /**
+     * In case the texture was loaded from a file, get the import flags used.
+     */
+    Bitmap::ImportFlags getImportFlags() const { return mImportFlags; }
+
+    /**
      * Returns the total number of texels across all mip levels and array slices.
      */
     uint64_t getTexelCount() const;
@@ -329,6 +338,7 @@ protected:
 
     bool mReleaseRtvsAfterGenMips = true;
     std::filesystem::path mSourcePath;
+    Bitmap::ImportFlags mImportFlags = Bitmap::ImportFlags::None; ///< Flags used for import if loaded from file.
 
     ResourceFormat mFormat = ResourceFormat::Unknown;
     uint32_t mWidth = 0;

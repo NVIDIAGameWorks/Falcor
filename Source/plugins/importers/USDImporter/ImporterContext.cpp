@@ -32,7 +32,7 @@
 #include "Scene/Curves/CurveConfig.h"
 #include "Scene/Material/HairMaterial.h"
 #include "Scene/Material/StandardMaterial.h"
-#include "Utils/Settings.h"
+#include "Utils/Settings/Settings.h"
 #include "USDUtils/USDHelpers.h"
 #include "USDUtils/USDUtils.h"
 #include "USDUtils/USDScene1Utils.h"

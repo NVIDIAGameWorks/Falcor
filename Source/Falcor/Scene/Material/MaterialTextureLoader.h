@@ -42,7 +42,7 @@ namespace Falcor
         `MaterialTextureLoader`, it blocks until all textures are loaded and assigns
         them to the materials.
     */
-    class MaterialTextureLoader
+    class FALCOR_API MaterialTextureLoader
     {
     public:
         MaterialTextureLoader(TextureManager& textureManager, bool useSrgb);
@@ -55,6 +55,10 @@ namespace Falcor
         */
         void loadTexture(const ref<Material>& pMaterial, Material::TextureSlot slot, const std::filesystem::path& path);
 
+        void finishLoading()
+        {
+            assignTextures();
+        }
     private:
         void assignTextures();
 

@@ -67,14 +67,14 @@ namespace Falcor
             quatf rotation = quatf::identity();
         };
 
-        static ref<Animation> create(const std::string& name, NodeID nodeID, double duration) { return make_ref<Animation>(name, nodeID, duration); }
+        static ref<Animation> create(std::string_view name, NodeID nodeID, double duration) { return make_ref<Animation>(name, nodeID, duration); }
 
         /** Create a new animation.
             \param[in] name Animation name.
             \param[in] nodeID ID of the animated node.
             \param[in] Animation duration in seconds.
         */
-        Animation(const std::string& name, NodeID nodeID, double duration);
+        Animation(std::string_view name, NodeID nodeID, double duration);
 
         /** Get the animation name.
         */

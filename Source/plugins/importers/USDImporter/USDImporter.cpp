@@ -29,7 +29,7 @@
 #include "ImporterContext.h"
 #include "Core/Platform/OS.h"
 #include "Utils/Timing/TimeReport.h"
-#include "Utils/Settings.h"
+#include "Utils/Settings/Settings.h"
 #include "Scene/Importer.h"
 
 #include "USDUtils/USDHelpers.h"

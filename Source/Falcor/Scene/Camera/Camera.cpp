@@ -399,6 +399,17 @@ namespace Falcor
         d["focalDistance"] = getFocalDistance();
         d["apertureRadius"] = getApertureRadius();
         std::cout << pybind11::str(d) << std::endl;
+
+        fmt::print("camera = Camera('{}')\n", getName());
+        fmt::print("camera.position = [{:.9g}, {:.9g}, {:.9g}]\n", getPosition()[0], getPosition()[1], getPosition()[2]);
+        fmt::print("camera.target = [{:.9g}, {:.9g}, {:.9g}]\n", getTarget()[0], getTarget()[1], getTarget()[2]);
+        fmt::print("camera.up = [{:.9g}, {:.9g}, {:.9g}]\n", getUpVector()[0], getUpVector()[1], getUpVector()[2]);
+        fmt::print("camera.focalLength = {:.9g}\n", getFocalLength());
+        fmt::print("camera.focalDistance = {:.9g}\n", getFocalDistance());
+        fmt::print("camera.apertureRadius = {:.9g}\n", getApertureRadius());
+        fmt::print("camera.nearPlane = {:.9g}\n", getNearPlane());
+        fmt::print("camera.farPlane = {:.9g}\n", getFarPlane());
+        std::cout.flush();
     }
 
     FALCOR_SCRIPT_BINDING(Camera)

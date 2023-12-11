@@ -26,7 +26,7 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "Testing/UnitTest.h"
-#include "Utils/Settings.h"
+#include "Utils/Settings/Settings.h"
 #include "Utils/Scripting/ScriptBindings.h"
 #include "Utils/Scripting/Scripting.h"
 
@@ -103,7 +103,7 @@ CPU_TEST(Settings_OptionsIntBool)
 
     Settings settings;
     settings.addOptions(pyDict);
-    SettingsProperties options = settings.getOptions();
+    Settings::Options options = settings.getOptions();
 
     EXPECT_EQ(options.get("TrueAsBool", false), true);
     EXPECT_EQ(options.get("TrueAsBool", 0), 1);
@@ -124,24 +124,7 @@ CPU_TEST(Settings_OptionsNesting)
 
     Settings settings;
     settings.addOptions(pyDict);
-    SettingsProperties options = settings.getOptions();
-
-    {
-        SettingsProperties mogwai = options.get("mogwai", SettingsProperties());
-        EXPECT_EQ(mogwai.get("value", 0), 17);
-    }
-
-    EXPECT(options.get<SettingsProperties>("mogwai"));
-    EXPECT(!options.get<SettingsProperties>("user"));
-
-    if (auto local = options.get<SettingsProperties>("mogwai"))
-    {
-        EXPECT_EQ(local->get("value", 0), 17);
-    }
-    else
-    {
-        EXPECT(false); // never get here
-    }
+    const Settings::Options& options = settings.getOptions();
 
     EXPECT_EQ(options.get("mogwai:value", 0), 17);
 }
@@ -157,7 +140,7 @@ CPU_TEST(Settings_OptionsTypes)
 
     Settings settings;
     settings.addOptions(pyDict);
-    SettingsProperties options = settings.getOptions();
+    const Settings::Options& options = settings.getOptions();
 
     EXPECT_EQ(options.get("string", std::string()), "string");
     EXPECT_EQ(options.get("float", 0.f), 1.f);
@@ -172,9 +155,9 @@ CPU_TEST(Settings_OptionsTypes)
     EXPECT_EQ(result[0], validTuple[0]);
     EXPECT_EQ(result[1], validTuple[1]);
 
-    EXPECT_THROW_AS(options.get("string", int(3)), Falcor::SettingsProperties::TypeError);
-    EXPECT_THROW_AS(options.get("int", std::string("test")), Falcor::SettingsProperties::TypeError);
-    EXPECT_THROW_AS(options.get("int[2]", float(0.f)), Falcor::SettingsProperties::TypeError);
+    EXPECT_THROW_AS(options.get("string", int(3)), Falcor::Settings::TypeError);
+    EXPECT_THROW_AS(options.get("int", std::string("test")), Falcor::Settings::TypeError);
+    EXPECT_THROW_AS(options.get("int[2]", float(0.f)), Falcor::Settings::TypeError);
 }
 
 CPU_TEST(Settings_OptionsOverride)
@@ -188,7 +171,7 @@ CPU_TEST(Settings_OptionsOverride)
         settings.addOptions(pyDict);
     }
 
-    SettingsProperties options = settings.getOptions();
+    Settings::Options options = settings.getOptions();
 
     EXPECT_EQ(options.get("mogwai:value", 0), 17);
 
@@ -319,6 +302,33 @@ CPU_TEST(Settings_AttributeAssign)
     EXPECT_EQ(shapes[3].deduplicateVerts, false);
     EXPECT_EQ(shapes[3].verbosity, 5);
     EXPECT_EQ(shapes[3].multiplyEmission, 3);
+}
+
+CPU_TEST(Settings_AttributeFilters)
+{
+    pybind11::list pyList;
+    {
+        pybind11::dict pyDict;
+        pyDict["regex"] = ".*";
+        pyDict["attributes"] = pybind11::dict();
+        pyDict["attributes"]["curves"] = pybind11::dict();
+        pyDict["attributes"]["curves"]["ShadingRate"] = 5.f;
+        pyList.append(pyDict);
+    }
+    {
+        pybind11::dict pyDict;
+        pyDict["regex"] = "/World/Tiger_Fur.*";
+        pyDict["attributes"] = pybind11::dict();
+        pyDict["attributes"]["curves"] = pybind11::dict();
+        pyDict["attributes"]["curves"]["ShadingRate"] = 0.1f;
+        pyList.append(pyDict);
+    }
+
+    Settings settings;
+    settings.addFilteredAttributes(pyList);
+
+    EXPECT_EQ(settings.getAttribute<float>("/World/Tiger_Mane/top", "curves:ShadingRate", 1.f), 5.f);
+    EXPECT_EQ(settings.getAttribute<float>("/World/Tiger_Fur/back", "curves:ShadingRate", 1.f), 0.1f);
 }
 
 CPU_TEST(Settings_UpdatePathsColon)

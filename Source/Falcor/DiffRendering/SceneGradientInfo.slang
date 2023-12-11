@@ -92,11 +92,13 @@ struct SceneGradientInfo : IDifferentiable
 
     // Extra data.
     uint2 pixel;
+    uint pixelID;
 
     [Differentiable]
-    __init(SceneGradientFlag _flag, uint2 _pixel)
+    __init(SceneGradientFlag _flag, uint2 _pixel, uint _pixelID)
     {
         flag = _flag;
         pixel = _pixel;
+        pixelID = _pixelID;
     }
 };

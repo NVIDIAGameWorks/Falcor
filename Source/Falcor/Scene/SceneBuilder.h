@@ -41,7 +41,7 @@
 #include "Utils/Math/AABB.h"
 #include "Utils/Math/Vector.h"
 #include "Utils/Math/Matrix.h"
-#include "Utils/Settings.h"
+#include "Utils/Settings/Settings.h"
 
 #include <pybind11/pytypes.h>
 

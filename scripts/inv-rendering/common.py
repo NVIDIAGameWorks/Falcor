@@ -79,7 +79,7 @@ def create_passes(testbed: falcor.Testbed, max_bounces: int, use_war: bool):
 def render_primal(spp: int, testbed: falcor.Testbed, passes):
     passes["war_diff_pt"].run_backward = 0
     passes["primal_accumulate"].reset()
-    for i in range(spp):
+    for _ in range(spp):
         testbed.frame()
 
     img = testbed.render_graph.get_output("PrimalAccumulatePass.output").to_numpy()
@@ -87,20 +87,28 @@ def render_primal(spp: int, testbed: falcor.Testbed, passes):
     return img
 
 
-def render_grad(spp: int, testbed: falcor.Testbed, passes, dL_dI_buffer, grad_type):
+def render_grad(spp: int, testbed: falcor.Testbed, passes, dL_dI_buffer):
     passes["war_diff_pt"].run_backward = 1
     passes["war_diff_pt"].dL_dI = dL_dI_buffer
 
     scene_gradients = passes["war_diff_pt"].scene_gradients
-    scene_gradients.clear(testbed.device.render_context, grad_type)
+    scene_gradients.clear_all_grads(testbed.device.render_context)
 
     for _ in range(spp):
         testbed.frame()
 
-    scene_gradients.aggregate(testbed.device.render_context, grad_type)
+    scene_gradients.aggregate_all_grads(testbed.device.render_context)
 
-    grad_buffer = scene_gradients.get_grads_buffer(grad_type)
-    grad = torch.tensor([0] * (grad_buffer.size // 4), dtype=torch.float32)
-    grad_buffer.copy_to_torch(grad)
+    result = {}
+    grad_types = scene_gradients.get_grad_types()
+    for type in grad_types:
+        grad_buffer = scene_gradients.get_grads_buffer(type)
+        grad = torch.tensor([0] * (grad_buffer.size // 4), dtype=torch.float32)
+        grad_buffer.copy_to_torch(grad)
+        result[type] = grad
     testbed.device.render_context.wait_for_cuda()
-    return grad / float(spp)
+
+    for type in result:
+        result[type] /= float(spp)
+
+    return result

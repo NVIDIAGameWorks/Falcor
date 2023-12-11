@@ -190,7 +190,9 @@ void BSDFOptimizer::setScene(RenderContext* pRenderContext, const ref<Scene>& pS
         mpViewerPass = ComputePass::create(mpDevice, desc, defines);
     }
 
-    mpSceneGradients = std::make_unique<SceneGradients>(mpDevice, uint2(SerializedMaterialParams::kParamCount, 0), uint2(64, 0));
+    mpSceneGradients = std::make_unique<SceneGradients>(
+        mpDevice, std::vector<SceneGradients::GradConfig>({{GradientType::Material, SerializedMaterialParams::kParamCount, 64}})
+    );
 
     // Prepare initial and reference BSDF parameters for optimization.
     mInitBSDFParams = mpScene->getMaterial(MaterialID(mParams.initMaterialID))->serializeParams();

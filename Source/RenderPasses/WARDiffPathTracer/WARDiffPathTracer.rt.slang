@@ -35,7 +35,8 @@ import Utils.Debug.PixelDebug;
 import DiffRendering.SharedTypes;
 import DiffRendering.DiffSceneIO;
 import DiffRendering.DiffSceneQuery;
-import DiffRendering.DiffDebug;
+import DiffRendering.DiffDebugParams;
+import DiffRendering.InverseOptimizationParams;
 
 import PTUtils;
 import WarpedAreaReparam;
@@ -145,10 +146,11 @@ float3 tracePaths(SceneQueryAD sceneQuery, uint2 pixel)
 void rayGen()
 {
     uint2 pixel = DispatchRaysIndex().xy;
+    uint pixelID = pixel.y * gDiffPTData.params.frameDim.x + pixel.x;
     printSetPixel(pixel);
 
     DiffSceneIO diffSceneIO;
-    SceneQueryAD sceneQuery = SceneQueryAD(diffSceneIO, SceneGradientInfo(SceneGradientFlag.make(GradientMode.Scene), pixel));
+    SceneQueryAD sceneQuery = SceneQueryAD(diffSceneIO, SceneGradientInfo(SceneGradientFlag.make(GradientMode.Scene), pixel, pixelID));
 
     if (kDiffMode == DiffMode::Primal)
     {

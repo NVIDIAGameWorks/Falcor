@@ -53,7 +53,17 @@ namespace Falcor
         bool srgb = mUseSrgb && pMaterial->getTextureSlotInfo(slot).srgb;
 
         // Request texture to be loaded.
-        auto handle = mTextureManager.loadTexture(path, true, srgb);
+        auto handle = mTextureManager.loadTexture(
+            path,
+            true /*mips*/,
+            srgb,
+            ResourceBindFlags::ShaderResource,
+            true /*async*/,
+            Bitmap::ImportFlags::None,
+            nullptr /*search dirs*/,
+            nullptr /*load count*/,
+            pMaterial.get()
+        );
 
         // Store assignment to material for later.
         mTextureAssignments.emplace_back(TextureAssignment{ pMaterial, slot, handle });
@@ -69,5 +79,6 @@ namespace Falcor
             auto pTexture = mTextureManager.getTexture(assignment.handle);
             assignment.pMaterial->setTexture(assignment.textureSlot, pTexture);
         }
+        mTextureAssignments.clear();
     }
 }

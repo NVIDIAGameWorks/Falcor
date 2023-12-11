@@ -91,6 +91,8 @@ public:
         uint64_t resultOffset = 0
     );
 
+    uint64_t getMemoryUsageInBytes() const;
+
 private:
     void allocate(uint32_t elementCount, uint32_t elementSize);
 

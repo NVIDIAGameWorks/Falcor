@@ -38,7 +38,7 @@ import Utils.Math.BitTricks;
  *
  * This sample generator requires shader model 6.0 or above.
  */
-public struct UniformSampleGenerator : ISampleGenerator
+export struct UniformSampleGenerator : ISampleGenerator
 {
     struct Padded
     {

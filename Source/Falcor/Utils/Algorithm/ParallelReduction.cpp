@@ -213,6 +213,14 @@ void ParallelReduction::execute(
     }
 }
 
+uint64_t ParallelReduction::getMemoryUsageInBytes() const
+{
+    uint64_t m = 0;
+    m += mpBuffers[0] ? mpBuffers[0]->getSize() : 0;
+    m += mpBuffers[1] ? mpBuffers[1]->getSize() : 0;
+    return m;
+}
+
 // Explicit template instantiation of the supported types.
 // clang-format off
 template FALCOR_API void ParallelReduction::execute<float4>(RenderContext* pRenderContext, const ref<Texture>& pInput, Type operation, float4* pResult, ref<Buffer> pResultBuffer, uint64_t resultOffset);

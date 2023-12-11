@@ -60,7 +60,10 @@ void testDiffPBRTDiffuse(GPUUnitTestContext& ctx, const BsdfConfig& bsdfConfig)
 
     // Create scene gradients.
     const uint32_t gradDim = 3;
-    std::unique_ptr<SceneGradients> pSceneGradients = std::make_unique<SceneGradients>(ctx.getDevice(), uint2(gradDim), uint2(1));
+    std::unique_ptr<SceneGradients> pSceneGradients = std::make_unique<SceneGradients>(
+        ctx.getDevice(),
+        std::vector<SceneGradients::GradConfig>({{GradientType::Material, gradDim, 1}, {GradientType::MeshNormal, gradDim, 1}})
+    );
 
     // Create program.
     ProgramDesc desc;

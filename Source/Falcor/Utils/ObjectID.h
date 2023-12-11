@@ -46,11 +46,12 @@ namespace Falcor
  * @param TKind Kind of the ID.
  * @param TIntType the underlying numeric type. It is advised that it should be the same for all TKinds in the same enum.
  */
-template<typename TKindEnum, TKindEnum TKind, typename TIntType>
+template<typename TKindEnum, TKindEnum TKind, typename TIntType = uint32_t>
 class ObjectID
 {
 public:
     using IntType = TIntType;
+    using KindEnum = TKindEnum;
     static constexpr TKindEnum kKind = TKind;
     static constexpr IntType kInvalidID = std::numeric_limits<IntType>::max();
 

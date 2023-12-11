@@ -83,9 +83,12 @@ class DiffRenderFunction(torch.autograd.Function):
             testbed,
             passes,
             dL_dI_buffer,
-            falcor.GradientType.Material,
         )
-        grad = material_utils.raw_params_to_dicts(testbed.scene, context["params"]["material_ids"], grad_raw)
+        grad = material_utils.raw_params_to_dicts(
+            testbed.scene,
+            context["params"]["material_ids"],
+            grad_raw[falcor.GradientType.Material],
+        )
 
         return (
             grad[falcor.MaterialType.Standard]["base_color"],

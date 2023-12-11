@@ -105,7 +105,7 @@ namespace Falcor
         }
     }
 
-    Animation::Animation(const std::string& name, NodeID nodeID, double duration)
+    Animation::Animation(std::string_view name, NodeID nodeID, double duration)
         : mName(name)
         , mNodeID(nodeID)
         , mDuration(duration)

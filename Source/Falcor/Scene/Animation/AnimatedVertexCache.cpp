@@ -78,8 +78,6 @@ namespace Falcor
                     keyframeIndices.x = (uint32_t)timeSamples.size() - 1;
                     keyframeIndices.y = 0;
 
-                    // The first keyframe has timeCode >= 1 (see processCurve() in ImporterContext.cpp).
-                    FALCOR_ASSERT(timeSamples.front() >= 1.0);
                     t = (float)(time / timeSamples.front());
                 }
             }

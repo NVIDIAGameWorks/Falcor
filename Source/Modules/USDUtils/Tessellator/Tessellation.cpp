@@ -29,7 +29,7 @@
 #include "Core/Error.h"
 #include "Utils/Logger.h"
 #include "Utils/Math/FNVHash.h"
-#include "IndexedVector.h"
+#include "UsdIndexedVector.h"
 
 #include <opensubdiv/far/topologyDescriptor.h>
 #include <opensubdiv/far/stencilTableFactory.h>
@@ -141,7 +141,7 @@ public:
 
 private:
     TfToken mUVInterp;
-    IndexedVector<GfVec3f, int32_t, GfVec3fHash> mPositionSet;
+    UsdIndexedVector<GfVec3f, int32_t, GfVec3fHash> mPositionSet;
     VtIntArray mIndices;
     VtVec3fArray mPositions;
     VtVec3fArray mNormals;
@@ -411,7 +411,7 @@ UsdMeshData tessellate(
     float const* uvData = (float*)baseMesh.uvs.data();
     TfToken uvInterp = uvData != nullptr ? baseMesh.uvInterp : UsdGeomTokens->none;
 
-    IndexedVector<GfVec2f, Far::Index, GfVec2fHash> indexedUVSet;
+    UsdIndexedVector<GfVec2f, Far::Index, GfVec2fHash> indexedUVSet;
 
     if (baseMesh.uvs.size() > 0 && uvInterp == UsdGeomTokens->faceVarying)
     {

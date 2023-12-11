@@ -4352,6 +4352,7 @@ namespace Falcor
             pScene->setCameraBounds(AABB(minPoint, maxPoint));
             }, "minPoint"_a, "maxPoint"_a);
         scene.def("getGeometryUVTiles", &Scene::getGeometryUVTiles, "geometryID"_a);
+        scene.def_property_readonly("memory_usage", &Scene::getMemoryUsageInBytes);
 
         // Materials
         scene.def_property_readonly(kMaterials.c_str(), &Scene::getMaterials);

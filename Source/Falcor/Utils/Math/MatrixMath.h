@@ -62,6 +62,17 @@ template<typename T, int R, int C>
     return result;
 }
 
+/// Binary * operator
+template<typename T, int R, int C>
+[[nodiscard]] matrix<T, R, C> operator+(const matrix<T, R, C>& lhs, const matrix<T, R, C>& rhs)
+{
+    matrix<T, R, C> result;
+    for (int r = 0; r < R; ++r)
+        for (int c = 0; c < C; ++c)
+            result[r][c] = lhs[r][c] + rhs[r][c];
+    return result;
+}
+
 // ----------------------------------------------------------------------------
 // Multiplication
 // ----------------------------------------------------------------------------

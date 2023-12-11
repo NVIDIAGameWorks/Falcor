@@ -39,9 +39,18 @@ const char kTmpGradsBufferName[] = "tmpGrads";
 const char kAggregateShaderFilename[] = "DiffRendering/AggregateGradients.cs.slang";
 } // namespace
 
-SceneGradients::SceneGradients(ref<Device> pDevice, uint2 gradDim, uint2 hashSize, GradientAggregateMode mode)
-    : mpDevice(pDevice), mGradDim(gradDim), mHashSize(hashSize), mAggregateMode(mode)
+SceneGradients::SceneGradients(ref<Device> pDevice, const std::vector<GradConfig>& gradConfigs, GradientAggregateMode mode)
+    : mpDevice(pDevice), mAggregateMode(mode)
 {
+    // Initialization.
+    mGradInfos.fill({false, 0, 0});
+
+    for (size_t i = 0; i < gradConfigs.size(); i++)
+    {
+        auto type = size_t(gradConfigs[i].type);
+        mGradInfos[type] = {true, gradConfigs[i].dim, gradConfigs[i].hashSize};
+    }
+
     createParameterBlock();
 
     // Create a pass for aggregating gradients.
@@ -66,12 +75,19 @@ void SceneGradients::createParameterBlock()
     auto bindFlags = ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess;
     for (size_t i = 0; i < size_t(GradientType::Count); i++)
     {
-        uint32_t elemCount = std::max(mGradDim[i], 1u);
-        mpGrads[i] =
-            mpDevice->createBuffer(elemCount * sizeof(float), bindFlags | ResourceBindFlags::Shared, MemoryType::DeviceLocal, nullptr);
-
-        uint32_t hashSize = std::max(mHashSize[i], 1u);
-        mpTmpGrads[i] = mpDevice->createBuffer(elemCount * hashSize * sizeof(float), bindFlags, MemoryType::DeviceLocal, nullptr);
+        if (mGradInfos[i].active)
+        {
+            mpGrads[i] = mpDevice->createBuffer(
+                mGradInfos[i].dim * sizeof(float), bindFlags | ResourceBindFlags::Shared, MemoryType::DeviceLocal, nullptr
+            );
+            mpTmpGrads[i] = mpDevice->createBuffer(
+                mGradInfos[i].dim * mGradInfos[i].hashSize * sizeof(float), bindFlags, MemoryType::DeviceLocal, nullptr
+            );
+        }
+        else
+        {
+            mpGrads[i] = mpTmpGrads[i] = nullptr;
+        }
     }
 
     // Bind resources to parameter block.
@@ -79,8 +95,8 @@ void SceneGradients::createParameterBlock()
     auto var = mpSceneGradientsBlock->getRootVar();
     for (size_t i = 0; i < size_t(GradientType::Count); i++)
     {
-        var["gradDim"][i] = mGradDim[i];
-        var["hashSize"][i] = mHashSize[i];
+        var["gradDim"][i] = mGradInfos[i].dim;
+        var["hashSize"][i] = mGradInfos[i].hashSize;
         var[kTmpGradsBufferName][i] = mpTmpGrads[i];
     }
 }
@@ -88,6 +104,8 @@ void SceneGradients::createParameterBlock()
 void SceneGradients::clearGrads(RenderContext* pRenderContext, GradientType _gradType)
 {
     uint32_t gradType = uint32_t(_gradType);
+    if (!mGradInfos[gradType].active)
+        return;
     pRenderContext->clearUAV(mpTmpGrads[gradType]->getUAV().get(), uint4(0));
     pRenderContext->clearUAV(mpGrads[gradType]->getUAV().get(), uint4(0));
 }
@@ -95,18 +113,52 @@ void SceneGradients::clearGrads(RenderContext* pRenderContext, GradientType _gra
 void SceneGradients::aggregateGrads(RenderContext* pRenderContext, GradientType _gradType)
 {
     uint32_t gradType = uint32_t(_gradType);
+    if (!mGradInfos[gradType].active)
+        return;
 
-    uint32_t hashSize = (mAggregateMode == GradientAggregateMode::Direct ? 1 : mHashSize[gradType]);
+    uint32_t hashSize = (mAggregateMode == GradientAggregateMode::Direct ? 1 : mGradInfos[gradType].hashSize);
 
     // Bind resources.
     auto var = mpAggregatePass->getRootVar()["gAggregator"];
-    var["gradDim"] = mGradDim[gradType];
+    var["gradDim"] = mGradInfos[gradType].dim;
     var["hashSize"] = hashSize;
     var[kTmpGradsBufferName] = mpTmpGrads[gradType];
     var[kGradsBufferName] = mpGrads[gradType];
 
     // Dispatch.
-    mpAggregatePass->execute(pRenderContext, uint3(mGradDim[gradType], hashSize, 1));
+    mpAggregatePass->execute(pRenderContext, uint3(mGradInfos[gradType].dim, hashSize, 1));
+}
+
+void SceneGradients::clearAllGrads(RenderContext* pRenderContext)
+{
+    for (size_t i = 0; i < size_t(GradientType::Count); i++)
+        clearGrads(pRenderContext, GradientType(i));
+}
+
+void SceneGradients::aggregateAllGrads(RenderContext* pRenderContext)
+{
+    for (size_t i = 0; i < size_t(GradientType::Count); i++)
+        aggregateGrads(pRenderContext, GradientType(i));
+}
+
+std::vector<GradientType> SceneGradients::getActiveGradTypes() const
+{
+    std::vector<GradientType> activeGradTypes;
+    for (size_t i = 0; i < size_t(GradientType::Count); i++)
+        if (mGradInfos[i].active)
+            activeGradTypes.push_back(GradientType(i));
+    return activeGradTypes;
+}
+
+inline static ref<SceneGradients> createPython(ref<Device> device, const pybind11::list& gradConfigList)
+{
+    std::vector<SceneGradients::GradConfig> gradConfigs;
+    for (const auto& gradConfig : gradConfigList)
+    {
+        auto config = gradConfig.cast<SceneGradients::GradConfig>();
+        gradConfigs.push_back(config);
+    }
+    return SceneGradients::create(device, gradConfigs);
 }
 
 inline void aggregate(SceneGradients& self, RenderContext* pRenderContext, GradientType gradType)
@@ -117,16 +169,39 @@ inline void aggregate(SceneGradients& self, RenderContext* pRenderContext, Gradi
 #endif
 }
 
+inline void aggregateAll(SceneGradients& self, RenderContext* pRenderContext)
+{
+    self.aggregateAllGrads(pRenderContext);
+#if FALCOR_HAS_CUDA
+    pRenderContext->waitForFalcor();
+#endif
+}
+
+inline pybind11::list getGradTypes(SceneGradients& self)
+{
+    pybind11::list gradTypes;
+    for (const auto& gradType : self.getActiveGradTypes())
+        gradTypes.append(gradType);
+    return gradTypes;
+}
+
 FALCOR_SCRIPT_BINDING(SceneGradients)
 {
     using namespace pybind11::literals;
 
     pybind11::falcor_enum<GradientType>(m, "GradientType");
 
+    pybind11::class_<SceneGradients::GradConfig> gc(m, "GradConfig");
+    gc.def(pybind11::init<>());
+    gc.def(pybind11::init<GradientType, uint32_t, uint32_t>(), "grad_type"_a, "dim"_a, "hash_size"_a);
+
     pybind11::class_<SceneGradients, ref<SceneGradients>> sg(m, "SceneGradients");
-    sg.def_static("create", &SceneGradients::create, "device"_a, "grad_dim"_a, "hash_size"_a);
-    sg.def("clear", &SceneGradients::clearGrads, "render_context"_a, "grad_type"_a);
+    sg.def_static("create", createPython, "device"_a, "grad_config_list"_a);
+    sg.def("clear_grads", &SceneGradients::clearGrads, "render_context"_a, "grad_type"_a);
+    sg.def("aggregate_grads", aggregate, "render_context"_a, "grad_type"_a);
+    sg.def("clear_all_grads", &SceneGradients::clearAllGrads, "render_context"_a);
+    sg.def("aggregate_all_grads", aggregateAll, "render_context"_a);
+    sg.def("get_grad_types", getGradTypes);
     sg.def("get_grads_buffer", &SceneGradients::getGradsBuffer, "grad_type"_a);
-    sg.def("aggregate", aggregate, "render_context"_a, "grad_type"_a);
 }
 } // namespace Falcor

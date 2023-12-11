@@ -30,6 +30,7 @@
 #include "Core/API/Texture.h"
 #include "Core/Platform/MemoryMappedFile.h"
 #include "Utils/Math/ScalarMath.h"
+#include "Utils/Math/Float16.h"
 #include "Utils/Logger.h"
 #include "Utils/StringUtils.h"
 
@@ -190,12 +191,53 @@ static FIBITMAP* convertToRGBAF(FIBITMAP* pDib)
     return pNew;
 }
 
+/**
+ * Converts 96/128bpp to 64bpp RGBA floating-point image.
+ * Note that FreeImage doesn't support 16-bit float formats.
+ */
+static FIBITMAP* convertToRGBA16Float(FIBITMAP* pDib)
+{
+    const auto type = FreeImage_GetImageType(pDib);
+    const uint32_t bpp = FreeImage_GetBPP(pDib);
+    FALCOR_CHECK(type == FIT_RGBF || type == FIT_RGBAF, "Image type must be RGB/RGBA with 32-bit float per channel.");
+    FALCOR_CHECK(bpp == 96 || bpp == 128, "Image must be 96 or 128bpp.");
+
+    const uint32_t width = FreeImage_GetWidth(pDib);
+    const uint32_t height = FreeImage_GetHeight(pDib);
+
+    auto pNew = FreeImage_AllocateT(FIT_RGBA16, width, height);
+    FreeImage_CloneMetadata(pNew, pDib);
+
+    const uint32_t src_pitch = FreeImage_GetPitch(pDib);
+    const uint32_t dst_pitch = FreeImage_GetPitch(pNew);
+
+    const BYTE* src_bits = (BYTE*)FreeImage_GetBits(pDib);
+    BYTE* dst_bits = (BYTE*)FreeImage_GetBits(pNew);
+
+    for (uint32_t y = 0; y < height; y++)
+    {
+        const FIRGBAF* src_pixel = (FIRGBAF*)src_bits;
+        FIRGBA16* dst_pixel = (tagFIRGBA16*)dst_bits;
+
+        for (uint32_t x = 0; x < width; x++)
+        {
+            // Convert pixels to float16_t directly, while adding a "dummy" alpha of 1.0 if source format doesn't have alpha.
+            dst_pixel[x].red = float16_t(src_pixel[x].red).toBits();
+            dst_pixel[x].green = float16_t(src_pixel[x].green).toBits();
+            dst_pixel[x].blue = float16_t(src_pixel[x].blue).toBits();
+            dst_pixel[x].alpha = float16_t(type == FIT_RGBAF ? src_pixel[x].alpha : 1.0f).toBits();
+        }
+        src_bits += src_pitch;
+        dst_bits += dst_pitch;
+    }
+    return pNew;
+}
 Bitmap::UniqueConstPtr Bitmap::create(uint32_t width, uint32_t height, ResourceFormat format, const uint8_t* pData)
 {
     return Bitmap::UniqueConstPtr(new Bitmap(width, height, format, pData));
 }
 
-Bitmap::UniqueConstPtr Bitmap::createFromFile(const std::filesystem::path& path, bool isTopDown)
+Bitmap::UniqueConstPtr Bitmap::createFromFile(const std::filesystem::path& path, bool isTopDown, ImportFlags importFlags)
 {
     if (!std::filesystem::exists(path))
     {
@@ -268,6 +310,7 @@ Bitmap::UniqueConstPtr Bitmap::createFromFile(const std::filesystem::path& path,
         }
     }
 
+    // Identify resource format based on bit depth.
     ResourceFormat format = ResourceFormat::Unknown;
     uint32_t bpp = FreeImage_GetBPP(pDib);
     switch (bpp)
@@ -303,6 +346,14 @@ Bitmap::UniqueConstPtr Bitmap::createFromFile(const std::filesystem::path& path,
     {
         bpp = 32;
         auto pNew = FreeImage_ConvertTo32Bits(pDib);
+        FreeImage_Unload(pDib);
+        pDib = pNew;
+    }
+    else if ((bpp == 96 || bpp == 128) && is_set(importFlags, ImportFlags::ConvertToFloat16))
+    {
+        bpp = 64;
+        format = ResourceFormat::RGBA16Float;
+        auto pNew = convertToRGBA16Float(pDib);
         FreeImage_Unload(pDib);
         pDib = pNew;
     }

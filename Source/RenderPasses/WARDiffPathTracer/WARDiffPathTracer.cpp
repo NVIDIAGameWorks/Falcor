@@ -624,6 +624,7 @@ void WARDiffPathTracer::tracePass(RenderContext* pRenderContext, const RenderDat
     var["gDiffPTData"] = mpDiffPTBlock;
 
     var["gDiffDebug"].setBlob(mDiffDebugParams);
+    var["gInvOpt"].setBlob(mInvOptParams);
     var["dLdI"] = mpdLdI;
     if (mpSceneGradients)
         mpSceneGradients->bindShaderData(var["gSceneGradients"]);
@@ -686,6 +687,14 @@ DefineList WARDiffPathTracer::StaticParams::getDefines(const WARDiffPathTracer& 
     return defines;
 }
 
+void WARDiffPathTracer::setDiffDebugParams(DiffVariableType varType, uint2 id, uint32_t offset, float4 grad)
+{
+    mDiffDebugParams.varType = varType;
+    mDiffDebugParams.id = id;
+    mDiffDebugParams.offset = offset;
+    mDiffDebugParams.grad = grad;
+}
+
 void WARDiffPathTracer::registerBindings(pybind11::module& m)
 {
     if (!pybind11::hasattr(m, "DiffMode"))
@@ -701,12 +710,7 @@ void WARDiffPathTracer::registerBindings(pybind11::module& m)
     pass.def_property("scene_gradients", &WARDiffPathTracer::getSceneGradients, &WARDiffPathTracer::setSceneGradients);
     pass.def_property("run_backward", &WARDiffPathTracer::getRunBackward, &WARDiffPathTracer::setRunBackward);
     pass.def_property("dL_dI", &WARDiffPathTracer::getdLdI, &WARDiffPathTracer::setdLdI);
-}
 
-void WARDiffPathTracer::setDiffDebugParams(DiffVariableType varType, uint2 id, uint32_t offset, float4 grad)
-{
-    mDiffDebugParams.varType = varType;
-    mDiffDebugParams.id = id;
-    mDiffDebugParams.offset = offset;
-    mDiffDebugParams.grad = grad;
+    auto setMeshToOptimize = [&](WARDiffPathTracer& self, uint32_t meshID) { self.setInvOptParams(meshID); };
+    pass.def("set_mesh_to_optimize", setMeshToOptimize);
 }

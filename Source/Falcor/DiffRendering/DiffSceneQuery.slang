@@ -57,8 +57,9 @@ struct IntersectionAD : IDifferentiable
     GeometryInstanceID instanceID; // Instance ID of the mesh instance that contains the hit triangle.
     uint triangleID;               // Triangle ID of the hit triangle.
     float3 barycentrics;           // Barycentrics of the hit point
-    float3 normalW;                // World normal of the hit point
     float3 posW;                   // World position of the hit point
+    float3 normalW;                // World normal of the hit point
+    float3 tangentW;               // World tangent of the hit point
     float hitT;                    // Distance from ray origin to hit point
 
     [Differentiable]
@@ -68,8 +69,9 @@ struct IntersectionAD : IDifferentiable
         this.instanceID = GeometryInstanceID(0, 0);
         this.triangleID = 0;
         this.barycentrics = float3(0.f);
-        this.normalW = float3(0.f);
         this.posW = float3(0.f);
+        this.normalW = float3(0.f);
+        this.tangentW = float3(0.f);
         this.hitT = 0.f;
     }
 };
@@ -158,23 +160,21 @@ struct SceneQueryAD : IDifferentiable
             isect.hitT = length(isect.posW - ray.origin);
         }
 
-        // Note: We want to pass to vertex positions through shading normals. It hasn't been implemented yet.
-        // TODO: Handle shading (vertex) normals correctly.
-        isect.normalW = computeShadingNormal(isect.instanceID, isect.triangleID, isect.barycentrics);
+        computeShadingFrame(isect.instanceID, isect.triangleID, isect.barycentrics, isect.normalW, isect.tangentW);
 
         return isect;
     }
 
     [Differentiable]
     [PreferRecompute]
-    float3 computeShadingNormal(GeometryInstanceID instanceID, uint primitiveIndex, float3 barycentrics)
+    void computeShadingFrame(GeometryInstanceID instanceID, uint primitiveIndex, float3 barycentrics, out float3 normal, out float3 tangent)
     {
-        float3 n[3];
+        float3 n[3], t[3];
         diffSceneIO.loadVertexNormalsW(gradInfo, instanceID, primitiveIndex, n);
+        diffSceneIO.loadVertexTangentsW(gradInfo, instanceID, primitiveIndex, t);
 
-        float3 normal = n[0] * barycentrics.x + n[1] * barycentrics.y + n[2] * barycentrics.z;
-
-        return normal;
+        normal = n[0] * barycentrics.x + n[1] * barycentrics.y + n[2] * barycentrics.z;
+        tangent = t[0] * barycentrics.x + t[1] * barycentrics.y + t[2] * barycentrics.z;
     }
 
     // Compute vertex position in world space using fixed barycentrics.

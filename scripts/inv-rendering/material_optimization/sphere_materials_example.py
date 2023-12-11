@@ -53,13 +53,16 @@ class SphereMaterialsExample:
             self.width / self.height,
         )
 
-        # Set up scene manager and gradients.
+        # Set up scene gradients.
         scene_gradients = falcor.SceneGradients.create(
             device=device,
-            grad_dim=falcor.uint2(
-                self.material_count * falcor.Material.PARAM_COUNT, 0
-            ),
-            hash_size=falcor.uint2(256, 1),
+            grad_config_list=[
+                falcor.GradConfig(
+                    grad_type=falcor.GradientType.Material,
+                    dim=self.material_count * falcor.Material.PARAM_COUNT,
+                    hash_size=256,
+                ),
+            ],
         )
         self.passes["war_diff_pt"].scene_gradients = scene_gradients
 
