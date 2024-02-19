@@ -1406,7 +1406,7 @@ DefineList PathTracer::StaticParams::getDefines(const PathTracer& owner) const
     defines.add("USE_SER", useSER ? "1" : "0");
     defines.add("COLOR_FORMAT", std::to_string((uint32_t)colorFormat));
     defines.add("MIS_HEURISTIC", std::to_string((uint32_t)misHeuristic));
-    defines.add("MIS_POWER_EXPONENT", std::to_string(misPowerExponent));
+    defines.add("MIS_POWER_EXPONENT", fmt::format("{:f}", misPowerExponent));
 
     // Sampling utilities configuration.
     FALCOR_ASSERT(owner.mpSampleGenerator);
