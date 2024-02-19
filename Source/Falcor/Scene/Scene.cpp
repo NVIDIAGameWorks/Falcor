@@ -288,7 +288,7 @@ namespace Falcor
         defines.add(getSceneSDFGridDefines());
 
         // The following defines may change at runtime.
-        defines.add("SCENE_DIFFUSE_ALBEDO_MULTIPLIER", std::to_string(mRenderSettings.diffuseAlbedoMultiplier));
+        defines.add("SCENE_DIFFUSE_ALBEDO_MULTIPLIER", fmt::format("{:f}", mRenderSettings.diffuseAlbedoMultiplier));
         defines.add("SCENE_GEOMETRY_TYPES", std::to_string((uint32_t)mGeometryTypes));
 
         defines.add(mpMaterials->getDefines());
