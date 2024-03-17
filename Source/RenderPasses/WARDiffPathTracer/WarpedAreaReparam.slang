@@ -61,11 +61,15 @@ float computeHarmonicWeight(
     float boundaryTerm = no_diff computeBoundaryTerm(isect.normalW, auxDirection);
 
     float sy = max(1.f - auxSampleY, 1e-6f);
-    float invVMFDensity = 1.f / ((1.f - sy) * exp(-2.f * kappa) + sy);
+    // see WAS paper Algorithm 2, computation of weight_i
+    /* float invVMFDensity = 1.f / ((1.f - sy) * exp(-2.f * kappa) + sy);
 
     float wDenom = invVMFDensity - 1.f + boundaryTerm;
     float wDenomRcp = select(wDenom > 1e-4f, 1.f / wDenom, 0.f);
-    float w = wDenomRcp * wDenomRcp * wDenomRcp * invVMFDensity;
+    float w = wDenomRcp * wDenomRcp * wDenomRcp * invVMFDensity; */
+
+    float VMFDensity = (1.f - sy) * exp(-2.f * kappa) + sy;
+    float w = 1.f / (VMFDensity - 1.f + boundaryTerm) / VMFDensity;
     return w;
 }
 
@@ -80,6 +84,7 @@ DifferentialPair<float> fwd_computeHarmonicWeight(
     DifferentialPair<float3> direction
 )
 {
+    // TODO: how to change accordingly in the fwd pass
     float boundaryTerm = no_diff computeBoundaryTerm(isect.normalW, auxDirection);
 
     float sy = max(1.f - auxSampleY, 1e-6f);
