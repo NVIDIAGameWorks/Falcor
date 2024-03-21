@@ -48,7 +48,7 @@ float computeBoundaryTerm(float3 normalW, float3 direction)
 
 [Differentiable]
 [PreferRecompute]
-[ForwardDerivative(fwd_computeHarmonicWeight)]
+// [ForwardDerivative(fwd_computeHarmonicWeight)]
 float computeHarmonicWeight(
     no_diff IntersectionAD isect,
     no_diff float3 origin,
@@ -58,19 +58,36 @@ float computeHarmonicWeight(
     float3 direction
 )
 {
-    float boundaryTerm = no_diff computeBoundaryTerm(isect.normalW, auxDirection);
+    // find boundary Term B; no_diff
+    float B = no_diff computeBoundaryTerm(isect.normalW, auxDirection);
 
-    float sy = max(1.f - auxSampleY, 1e-6f);
-    // see WAS paper Algorithm 2, computation of weight_i
-    /* float invVMFDensity = 1.f / ((1.f - sy) * exp(-2.f * kappa) + sy);
+    // Computation of weight_i, see WAS paper Algorithm 2,
+    /// Don't know why sampleVonMisesFisher() maps uv.v to 1-uv.v, but need consistency
+    float sy = 1.f - auxSampleY;
 
-    float wDenom = invVMFDensity - 1.f + boundaryTerm;
-    float wDenomRcp = select(wDenom > 1e-4f, 1.f / wDenom, 0.f);
-    float w = wDenomRcp * wDenomRcp * wDenomRcp * invVMFDensity; */
+    /* // full derivation
+    // NUMERICAL ISSUE: kappa is very large, must avoid exp(kappa) or similar expression
+    //    see 2. Evaluations, https://www.mitsuba-renderer.org/~wenzel/files/vmf.pdf
+    /// step 0: compute dot(w, w') = cos(theta) locally = mu^T * x in Wikipedia notation
+    float cosTheta = 1.f + log(exp(-2.f * kappa) * (1.f - sy) + sy) / kappa;
+    /// step 1: compute exp(kappa * [cos(theta) - 1]): move a exp(kappa) from normC to the exp term
+    float expTerm = exp(kappa * (1.f - cosTheta));
+    /// step 2: compute pdf(w_i)
+    /// see Definition, https://en.wikipedia.org/w/index.php?title=Von_Mises%E2%80%93Fisher_distribution
+    /// observe that the exp() part in pdf is exactly 1/expTerm computed above
+    float normC = kappa * M_1_2PI / (1.f - exp(-2.f * kappa));
+    float pdfVMFinv = expTerm / normC;
+    /// step 3: compute denominator exp(kappa - kappa * cos(theta)) - 1 + B
+    float denom = expTerm - 1.f + B; */
 
-    float VMFDensity = (1.f - sy) * exp(-2.f * kappa) + sy;
-    float w = 1.f / (VMFDensity - 1.f + boundaryTerm) / VMFDensity;
-    return w;
+    // concise version
+    /// key is expand cosTheta in the expTerm. Have a lot to cancel.
+    float expTerm = (1.f - sy) * exp(-2.f * kappa) + sy;
+    float pdfVMFinv =  M_2PI  * (1.f - exp(-2.f * kappa)) * expTerm / kappa;
+    float denom = expTerm - 1.f + B;
+
+    // w = 1 / denom / pdf
+    return pdfVMFinv / denom;
 }
 
 [Differentiable]
