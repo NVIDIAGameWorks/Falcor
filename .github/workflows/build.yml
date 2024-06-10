@@ -5,6 +5,7 @@ on:
     branches: ["master"]
   pull_request:
     branches: ["master"]
+  workflow_dispatch:
 
 jobs:
   windows-vs2022:
@@ -25,7 +26,6 @@ jobs:
         with:
           arch: x64
           sdk: 10.0.19041.0
-          toolset: 14.30
       - name: Configure
         run: setup_vs2022.bat
         shell: cmd
@@ -53,7 +53,6 @@ jobs:
         with:
           arch: x64
           sdk: 10.0.19041.0
-          toolset: 14.30
       - name: Configure
         run: setup.bat
         shell: cmd
