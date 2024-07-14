@@ -86,7 +86,10 @@ OptixDenoiser_::OptixDenoiser_(ref<Device> pDevice, const Properties& props) : R
         else if (key == kBlend)
             mDenoiser.params.blendFactor = value;
         else if (key == kDenoiseAlpha)
-            mDenoiser.params.denoiseAlpha = (value ? 1u : 0u);
+            mDenoiser.options.denoiseAlpha =
+                (value ?
+                    OptixDenoiserAlphaMode::OPTIX_DENOISER_ALPHA_MODE_DENOISE :
+                    OptixDenoiserAlphaMode::OPTIX_DENOISER_ALPHA_MODE_COPY);
         else
             logWarning("Unknown property '{}' in a OptixDenoiser properties.", key);
     }
@@ -105,7 +108,7 @@ Properties OptixDenoiser_::getProperties() const
     props[kEnabled] = mEnabled;
     props[kBlend] = mDenoiser.params.blendFactor;
     props[kModel] = mDenoiser.modelKind;
-    props[kDenoiseAlpha] = bool(mDenoiser.params.denoiseAlpha > 0);
+    props[kDenoiseAlpha] = bool(mDenoiser.options.denoiseAlpha > 0);
 
     return props;
 }
@@ -439,10 +442,12 @@ void OptixDenoiser_::renderUI(Gui::Widgets& widget)
         }
 
         {
-            bool denoiseAlpha = mDenoiser.params.denoiseAlpha != 0;
+            bool denoiseAlpha = mDenoiser.options.denoiseAlpha == OptixDenoiserAlphaMode::OPTIX_DENOISER_ALPHA_MODE_DENOISE;
             if (widget.checkbox("Denoise Alpha?", denoiseAlpha))
             {
-                mDenoiser.params.denoiseAlpha = denoiseAlpha ? 1u : 0u;
+                mDenoiser.options.denoiseAlpha = (denoiseAlpha ?
+                    OptixDenoiserAlphaMode::OPTIX_DENOISER_ALPHA_MODE_DENOISE :
+                    OptixDenoiserAlphaMode::OPTIX_DENOISER_ALPHA_MODE_COPY);
             }
             widget.tooltip("Denoise the alpha channel, not just RGB.");
         }
