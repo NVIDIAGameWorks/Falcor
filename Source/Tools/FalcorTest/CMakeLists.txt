@@ -33,6 +33,8 @@ target_sources(FalcorTest PRIVATE
     Tests/Core/RootBufferStructTests.cs.slang
     Tests/Core/RootBufferTests.cpp
     Tests/Core/RootBufferTests.cs.slang
+    Tests/Core/TextureArrays.cpp
+    Tests/Core/TextureArrays.cs.slang
     Tests/Core/TextureLoadTests.cs.slang
     Tests/Core/TextureTests.cpp
     Tests/Core/TextureTests.cs.slang
@@ -74,6 +76,8 @@ target_sources(FalcorTest PRIVATE
     Tests/Scene/Material/HairChiang16Tests.cs.slang
     Tests/Scene/Material/MERLFileTests.cpp
 
+    Tests/Slang/Atomics.cpp
+    Tests/Slang/Atomics.cs.slang
     Tests/Slang/CastFloat16.cpp
     Tests/Slang/CastFloat16.cs.slang
     Tests/Slang/Float16Tests.cpp
@@ -99,6 +103,8 @@ target_sources(FalcorTest PRIVATE
     Tests/Slang/ShaderStringUtil.slang
     Tests/Slang/SlangExtension.cpp
     Tests/Slang/SlangExtension.cs.slang
+    Tests/Slang/SlangGenerics.cpp
+    Tests/Slang/SlangGenerics.cs.slang
     Tests/Slang/SlangInheritance.cpp
     Tests/Slang/SlangInheritance.cs.slang
     Tests/Slang/SlangMutatingTests.cpp
@@ -163,6 +169,8 @@ target_sources(FalcorTest PRIVATE
     Tests/Utils/QuaternionTests.cpp
     Tests/Utils/RectangleTests.cpp
     Tests/Utils/SettingsTests.cpp
+    Tests/Utils/SplitBufferTests.cpp
+    Tests/Utils/SplitBufferTests.cs.slang
     Tests/Utils/StringUtilsTests.cpp
     Tests/Utils/TextureAnalyzerTests.cpp
     Tests/Utils/UnionFindTests.cpp

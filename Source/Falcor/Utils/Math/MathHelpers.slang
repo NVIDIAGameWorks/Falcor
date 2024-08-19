@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -719,6 +719,7 @@ void orthogonalizeVectors(const float3 v1, inout float3 v2)
  * @param[in] angle Angle in radians.
  * @return Transformed vector.
  */
+[BackwardDifferentiable]
 float3 rotate_x(const float3 v, const float angle)
 {
     float c, s;
@@ -733,6 +734,7 @@ float3 rotate_x(const float3 v, const float angle)
  * @param[in] angle Angle in radians.
  * @return Transformed vector.
  */
+[BackwardDifferentiable]
 float3 rotate_y(const float3 v, const float angle)
 {
     float c, s;
@@ -747,6 +749,7 @@ float3 rotate_y(const float3 v, const float angle)
  * @param[in] angle Angle in radians.
  * @return Transformed vector.
  */
+[BackwardDifferentiable]
 float3 rotate_z(const float3 v, const float angle)
 {
     float c, s;

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -55,7 +55,7 @@ struct SpecularMicrofacetBRDF : IBSDF, IDifferentiable
     bool hasLobe(LobeType lobeType) { return (activeLobes & (uint)lobeType) != 0; }
 
     [Differentiable]
-    float3 eval<S : ISampleGenerator>(const float3 wi, const float3 wo, inout S sg)
+    float3 eval<S : ISampleGenerator>(const float3 wi, const float3 wo, inout S sg, BSDFContext bc)
     {
         if (min(wi.z, wo.z) < kMinCosTheta)
             return float3(0.f);
@@ -82,7 +82,15 @@ struct SpecularMicrofacetBRDF : IBSDF, IDifferentiable
         return F * D * G * 0.25f / wi.z;
     }
 
-    bool sample<S : ISampleGenerator>(const float3 wi, out float3 wo, out float pdf, out float3 weight, out uint lobeType, inout S sg)
+    bool sample<S : ISampleGenerator>(
+        const float3 wi,
+        out float3 wo,
+        out float pdf,
+        out float3 weight,
+        out uint lobeType,
+        inout S sg,
+        BSDFContext bc
+    )
     {
         // Default initialization to avoid divergence at returns.
         wo = {};
@@ -151,7 +159,7 @@ struct SpecularMicrofacetBRDF : IBSDF, IDifferentiable
         return true;
     }
 
-    float evalPdf(const float3 wi, const float3 wo)
+    float evalPdf(const float3 wi, const float3 wo, BSDFContext bc)
     {
         if (min(wi.z, wo.z) < kMinCosTheta)
             return 0.f;
@@ -182,6 +190,8 @@ struct SpecularMicrofacetBRDF : IBSDF, IDifferentiable
         return AlbedoContributions(r, 1.0f - r, 0.0f, 0.0f);
     }
 
+    float3 getIorAsReflectance() { return albedo; }
+
     RoughnessInformation getRoughnessInformation(const float3 wi)
     {
         RoughnessInformation r;
@@ -203,7 +213,7 @@ struct SpecularMicrofacetBSDF : IBSDF, IDifferentiable
     bool hasLobe(LobeType lobeType) { return (activeLobes & (uint)lobeType) != 0; }
 
     [Differentiable]
-    float3 eval<S : ISampleGenerator>(const float3 wi, const float3 wo, inout S sg)
+    float3 eval<S : ISampleGenerator>(const float3 wi, const float3 wo, inout S sg, BSDFContext bc)
     {
         if (min(wi.z, abs(wo.z)) < kMinCosTheta)
             return float3(0.f);
@@ -247,7 +257,15 @@ struct SpecularMicrofacetBSDF : IBSDF, IDifferentiable
         }
     }
 
-    bool sample<S : ISampleGenerator>(const float3 wi, out float3 wo, out float pdf, out float3 weight, out uint lobeType, inout S sg)
+    bool sample<S : ISampleGenerator>(
+        const float3 wi,
+        out float3 wo,
+        out float pdf,
+        out float3 weight,
+        out uint lobeType,
+        inout S sg,
+        BSDFContext bc
+    )
     {
         // Default initialization to avoid divergence at returns.
         wo = {};
@@ -379,7 +397,7 @@ struct SpecularMicrofacetBSDF : IBSDF, IDifferentiable
         return true;
     }
 
-    float evalPdf(const float3 wi, const float3 wo)
+    float evalPdf(const float3 wi, const float3 wo, BSDFContext bc)
     {
         if (min(wi.z, abs(wo.z)) < kMinCosTheta)
             return 0.f;
@@ -436,6 +454,12 @@ struct SpecularMicrofacetBSDF : IBSDF, IDifferentiable
         float3 r = evalFresnelDielectric(eta, wi.z);
         // The energy needs to go somewhere. This is a transmission-only BSDF --> put it into AT
         return AlbedoContributions(0.0, 0.0, 1.0f - r, r);
+    }
+
+    float3 getIorAsReflectance()
+    {
+        const float rsqrt = (1.f - eta) / (1.f + eta);
+        return float3(rsqrt * rsqrt);
     }
 
     RoughnessInformation getRoughnessInformation(const float3 wi)

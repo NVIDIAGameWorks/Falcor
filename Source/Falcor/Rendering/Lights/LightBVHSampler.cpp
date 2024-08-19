@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -33,19 +33,31 @@
 
 namespace Falcor
 {
-    bool LightBVHSampler::update(RenderContext* pRenderContext)
+    bool LightBVHSampler::update(RenderContext* pRenderContext, ref<ILightCollection> pLightCollection)
     {
         FALCOR_PROFILE(pRenderContext, "LightBVHSampler::update");
 
         bool samplerChanged = false;
         bool needsRefit = false;
 
-        // Check if light collection has changed.
-        if (is_set(mpScene->getUpdates(), Scene::UpdateFlags::LightCollectionChanged))
+        if (mpLightCollection != pLightCollection)
         {
-            if (mOptions.buildOptions.allowRefitting && !mNeedsRebuild) needsRefit = true;
+            setLightCollection(std::move(pLightCollection));
+            mNeedsRebuild = true;
+            mpBVH = std::make_unique<LightBVH>(mpDevice, mpLightCollection);
+        }
+
+        // Check if light collection has changed.
+        if (mLightCollectionUpdateFlags == ILightCollection::UpdateFlags::LayoutChanged)
+        {
+            mNeedsRebuild = true;
+        }
+        else if (mLightCollectionUpdateFlags == ILightCollection::UpdateFlags::MatrixChanged)
+        {
+            if (mOptions.buildOptions.allowRefitting) needsRefit = true;
             else mNeedsRebuild = true;
         }
+        mLightCollectionUpdateFlags = ILightCollection::UpdateFlags::None;
 
         // Rebuild BVH if it's marked as dirty.
         if (mNeedsRebuild)
@@ -137,12 +149,12 @@ namespace Falcor
         }
     }
 
-    LightBVHSampler::LightBVHSampler(RenderContext* pRenderContext, ref<Scene> pScene, const Options& options)
-        : EmissiveLightSampler(EmissiveLightSamplerType::LightBVH, pScene)
+    LightBVHSampler::LightBVHSampler(RenderContext* pRenderContext, ref<ILightCollection> pLightCollection, const Options& options)
+        : EmissiveLightSampler(EmissiveLightSamplerType::LightBVH, std::move(pLightCollection))
         , mOptions(options)
     {
         // Create the BVH and builder.
         mpBVHBuilder = std::make_unique<LightBVHBuilder>(mOptions.buildOptions);
-        mpBVH = std::make_unique<LightBVH>(pScene->getDevice(), pScene->getLightCollection(pRenderContext));
+        mpBVH = std::make_unique<LightBVH>(mpDevice, mpLightCollection);
     }
 }

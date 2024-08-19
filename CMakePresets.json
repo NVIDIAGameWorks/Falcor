@@ -69,15 +69,12 @@
             "hidden": true,
             "inherits": "windows-base",
             "generator": "Ninja Multi-Config",
-            "environment": {
-                "VCToolsVersion": "14.30"
-            },
             "architecture": {
                 "value": "x64",
                 "strategy": "external"
             },
             "toolset": {
-                "value": "host=x86,version=14.3",
+                "value": "host=x86,v143",
                 "strategy": "external"
             },
             "cacheVariables": {

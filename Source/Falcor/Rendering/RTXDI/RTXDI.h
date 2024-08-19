@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -219,7 +219,7 @@ namespace Falcor
             \param[in] pScene Scene.
             \param[in] options Configuration options.
         */
-        RTXDI(const ref<Scene>& pScene, const Options& options = Options());
+        RTXDI(ref<IScene> pScene, const Options& options = Options());
 
         /** Set the configuration options.
             \param[in] options Configuration options.
@@ -273,11 +273,15 @@ namespace Falcor
         PixelDebug& getPixelDebug() { return *mpPixelDebug; }
 
     private:
-        ref<Scene>                          mpScene;                ///< Scene (set on initialization).
+        ref<IScene>                         mpScene;                ///< Scene (set on initialization).
         ref<Device>                         mpDevice;               ///< GPU device.
         Options                             mOptions;               ///< Configuration options.
 
         std::unique_ptr<PixelDebug>         mpPixelDebug;           ///< Pixel debug component.
+
+        sigs::Connection                    mUpdateFlagsConnection; ///< Connection to the UpdateFlags signal.
+        /// IScene::UpdateFlags accumulated since last `beginFrame()`
+        IScene::UpdateFlags                 mUpdateFlags = IScene::UpdateFlags::None;
 
         // If the SDK is not installed, we leave out most of the implementation.
 

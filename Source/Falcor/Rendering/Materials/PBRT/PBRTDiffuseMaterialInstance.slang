@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -37,12 +37,12 @@ struct PBRTDiffuseBSDF : IBSDF, IDifferentiable
     float3 albedo;
 
     [Differentiable]
-    float3 eval<S : ISampleGenerator>(const float3 wiLocal, const float3 woLocal, inout S sg)
+    float3 eval<S : ISampleGenerator>(const float3 wiLocal, const float3 woLocal, inout S sg, BSDFContext bc)
     {
         return albedo * max(woLocal.z, 0.0f) * M_1_PI;
     }
 
-    bool sample<S : ISampleGenerator>(float3 wiLocal, out float3 wo, out float pdf, out float3 weight, out uint lobeType, inout S sg)
+    bool sample<S : ISampleGenerator>(float3 wiLocal, out float3 wo, out float pdf, out float3 weight, out uint lobeType, inout S sg, BSDFContext bc)
     {
         wo = sample_cosine_hemisphere_concentric(sampleNext2D(sg), pdf);
         weight = albedo;
@@ -51,7 +51,7 @@ struct PBRTDiffuseBSDF : IBSDF, IDifferentiable
         return true;
     }
 
-    float evalPdf(const float3 wiLocal, const float3 woLocal)
+    float evalPdf(const float3 wiLocal, const float3 woLocal, BSDFContext bc)
     {
         return max(woLocal.z, 0.0f) * M_1_PI;
     }
@@ -59,6 +59,11 @@ struct PBRTDiffuseBSDF : IBSDF, IDifferentiable
     AlbedoContributions evalAlbedo(const float3 wi, const LobeType lobetype)
     {
         return AlbedoContributions(albedo, 1.0f - albedo, 0.0f, 0.0f);
+    }
+
+    float3 getIorAsReflectance()
+    {
+        return float3(1.f);
     }
 
     RoughnessInformation getRoughnessInformation(const float3 wi)
@@ -81,7 +86,7 @@ struct PBRTDiffuseMaterialInstance : MaterialInstanceBase, IMaterialInstance
 
         if (!isValidHemisphereReflection(sd, sf, wiLocal, woLocal, wo)) return float3(0.f);
 
-        return bsdf.eval(wiLocal, woLocal, sg);
+        return bsdf.eval(wiLocal, woLocal, sg, BSDFContext());
     }
 
     [Differentiable]
@@ -96,7 +101,7 @@ struct PBRTDiffuseMaterialInstance : MaterialInstanceBase, IMaterialInstance
         float3 albedo = diffData.read<3>(offset);
         PBRTDiffuseBSDF bsdfAD = { albedo };
 
-        return bsdfAD.eval(wiLocal, woLocal, sg);
+        return bsdfAD.eval(wiLocal, woLocal, sg, BSDFContext());
     }
 
     bool sample<S : ISampleGenerator>(const ShadingData sd, inout S sg, out BSDFSample result, bool useImportanceSampling = true)
@@ -104,7 +109,7 @@ struct PBRTDiffuseMaterialInstance : MaterialInstanceBase, IMaterialInstance
         float3 wiLocal = sf.toLocal(sd.V);
         float3 woLocal = {};
 
-        bool valid = bsdf.sample(wiLocal, woLocal, result.pdf, result.weight, result.lobeType, sg);
+        bool valid = bsdf.sample(wiLocal, woLocal, result.pdf, result.weight, result.lobeType, sg, BSDFContext());
         result.wo = sf.fromLocal(woLocal);
 
         if (!isValidHemisphereReflection(sd, sf, wiLocal, woLocal, result.wo) || result.pdf == 0.f) return false;
@@ -120,7 +125,7 @@ struct PBRTDiffuseMaterialInstance : MaterialInstanceBase, IMaterialInstance
 
         if (!isValidHemisphereReflection(sd, sf, wiLocal, woLocal, wo)) return 0.f;
 
-        return bsdf.evalPdf(wiLocal, woLocal);
+        return bsdf.evalPdf(wiLocal, woLocal, BSDFContext());
     }
 
     BSDFProperties getProperties(const ShadingData sd)

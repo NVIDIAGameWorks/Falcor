@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -117,7 +117,7 @@ struct HairChiang16 : IBSDF
         precompute();
     }
 
-    float3 eval<S : ISampleGenerator>(const float3 wi, const float3 wo, inout S sg)
+    float3 eval<S : ISampleGenerator>(const float3 wi, const float3 wo, inout S sg, BSDFContext bc)
     {
         float sinThetaI = wi.x;
         float cosThetaI = sqrt(max(0.f, 1.f - sinThetaI * sinThetaI));
@@ -182,12 +182,12 @@ struct HairChiang16 : IBSDF
         return result;
     }
 
-    bool sample<S : ISampleGenerator>(const float3 wi, out float3 wo, out float pdf, out float3 weight, out uint lobeType, inout S sg)
+    bool sample<S : ISampleGenerator>(const float3 wi, out float3 wo, out float pdf, out float3 weight, out uint lobeType, inout S sg, BSDFContext bc)
     {
 #if !USE_BCSDF_IMPORTANCE_SAMPLING
         wo = sample_sphere(sampleNext2D(sg));
         pdf = M_1_4PI;
-        weight = eval(wi, wo, sg) / pdf;
+        weight = eval(wi, wo, sg, bc) / pdf;
         lobeType = wo.z > 0 ? (uint)LobeType::DiffuseReflection : (uint)LobeType::DiffuseTransmission;
         return true;
 #endif
@@ -309,7 +309,7 @@ struct HairChiang16 : IBSDF
 
         if (!isnan(pdf))
         {
-            weight = eval(wi, wo, sg) / pdf;
+            weight = eval(wi, wo, sg, bc) / pdf;
         }
         else
         {
@@ -319,7 +319,7 @@ struct HairChiang16 : IBSDF
         return (pdf > 0.f);
     }
 
-    float evalPdf(const float3 wi, const float3 wo)
+    float evalPdf(const float3 wi, const float3 wo, BSDFContext bc)
     {
 #if !USE_BCSDF_IMPORTANCE_SAMPLING
         return M_1_4PI;
@@ -385,6 +385,11 @@ struct HairChiang16 : IBSDF
     {
         // TODO: Figure out albedo for hair
         return AlbedoContributions(1.f, 0.f, 0.f, 0.f);
+    }
+
+    float3 getIorAsReflectance()
+    {
+        return float3(1.f);
     }
 
     RoughnessInformation getRoughnessInformation(const float3 wi)

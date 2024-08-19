@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -37,7 +37,7 @@ namespace Falcor
 
 namespace detail
 {
-template<typename T>
+template<typename TUInt>
 struct FNVHashConstants
 {};
 
@@ -61,14 +61,14 @@ struct FNVHashConstants<uint32_t>
  * To hash multiple items, create one Hash and insert all the items into it if at all possible.
  * This is superior to hashing the items individually and combining the hashes.
  *
- * @tparam T - type of the storage for the hash, either 32 or 64 unsigned integer
+ * @tparam TUInt - type of the storage for the hash, either 32 or 64 unsigned integer
  */
-template<typename T>
+template<typename TUInt>
 class FNVHash
 {
 public:
-    static constexpr T kOffsetBasis = detail::FNVHashConstants<T>::kOffsetBasis;
-    static constexpr T kPrime = detail::FNVHashConstants<T>::kPrime;
+    static constexpr TUInt kOffsetBasis = detail::FNVHashConstants<TUInt>::kOffsetBasis;
+    static constexpr TUInt kPrime = detail::FNVHashConstants<TUInt>::kPrime;
 
     /**
      * Inserts all data between [begin,end) into the hash.
@@ -98,7 +98,13 @@ public:
         insert(srcData8, srcData8 + size);
     }
 
-    T get() const { return mHash; }
+    template<typename T>
+    void insert(const T& data)
+    {
+        insert(&data, sizeof(T));
+    }
+
+    TUInt get() const { return mHash; }
 
     constexpr bool operator==(const FNVHash& rhs) { return get() == rhs.get(); }
 
@@ -113,7 +119,7 @@ public:
     constexpr bool operator>(const FNVHash& rhs) { return get() > rhs.get(); }
 
 private:
-    T mHash = kOffsetBasis;
+    TUInt mHash = kOffsetBasis;
 };
 
 using FNVHash64 = FNVHash<uint64_t>;

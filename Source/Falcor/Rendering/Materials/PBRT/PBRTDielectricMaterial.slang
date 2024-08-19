@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -42,7 +42,7 @@ struct PBRTDielectricMaterial : MaterialBase, IMaterial
 
         const float2 roughness = ms.sampleTexture(data.texSpecular, s, sd.uv, data.specular, lod).rg;
         float16_t IoR = header.getIoR();
-        float eta = !sd.frontFacing ? 1.0f / IoR : IoR;
+        float eta = IoR;
 
         // Compute final shading frame.
         // Do not flip the shading normal for backfacing hits. The BSDF handles transmission from both sides.

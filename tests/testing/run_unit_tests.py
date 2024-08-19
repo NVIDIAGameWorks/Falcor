@@ -19,7 +19,7 @@ def run_unit_tests(env: Environment, args):
 
     p = subprocess.Popen(args)
     try:
-        p.communicate(timeout=600)
+        p.communicate(timeout=1200)
     except subprocess.TimeoutExpired:
         p.kill()
         print('\n\nProcess killed due to timeout')

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -93,7 +93,7 @@ GBufferPSOut psMain(VSOut vsOut, uint triangleIndex: SV_PrimitiveID, float3 bary
         discard;
 #endif
     const float3 viewDir = normalize(gScene.camera.getPosition() - v.posW);
-    ShadingData sd = gScene.materials.prepareShadingData(v, vsOut.materialID, viewDir, lod);
+    ShadingData sd = gScene.materials.prepareShadingData(v, vsOut.materialID, viewDir);
 
     uint hints = 0;
 #if ADJUST_SHADING_NORMALS

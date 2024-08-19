@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -34,6 +34,11 @@
 #include "Utils/Logger.h"
 #include "Utils/StringUtils.h"
 
+#include <ImfIO.h>
+#include <ImfInputFile.h>
+#include <ImfChannelList.h>
+#include <ImfHeader.h>
+
 #if FALCOR_WINDOWS
 #ifndef WINDOWS_LEAN_AND_MEAN
 #define WINDOWS_LEAN_AND_MEAN
@@ -44,6 +49,52 @@
 
 namespace Falcor
 {
+namespace
+{
+
+/// Wraps MemoryMappedFile in an OpenEXR interface
+class OpenExrStream : public Imf::IStream
+{
+public:
+    OpenExrStream(const MemoryMappedFile& file) : Imf::IStream(""), mFile(file)
+    {
+        mFileData = reinterpret_cast<const uint8_t*>(mFile.getData());
+    }
+
+    virtual bool read(char c[/*n*/], int n)
+    {
+        if (mOffset + size_t(n) > mFile.getSize())
+            return false;
+        memcpy(c, mFileData + mOffset, n);
+        mOffset += n;
+        return true;
+    }
+
+    virtual uint64_t tellg() { return mOffset; }
+
+    virtual void seekg(uint64_t pos) { mOffset = pos; }
+
+    virtual void clear() {}
+
+private:
+    const MemoryMappedFile& mFile;
+    const uint8_t* mFileData;
+    size_t mOffset = 0;
+};
+
+bool isFloat16Exr(const MemoryMappedFile& inputFile)
+{
+    OpenExrStream stream(inputFile);
+    Imf::InputFile imfFile(stream);
+    const Imf::ChannelList& channels = imfFile.header().channels();
+    for (auto it = channels.begin(); it != channels.end(); ++it)
+        if (it.channel().type != Imf::HALF)
+            return false;
+    return true;
+}
+
+} // namespace
+
 static bool isRGB32fSupported()
 {
     return false; // FIX THIS
@@ -274,6 +325,13 @@ Bitmap::UniqueConstPtr Bitmap::createFromFile(const std::filesystem::path& path,
         genWarning("Can't open image file {}", path);
         return nullptr;
     }
+
+    if (fifFormat == FIF_EXR)
+    {
+        if (isFloat16Exr(file))
+            importFlags |= ImportFlags::ConvertToFloat16;
+    }
+
     FIMEMORY* memory = FreeImage_OpenMemory((BYTE*)file.getData(), file.getSize());
     FIBITMAP* pDib = FreeImage_LoadFromMemory(fifFormat, memory);
     FreeImage_CloseMemory(memory);
@@ -308,6 +366,8 @@ Bitmap::UniqueConstPtr Bitmap::createFromFile(const std::filesystem::path& path,
             genWarning("Failed to convert palettized image to RGBA format", path);
             return nullptr;
         }
+
+        colorType = FreeImage_GetColorType(pDib);
     }
 
     // Identify resource format based on bit depth.
@@ -322,8 +382,19 @@ Bitmap::UniqueConstPtr Bitmap::createFromFile(const std::filesystem::path& path,
         format = isRGB32fSupported() ? ResourceFormat::RGB32Float : ResourceFormat::RGBA32Float; // 3xfloat32 HDR format
         break;
     case 64:
-        format = ResourceFormat::RGBA16Float; // 4xfloat16 HDR format
+        FALCOR_CHECK(colorType == FIC_RGBALPHA, "Only expect 16b RGBA with 64 bits per pixel");
+        format = ResourceFormat::RGBA16Unorm;
         break;
+    case 48:
+    {
+        FALCOR_CHECK(colorType == FIC_RGB, "Only expect 16b RGB with 48 bits per pixel");
+        format = ResourceFormat::RGBA16Unorm;
+        auto pNew = FreeImage_ConvertToRGBA16(pDib);
+        FreeImage_Unload(pDib);
+        pDib = pNew;
+        bpp = FreeImage_GetBPP(pDib);
+    }
+    break;
     case 32:
         format = ResourceFormat::BGRA8Unorm;
         break;
@@ -384,11 +455,11 @@ Bitmap::Bitmap(uint32_t width, uint32_t height, ResourceFormat format)
     {
         uint32_t blockSizeY = getFormatHeightCompressionRatio(format);
         FALCOR_ASSERT(height % blockSizeY == 0); // Should divide evenly
-        mSize = mRowPitch * (height / blockSizeY);
+        mSize = size_t(mRowPitch) * (height / blockSizeY);
     }
     else
     {
-        mSize = height * mRowPitch;
+        mSize = height * size_t(mRowPitch);
     }
 
     mpData = std::unique_ptr<uint8_t[]>(new uint8_t[mSize]);
@@ -531,6 +602,9 @@ void Bitmap::saveImage(
     FALCOR_CHECK(fileFormat != FileFormat::DdsFile, "Cannot save DDS files. Use ImageIO instead.");
     if (is_set(exportFlags, ExportFlags::Uncompressed) && is_set(exportFlags, ExportFlags::Lossy))
         FALCOR_THROW("Incompatible flags: lossy cannot be combined with uncompressed.");
+    if (is_set(exportFlags, ExportFlags::ExrFloat16) &&
+        (!is_set(exportFlags, ExportFlags::Uncompressed) || fileFormat != FileFormat::ExrFile))
+        FALCOR_THROW("Incompatible flags: EXR float16 can only be set for uncompressed EXR files.");
 
     int flags = 0;
     FIBITMAP* pImage = nullptr;
@@ -610,7 +684,9 @@ void Bitmap::saveImage(
             flags = 0;
             if (is_set(exportFlags, ExportFlags::Uncompressed))
             {
-                flags |= EXR_NONE | EXR_FLOAT;
+                flags |= EXR_NONE;
+                if (!is_set(exportFlags, ExportFlags::ExrFloat16))
+                    flags |= EXR_FLOAT;
             }
             else if (is_set(exportFlags, ExportFlags::Lossy))
             {

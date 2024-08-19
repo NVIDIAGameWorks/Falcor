@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -79,12 +79,9 @@ bool sampleTriangle(const float3 posW, const uint triangleIndex, const float2 u,
     ls.Le = gScene.materials.evalEmissive(tri.materialID, uv);
 
     // DEMO21: Evaluate light profile.
-    if (Scene::kUseLightProfile)
+    if (gScene.materials.hasLightProfile(tri.materialID))
     {
-        if (gScene.materials.getMaterialHeader(tri.materialID).isLightProfileEnabled())
-        {
-            ls.Le *= gScene.lightProfile.eval(dot(ls.normalW, -ls.dir));
-        }
+        ls.Le *= gScene.materials.evalLightProfile(dot(ls.normalW, -ls.dir));
     }
 
     // Compute probability density with respect to solid angle from the shading point.

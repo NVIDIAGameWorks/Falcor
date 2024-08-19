@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -427,7 +427,7 @@ struct HitInfo
     /** Return the packed hit info.
         \return Packed hit info.
     */
-    PackedHitInfo getData()
+    PackedHitInfo pack()
     {
         return data;
     }
@@ -486,3 +486,15 @@ struct HitInfo
         }
     }
 };
+
+HitInfo makeInvalidHit()
+{
+    HitInfo hit = {};
+    return hit;
+}
+
+/// Unpacks packed hit info
+HitInfo unpackHitInfo(PackedHitInfo packedHitInfo)
+{
+    return HitInfo(packedHitInfo);
+}

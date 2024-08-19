@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -104,10 +104,9 @@ struct SceneQueryAD : IDifferentiable
         float hitT = 0.f;
         SceneRayQuery<0> sceneRayQuery;
 
-        HitInfo hitInfo;
-        bool isHit = sceneRayQuery.traceRay(ray, hitInfo, hitT, RAY_FLAG_NONE, 0xff);
+        const HitInfo hitInfo = sceneRayQuery.traceRay(ray, hitT);
 
-        if (!isHit)
+        if (!hitInfo.isValid())
         {
             isect = IntersectionAD();
             return false;
@@ -123,7 +122,7 @@ struct SceneQueryAD : IDifferentiable
     bool traceVisibilityRay(const Ray ray)
     {
         SceneRayQuery<0> sceneRayQuery;
-        return sceneRayQuery.traceVisibilityRay(ray, RAY_FLAG_NONE, 0xff);
+        return sceneRayQuery.traceVisibilityRay(ray);
     }
 
     // Compute differentiable intersection from non-differentiable HitInfo.

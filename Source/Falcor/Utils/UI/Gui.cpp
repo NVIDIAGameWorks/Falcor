@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -137,6 +137,7 @@ private:
     bool addDirectionWidget(const char label[], float3& direction);
     bool addCheckbox(const char label[], bool& var, bool sameLine = false);
     bool addCheckbox(const char label[], int& var, bool sameLine = false);
+    bool addCheckbox(const char label[], uint32_t& var, bool sameLine = false);
     template<typename T>
     bool addBoolVecVar(const char label[], T& var, bool sameLine = false);
     bool addDragDropSource(const char label[], const char dataLabel[], const std::string& payloadString);
@@ -708,6 +709,14 @@ bool GuiImpl::addCheckbox(const char label[], bool& var, bool sameLine)
 }
 
 bool GuiImpl::addCheckbox(const char label[], int& var, bool sameLine)
+{
+    bool value = (var != 0);
+    bool modified = addCheckbox(label, value, sameLine);
+    var = (value ? 1 : 0);
+    return modified;
+}
+
+bool GuiImpl::addCheckbox(const char label[], uint32_t& var, bool sameLine)
 {
     bool value = (var != 0);
     bool modified = addCheckbox(label, value, sameLine);
@@ -1480,6 +1489,12 @@ FALCOR_API bool Gui::Widgets::checkbox<bool>(const char label[], bool& var, bool
 
 template<>
 FALCOR_API bool Gui::Widgets::checkbox<int>(const char label[], int& var, bool sameLine)
+{
+    return mpGui ? mpGui->mpWrapper->addCheckbox(label, var, sameLine) : false;
+}
+
+template<>
+FALCOR_API bool Gui::Widgets::checkbox<uint32_t>(const char label[], uint32_t& var, bool sameLine)
 {
     return mpGui ? mpGui->mpWrapper->addCheckbox(label, var, sameLine) : false;
 }

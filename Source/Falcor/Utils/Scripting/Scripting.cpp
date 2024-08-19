@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -45,7 +45,11 @@ void Scripting::start()
         sRunning = true;
 
 #ifdef FALCOR_PYTHON_EXECUTABLE
+#if FALCOR_WINDOWS
         static std::filesystem::path pythonHome{std::filesystem::path{FALCOR_PYTHON_EXECUTABLE}.parent_path()};
+#else
+        static std::filesystem::path pythonHome{std::filesystem::path{FALCOR_PYTHON_EXECUTABLE}.parent_path().parent_path()};
+#endif
 #else
         static std::filesystem::path pythonHome{getRuntimeDirectory() / "pythondist"};
 #endif
@@ -117,7 +121,7 @@ private:
     pybind11::object mBuffer;
 };
 
-static Scripting::RunResult runScript(const std::string& script, pybind11::dict& globals, bool captureOutput)
+static Scripting::RunResult runScript(std::string_view script, pybind11::dict& globals, bool captureOutput)
 {
     Scripting::RunResult result;
 
@@ -125,19 +129,19 @@ static Scripting::RunResult runScript(const std::string& script, pybind11::dict&
     {
         RedirectStream rstdout("stdout");
         RedirectStream rstderr("stderr");
-        pybind11::exec(script.c_str(), globals);
+        pybind11::exec(script, globals);
         result.out = rstdout;
         result.err = rstderr;
     }
     else
     {
-        pybind11::exec(script.c_str(), globals);
+        pybind11::exec(script, globals);
     }
 
     return result;
 }
 
-Scripting::RunResult Scripting::runScript(const std::string& script, Context& context, bool captureOutput)
+Scripting::RunResult Scripting::runScript(std::string_view script, Context& context, bool captureOutput)
 {
     return Falcor::runScript(script, context.mGlobals, captureOutput);
 }

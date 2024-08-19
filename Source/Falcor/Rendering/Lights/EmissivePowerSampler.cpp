@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -31,16 +31,23 @@
 
 namespace Falcor
 {
-    bool EmissivePowerSampler::update(RenderContext* pRenderContext)
+    bool EmissivePowerSampler::update(RenderContext* pRenderContext, ref<ILightCollection> pLightCollection)
     {
         FALCOR_PROFILE(pRenderContext, "EmissivePowerSampler::update");
 
-        bool samplerChanged = false;;
+        bool samplerChanged = false;
+
+        if (mpLightCollection != pLightCollection)
+        {
+            setLightCollection(std::move(pLightCollection));
+            mNeedsRebuild = true;
+        }
 
         // Check if light collection has changed.
-        if (is_set(mpScene->getUpdates(), Scene::UpdateFlags::LightCollectionChanged))
+        if (mLightCollectionUpdateFlags != ILightCollection::UpdateFlags::None)
         {
             mNeedsRebuild = true;
+            mLightCollectionUpdateFlags = ILightCollection::UpdateFlags::None;
         }
 
         // Rebuild if necessary
@@ -71,11 +78,9 @@ namespace Falcor
         var["_emissivePower"]["triangleAliasTable"] = mTriangleTable.fullTable;
     }
 
-    EmissivePowerSampler::EmissivePowerSampler(RenderContext* pRenderContext, ref<Scene> pScene)
-        : EmissiveLightSampler(EmissiveLightSamplerType::Power, pScene)
+    EmissivePowerSampler::EmissivePowerSampler(RenderContext* pRenderContext, ref<ILightCollection> pLightCollection)
+        : EmissiveLightSampler(EmissiveLightSamplerType::Power, std::move(pLightCollection))
     {
-        // Make sure the light collection is created.
-        mpLightCollection = pScene->getLightCollection(pRenderContext);
     }
 
     EmissivePowerSampler::AliasTable EmissivePowerSampler::generateAliasTable(std::vector<float> weights)
@@ -162,7 +167,7 @@ namespace Falcor
         {
             float(sum),
             N,
-            mpScene->getDevice()->createTypedBuffer<uint2>(N),
+            mpDevice->createTypedBuffer<uint2>(N),
         };
 
         result.fullTable->setBlob(&fullTable[0], 0, N * sizeof(uint2));

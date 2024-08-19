@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -44,7 +44,7 @@ struct DielectricPlateBSDF : IBSDF
     AnisotropicGGX DInside; ///< Tranmission roughness
     float eta;              ///< IOR
 
-    float3 eval<S : ISampleGenerator>(const float3 wiLocal, const float3 woLocal, inout S sg)
+    float3 eval<S : ISampleGenerator>(const float3 wiLocal, const float3 woLocal, inout S sg, BSDFContext bc)
     {
         if (D.isSingular() || eta == 1.0f || wiLocal.z * woLocal.z == 0)
             return float3(0.0f);
@@ -72,7 +72,15 @@ struct DielectricPlateBSDF : IBSDF
                              abs(wiDotH * woDotH / (sqr(woDotH + wiDotH / etaRefract) * abs(wiLocal.z)));
     }
 
-    bool sample<S : ISampleGenerator>(float3 wiLocal, out float3 wo, out float pdf, out float3 weight, out uint lobeType, inout S sg)
+    bool sample<S : ISampleGenerator>(
+        float3 wiLocal,
+        out float3 wo,
+        out float pdf,
+        out float3 weight,
+        out uint lobeType,
+        inout S sg,
+        BSDFContext bc
+    )
     {
         wo = {};
         pdf = {};
@@ -150,7 +158,7 @@ struct DielectricPlateBSDF : IBSDF
         return true;
     }
 
-    float evalPdf(const float3 wiLocal, const float3 woLocal)
+    float evalPdf(const float3 wiLocal, const float3 woLocal, BSDFContext bc)
     {
         if (D.isSingular() || eta == 1.0f || wiLocal.z * woLocal.z == 0)
             return 0.0f;
@@ -188,6 +196,12 @@ struct DielectricPlateBSDF : IBSDF
         float F = r1 + t1 * t1 * r2 / (1.f - r1 * r2);
 
         return AlbedoContributions(F, 0.f, 1.f - F, 0.f);
+    }
+
+    float3 getIorAsReflectance()
+    {
+        const float rsqrt = (1.f - eta) / (1.f + eta);
+        return rsqrt * rsqrt;
     }
 
     RoughnessInformation getRoughnessInformation(const float3 wi)

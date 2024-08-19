@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,8 +27,10 @@
  **************************************************************************/
 #include "Testing/UnitTest.h"
 #include "Utils/Math/Vector.h"
+#include "Utils/Math/VectorJson.h"
 
 #include <fmt/format.h>
+#include <nlohmann/json.hpp>
 #include <iostream>
 #include <algorithm>
 #include <random>
@@ -74,6 +76,46 @@ CPU_TEST(Vector_Comparison)
             EXPECT(std::less<int2>{}(vec[i], vec[j]));
         }
     }
+}
+
+template<typename T, int N>
+void test_json(CPUUnitTestContext& ctx, const math::vector<T, N>& src)
+{
+    using fvector = math::vector<T, N>;
+
+    nlohmann::json j = src;
+    fvector dst = j.get<fvector>();
+    EXPECT_TRUE(math::all(dst == src));
+    j.get_to(dst);
+    EXPECT_TRUE(math::all(dst == src));
+}
+
+CPU_TEST(Vector_Json)
+{
+    test_json(ctx, bool1(true));
+    test_json(ctx, bool2(true, false));
+    test_json(ctx, bool3(true, false, true));
+    test_json(ctx, bool4(true, false, true, false));
+
+    test_json(ctx, int1(1));
+    test_json(ctx, int2(1, -2));
+    test_json(ctx, int3(1, -2, 3));
+    test_json(ctx, int4(1, -2, 3, -4));
+
+    test_json(ctx, uint1(1));
+    test_json(ctx, uint2(1, 2));
+    test_json(ctx, uint3(1, 2, 3));
+    test_json(ctx, uint4(1, 2, 3, 4));
+
+    test_json(ctx, float1(1.1f));
+    test_json(ctx, float2(1.1f, 2.2f));
+    test_json(ctx, float3(1.1f, 2.2f, 3.3f));
+    test_json(ctx, float4(1.1f, 2.2f, 3.3f, 4.4f));
+
+    test_json(ctx, float16_t1(1.1f));
+    test_json(ctx, float16_t2(1.1f, 2.2f));
+    test_json(ctx, float16_t3(1.1f, 2.2f, 3.3f));
+    test_json(ctx, float16_t4(1.1f, 2.2f, 3.3f, 4.4f));
 }
 
 } // namespace Falcor

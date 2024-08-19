@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -47,12 +47,12 @@ struct SurfaceData : IDifferentiable
 };
 
 [Differentiable]
-SurfaceData prepareShadingData(const VertexData v, const float3 viewDir, const uint materialID, const ITextureSampler lod)
+SurfaceData prepareShadingData(const VertexData v, const float3 viewDir, const uint materialID)
 {
     SurfaceData data = {};
 
     // Setup Falcor's ShadingData based on the selected scene material and lobes.
-    data.sd = no_diff gScene.materials.prepareShadingData(v, materialID, viewDir, lod);
+    data.sd = no_diff gScene.materials.prepareShadingData(v, materialID, viewDir);
     return data;
 }
 
@@ -69,7 +69,6 @@ IMaterialInstance getDiffMaterialInstance(out DiffMaterialData diffData, const S
 float3 evalBSDFSlice(bool isRef, const uint2 pixel)
 {
     float2 uv = no_diff getViewportCoord(pixel, float2(0.f), params.viewPortScale);
-    let lod = ExplicitLodTextureSampler(0.f);
     SampleGenerator sg = SampleGenerator(pixel, params.frameCount);
 
     // Calculate geometry and incident/outgoing directions.
@@ -78,7 +77,7 @@ float3 evalBSDFSlice(bool isRef, const uint2 pixel)
     float3 lightDir = no_diff calculateSliceGeometry(uv, v, viewDir);
 
     // Setup shading data.
-    SurfaceData data = prepareShadingData(v, viewDir, isRef ? params.refMaterialID : params.initMaterialID, lod);
+    SurfaceData data = prepareShadingData(v, viewDir, isRef ? params.refMaterialID : params.initMaterialID);
     data.wo = detach(lightDir);
 
     // Set offset for writing gradients.

@@ -239,6 +239,7 @@ target_sources(Falcor PRIVATE
     Rendering/Materials/IsotropicGGX.slang
     Rendering/Materials/LayeredBSDF.slang
     Rendering/Materials/LobeType.slang
+    Rendering/Materials/MaterialInstanceHints.slang
     Rendering/Materials/MERLCommon.slang
     Rendering/Materials/MERLMaterialInstance.slang
     Rendering/Materials/MERLMaterial.slang
@@ -326,6 +327,8 @@ target_sources(Falcor PRIVATE
     Scene/Importer.h
     Scene/ImporterError.h
     Scene/Intersection.slang
+    Scene/IScene.cpp
+    Scene/IScene.h
     Scene/MeshIO.cs.slang
     Scene/NullTrace.cs.slang
     Scene/Raster.slang
@@ -352,6 +355,7 @@ target_sources(Falcor PRIVATE
     Scene/TriangleMesh.cpp
     Scene/TriangleMesh.h
     Scene/VertexAttrib.slangh
+    Scene/VertexData.slang
 
     Scene/Animation/Animatable.cpp
     Scene/Animation/Animatable.h
@@ -392,6 +396,7 @@ target_sources(Falcor PRIVATE
     Scene/Lights/EnvMap.slang
     Scene/Lights/EnvMapData.slang
     Scene/Lights/FinalizeIntegration.cs.slang
+    Scene/Lights/ILightCollection.h
     Scene/Lights/Light.cpp
     Scene/Lights/Light.h
     Scene/Lights/LightCollection.cpp
@@ -558,6 +563,7 @@ target_sources(Falcor PRIVATE
     Utils/Properties.h
     Utils/SharedCache.h
     Utils/SlangUtils.slang
+    Utils/SplitBuffer.h
     Utils/StringFormatters.h
     Utils/StringUtils.cpp
     Utils/StringUtils.h
@@ -639,6 +645,7 @@ target_sources(Falcor PRIVATE
     Utils/Math/MathHelpers.h
     Utils/Math/MathHelpers.slang
     Utils/Math/Matrix.h
+    Utils/Math/MatrixJson.h
     Utils/Math/MatrixMath.h
     Utils/Math/MatrixTypes.h
     Utils/Math/MatrixUtils.slang
@@ -652,11 +659,13 @@ target_sources(Falcor PRIVATE
     Utils/Math/Ray.slang
     Utils/Math/Rectangle.cpp
     Utils/Math/Rectangle.h
+    Utils/Math/ScalarJson.h
     Utils/Math/ScalarMath.h
     Utils/Math/ScalarTypes.h
     Utils/Math/ShadingFrame.slang
     Utils/Math/SphericalHarmonics.slang
     Utils/Math/Vector.h
+    Utils/Math/VectorJson.h
     Utils/Math/VectorMath.h
     Utils/Math/VectorTypes.h
 
@@ -820,8 +829,8 @@ target_compile_options(Falcor
             # Configure warnings
             /WX                             # warnings as errors
             /W4                             # increase warning level
+            /wd4819                         # the file contains a character that cannot be represented in the current code page(936)
             /wd4251                         # 'type' : class 'type1' needs to have dll-interface to be used by clients of class 'type2'
-            /wd4819                         # The file contains a character that cannot be represented in the current code page(936)             
             /wd4244                         # 'conversion' conversion from 'type1' to 'type2', possible loss of data
             /wd4267                         # 'var' : conversion from 'size_t' to 'type', possible loss of data
             /wd4100                         # unreferenced formal parameter
@@ -947,6 +956,7 @@ target_compile_definitions(Falcor
         FALCOR_HAS_D3D12_AGILITY_SDK=$<BOOL:${FALCOR_HAS_D3D12_AGILITY_SDK}>
         # TODO: RTXDI is always available, we might want to remove the feature flag.
         FALCOR_HAS_RTXDI=1
+        IMGUI_USER_CONFIG="Utils/UI/ImGuiConfig.h"
     PRIVATE
         #$<$<CONFIG:Debug>:_ITERATOR_DEBUG_LEVEL=0>
         FALCOR_PROJECT_DIR="${CMAKE_SOURCE_DIR}/"
@@ -988,7 +998,6 @@ target_link_libraries(Falcor
         # Linux system libraries.
         $<$<PLATFORM_ID:Linux>:gtk3>
 )
-
 
 target_include_directories(Falcor
     PUBLIC

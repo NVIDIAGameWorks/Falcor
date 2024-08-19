@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -68,8 +68,8 @@ public:
      *
      * @param[in] id Integer ID to initialize from.
      */
-    template<typename T>
-    explicit ObjectID(const T& id, std::enable_if_t<std::is_integral_v<T>, bool> = true) : mID(IntType(id))
+    template<typename T, std::enable_if_t<std::is_integral_v<T>, bool> = true>
+    explicit ObjectID(const T& id) : mID(IntType(id))
     {
         // First we make sure it is positive
         FALCOR_ASSERT_GE(id, T(0));

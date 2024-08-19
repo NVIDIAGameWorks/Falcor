@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -51,7 +51,8 @@ struct PBRTCoatedConductorMaterialInstance : MaterialInstanceBase, IMaterialInst
         PBRTDielectricBSDF top = {interfaceD, interfaceEta};
         PBRTConductorBSDF bottom = {conductorD, conductorEta, conductorK};
 
-        return LayeredBSDF(top, bottom).eval(wiLocal, woLocal, sg);
+        const BSDFContext bc = BSDFContext(sd.IoR, top.getEta());
+        return LayeredBSDF(top, bottom).eval(wiLocal, woLocal, sg, bc);
     }
 
     [Differentiable]
@@ -68,7 +69,10 @@ struct PBRTCoatedConductorMaterialInstance : MaterialInstanceBase, IMaterialInst
         PBRTDielectricBSDF top = {interfaceD, interfaceEta};
         PBRTConductorBSDF bottom = {conductorD, conductorEta, conductorK};
 
-        bool valid = LayeredBSDF(top, bottom).sample(wiLocal, woLocal, result.pdf, result.weight, result.lobeType, sg);
+        // We flip the material so that on both sides we coat the conductor with the dielectric. Note that this has little implications
+        // since we evaluate black when hitting the inside.
+        const BSDFContext bc = BSDFContext(sd.IoR, top.getEta());
+        bool valid = LayeredBSDF(top, bottom).sample(wiLocal, woLocal, result.pdf, result.weight, result.lobeType, sg, bc);
         result.wo = sf.fromLocal(woLocal);
 
         if (!isValidHemisphereReflection(sd, sf, wiLocal, woLocal, result.wo) || result.pdf == 0.f) return false;
@@ -86,7 +90,8 @@ struct PBRTCoatedConductorMaterialInstance : MaterialInstanceBase, IMaterialInst
         PBRTDielectricBSDF top = {interfaceD, interfaceEta};
         PBRTConductorBSDF bottom = {conductorD, conductorEta, conductorK};
 
-        return LayeredBSDF(top, bottom).evalPdf(wiLocal, woLocal);
+        const BSDFContext bc = BSDFContext(sd.IoR, top.getEta());
+        return LayeredBSDF(top, bottom).evalPdf(wiLocal, woLocal, bc);
     }
 
     BSDFProperties getProperties(const ShadingData sd)

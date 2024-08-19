@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,6 +27,7 @@
  **************************************************************************/
 #pragma once
 #include "MeshLightData.slang"
+#include "ILightCollection.h"
 #include "Core/Macros.h"
 #include "Core/Object.h"
 #include "Core/API/Buffer.h"
@@ -54,65 +55,10 @@ namespace Falcor
         The LightCollection can be used standalone, but more commonly it will be wrapped
         by an emissive light sampler.
     */
-    class FALCOR_API LightCollection : public Object
+    class FALCOR_API LightCollection : public ILightCollection
     {
         FALCOR_OBJECT(LightCollection)
     public:
-        enum class UpdateFlags : uint32_t
-        {
-            None                = 0u,   ///< Nothing was changed.
-            MatrixChanged       = 1u,   ///< Mesh instance transform changed.
-        };
-
-        struct UpdateStatus
-        {
-            std::vector<UpdateFlags> lightsUpdateInfo;
-        };
-
-        struct MeshLightStats
-        {
-            // Stats before pre-processing (input data).
-            uint32_t meshLightCount = 0;                ///< Number of mesh lights.
-            uint32_t triangleCount = 0;                 ///< Number of mesh light triangles (total).
-            uint32_t meshesTextured = 0;                ///< Number of mesh lights with textured emissive.
-            uint32_t trianglesTextured = 0;             ///< Number of mesh light triangles with textured emissive.
-
-            // Stats after pre-processing (what's used during rendering).
-            uint32_t trianglesCulled = 0;               ///< Number of triangles culled (due to zero radiance and/or area).
-            uint32_t trianglesActive = 0;               ///< Number of active (non-culled) triangles.
-            uint32_t trianglesActiveUniform = 0;        ///< Number of active triangles with const radiance.
-            uint32_t trianglesActiveTextured = 0;       ///< Number of active triangles with textured radiance.
-        };
-
-        /** Represents one mesh light triangle vertex.
-        */
-        struct MeshLightVertex
-        {
-            float3 pos;     ///< World-space position.
-            float2 uv;      ///< Texture coordinates in emissive texture (if textured).
-        };
-
-        /** Represents one mesh light triangle.
-        */
-        struct MeshLightTriangle
-        {
-            // TODO: Perf of indexed vs non-indexed on GPU. We avoid level of indirection, but have more bandwidth non-indexed.
-            MeshLightVertex vtx[3];                             ///< Vertices. These are non-indexed for now.
-            uint32_t        lightIdx = MeshLightData::kInvalidIndex; ///< Per-triangle index into mesh lights array.
-
-            // Pre-computed quantities.
-            float3          normal = float3(0);                 ///< Triangle's face normal in world space.
-            float3          averageRadiance = float3(0);        ///< Average radiance emitted over triangle. For textured emissive the radiance varies over the surface.
-            float           flux = 0.f;                         ///< Pre-integrated flux emitted by the triangle. Note that emitters are single-sided.
-            float           area = 0.f;                         ///< Triangle area in world space units.
-
-            /** Returns the center of the triangle in world space.
-            */
-            float3 getCenter() const
-            {
-                return (vtx[0].pos + vtx[1].pos + vtx[2].pos) / 3.0f;
-            }
-        };
 
         /** Creates a light collection for the given scene.
             Note that update() must be called before the collection is ready to use.
@@ -129,51 +75,49 @@ namespace Falcor
         LightCollection(ref<Device> pDevice, RenderContext* pRenderContext, Scene* pScene);
         ~LightCollection() = default;
 
+        const ref<Device>& getDevice() const override { return mpDevice; }
+
         /** Updates the light collection to the current state of the scene.
             \param[in] pRenderContext The render context.
             \param[out] pUpdateStatus Stores information about which type of updates were performed for each mesh light. This is an optional output parameter.
             \return True if the lighting in the scene has changed since the last frame.
         */
-        bool update(RenderContext* pRenderContext, UpdateStatus* pUpdateStatus = nullptr);
+        bool update(RenderContext* pRenderContext, UpdateStatus* pUpdateStatus = nullptr) override;
 
         /** Bind the light collection data to a given shader var
             \param[in] var The shader variable to set the data into.
         */
-        void bindShaderData(const ShaderVar& var) const;
-
-        /** Returns the total number of active (non-culled) triangle lights.
-        */
-        uint32_t getActiveLightCount(RenderContext* pRenderContext) const { return getStats(pRenderContext).trianglesActive; }
+        void bindShaderData(const ShaderVar& var) const override;
 
         /** Returns the total number of triangle lights (may include culled triangles).
         */
-        uint32_t getTotalLightCount() const { return mTriangleCount; }
+        uint32_t getTotalLightCount() const override  { return mTriangleCount; }
 
         /** Returns stats.
         */
-        const MeshLightStats& getStats(RenderContext* pRenderContext) const { computeStats(pRenderContext); return mMeshLightStats; }
+        const MeshLightStats& getStats(RenderContext* pRenderContext) const override { computeStats(pRenderContext); return mMeshLightStats; }
 
         /** Returns a CPU buffer with all emissive triangles in world space.
             Note that update() must have been called before for the data to be valid.
             Call prepareSyncCPUData() ahead of time to avoid stalling the GPU.
         */
-        const std::vector<MeshLightTriangle>& getMeshLightTriangles(RenderContext* pRenderContext) const { syncCPUData(pRenderContext); return mMeshLightTriangles; }
+        const std::vector<MeshLightTriangle>& getMeshLightTriangles(RenderContext* pRenderContext) const override { syncCPUData(pRenderContext); return mMeshLightTriangles; }
 
         /** Returns a CPU buffer with all mesh lights.
             Note that update() must have been called before for the data to be valid.
         */
-        const std::vector<MeshLightData>& getMeshLights() const { return mMeshLights; }
+        const std::vector<MeshLightData>& getMeshLights() const override { return mMeshLights; }
 
         /** Prepare for syncing the CPU data.
             If the mesh light triangles will be accessed with getMeshLightTriangles()
             performance can be improved by calling this function ahead of time.
             This function schedules the copies so that it can be read back without delay later.
         */
-        void prepareSyncCPUData(RenderContext* pRenderContext) const { copyDataToStagingBuffer(pRenderContext); }
+        void prepareSyncCPUData(RenderContext* pRenderContext) const override { copyDataToStagingBuffer(pRenderContext); }
 
         /** Get the total GPU memory usage in bytes.
         */
-        uint64_t getMemoryUsageInBytes() const;
+        uint64_t getMemoryUsageInBytes() const override;
 
         // Internal update flags. This only public for FALCOR_ENUM_CLASS_OPERATORS() to work.
         enum class CPUOutOfDateFlags : uint32_t
@@ -184,6 +128,10 @@ namespace Falcor
 
             All          = TriangleData | FluxData
         };
+
+        /** Gets a signal interface that is signaled when the LightCollection is updated.
+         */
+        UpdateFlagsSignal::Interface getUpdateFlagsSignal() override { return mUpdateFlagsSignal.getInterface(); }
 
     protected:
         void initIntegrator(RenderContext* pRenderContext, const Scene& scene);
@@ -243,8 +191,9 @@ namespace Falcor
 
         mutable CPUOutOfDateFlags               mCPUInvalidData = CPUOutOfDateFlags::None;  ///< Flags indicating which CPU data is valid.
         mutable bool                            mStagingBufferValid = true;                 ///< Flag to indicate if the contents of the staging buffer is up-to-date.
+
+        UpdateFlagsSignal mUpdateFlagsSignal;
     };
 
     FALCOR_ENUM_CLASS_OPERATORS(LightCollection::CPUOutOfDateFlags);
-    FALCOR_ENUM_CLASS_OPERATORS(LightCollection::UpdateFlags);
 }

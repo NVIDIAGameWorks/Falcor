@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -128,7 +128,7 @@ void GBufferRaster::recreatePrograms()
     mGBufferPass.pVars = nullptr;
 }
 
-void GBufferRaster::onSceneUpdates(RenderContext* pRenderContext, Scene::UpdateFlags sceneUpdates) {}
+void GBufferRaster::onSceneUpdates(RenderContext* pRenderContext, IScene::UpdateFlags sceneUpdates) {}
 
 void GBufferRaster::execute(RenderContext* pRenderContext, const RenderData& renderData)
 {
@@ -162,7 +162,7 @@ void GBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
     const RasterizerState::CullMode cullMode = mForceCullMode ? mCullMode : kDefaultCullMode;
 
     // Check for scene changes.
-    if (is_set(mpScene->getUpdates(), Scene::UpdateFlags::RecompileNeeded))
+    if (is_set(mpScene->getUpdates(), IScene::UpdateFlags::RecompileNeeded))
     {
         recreatePrograms();
     }

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -54,14 +54,15 @@ namespace Falcor
             \param[in] pScene The scene.
             \param[in] options The options to override the default behavior.
         */
-        EmissivePowerSampler(RenderContext* pRenderContext, ref<Scene> pScene);
+        EmissivePowerSampler(RenderContext* pRenderContext, ref<ILightCollection> pLightCollection);
         virtual ~EmissivePowerSampler() = default;
 
         /** Updates the sampler to the current frame.
             \param[in] pRenderContext The render context.
+            \param[in] pLightCollection Updated LightCollection
             \return True if the sampler was updated.
         */
-        virtual bool update(RenderContext* pRenderContext) override;
+        virtual bool update(RenderContext* pRenderContext, ref<ILightCollection> pLightCollection) override;
 
         /** Bind the light sampler data to a given shader variable.
             \param[in] var Shader variable.
@@ -77,8 +78,6 @@ namespace Falcor
 
         // Internal state
         bool                            mNeedsRebuild = true;   ///< Trigger rebuild on the next call to update(). We should always build on the first call, so the initial value is true.
-
-        ref<const LightCollection>      mpLightCollection;
 
         std::mt19937                    mAliasTableRng;
         AliasTable                      mTriangleTable;

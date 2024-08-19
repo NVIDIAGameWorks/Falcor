@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -43,6 +43,8 @@
     ((((value) & ((1 << (bits)) - 1)) << (offset)) | ((flags) & (~(((1 << (bits)) - 1) << (offset)))))
 #define PACK_BITS_UNSAFE(bits, offset, flags, value) (((value) << (offset)) | ((flags) & (~(((1 << (bits)) - 1) << (offset)))))
 
+#define FALCOR_GPU_CACHE_SIZE 128
+
 #ifdef HOST_CODE
 /*******************************************************************
                     CPU declarations
@@ -53,6 +55,9 @@
 #define END_NAMESPACE }
 #define BEGIN_NAMESPACE_FALCOR BEGIN_NAMESPACE(Falcor)
 #define END_NAMESPACE_FALCOR END_NAMESPACE
+/// Check if the type is either a multiple of ALIGNMENT, or multiples of it fit exactly into ALIGNMENT
+#define FALCOR_ASSERT_ALIGNMENT_FOR(T, ALIGNMENT) \
+    static_assert((sizeof(T) >= ALIGNMENT) ? ((sizeof(T) % ALIGNMENT) == 0) : ((ALIGNMENT % sizeof(T)) == 0))
 
 #define SETTER_DECL
 #define CONST_FUNCTION const
@@ -90,6 +95,7 @@ namespace Falcor
 #define SETTER_DECL [mutating]
 #define CONST_FUNCTION
 #define STD_NAMESPACE
+#define FALCOR_ASSERT_ALIGNMENT_FOR(T, ALIGNMENT)
 
 #define FALCOR_ENUM_INFO(T, ...)
 #define FALCOR_ENUM_REGISTER(T)

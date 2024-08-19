@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -51,7 +51,7 @@ struct ClothMaterialInstance : MaterialInstanceBase, IMaterialInstance
 
         if (!isValidHemisphereReflection(sd, sf, wiLocal, woLocal, wo)) return float3(0.f);
 
-        return brdf.eval(wiLocal, woLocal, sg);
+        return brdf.eval(wiLocal, woLocal, sg, BSDFContext());
     }
 
     [Differentiable]
@@ -110,7 +110,7 @@ struct ClothMaterialInstance : MaterialInstanceBase, IMaterialInstance
 
         if (!isValidHemisphereReflection(sd, sf, wiLocal, woLocal, result.wo) || result.pdf == 0.f) return false;
 
-        result.weight = brdf.eval(wiLocal, woLocal, sg) / result.pdf;
+        result.weight = brdf.eval(wiLocal, woLocal, sg, BSDFContext()) / result.pdf;
         result.lobeType = (uint)LobeType::DiffuseReflection;
 
         return true;

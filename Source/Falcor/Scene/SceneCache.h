@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -47,6 +47,9 @@
 
 namespace Falcor
 {
+    template<typename T, bool TUseByteAddressBuffer>
+    class SplitBuffer;
+
     /** Helper class for reading and writing scene cache files.
         The scene cache is used to heavily reduce load times of more complex assets.
         The cache stores a binary representation of `Scene::SceneData` which contains everything to re-create a `Scene`.
@@ -120,5 +123,10 @@ namespace Falcor
 
         static void writeMarker(OutputStream& stream, const std::string& id);
         static void readMarker(InputStream& stream, const std::string& id);
+
+        template<typename T, bool TUseByteAddressBuffer>
+        static void writeSplitBuffer(OutputStream& stream, const SplitBuffer<T, TUseByteAddressBuffer>& buffer);
+        template<typename T, bool TUseByteAddressBuffer>
+        static void readSplitBuffer(InputStream& stream, SplitBuffer<T, TUseByteAddressBuffer>& buffer);
     };
 }

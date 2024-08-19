@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -57,9 +57,9 @@ extension SDF3DPrimitive
 
     static float evalShape(float3 p, SDF3DShapeType shapeType, float3 shapeData, float blobbing, float3 translation, float3x3 invRotationScale)
     {
-        // OLD CODE: invRotationScale was tranpose w.r.t. CPU: p = mul(invRotationScale, p - translation);
+        // OLD CODE: invRotationScale was transpose w.r.t. CPU: p = mul(invRotationScale, p - translation);
         // The old code did M.v, where M was actually transposed w.r.t. what was on the CPU because of the col-major CPU and row-major GPU.
-        // Matrices are now row-major on both, meaning there is no more any hidden tranpose.
+        // Matrices are now row-major on both, meaning there is no more any hidden transpose.
         // However, to keep the exact same semantic as before, we explicitly transpose the invRotationScale here.
         // We choose to transpose rather than do v.M to make the weirdness even more obvious.
         // tdavidovic: I think this is a bug and the transpose shouldn't be there, but don't have a test case with a ground truth to verify
@@ -82,9 +82,9 @@ extension SDF3DPrimitive
 
     static float2 evalIntervalShape(float3 pCenter, float3 pHalfExtent, SDF3DShapeType shapeType, float3 shapeData, float blobbing, float3 translation, float3x3 invRotationScale)
     {
-        // OLD CODE: invRotationScale was tranpose w.r.t. CPU: pCenter = mul(invRotationScale, pCenter - translation);
+        // OLD CODE: invRotationScale was transpose w.r.t. CPU: pCenter = mul(invRotationScale, pCenter - translation);
         // The old code did M.v, where M was actually transposed w.r.t. what was on the CPU because of the col-major CPU and row-major GPU.
-        // Matrices are now row-major on both, meaning there is no more any hidden tranpose.
+        // Matrices are now row-major on both, meaning there is no more any hidden transpose.
         // However, to keep the exact same semantic as before, we explicitly transpose the invRotationScale here.
         // We choose to transpose rather than do v.M to make the weirdness even more obvious.
         // tdavidovic: I think this is a bug and the transpose shouldn't be there, but don't have a test case with a ground truth to verify

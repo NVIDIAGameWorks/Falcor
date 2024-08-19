@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -47,12 +47,12 @@ struct BSDFViewer
         float3 wo;
     };
 
-    SurfaceData prepareShadingData(const VertexData v, const float3 viewDir, const uint materialID, const ITextureSampler lod)
+    SurfaceData prepareShadingData(const VertexData v, const float3 viewDir, const uint materialID)
     {
         SurfaceData data = {};
 
         // Setup Falcor's ShadingData based on the selected scene material and lobes.
-        data.sd = gScene.materials.prepareShadingData(v, materialID, viewDir, lod);
+        data.sd = gScene.materials.prepareShadingData(v, materialID, viewDir);
 
         return data;
     }
@@ -65,7 +65,7 @@ struct BSDFViewer
         float3 lightDir = calculateSliceGeometry(uv, v, viewDir);
 
         // Setup shading data.
-        SurfaceData data = prepareShadingData(v, viewDir, materialID, lod);
+        SurfaceData data = prepareShadingData(v, viewDir, materialID);
         data.wo = lightDir;
 
         // Create BSDF instance.

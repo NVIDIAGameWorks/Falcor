@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -25,12 +25,22 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-import Scene.RaytracingInline;
+#include "Utils/HostDeviceShared.slangh"
+#include "Utils/Math/MathConstants.slangh"
+
 import Utils.Math.HashUtils;
+import Utils.Math.ShadingFrame;
 import Utils.Geometry.IntersectionHelpers;
+import Utils.Debug.PixelDebug;
 import Utils.Color.ColorMap;
 import Utils.Color.ColorHelpers;
+import Utils.Sampling.SampleGenerator;
 import SharedTypes;
+
+import Scene.RaytracingInline;
+import Scene.Scene;
+
+import Utils.Math.Ray;
 
 struct SceneDebugger
 {
@@ -39,6 +49,7 @@ struct SceneDebugger
     SceneDebuggerParams params;
     StructuredBuffer<uint> meshToBlasID;
     StructuredBuffer<InstanceInfo> instanceInfo;
+    Texture2D<PackedHitInfo> vbuffer;
 
     RWTexture2D<float4> output;
     RWStructuredBuffer<PixelData> pixelData;
@@ -50,6 +61,8 @@ struct SceneDebugger
     {
         if (any(pixel >= params.frameDim))
             return;
+
+        printSetPixel(pixel);
 
         // Initialize pixel data for the selected pixel.
         if (all(pixel == params.selectedPixel))
@@ -68,10 +81,28 @@ struct SceneDebugger
 
         float3 color = float3(0);
 
-        SceneRayQuery<kUseAlphaTest> sceneRayQuery;
         HitInfo hit;
-        float hitT;
-        if (sceneRayQuery.traceRay(ray, hit, hitT, RAY_FLAG_NONE, 0xff))
+        float hitT = 1e30f;
+
+        if ((bool)params.useVBuffer)
+        {
+            hit = unpackHitInfo(vbuffer[pixel]);
+            if (hit.isValid())
+            {
+                if ((bool)params.showVolumes)
+                {
+                    float3 posW = getPosW(ray.origin, ray.dir, hit);
+                    hitT = length(posW - ray.origin);
+                }
+            }
+        }
+        else
+        {
+            SceneRayQuery<kUseAlphaTest> sceneRayQuery;
+            hit = sceneRayQuery.traceRay(ray, hitT);
+        }
+
+        if (hit.isValid())
         {
             color = handleHit(pixel, ray.origin, ray.dir, hit);
         }
@@ -82,13 +113,13 @@ struct SceneDebugger
         }
 
         // Process volumes.
-        if (params.showVolumes)
+        if ((bool)params.showVolumes)
         {
             color = handleVolumes(color, ray.origin, ray.dir, hitT);
         }
 
         // Clamp pixel values if necessary.
-        if (params.clamp)
+        if ((bool)params.clamp)
             color = saturate(color);
 
         // Write output.
@@ -97,9 +128,9 @@ struct SceneDebugger
 
     float3 remapVector(float3 v)
     {
-        if (params.flipSign)
+        if ((bool)params.flipSign)
             v = -v;
-        if (params.remapRange)
+        if ((bool)params.remapRange)
             v = 0.5f * v + 0.5f;
         return v;
     }
@@ -121,7 +152,6 @@ struct SceneDebugger
         uint blasID = PixelData::kInvalidID;
 
         VertexData v = {};
-
         switch (hit.getType())
         {
         case HitType::Triangle:
@@ -176,10 +206,8 @@ struct SceneDebugger
             return float3(1, 0, 0);
         }
 
-        let lod = ExplicitLodTextureSampler(0.f);
-
         // Load shading data.
-        const ShadingData sd = gScene.materials.prepareShadingData(v, materialID, -dir, lod);
+        const ShadingData sd = gScene.materials.prepareShadingData(v, materialID, -dir);
 
         // Write pixel data for the selected pixel.
         if (all(pixel == params.selectedPixel))
@@ -208,26 +236,33 @@ struct SceneDebugger
             pixelData[0] = d;
         }
 
+        // Profiling of secondary rays.
+        if (params.profileSecondaryRays)
+        {
+            return traceSecondary(sd, pixel);
+        }
+
         // Compute zebra stripes.
-        const float z = (pixel.x + pixel.y - params.frameCount) & 0x8 ? 1.f : 0.f;
+        const float z = ((pixel.x + pixel.y - params.frameCount) & 0x8) ? 1.f : 0.f;
+
+        // Compute flat shading.
+        // FIXME: Parameterize this
+        const float3 frontN = faceforward(sd.faceN, dir, sd.faceN);
+        const float flatShaded = 0.8f * saturate(dot(-frontN, dir)) + 0.2;
 
         switch ((SceneDebuggerMode)params.mode)
         {
         case SceneDebuggerMode::FlatShaded:
-        {
-            // DEMO21:
-            // FIXME: Parameterize this
-            const float3 frontN = faceforward(sd.faceN, dir, sd.faceN);
-            const float v = 0.8f * saturate(dot(-frontN, dir)) + 0.2;
-            return float3(v, v, v);
-        }
+            return float3(flatShaded);
+        case SceneDebuggerMode::TriangleDensity:
+            return colormapViridis(computeTriangleDensity(hit));
         // Geometry
         case SceneDebuggerMode::HitType:
             return pseudocolor(uint(hit.getType()));
         case SceneDebuggerMode::InstanceID:
             return pseudocolor(instanceID);
         case SceneDebuggerMode::MaterialID:
-            return pseudocolor(materialID);
+            return pseudocolor(materialID) * flatShaded;
         case SceneDebuggerMode::PrimitiveID:
             return pseudocolor(primitiveID);
         case SceneDebuggerMode::GeometryID:
@@ -248,6 +283,8 @@ struct SceneDebugger
                 return float3(v, v, v);
             }
         }
+        case SceneDebuggerMode::MaterialType:
+            return pseudocolor((uint)sd.mtl.getMaterialType()) * flatShaded;
         // Shading data
         case SceneDebuggerMode::FaceNormal:
             return remapVector(sd.faceN);
@@ -274,6 +311,7 @@ struct SceneDebugger
         case SceneDebuggerMode::BSDFProperties:
         {
             // Create material instance and query its properties.
+            let lod = ExplicitLodTextureSampler(0.f);
             let mi = gScene.materials.getMaterialInstance(sd, lod);
             let bsdfProperties = mi.getProperties(sd);
             switch ((SceneDebuggerBSDFProperty)params.bsdfProperty)
@@ -352,11 +390,154 @@ struct SceneDebugger
         for (uint step = 0; step < kSteps; ++step)
         {
             float t = lerp(nearFar.x, nearFar.y, (step + 0.5f) / kSteps);
-            float density = densityGrid.lookupIndex(ipos + t * idir, accessor);
+            float density = densityGrid.lookupIndex(int3(ipos + t * idir), accessor);
             opticalDepth += density;
         }
-        opticalDepth *= (nearFar.y - nearFar.x) / kSteps * gridVolume.data.densityScale * params.densityScale;
+        opticalDepth *= (nearFar.y - nearFar.x) / kSteps * gridVolume.data.densityScale * params.volumeDensityScale;
         return exp(-opticalDepth);
+    }
+
+    static float3 getPosW(const float3 orig, const float3 dir, const HitInfo hit)
+    {
+        switch (hit.getType())
+        {
+        case HitType::Triangle:
+            return gScene.getVertexData(hit.getTriangleHit()).posW;
+        case HitType::DisplacedTriangle:
+            return gScene.getVertexData(hit.getDisplacedTriangleHit(), -dir).posW;
+        case HitType::Curve:
+            return gScene.getVertexDataFromCurve(hit.getCurveHit()).posW;
+        case HitType::SDFGrid:
+        {
+            return gScene.getVertexDataFromSDFGrid(hit.getSDFGridHit(), orig, dir).posW;
+        }
+        default:
+            // Should not happen. Return the origin.
+            return orig;
+        }
+    }
+
+    ShadingData loadHit(const Ray ray, const HitInfo hit)
+    {
+        uint instanceID = PixelData::kInvalidID;
+        uint materialID = PixelData::kInvalidID;
+        uint primitiveID = PixelData::kInvalidID;
+        uint geometryID = PixelData::kInvalidID;
+        uint blasID = PixelData::kInvalidID;
+
+        VertexData v = {};
+        switch (hit.getType())
+        {
+        case HitType::Triangle:
+        {
+            const TriangleHit triangleHit = hit.getTriangleHit();
+            instanceID = triangleHit.instanceID.index;
+            geometryID = gScene.getGeometryInstance(triangleHit.instanceID).geometryID;
+            primitiveID = triangleHit.primitiveIndex;
+            blasID = meshToBlasID[geometryID];
+            materialID = gScene.getMaterialID(triangleHit.instanceID);
+
+            // Load vertex attributes.
+            v = gScene.getVertexData(triangleHit);
+            break;
+        }
+        case HitType::DisplacedTriangle:
+        {
+            const DisplacedTriangleHit displacedTriangleHit = hit.getDisplacedTriangleHit();
+            instanceID = displacedTriangleHit.instanceID.index;
+            geometryID = gScene.getGeometryInstance(displacedTriangleHit.instanceID).geometryID;
+            blasID = meshToBlasID[geometryID];
+            materialID = gScene.getMaterialID(displacedTriangleHit.instanceID);
+
+            // Load vertex attributes.
+            v = gScene.getVertexData(displacedTriangleHit, -ray.dir);
+            break;
+        }
+        case HitType::Curve:
+        {
+            const CurveHit curveHit = hit.getCurveHit();
+            instanceID = curveHit.instanceID.index;
+            geometryID = gScene.getGeometryInstance(curveHit.instanceID).geometryID;
+            materialID = gScene.getMaterialID(curveHit.instanceID);
+
+            // Load vertex attributes.
+            v = gScene.getVertexDataFromCurve(curveHit);
+            break;
+        }
+        case HitType::SDFGrid:
+        {
+            const SDFGridHit sdfGridHit = hit.getSDFGridHit();
+            instanceID = sdfGridHit.instanceID.index;
+            geometryID = gScene.getGeometryInstance(sdfGridHit.instanceID).geometryID;
+            materialID = gScene.getMaterialID(sdfGridHit.instanceID);
+
+            // Load vertex attributes.
+            v = gScene.getVertexDataFromSDFGrid(sdfGridHit, ray.origin, ray.dir);
+            break;
+        }
+        default:
+            // Should not happen.
+            return {};
+        }
+
+        // Load shading data.
+        return gScene.materials.prepareShadingData(v, materialID, -ray.dir);
+    }
+
+    float3 traceSecondary(const ShadingData sd, const uint2 pixel)
+    {
+        SampleGenerator sg = SampleGenerator(pixel, params.frameCount);
+
+        // Create frame centered around the face normal oriented towards the viewer.
+        const float3 N = sd.getOrientedFaceNormal();
+        bool valid;
+        let sf = ShadingFrame::createSafe(N, sd.tangentW, valid);
+
+        // Generate random direction in cone centered around +z axis.
+        float c = cos(params.profileSecondaryConeAngle * (M_2PI / 360.f));
+        float s = sqrt(1.f - c * c);
+        float z = c + (1.f - c) * sampleNext1D(sg); // z uniform on [cos(a),1]
+        float phi = sampleNext1D(sg) * M_2PI;
+        float3 dir = float3(cos(phi) * s, sin(phi) * s, z);
+        dir = sf.fromLocal(dir);
+
+        // Trace secondary ray.
+        const Ray ray = Ray(sd.computeRayOrigin(), dir);
+
+        float hitT = 1e30f;
+        SceneRayQuery<kUseAlphaTest> sceneRayQuery;
+        HitInfo hit = sceneRayQuery.traceRay(ray, hitT);
+
+        float3 color = {};
+
+        if (params.profileSecondaryLoadHit)
+        {
+            if (hit.isValid())
+            {
+                let hitSD = loadHit(ray, hit);
+                color = hitSD.frame.N;
+            }
+        }
+        else
+        {
+            color = hit.isValid() ? float3(0, 1, 0) : float3(1, 0, 0);
+        }
+
+        return color;
+    }
+
+    float computeTriangleDensity(const HitInfo hit)
+    {
+        if (hit.getType() != HitType::Triangle)
+            return 0.f;
+
+        const TriangleHit triangleHit = hit.getTriangleHit();
+        const float A = gScene.getFaceAreaW(triangleHit.instanceID, triangleHit.primitiveIndex);
+
+        float density = 1.f / A; // Can be inf
+        float logDensity = log2(density);
+
+        return (logDensity - params.triangleDensityLogRange.x) / (params.triangleDensityLogRange.y - params.triangleDensityLogRange.x);
     }
 };
 

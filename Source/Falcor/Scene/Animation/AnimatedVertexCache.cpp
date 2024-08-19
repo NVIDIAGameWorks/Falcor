@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -477,6 +477,7 @@ namespace Falcor
 
         DefineList defines;
         defines.add("MESH_KEYFRAME_COUNT", std::to_string(mMeshKeyframeCount));
+        mpScene->getMeshStaticData().getShaderDefines(defines);
         mpMeshVertexUpdatePass = ComputePass::create(mpDevice, "Scene/Animation/UpdateMeshVertices.slang", "main", defines);
 
         // Bind data
@@ -495,6 +496,7 @@ namespace Falcor
 
         DefineList defines;
         defines.add("CURVE_KEYFRAME_COUNT", std::to_string(mCurveKeyframeTimes.size()));
+        mpScene->getMeshStaticData().getShaderDefines(defines);
         mpCurveVertexUpdatePass = ComputePass::create(mpDevice, kUpdateCurveVerticesFilename, "main", defines);
 
         auto block = mpCurveVertexUpdatePass->getRootVar()["gCurveVertexUpdater"];
@@ -520,6 +522,7 @@ namespace Falcor
 
         DefineList defines;
         defines.add("CURVE_KEYFRAME_COUNT", std::to_string(mCurveKeyframeTimes.size()));
+        mpScene->getMeshStaticData().getShaderDefines(defines);
         mpCurvePolyTubeVertexUpdatePass = ComputePass::create(mpDevice, kUpdateCurvePolyTubeVerticesFilename, "main", defines);
 
         auto block = mpCurvePolyTubeVertexUpdatePass->getRootVar()["gCurvePolyTubeVertexUpdater"];
@@ -549,7 +552,7 @@ namespace Falcor
         mpMeshInterpolationBuffer->setBlob(mMeshInterpolationInfo.data(), 0, mpMeshInterpolationBuffer->getSize());
 
         auto block = mpMeshVertexUpdatePass->getRootVar()["gMeshVertexUpdater"];
-        block["sceneVertexData"] = mpScene->getMeshVao()->getVertexBuffer(Scene::kStaticDataBufferIndex);
+        mpScene->getMeshStaticData().bindShaderData(block["sceneVertexData"]);
         block["copyPrev"] = copyPrev;
 
         mpMeshVertexUpdatePass->execute(pRenderContext, mMaxMeshVertexCount, (uint32_t)mCachedMeshes.size(), 1);
@@ -584,7 +587,7 @@ namespace Falcor
 
         auto block = mpCurveAABBUpdatePass->getRootVar()["gCurveAABBUpdater"];
         block["curveVertices"] = mpScene->mpCurveVao->getVertexBuffer(0);
-        block["curveAABBs"].setUav(mpScene->mpRtAABBBuffer->getUAV(0, mCurveIndexCount));
+        block["curveAABBs"].setUav(mpScene->mpRtAABBBuffer->getUAV(0, mCurveIndexCount * sizeof(RtAABB)));
 
         uint32_t dimX = (1 << 16);
         uint32_t dimY = (uint32_t)std::ceil((float)mCurveIndexCount / dimX);
@@ -606,7 +609,7 @@ namespace Falcor
         block["copyPrev"] = copyPrev;
 
         block["perMeshData"] = mpCurvePolyTubeMeshMetadataBuffer;
-        block["sceneVertexData"] = mpScene->getMeshVao()->getVertexBuffer(Scene::kStaticDataBufferIndex);
+        mpScene->getMeshStaticData().bindShaderData(block["sceneVertexData"]);
         block["prevVertexData"] = mpPrevVertexData;
 
         block["vertexCount"] = mCurvePolyTubeVertexCount;

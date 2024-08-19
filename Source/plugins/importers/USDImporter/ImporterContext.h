@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -263,6 +263,7 @@ namespace Falcor
         bool hasPrototype(const UsdPrim& protoPrim) const;
         const PrototypeGeom& getPrototypeGeom(const UsdPrim& protoPrim) { return prototypeGeoms[prototypeGeomMap.at(protoPrim)]; }
         void addPrototypeInstance(const PrototypeInstance& inst);
+        void applyVariantOverrides(UsdPrim& prim, const Falcor::Settings& settings);
 
         // Curves
         void addCurve(const UsdPrim& curvePrim);

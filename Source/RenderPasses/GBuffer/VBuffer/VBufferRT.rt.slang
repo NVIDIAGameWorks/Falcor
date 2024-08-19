@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,7 +26,6 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "Scene/SceneDefines.slangh"
-
 import Scene.Raytracing;
 import Scene.Intersection;
 import Scene.SDFs.SDFGridHitData;
@@ -40,6 +39,7 @@ struct RayData
     int dummy;
 };
 
+
 //
 // Shader entry point for miss shader.
 //
@@ -51,6 +51,7 @@ void miss(inout RayData rayData)
     uint2 launchIndex = DispatchRaysIndex().xy;
     gVBufferRT.writeMiss(launchIndex, WorldRayOrigin(), WorldRayDirection());
 }
+
 
 //
 // Shader entry points for TriangleMesh hit groups.
@@ -195,7 +196,7 @@ void rayGen()
         VBufferRT::kRayFlags,
         0xff /* instanceInclusionMask */,
         0 /* hitIdx */,
-        rayTypeCount,
+        getRayTypeCount(),
         0 /* missIdx */,
         ray.toRayDesc(),
         rayData

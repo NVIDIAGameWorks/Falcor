@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -98,33 +98,33 @@ void VBufferRT::execute(RenderContext* pRenderContext, const RenderData& renderD
     FALCOR_ASSERT(pOutput);
     updateFrameDim(uint2(pOutput->getWidth(), pOutput->getHeight()));
 
-    // If there is no scene, clear the output and return.
-    if (mpScene == nullptr)
+    if (mpScene)
+    {
+        // Check for scene changes.
+        if (is_set(mUpdateFlags, IScene::UpdateFlags::RecompileNeeded) || is_set(mUpdateFlags, IScene::UpdateFlags::GeometryChanged) ||
+            is_set(mUpdateFlags, IScene::UpdateFlags::SDFGridConfigChanged))
+        {
+            recreatePrograms();
+        }
+
+        // Configure depth-of-field.
+        // When DOF is enabled, two PRNG dimensions are used. Pass this info to subsequent passes via the dictionary.
+        mComputeDOF = mUseDOF && mpScene->getCamera()->getApertureRadius() > 0.f;
+        if (mUseDOF)
+        {
+            renderData.getDictionary()[Falcor::kRenderPassPRNGDimension] = mComputeDOF ? 2u : 0u;
+        }
+
+        mUseTraceRayInline ? executeCompute(pRenderContext, renderData) : executeRaytrace(pRenderContext, renderData);
+        mUpdateFlags = IScene::UpdateFlags::None;
+        mFrameCount++;
+    }
+    else // If there is no scene, clear the output and return.
     {
         pRenderContext->clearUAV(pOutput->getUAV().get(), uint4(0));
         clearRenderPassChannels(pRenderContext, kVBufferExtraChannels, renderData);
         return;
     }
-
-    // Check for scene changes.
-    if (is_set(mpScene->getUpdates(), Scene::UpdateFlags::RecompileNeeded) ||
-        is_set(mpScene->getUpdates(), Scene::UpdateFlags::GeometryChanged) ||
-        is_set(mpScene->getUpdates(), Scene::UpdateFlags::SDFGridConfigChanged))
-    {
-        recreatePrograms();
-    }
-
-    // Configure depth-of-field.
-    // When DOF is enabled, two PRNG dimensions are used. Pass this info to subsequent passes via the dictionary.
-    mComputeDOF = mUseDOF && mpScene->getCamera()->getApertureRadius() > 0.f;
-    if (mUseDOF)
-    {
-        renderData.getDictionary()[Falcor::kRenderPassPRNGDimension] = mComputeDOF ? 2u : 0u;
-    }
-
-    mUseTraceRayInline ? executeCompute(pRenderContext, renderData) : executeRaytrace(pRenderContext, renderData);
-
-    mFrameCount++;
 }
 
 void VBufferRT::renderUI(Gui::Widgets& widget)
@@ -155,6 +155,7 @@ Properties VBufferRT::getProperties() const
 
     return props;
 }
+
 
 void VBufferRT::setScene(RenderContext* pRenderContext, const ref<Scene>& pScene)
 {
@@ -269,7 +270,7 @@ void VBufferRT::executeCompute(RenderContext* pRenderContext, const RenderData& 
 
         // Bind static resources
         ShaderVar var = mpComputePass->getRootVar();
-        mpScene->setRaytracingShaderData(pRenderContext, var);
+        mpScene->bindShaderDataForRaytracing(pRenderContext, var["gScene"]);
         mpSampleGenerator->bindShaderData(var);
     }
 
@@ -280,6 +281,7 @@ void VBufferRT::executeCompute(RenderContext* pRenderContext, const RenderData& 
 
     mpComputePass->execute(pRenderContext, uint3(mFrameDim, 1));
 }
+
 
 DefineList VBufferRT::getShaderDefines(const RenderData& renderData) const
 {

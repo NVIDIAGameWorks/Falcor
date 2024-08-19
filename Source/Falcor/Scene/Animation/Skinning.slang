@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -38,9 +38,9 @@ struct SkinningData
     bool initPrev; ///< Copy current frame data to previous frame data.
 
     // Vertex data
-    StructuredBuffer<PackedStaticVertexData> staticData;            ///< Original global vertex buffer. This holds the unmodified input vertices.
+    SplitVertexBuffer staticData;                                   ///< Original global vertex buffer. This holds the unmodified input vertices.
     StructuredBuffer<SkinningVertexData> skinningData;              ///< Bone IDs and weights for all skinned vertices.
-    RWStructuredBuffer<PackedStaticVertexData> skinnedVertices;     ///< Skinned global vertex buffer. We'll update the positions only for the dynamic meshes.
+    RWSplitVertexBuffer skinnedVertices;                            ///< Skinned global vertex buffer. We'll update the positions only for the dynamic meshes.
     RWStructuredBuffer<PrevVertexData> prevSkinnedVertices;         ///< Previous frame vertex positions for all dynamic meshes.
 
     // Transforms

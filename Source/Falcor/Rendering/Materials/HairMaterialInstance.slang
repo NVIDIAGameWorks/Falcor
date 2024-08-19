@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -59,7 +59,7 @@ struct HairMaterialInstance : MaterialInstanceBase, IMaterialInstance
 
         HairChiang16 bcsdf = HairChiang16(sd, data);
 
-        return bcsdf.eval(wiLocal, woLocal, sg);
+        return bcsdf.eval(wiLocal, woLocal, sg, BSDFContext());
 #else
         // Diffuse BRDF
         return data.baseColor * (float)M_1_PI * saturate(dot(sf.N, wo));
@@ -80,7 +80,7 @@ struct HairMaterialInstance : MaterialInstanceBase, IMaterialInstance
 
         HairChiang16 bcsdf = HairChiang16(sd, data);
 
-        bool valid = bcsdf.sample(wiLocal, woLocal, result.pdf, result.weight, result.lobeType, sg);
+        bool valid = bcsdf.sample(wiLocal, woLocal, result.pdf, result.weight, result.lobeType, sg, BSDFContext());
         result.wo = sf.fromLocal(woLocal);
 
         return valid;
@@ -102,7 +102,7 @@ struct HairMaterialInstance : MaterialInstanceBase, IMaterialInstance
 
         HairChiang16 bcsdf = HairChiang16(sd, data);
 
-        return bcsdf.evalPdf(wiLocal, woLocal);
+        return bcsdf.evalPdf(wiLocal, woLocal, BSDFContext());
 #else
         // Diffuse BRDF
         return saturate(dot(sf.N, wo));

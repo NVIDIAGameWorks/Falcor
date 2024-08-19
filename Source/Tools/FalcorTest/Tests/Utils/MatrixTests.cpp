@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,6 +27,7 @@
  **************************************************************************/
 #include "Testing/UnitTest.h"
 #include "Utils/Math/Matrix.h"
+#include "Utils/Math/MatrixJson.h"
 
 #include <fmt/format.h>
 #include <iostream>
@@ -828,6 +829,31 @@ CPU_TEST(Matrix_FloatFormatter)
     EXPECT_EQ(fmt::format("{:g}", test0), "{{1.1, 1.2, 1.3}, {2.1, 2.2, 2.3}, {3.1, 3.2, 3.3}}");
     EXPECT_EQ(fmt::format("{:.1}", test0), "{{1, 1, 1}, {2, 2, 2}, {3, 3, 3}}");
     EXPECT_EQ(fmt::format("{:.2f}", test0), "{{1.10, 1.20, 1.30}, {2.10, 2.20, 2.30}, {3.10, 3.20, 3.30}}");
+}
+
+template<typename T, int RowCount, int ColCount>
+void test_json(CPUUnitTestContext& ctx, const math::matrix<T, RowCount, ColCount>& src)
+{
+    using fmatrix = math::matrix<T, RowCount, ColCount>;
+
+    nlohmann::json j = src;
+    fmatrix dst = j.get<fmatrix>();
+    EXPECT_TRUE(math::all(dst == src));
+    j.get_to(dst);
+    EXPECT_TRUE(math::all(dst == src));
+}
+
+CPU_TEST(Matrix_Json)
+{
+    test_json(ctx, float2x2({1.1f, 2.2f, 3.3f, 4.4f}));
+    test_json(ctx, float3x3({1.1f, 2.2f, 3.3f, 4.4f, 5.5f, 6.6f, 7.7f, 8.8f, 9.9f}));
+
+    test_json(ctx, float1x4({1.1f, 2.2f, 3.3f, 4.4f}));
+    test_json(ctx, float2x4({1.1f, 2.2f, 3.3f, 4.4f, 5.5f, 6.6f, 7.7f, 8.8f}));
+    test_json(ctx, float3x4({1.1f, 2.2f, 3.3f, 4.4f, 5.5f, 6.6f, 7.7f, 8.8f, 9.9f, 10.10f, 11.11f, 12.12f}));
+    test_json(
+        ctx, float4x4({1.1f, 2.2f, 3.3f, 4.4f, 5.5f, 6.6f, 7.7f, 8.8f, 9.9f, 10.10f, 11.11f, 12.12f, 13.13f, 14.14f, 15.15f, 16.16f})
+    );
 }
 
 } // namespace Falcor

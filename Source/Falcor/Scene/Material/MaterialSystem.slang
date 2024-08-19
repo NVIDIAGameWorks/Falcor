@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -28,6 +28,7 @@
 import Scene.Material.TextureHandle;
 import Scene.Material.TextureSampler;
 import Scene.Material.AlphaTest;
+import Scene.Lights.LightProfile;
 import Rendering.Volumes.PhaseFunction;
 import Utils.SlangUtils;
 __exported import Scene.SceneTypes;
@@ -56,6 +57,11 @@ struct MaterialSystem
     ByteAddressBuffer materialBuffers[ArrayMax<1, MATERIAL_SYSTEM_BUFFER_DESC_COUNT>.value];
 
     Texture3D<float4> materialTextures3D[ArrayMax<1, MATERIAL_SYSTEM_TEXTURE_3D_DESC_COUNT>.value];
+
+    /// True when any emissive material is using IES
+    static bool kUseLightProfile = MATERIAL_SYSTEM_USE_LIGHT_PROFILE;
+    /// IES light profile to use with materials `hasLightProfile(id)` == true
+    LightProfile lightProfile;
 
 
     /**
@@ -386,6 +392,29 @@ struct MaterialSystem
     {
         ExplicitLodTextureSampler explicitLOD = { lod };
         return alphaTest(v, materialID, explicitLOD);
+    }
+
+    bool lightProfilesEnabled()
+    {
+        return kUseLightProfile;
+    }
+
+    /// Returns true when the material uses LightProfile
+    bool hasLightProfile(const uint materialID)
+    {
+        if (!lightProfilesEnabled())
+            return false;
+        return getMaterialHeader(materialID).isLightProfileEnabled();
+    }
+
+    /// Evaluates the light profile.
+    /// Assumes that `hasLightProfile` has been checked.
+    /// TODO: Extend to take const uint materialID once materials can have different profiles
+    float evalLightProfile(const float cosTheta)
+    {
+        if (!lightProfilesEnabled())
+            return 1.f;
+        return lightProfile.eval(cosTheta);
     }
 };
 

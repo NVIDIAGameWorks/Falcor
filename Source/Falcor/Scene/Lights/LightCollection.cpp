@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -107,6 +107,7 @@ namespace Falcor
         if (!updatedLights.empty())
         {
             updateTrianglePositions(pRenderContext, *mpScene, updatedLights);
+            mUpdateFlagsSignal(UpdateFlags::MatrixChanged);
             return true;
         }
 
@@ -142,7 +143,7 @@ namespace Falcor
 
         // Set state.
         mIntegrator.pState->setProgram(mIntegrator.pProgram);
-        mIntegrator.pState->setVao(Vao::create(Vao::Topology::TriangleList));
+        mIntegrator.pState->setVao(Vao::create(Vao::Topology::PointList));
 
         // Set viewport. Note we don't bind any render targets so the size just determines the dispatch limits.
         const uint32_t vpDim = 16384;       // 16K x 16K
@@ -255,6 +256,8 @@ namespace Falcor
             timeReport.measure("LightCollection::build finalize");
             timeReport.printToLog();
         }
+
+        mUpdateFlagsSignal(UpdateFlags::LayoutChanged);
     }
 
     void LightCollection::prepareTriangleData(RenderContext* pRenderContext, const Scene& scene)
@@ -343,7 +346,7 @@ namespace Falcor
 
             // Execute.
             mIntegrator.pProgram->addDefine("INTEGRATOR_PASS", "1");
-            pRenderContext->draw(mIntegrator.pState.get(), mIntegrator.pVars.get(), mTriangleCount * 3, 0);
+            pRenderContext->draw(mIntegrator.pState.get(), mIntegrator.pVars.get(), mTriangleCount, 0);
         }
 
         // 2nd pass: Rasterize emissive triangles in texture space to sum up their texels.
@@ -366,7 +369,7 @@ namespace Falcor
 
             // Execute.
             mIntegrator.pProgram->addDefine("INTEGRATOR_PASS", "2");
-            pRenderContext->draw(mIntegrator.pState.get(), mIntegrator.pVars.get(), mTriangleCount * 3, 0);
+            pRenderContext->draw(mIntegrator.pState.get(), mIntegrator.pVars.get(), mTriangleCount, 0);
         }
 
         // 3rd pass: Finalize the per-triangle flux values.

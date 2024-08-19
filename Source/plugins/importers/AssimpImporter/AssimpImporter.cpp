@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -151,7 +151,7 @@ public:
     const aiScene* pScene;
     SceneBuilder& builder;
     std::map<uint32_t, ref<Material>> materialMap;
-    std::map<uint32_t, MeshID> meshMap; // Assimp mesh index to Falcor mesh ID
+    std::vector<MeshID> meshMap; // Assimp mesh index to Falcor mesh ID
     std::map<std::string, float4x4> localToBindPoseMatrices;
 
     NodeID getFalcorNodeID(const aiNode* pNode) const { return mAiToFalcorNodeID.at(pNode); }
@@ -574,11 +574,13 @@ void createMeshes(ImporterData& data)
         if (!pMesh->HasFaces())
         {
             logWarning("AssimpImporter: Mesh '{}' has no faces, ignoring.", pMesh->mName.C_Str());
+            meshes.push_back(nullptr);
             continue;
         }
         if (pMesh->mFaces->mNumIndices != 3)
         {
             logWarning("AssimpImporter: Mesh '{}' is not a triangle mesh, ignoring.", pMesh->mName.C_Str());
+            meshes.push_back(nullptr);
             continue;
         }
         meshes.push_back(pMesh);
@@ -594,6 +596,8 @@ void createMeshes(ImporterData& data)
         [&](size_t i)
         {
             const aiMesh* pAiMesh = meshes[i];
+            if (!pAiMesh)
+                return;
             const uint32_t perFaceIndexCount = pAiMesh->mFaces[0].mNumIndices;
 
             SceneBuilder::Mesh mesh;
@@ -658,11 +662,13 @@ void createMeshes(ImporterData& data)
     // Add meshes to the scene.
     // We retain a deterministic order of the meshes in the global scene buffer by adding
     // them sequentially after being processed in parallel.
-    uint32_t i = 0;
-    for (const auto& mesh : processedMeshes)
+    data.meshMap.clear();
+    data.meshMap.resize(processedMeshes.size(), MeshID::Invalid());
+    for (size_t i = 0; i < processedMeshes.size(); ++i)
     {
-        MeshID meshID = data.builder.addProcessedMesh(mesh);
-        data.meshMap[i++] = meshID;
+        if (!meshes[i])
+            continue;
+        data.meshMap[i] = data.builder.addProcessedMesh(processedMeshes[i]);
     }
 }
 
@@ -769,7 +775,9 @@ void addMeshInstances(ImporterData& data, aiNode* pNode)
     NodeID nodeID = data.getFalcorNodeID(pNode);
     for (uint32_t mesh = 0; mesh < pNode->mNumMeshes; mesh++)
     {
-        MeshID meshID = data.meshMap.at(pNode->mMeshes[mesh]);
+        MeshID meshID = data.meshMap[pNode->mMeshes[mesh]];
+        if (!meshID.isValid())
+            continue;
         data.builder.addMeshInstance(nodeID, meshID);
     }
 

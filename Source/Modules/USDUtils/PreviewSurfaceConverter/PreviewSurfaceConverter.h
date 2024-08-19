@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -35,21 +35,25 @@
 
 #include "USDUtils/USDUtils.h"
 #include "USDUtils/USDHelpers.h"
+#include "USDUtils/ConvertedMaterialCache.h"
 
 BEGIN_DISABLE_USD_WARNINGS
 #include <pxr/usd/usd/prim.h>
 #include <pxr/usd/usdShade/material.h>
 END_DISABLE_USD_WARNINGS
 
-#include <condition_variable>
 #include <mutex>
 #include <string>
-#include <unordered_map>
 
 namespace Falcor
 {
 
-/** Class to create Falcor::Material instances from UsdPreviewSurfaces.
+/**
+ * Class to create Falcor::Material instances from UsdPreviewSurface.
+ * We extend UsdPreviewSurface by supporting additional inputs:
+ *   - uniform float3 volumeAbsorption: Volume absorption coefficients
+ *   - uniform float3 volumeScattering; Volume scattering coefficients
+ *   - float2 normal2: 2-channel normal map
  */
 class PreviewSurfaceConverter
 {
@@ -62,54 +66,29 @@ public:
     /**
      * Create a Falcor material from a USD material containing a UsdPreviewSurface shader.
      * \param material UsdShadeMaterial that contains the UsdPreviewSurface to be converted
-     * \param primName Name of the primitive to which the material is bound (for warning message reporting only).
      * \return A Falcor material instance representing the UsdPreviewSurface specified in the given material, if any, nullptr otherwise.
      */
-    ref<Material> convert(const pxr::UsdShadeMaterial& material, const std::string& primName, RenderContext* pRenderContext);
+    ref<Material> convert(const pxr::UsdShadeMaterial& material, RenderContext* pRenderContext);
 
 private:
     StandardMaterialSpec createSpec(const std::string& name, const UsdShadeShader& shader) const;
-    ref<Texture> loadTexture(const StandardMaterialSpec::ConvertedInput& ci);
+    ref<Texture> loadTexture(const ConvertedInput& ci);
 
-    ref<Texture> createSpecularTransmissionTexture(
-        StandardMaterialSpec::ConvertedInput& opacity,
-        ref<Texture> opacityTexture,
-        RenderContext* pRenderContext
-    );
+    ref<Texture> createSpecularTransmissionTexture(ConvertedInput& opacity, ref<Texture> opacityTexture, RenderContext* pRenderContext);
     ref<Texture> packBaseColorAlpha(
-        StandardMaterialSpec::ConvertedInput& baseColor,
+        ConvertedInput& baseColor,
         ref<Texture> baseColorTexture,
-        StandardMaterialSpec::ConvertedInput& opacity,
+        ConvertedInput& opacity,
         ref<Texture> opacityTexture,
         RenderContext* pRenderContext
     );
     ref<Texture> createSpecularTexture(
-        StandardMaterialSpec::ConvertedInput& roughness,
+        ConvertedInput& roughness,
         ref<Texture> roughnessTexture,
-        StandardMaterialSpec::ConvertedInput& metallic,
+        ConvertedInput& metallic,
         ref<Texture> metallicTexture,
         RenderContext* pRenderContext
     );
-
-    StandardMaterialSpec::ConvertedInput convertTexture(
-        const pxr::UsdShadeInput& input,
-        const TfToken& outputName,
-        bool assumeSrgb = false,
-        bool scaleSupported = false
-    ) const;
-    StandardMaterialSpec::ConvertedInput convertFloat(const pxr::UsdShadeInput& input, const TfToken& outputName) const;
-    StandardMaterialSpec::ConvertedInput convertColor(
-        const pxr::UsdShadeInput& input,
-        const TfToken& outputName,
-        bool assumeSrgb = false,
-        bool scaleSupported = false
-    ) const;
-
-    ref<StandardMaterial> getCachedMaterial(const pxr::UsdShadeShader& shader);
-    ref<StandardMaterial> getCachedMaterial(const StandardMaterialSpec& spec);
-
-    void cacheMaterial(const UsdShadeShader& shader, ref<StandardMaterial> pMaterial);
-    void cacheMaterial(const StandardMaterialSpec& spec, ref<StandardMaterial> pMaterial);
 
     ref<Device> mpDevice;
 
@@ -119,18 +98,9 @@ private:
 
     ref<Sampler> mpSampler; ///< Bilinear clamp sampler
 
-    ///< Map from UsdPreviewSurface-defining UsdShadeShader to Falcor material instance. An entry with a null instance
-    ///< indicates in-progress conversion.
-    std::unordered_map<pxr::UsdPrim, ref<StandardMaterial>, UsdObjHash> mPrimMaterialCache;
+    ConvertedMaterialCache<StandardMaterial, StandardMaterialSpec, StandardMaterialSpecHash> mMaterialCache;
 
-    ///< Map from StandardMaterialSpec to Falcor material instance. An entry with a null instance indicates in-progress
-    ///< conversion.
-    std::unordered_map<StandardMaterialSpec, ref<StandardMaterial>, SpecHash> mSpecMaterialCache;
-
-    std::mutex mMutex;      ///< Mutex to ensure serial invocation of calls that are not thread safe (e.g., texture creation
-                            ///< and compute program execution).
-    std::mutex mCacheMutex; ///< Mutex controlling access to the material caches.
-    std::condition_variable mPrimCacheUpdated; ///< Condition variable for threads waiting on by-prim cache update.
-    std::condition_variable mSpecCacheUpdated; ///< Condition variable for threads waiting on by-spec cache update.
+    std::mutex mMutex; ///< Mutex to ensure serial invocation of calls that are not thread safe (e.g., texture creation
+                       ///< and compute program execution).
 };
 } // namespace Falcor

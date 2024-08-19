@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -28,6 +28,7 @@
 #include "Buffer.h"
 #include "Device.h"
 #include "GFXAPI.h"
+#include "GFXHelpers.h"
 #include "NativeHandleTraits.h"
 #include "PythonHelpers.h"
 #include "Core/Error.h"
@@ -47,9 +48,18 @@ namespace Falcor
 // TODO: Replace with include?
 void getGFXResourceState(ResourceBindFlags flags, gfx::ResourceState& defaultState, gfx::ResourceStateSet& allowedStates);
 
-static void prepareGFXBufferDesc(gfx::IBufferResource::Desc& bufDesc, size_t size, ResourceBindFlags bindFlags, MemoryType memoryType)
+static void prepareGFXBufferDesc(
+    gfx::IBufferResource::Desc& bufDesc,
+    size_t size,
+    size_t elementSize,
+    ResourceFormat format,
+    ResourceBindFlags bindFlags,
+    MemoryType memoryType
+)
 {
     bufDesc.sizeInBytes = size;
+    bufDesc.elementSize = elementSize;
+    bufDesc.format = getGFXFormat(format);
     switch (memoryType)
     {
     case MemoryType::DeviceLocal:
@@ -74,6 +84,8 @@ Slang::ComPtr<gfx::IBufferResource> createBufferResource(
     ref<Device> pDevice,
     Buffer::State initState,
     size_t size,
+    size_t elementSize,
+    ResourceFormat format,
     ResourceBindFlags bindFlags,
     MemoryType memoryType
 )
@@ -82,7 +94,7 @@ Slang::ComPtr<gfx::IBufferResource> createBufferResource(
 
     // Create the buffer
     gfx::IBufferResource::Desc bufDesc = {};
-    prepareGFXBufferDesc(bufDesc, size, bindFlags, memoryType);
+    prepareGFXBufferDesc(bufDesc, size, elementSize, format, bindFlags, memoryType);
 
     Slang::ComPtr<gfx::IBufferResource> pApiHandle;
     FALCOR_GFX_CALL(pDevice->getGfxDevice()->createBufferResource(bufDesc, nullptr, pApiHandle.writeRef()));
@@ -91,17 +103,22 @@ Slang::ComPtr<gfx::IBufferResource> createBufferResource(
     return pApiHandle;
 }
 
-Buffer::Buffer(ref<Device> pDevice, size_t size, ResourceBindFlags bindFlags, MemoryType memoryType, const void* pInitData)
+Buffer::Buffer(
+    ref<Device> pDevice,
+    size_t size,
+    size_t structSize,
+    ResourceFormat format,
+    ResourceBindFlags bindFlags,
+    MemoryType memoryType,
+    const void* pInitData
+)
     : Resource(pDevice, Type::Buffer, bindFlags, size), mMemoryType(memoryType)
 {
     FALCOR_CHECK(size > 0, "Can't create GPU buffer of size zero");
 
     // Check that buffer size is within 4GB limit. Larger buffers are currently not well supported in D3D12.
     // TODO: Revisit this check in the future.
-    if (size > (1ull << 32))
-    {
-        logWarning("Creating GPU buffer of size {} bytes. Buffers above 4GB are not currently well supported.", size);
-    }
+    FALCOR_CHECK(size <= (1ull << 32), "Creating GPU buffer of size {} bytes. Buffers above 4GB are not currently well supported.", size);
 
     if (mMemoryType != MemoryType::DeviceLocal && is_set(mBindFlags, ResourceBindFlags::Shared))
     {
@@ -109,6 +126,8 @@ Buffer::Buffer(ref<Device> pDevice, size_t size, ResourceBindFlags bindFlags, Me
     }
 
     mSize = align_to(mpDevice->getBufferDataAlignment(bindFlags), mSize);
+    mStructSize = structSize;
+    mFormat = format;
 
     if (mMemoryType == MemoryType::DeviceLocal)
     {
@@ -125,13 +144,17 @@ Buffer::Buffer(ref<Device> pDevice, size_t size, ResourceBindFlags bindFlags, Me
         mState.global = Resource::State::CopyDest;
     }
 
-    mGfxBufferResource = createBufferResource(mpDevice, mState.global, mSize, mBindFlags, mMemoryType);
+    mGfxBufferResource = createBufferResource(mpDevice, mState.global, mSize, mStructSize, mFormat, mBindFlags, mMemoryType);
 
     if (pInitData)
         setBlob(pInitData, 0, size);
 
     mElementCount = uint32_t(size);
 }
+
+Buffer::Buffer(ref<Device> pDevice, size_t size, ResourceBindFlags bindFlags, MemoryType memoryType, const void* pInitData)
+    : Buffer(pDevice, size, 0, ResourceFormat::Unknown, bindFlags, memoryType, pInitData)
+{}
 
 Buffer::Buffer(
     ref<Device> pDevice,
@@ -141,9 +164,8 @@ Buffer::Buffer(
     MemoryType memoryType,
     const void* pInitData
 )
-    : Buffer(pDevice, (size_t)getFormatBytesPerBlock(format) * elementCount, bindFlags, memoryType, pInitData)
+    : Buffer(pDevice, (size_t)getFormatBytesPerBlock(format) * elementCount, 0, format, bindFlags, memoryType, pInitData)
 {
-    mFormat = format;
     mElementCount = elementCount;
 }
 
@@ -156,20 +178,28 @@ Buffer::Buffer(
     const void* pInitData,
     bool createCounter
 )
-    : Buffer(pDevice, (size_t)structSize * elementCount, bindFlags, memoryType, pInitData)
+    : Buffer(pDevice, (size_t)structSize * elementCount, structSize, ResourceFormat::Unknown, bindFlags, memoryType, pInitData)
 {
     mElementCount = elementCount;
-    mStructSize = structSize;
     static const uint32_t zero = 0;
     if (createCounter)
     {
-        mpUAVCounter = make_ref<Buffer>(mpDevice, sizeof(uint32_t), ResourceBindFlags::UnorderedAccess, MemoryType::DeviceLocal, &zero);
+        FALCOR_CHECK(mStructSize > 0, "Can't create a counter buffer with struct size of 0.");
+        mpUAVCounter = make_ref<Buffer>(
+            mpDevice,
+            sizeof(uint32_t),
+            sizeof(uint32_t),
+            ResourceFormat::Unknown,
+            ResourceBindFlags::UnorderedAccess,
+            MemoryType::DeviceLocal,
+            &zero
+        );
     }
 }
 
 // TODO: Its wasteful to create a buffer just to replace it afterwards with the supplied one!
 Buffer::Buffer(ref<Device> pDevice, gfx::IBufferResource* pResource, size_t size, ResourceBindFlags bindFlags, MemoryType memoryType)
-    : Buffer(pDevice, size, bindFlags, memoryType, nullptr)
+    : Buffer(pDevice, size, 0, ResourceFormat::Unknown, bindFlags, memoryType, nullptr)
 {
     FALCOR_ASSERT(pResource);
     mGfxBufferResource = pResource;
@@ -184,7 +214,7 @@ inline Slang::ComPtr<gfx::IBufferResource> gfxResourceFromNativeHandle(
 )
 {
     gfx::IBufferResource::Desc bufDesc = {};
-    prepareGFXBufferDesc(bufDesc, size, bindFlags, memoryType);
+    prepareGFXBufferDesc(bufDesc, size, 0, ResourceFormat::Unknown, bindFlags, memoryType);
 
     gfx::InteropHandle gfxNativeHandle = {};
 #if FALCOR_HAS_D3D12
@@ -225,12 +255,12 @@ gfx::IResource* Buffer::getGfxResource() const
     return mGfxBufferResource;
 }
 
-ref<ShaderResourceView> Buffer::getSRV(uint32_t firstElement, uint32_t elementCount)
+ref<ShaderResourceView> Buffer::getSRV(uint64_t offset, uint64_t size)
 {
-    ResourceViewInfo view = ResourceViewInfo(firstElement, elementCount);
+    ResourceViewInfo view = ResourceViewInfo(offset, size);
 
     if (mSrvs.find(view) == mSrvs.end())
-        mSrvs[view] = ShaderResourceView::create(getDevice().get(), this, firstElement, elementCount);
+        mSrvs[view] = ShaderResourceView::create(getDevice().get(), this, offset, size);
 
     return mSrvs[view];
 }
@@ -240,12 +270,12 @@ ref<ShaderResourceView> Buffer::getSRV()
     return getSRV(0);
 }
 
-ref<UnorderedAccessView> Buffer::getUAV(uint32_t firstElement, uint32_t elementCount)
+ref<UnorderedAccessView> Buffer::getUAV(uint64_t offset, uint64_t size)
 {
-    ResourceViewInfo view = ResourceViewInfo(firstElement, elementCount);
+    ResourceViewInfo view = ResourceViewInfo(offset, size);
 
     if (mUavs.find(view) == mUavs.end())
-        mUavs[view] = UnorderedAccessView::create(getDevice().get(), this, firstElement, elementCount);
+        mUavs[view] = UnorderedAccessView::create(getDevice().get(), this, offset, size);
 
     return mUavs[view];
 }
@@ -321,16 +351,6 @@ void Buffer::unmap() const
         FALCOR_GFX_CALL(mGfxBufferResource->unmap(nullptr));
         mMappedPtr = nullptr;
     }
-}
-
-uint32_t Buffer::getElementSize() const
-{
-    if (mStructSize != 0)
-        return mStructSize;
-    if (mFormat == ResourceFormat::Unknown)
-        return 1;
-
-    FALCOR_THROW("Inferring element size from resource format is not implemented");
 }
 
 bool Buffer::adjustSizeOffsetParams(size_t& size, size_t& offset) const
@@ -455,7 +475,6 @@ FALCOR_SCRIPT_BINDING(Buffer)
     buffer.def_property_readonly("is_typed", &Buffer::isTyped);
     buffer.def_property_readonly("is_structured", &Buffer::isStructured);
     buffer.def_property_readonly("format", &Buffer::getFormat);
-    buffer.def_property_readonly("element_size", &Buffer::getElementSize);
     buffer.def_property_readonly("element_count", &Buffer::getElementCount);
     buffer.def_property_readonly("struct_size", &Buffer::getStructSize);
 

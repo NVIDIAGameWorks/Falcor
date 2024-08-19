@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -141,11 +141,11 @@ void AccumulatePass::execute(RenderContext* pRenderContext, const RenderData& re
         if (mpScene)
         {
             auto sceneUpdates = mpScene->getUpdates();
-            if ((sceneUpdates & ~Scene::UpdateFlags::CameraPropertiesChanged) != Scene::UpdateFlags::None)
+            if ((sceneUpdates & ~IScene::UpdateFlags::CameraPropertiesChanged) != IScene::UpdateFlags::None)
             {
                 reset();
             }
-            if (is_set(sceneUpdates, Scene::UpdateFlags::CameraPropertiesChanged))
+            if (is_set(sceneUpdates, IScene::UpdateFlags::CameraPropertiesChanged))
             {
                 auto excluded = Camera::Changes::Jitter | Camera::Changes::History;
                 auto cameraChanges = mpScene->getCamera()->getChanges();

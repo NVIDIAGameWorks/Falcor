@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -404,6 +404,7 @@ namespace Falcor
         material.def("loadTexture", loadTexture, "slot"_a, "path"_a, "useSrgb"_a = true); // PYTHONDEPRECATED
         material.def("load_texture", loadTexture, "slot"_a, "path"_a, "use_srgb"_a = true); // PYTHONDEPRECATED
         material.def("clearTexture", &Material::clearTexture, "slot"_a);
+        material.def("setRoughnessMollification", &Material::setRoughnessMollification, "value"_a);
 
         auto getMaterialParamLayoutDict = [&](MaterialType type) -> pybind11::dict {
             MaterialParamLayout layout = getMaterialParamLayout(type);

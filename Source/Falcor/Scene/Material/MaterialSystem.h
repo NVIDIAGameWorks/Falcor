@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -42,6 +42,8 @@
 
 namespace Falcor
 {
+    class LightProfile;
+
     /** This class represents a material system.
 
         It holds a collection of materials and their associated resources.
@@ -251,6 +253,9 @@ namespace Falcor
         TextureManager& getTextureManager() { return *mpTextureManager; }
 
 
+        void loadLightProfile(const std::filesystem::path& absoluteFilename, bool normalize);
+
+        const LightProfile* getLightProfile() const { return mpLightProfile.get(); }
     private:
         void updateMetadata();
         void updateUI();
@@ -264,6 +269,8 @@ namespace Falcor
         std::unique_ptr<TextureManager> mpTextureManager;           ///< Texture manager holding all material textures.
         ProgramDesc::ShaderModuleList mShaderModules;                   ///< Shader modules for all materials in use.
         std::map<MaterialType, TypeConformanceList> mTypeConformances; ///< Type conformances for each material type in use.
+        ref<LightProfile> mpLightProfile;                        ///< Global light profile.
+        bool mLightProfileBaked = true;
 
 
         // Metadata

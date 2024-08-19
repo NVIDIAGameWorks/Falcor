@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -77,4 +77,42 @@ void readBuffer(uint3 threadId: SV_DispatchThreadID)
 #else
     result[i] = buffer[i];
 #endif
+}
+
+// Structures for verifying various buffer sizes when allocated on CPU via reflection
+struct BufferSizeTest1_12B_T
+{
+    int16_t a;
+    float b;
+    int16_t c;
+};
+struct BufferSizeTest2_2B_T
+{
+    int16_t a;
+};
+struct BufferSizeTest3_24B_T
+{
+    int16_t a;
+    float64_t b;
+    int16_t c;
+};
+struct BufferSizeTest4_24B_T
+{
+    int16_t a;
+    float4 b;
+    int16_t c;
+};
+RWStructuredBuffer<BufferSizeTest1_12B_T> bufferSizeTest1_12B_buffer;
+RWStructuredBuffer<BufferSizeTest2_2B_T> bufferSizeTest2_2B_buffer;
+RWStructuredBuffer<BufferSizeTest3_24B_T> bufferSizeTest3_24B_buffer;
+RWStructuredBuffer<BufferSizeTest4_24B_T> bufferSizeTest4_24B_buffer;
+
+// Dummy computer shader to write to buffers, as this allows DXIL to be generated that references them
+[numthreads(1, 1, 1)]
+void writeSizeTest(uint3 threadId: SV_DispatchThreadID)
+{
+    bufferSizeTest1_12B_buffer[0] = {};
+    bufferSizeTest2_2B_buffer[0] = {};
+    bufferSizeTest3_24B_buffer[0] = {};
+    bufferSizeTest4_24B_buffer[0] = {};
 }

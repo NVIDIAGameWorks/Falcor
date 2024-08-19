@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -82,7 +82,7 @@ struct MERLMixMaterialInstance : MaterialInstanceBase, IMaterialInstance
         float3 wiLocal = sf.toLocal(sd.V);
         float3 woLocal = {};
 #if SAMPLE_FITTED_BRDF
-        if (!fittedBrdf.sample(wiLocal, woLocal, result.pdf, result.weight, result.lobeType, sg)) return false;
+        if (!fittedBrdf.sample(wiLocal, woLocal, result.pdf, result.weight, result.lobeType, sg, BSDFContext())) return false;
 #else
         woLocal = sample_cosine_hemisphere_concentric(sampleNext2D(sg), result.pdf);
         result.lobeType = (uint)LobeType::DiffuseReflection;
@@ -104,7 +104,7 @@ struct MERLMixMaterialInstance : MaterialInstanceBase, IMaterialInstance
         if (!isValidHemisphereReflection(sd, sf, wiLocal, woLocal, wo)) return 0.f;
 
 #if SAMPLE_FITTED_BRDF
-        return fittedBrdf.evalPdf(wiLocal, woLocal);
+        return fittedBrdf.evalPdf(wiLocal, woLocal, BSDFContext());
 #else
         return woLocal.z * M_1_PI; // pdf = cos(theta) / pi
 #endif

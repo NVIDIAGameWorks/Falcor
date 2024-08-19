@@ -96,7 +96,10 @@ set(FALCOR_DEPS_DIR ${PACKMAN_DIR}/deps)
 # Note: Using an INTERFACE target to simplify linking against all the various libraries in OpenEXR
 if(FALCOR_WINDOWS)
     add_library(OpenEXR INTERFACE)
-    target_include_directories(OpenEXR INTERFACE ${FALCOR_DEPS_DIR}/include)
+    target_include_directories(OpenEXR INTERFACE
+        ${FALCOR_DEPS_DIR}/include/OpenEXR
+        ${FALCOR_DEPS_DIR}/include/Imath
+    )
     target_link_directories(OpenEXR INTERFACE
         $<$<CONFIG:Release>:${FALCOR_DEPS_DIR}/lib>
         $<$<CONFIG:Debug>:${FALCOR_DEPS_DIR}/debug/lib>
@@ -107,7 +110,10 @@ if(FALCOR_WINDOWS)
     )
 elseif(FALCOR_LINUX)
     add_library(OpenEXR INTERFACE)
-    target_include_directories(OpenEXR INTERFACE ${FALCOR_DEPS_DIR}/include)
+    target_include_directories(OpenEXR INTERFACE
+        ${FALCOR_DEPS_DIR}/include/OpenEXR
+        ${FALCOR_DEPS_DIR}/include/Imath
+    )
     target_link_directories(OpenEXR INTERFACE
         $<$<CONFIG:Release>:${FALCOR_DEPS_DIR}/lib>
         $<$<CONFIG:Debug>:${FALCOR_DEPS_DIR}/debug/lib>
@@ -331,21 +337,32 @@ else()
 endif()
 
 # slang
-set(SLANG_DIR ${PACKMAN_DIR}/slang)
-set(FALCOR_SLANG_CONFIG release CACHE STRING "Slang config to use.")
-set_property(CACHE FALCOR_SLANG_CONFIG PROPERTY STRINGS release debug)
+
+set(FALCOR_LOCAL_SLANG OFF CACHE BOOL "Use a local build of slang instead of the binary package.")
+set(FALCOR_LOCAL_SLANG_DIR "${CMAKE_SOURCE_DIR}/../slang" CACHE PATH "Path to a local slang directory.")
+set(FALCOR_LOCAL_SLANG_BUILD_DIR "build/Debug" CACHE PATH "Path to the build directory of slang.")
+
+if(FALCOR_LOCAL_SLANG)
+    set(SLANG_DIR ${FALCOR_LOCAL_SLANG_DIR}/${FALCOR_LOCAL_SLANG_BUILD_DIR})
+    set(SLANG_INCLUDE_DIR ${FALCOR_LOCAL_SLANG_DIR}/include)
+else()
+    set(SLANG_DIR ${PACKMAN_DIR}/slang)
+    set(SLANG_INCLUDE_DIR ${PACKMAN_DIR}/slang/include)
+endif()
+set(FALCOR_SLANG_DIR ${SLANG_DIR} PARENT_SCOPE)
+
 if(FALCOR_WINDOWS)
     add_library(slang SHARED IMPORTED GLOBAL)
     set_target_properties(slang PROPERTIES
-        INTERFACE_INCLUDE_DIRECTORIES ${SLANG_DIR}
-        IMPORTED_IMPLIB ${SLANG_DIR}/bin/windows-x64/${FALCOR_SLANG_CONFIG}/slang.lib
-        IMPORTED_LOCATION ${SLANG_DIR}/bin/windows-x64/${FALCOR_SLANG_CONFIG}/slang.dll
+        INTERFACE_INCLUDE_DIRECTORIES ${SLANG_INCLUDE_DIR}
+        IMPORTED_IMPLIB ${SLANG_DIR}/lib/slang.lib
+        IMPORTED_LOCATION ${SLANG_DIR}/bin/slang.dll
     )
 elseif(FALCOR_LINUX)
     add_library(slang SHARED IMPORTED GLOBAL)
     set_target_properties(slang PROPERTIES
-        INTERFACE_INCLUDE_DIRECTORIES ${SLANG_DIR}
-        IMPORTED_LOCATION ${SLANG_DIR}/bin/linux-x64/${FALCOR_SLANG_CONFIG}/libslang.so
+        INTERFACE_INCLUDE_DIRECTORIES ${SLANG_INCLUDE_DIR}
+        IMPORTED_LOCATION ${SLANG_DIR}/lib/libslang.so
     )
 endif()
 
@@ -353,15 +370,15 @@ endif()
 if(FALCOR_WINDOWS)
     add_library(slang-gfx SHARED IMPORTED GLOBAL)
     set_target_properties(slang-gfx PROPERTIES
-        INTERFACE_INCLUDE_DIRECTORIES ${SLANG_DIR}
-        IMPORTED_IMPLIB ${SLANG_DIR}/bin/windows-x64/${FALCOR_SLANG_CONFIG}/gfx.lib
-        IMPORTED_LOCATION ${SLANG_DIR}/bin/windows-x64/${FALCOR_SLANG_CONFIG}/gfx.dll
+        INTERFACE_INCLUDE_DIRECTORIES ${SLANG_INCLUDE_DIR}
+        IMPORTED_IMPLIB ${SLANG_DIR}/lib/gfx.lib
+        IMPORTED_LOCATION ${SLANG_DIR}/bin/gfx.dll
     )
 elseif(FALCOR_LINUX)
     add_library(slang-gfx SHARED IMPORTED GLOBAL)
     set_target_properties(slang-gfx PROPERTIES
-        INTERFACE_INCLUDE_DIRECTORIES ${SLANG_DIR}
-        IMPORTED_LOCATION ${SLANG_DIR}/bin/linux-x64/${FALCOR_SLANG_CONFIG}/libgfx.so
+        INTERFACE_INCLUDE_DIRECTORIES ${SLANG_INCLUDE_DIR}
+        IMPORTED_LOCATION ${SLANG_DIR}/lib/libgfx.so
     )
 endif()
 
@@ -513,4 +530,3 @@ endif()
 set(RTXDI_DIR ${PACKMAN_DIR}/rtxdi)
 add_library(rtxdi INTERFACE)
 target_include_directories(rtxdi INTERFACE ${RTXDI_DIR}/rtxdi-sdk/include)
-

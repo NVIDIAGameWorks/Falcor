@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -190,7 +190,7 @@ ITextureSampler createTextureSampler(const uint2 pixel)
 /**
  * Helper to load G-buffer data and prepare shading data.
  */
-ShadingData loadShadingData(const uint2 pixel, const float3 posW, const float3 rayDir, const ITextureSampler lod)
+ShadingData loadShadingData(const uint2 pixel, const float3 posW, const float3 rayDir)
 {
     // Load G-buffer data.
     float3 normal = gWorldShadingNormal[pixel].xyz;
@@ -208,7 +208,7 @@ ShadingData loadShadingData(const uint2 pixel, const float3 posW, const float3 r
     v.coneTexLODValue = 0.f;
 
     // Prepare shading data.
-    return gScene.materials.prepareShadingData(v, materialID, -rayDir, lod);
+    return gScene.materials.prepareShadingData(v, materialID, -rayDir);
 }
 
 /**
@@ -400,7 +400,6 @@ void scatterClosestHit(
         v = getVertexDataRayCones(instanceID, PrimitiveIndex(), attribs);
         float curvature = gScene.computeCurvatureIsotropic(instanceID, PrimitiveIndex());
 
-        // Compute texture LOD for prepareShadingData().
         if (kRayConeMode == RayConeMode::Combo || kRayConeMode == RayConeMode::Unified)
         {
             float rayConeWidth = rayData.rayCone.getSpreadAngle() * hitT + rayData.rayCone.getWidth();
@@ -415,7 +414,7 @@ void scatterClosestHit(
         {
             float lambda = rayData.rayCone.computeLOD(v.coneTexLODValue, rayDir, v.normalW);
             lod = ExplicitRayConesLodTextureSampler(lambda);
-            sd = gScene.materials.prepareShadingData(v, materialID, -rayDir, lod);
+            sd = gScene.materials.prepareShadingData(v, materialID, -rayDir);
         }
         else
         {
@@ -429,7 +428,7 @@ void scatterClosestHit(
             computeAnisotropicEllipseAxes(v.posW, v.faceNormalW, rayDir, coneWidthAtHitPoint, positions, txcoords, v.texC, ddx, ddy);
             lod = ExplicitGradientTextureSampler(ddx, ddy);
         }
-        sd = gScene.materials.prepareShadingData(v, materialID, -rayDir, lod);
+        sd = gScene.materials.prepareShadingData(v, materialID, -rayDir);
         eta = computeEta(sd);
     }
     else if (kTexLODMode == TexLODMode::RayDiffs)
@@ -475,7 +474,7 @@ void scatterClosestHit(
             // Use the dUVdx and dUVdy directly --> gives you anisotropic filtering.
             lod = ExplicitGradientTextureSampler(dUVdx, dUVdy);
         }
-        sd = gScene.materials.prepareShadingData(v, materialID, -rayDir, lod);
+        sd = gScene.materials.prepareShadingData(v, materialID, -rayDir);
         eta = computeEta(sd);
 
         if (eta == 1.0f)
@@ -498,7 +497,7 @@ void scatterClosestHit(
     {
         v = getVertexData(instanceID, PrimitiveIndex(), attribs);
         lod = ExplicitLodTextureSampler(0.f);
-        sd = gScene.materials.prepareShadingData(v, materialID, -rayDir, lod);
+        sd = gScene.materials.prepareShadingData(v, materialID, -rayDir);
         eta = computeEta(sd);
 
         if (eta != 1.0f)
@@ -645,9 +644,11 @@ void rayGen()
     if (worldPos.w != 0.f) // Using w to indicate valid geometry for now.
     {
         // Pixel represents a valid primary hit. Compute its contribution.
-        let lod = createTextureSampler(launchIndex);
-        const ShadingData sd = loadShadingData(launchIndex, worldPos.xyz, rayDir, lod);
+        const ShadingData sd = loadShadingData(launchIndex, worldPos.xyz, rayDir);
         const float eta = computeEta(sd);
+
+        // Create texture sampler.
+        let lod = createTextureSampler(launchIndex);
 
         // Create material instance and query its properties.
         let mi = gScene.materials.getMaterialInstance(sd, lod);

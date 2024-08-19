@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -46,7 +46,7 @@ struct PBRTCoatedConductorMaterial : MaterialBase, IMaterial
         // RG: Interface X&Y roughness
         // BA: Conductor X&Y roughness
         const float4 roughnesses = ms.sampleTexture(data.texSpecular, s, sd.uv, data.specular, lod).rgba;
-        float eta = 1.0f / header.getIoR();
+        float eta = header.getIoR();
 
         // Compute final shading frame.
         ShadingFrame sf = sd.frame;

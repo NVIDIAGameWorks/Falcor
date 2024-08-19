@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -99,18 +99,24 @@ cudaExternalMemory_t importExternalMemory(const Buffer* buffer)
     cudaExternalMemoryHandleDesc desc = {};
     switch (buffer->getDevice()->getType())
     {
+#if FALCOR_WINDOWS
     case Device::Type::D3D12:
         desc.type = cudaExternalMemoryHandleTypeD3D12Resource;
+        desc.handle.win32.handle = sharedHandle;
         break;
-#if FALCOR_WINDOWS
     case Device::Type::Vulkan:
         desc.type = cudaExternalMemoryHandleTypeOpaqueWin32;
+        desc.handle.win32.handle = sharedHandle;
+        break;
+#elif FALCOR_LINUX
+    case Device::Type::Vulkan:
+        desc.type = cudaExternalMemoryHandleTypeOpaqueFd;
+        desc.handle.fd = (int)reinterpret_cast<intptr_t>(sharedHandle);
         break;
 #endif
     default:
         FALCOR_THROW("Unsupported device type '{}'.", buffer->getDevice()->getType());
     }
-    desc.handle.win32.handle = sharedHandle;
     desc.size = buffer->getSize();
     desc.flags = cudaExternalMemoryDedicated;
 
@@ -145,13 +151,24 @@ cudaExternalSemaphore_t importExternalSemaphore(const Fence* fence)
     cudaExternalSemaphoreHandleDesc desc = {};
     switch (fence->getDevice()->getType())
     {
+#if FALCOR_WINDOWS
     case Device::Type::D3D12:
         desc.type = cudaExternalSemaphoreHandleTypeD3D12Fence;
+        desc.handle.win32.handle = sharedHandle;
         break;
+    case Device::Type::Vulkan:
+        desc.type = cudaExternalSemaphoreHandleTypeTimelineSemaphoreWin32;
+        desc.handle.win32.handle = sharedHandle;
+        break;
+#elif FALCOR_LINUX
+    case Device::Type::Vulkan:
+        desc.type = cudaExternalSemaphoreHandleTypeTimelineSemaphoreFd;
+        desc.handle.fd = (int)reinterpret_cast<intptr_t>(sharedHandle);
+        break;
+#endif
     default:
         FALCOR_THROW("Unsupported device type '{}'.", fence->getDevice()->getType());
     }
-    desc.handle.win32.handle = (void*)sharedHandle;
 
     cudaExternalSemaphore_t extSem;
     FALCOR_CUDA_CHECK(cudaImportExternalSemaphore(&extSem, &desc));
@@ -177,22 +194,39 @@ void waitExternalSemaphore(cudaExternalSemaphore_t extSem, uint64_t value, cudaS
     FALCOR_CUDA_CHECK(cudaWaitExternalSemaphoresAsync(&extSem, &params, 1, stream));
 }
 
-void* getSharedDevicePtr(SharedResourceApiHandle sharedHandle, uint32_t bytes)
+void* getSharedDevicePtr(Device::Type deviceType, SharedResourceApiHandle sharedHandle, uint32_t bytes)
 {
     // No handle?  No pointer!
     FALCOR_CHECK(sharedHandle, "Texture shared handle creation failed");
 
-    // Create the descriptor of our shared memory buffer
-    cudaExternalMemoryHandleDesc externalMemoryHandleDesc;
-    memset(&externalMemoryHandleDesc, 0, sizeof(externalMemoryHandleDesc));
-    externalMemoryHandleDesc.type = cudaExternalMemoryHandleTypeD3D12Resource;
-    externalMemoryHandleDesc.handle.win32.handle = sharedHandle;
-    externalMemoryHandleDesc.size = bytes;
-    externalMemoryHandleDesc.flags = cudaExternalMemoryDedicated;
+    cudaExternalMemoryHandleDesc externalMemoryDesc = {};
+    switch (deviceType)
+    {
+#if FALCOR_WINDOWS
+    case Device::Type::D3D12:
+        externalMemoryDesc.type = cudaExternalMemoryHandleTypeD3D12Resource;
+        externalMemoryDesc.handle.win32.handle = sharedHandle;
+        break;
+    case Device::Type::Vulkan:
+        externalMemoryDesc.type = cudaExternalMemoryHandleTypeOpaqueWin32;
+        externalMemoryDesc.handle.win32.handle = sharedHandle;
+        break;
+#elif FALCOR_LINUX
+    case Device::Type::Vulkan:
+        externalMemoryDesc.type = cudaExternalMemoryHandleTypeOpaqueFd;
+        externalMemoryDesc.handle.fd = (int)reinterpret_cast<intptr_t>(sharedHandle);
+        break;
+#endif
+    default:
+        FALCOR_THROW("Unsupported device type '{}'.", deviceType);
+    }
+
+    externalMemoryDesc.size = bytes;
+    externalMemoryDesc.flags = cudaExternalMemoryDedicated;
 
     // Get a handle to that memory
     cudaExternalMemory_t externalMemory;
-    FALCOR_CUDA_CHECK(cudaImportExternalMemory(&externalMemory, &externalMemoryHandleDesc));
+    FALCOR_CUDA_CHECK(cudaImportExternalMemory(&externalMemory, &externalMemoryDesc));
 
     // Create a descriptor for our shared buffer pointer
     cudaExternalMemoryBufferDesc bufDesc;

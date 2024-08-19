@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -111,3 +111,5 @@ float3 getPrevPosW(GeometryInstanceID instanceID, uint triangleIndex, BuiltInTri
     float3 barycentrics = float3(1.0 - attribs.barycentrics.x - attribs.barycentrics.y, attribs.barycentrics.x, attribs.barycentrics.y);
     return gScene.getPrevPosW(instanceID, triangleIndex, barycentrics);
 }
+
+uint getRayTypeCount() { return rayTypeCount; }

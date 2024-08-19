@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -314,6 +314,9 @@ struct ProgramDesc
     /// Raytracing pipeline flags (only used for raytracing programs).
     RtPipelineFlags rtPipelineFlags = RtPipelineFlags::None;
 
+    /// Use SPIR-V backend when compiling for Vulkan.
+    bool useSPIRVBackend = false;
+
     /// Add a new empty shader module description.
     /// @param[in] name Optional name of the shader module.
     /// @return Returns a reference to the newly created shader module for adding sources.
@@ -555,6 +558,9 @@ struct ProgramDesc
         rtPipelineFlags = flags;
         return *this;
     }
+
+    /// Set program to use SPIR-V backend when compiling for Vulkan.
+    void setUseSPIRVBackend(bool b = true) { useSPIRVBackend = b; }
 
     void finalize();
 };

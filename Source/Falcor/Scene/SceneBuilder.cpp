@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -280,7 +280,9 @@ namespace Falcor
             throw ImporterError(path, "Can't find scene file '{}'.", path);
         }
 
-        mSceneData.path = resolvedPath;
+        mSceneData.importPaths.push_back(resolvedPath);
+        mSceneData.importDicts.push_back(materialToShortName);
+
         if (auto importer = Importer::create(getExtensionFromPath(resolvedPath)))
         {
             importer->importScene(resolvedPath, *this, materialToShortName);
@@ -296,7 +298,9 @@ namespace Falcor
         logInfo("Importing scene from memory");
         std::map<std::string, std::string> materialToShortName = convertDictToMap(dict);
 
-        mSceneData.path = "";
+        mSceneData.importPaths.push_back("<memory>");
+        mSceneData.importDicts.push_back(materialToShortName);
+
         if (auto importer = Importer::create(extension))
         {
             importer->importSceneFromMemory(buffer, byteSize, extension, *this, materialToShortName);
@@ -997,7 +1001,7 @@ namespace Falcor
 
     void SceneBuilder::loadLightProfile(const std::string& filename, bool normalize)
     {
-        mSceneData.pLightProfile = LightProfile::createFromIesProfile(mpDevice, mAssetResolver.resolvePath(std::filesystem::path(filename)), normalize);
+        mSceneData.pMaterials->loadLightProfile(mAssetResolver.resolvePath(std::filesystem::path(filename)), normalize);
     }
 
     // Cameras
@@ -1162,6 +1166,11 @@ namespace Falcor
             }
             nodeID = mSceneGraph[nodeID.get()].parent;
         }
+    }
+
+    MaterialTextureLoader& SceneBuilder::getMaterialTextureLoader()
+    {
+        return *mpMaterialTextureLoader;
     }
 
     // Internal
@@ -2270,7 +2279,8 @@ namespace Falcor
 
         // Early out if splitting is not needed or possible.
         size_t triangleCount = 0;
-        if (!needsSplit(meshGroup, triangleCount)) return MeshGroupList{ std::move(meshGroup) };
+        if (!needsSplit(meshGroup, triangleCount))
+            return MeshGroupList{ std::move(meshGroup) };
 
         // Find the midpoint along the largest axis.
         AABB bb = calculateBoundingBox(meshGroup);
@@ -2283,12 +2293,33 @@ namespace Falcor
         for (auto meshID : meshGroup.meshList)
         {
             auto result = splitMesh(meshID, axis, pos);
-            if (auto leftMeshID = result.first) leftMeshes.push_back(*leftMeshID);
-            if (auto rightMeshID = result.second) rightMeshes.push_back(*rightMeshID);
+            if (auto leftMeshID = result.first)
+                leftMeshes.push_back(*leftMeshID);
+            if (auto rightMeshID = result.second)
+                rightMeshes.push_back(*rightMeshID);
         }
 
-        // If either side contains all meshes, do not split further.
-        if (leftMeshes.empty() || rightMeshes.empty()) return MeshGroupList{ std::move(meshGroup) };
+        // If either side contains all meshes, we just sort by their centroid and split in half
+        if (leftMeshes.empty() || rightMeshes.empty())
+        {
+            std::sort(meshGroup.meshList.begin(),
+                meshGroup.meshList.end(),
+                [&](MeshID lhs, MeshID rhs)
+            {
+                return mMeshes[lhs.get()].boundingBox.center()[axis] < mMeshes[rhs.get()].boundingBox.center()[axis];
+            });
+
+            size_t totalMeshCount = meshGroup.meshList.size();
+            if (totalMeshCount > 1)
+            {
+                size_t halfCount = totalMeshCount / 2;
+                leftMeshes.assign(meshGroup.meshList.begin(), meshGroup.meshList.begin() + halfCount);
+                rightMeshes.assign(meshGroup.meshList.begin() + halfCount, meshGroup.meshList.end());
+            }
+        }
+
+        if (leftMeshes.empty() || rightMeshes.empty())
+            return MeshGroupList{ meshGroup };
 
         // Recursively split the left and right mesh groups.
         MeshGroup leftGroup{ std::move(leftMeshes), meshGroup.isStatic };
@@ -2392,45 +2423,37 @@ namespace Falcor
         const bool isIndexed = !is_set(mFlags, Flags::NonIndexedVertices);
 
         // Count total number of vertex and index data elements.
-        size_t totalIndexDataCount = 0;
-        size_t totalStaticVertexCount = 0;
         size_t totalSkinningVertexCount = 0;
-
-        for (const auto& mesh : mMeshes)
+        for (auto& mesh : mMeshes)
         {
-            totalIndexDataCount += mesh.indexData.size();
-            totalStaticVertexCount += mesh.staticData.size();
             totalSkinningVertexCount += mesh.skinningData.size();
             mSceneData.prevVertexCount += mesh.prevVertexCount;
         }
 
-        // Check the range. We currently use 32-bit offsets.
-        if (totalIndexDataCount > std::numeric_limits<uint32_t>::max() ||
-            totalStaticVertexCount > std::numeric_limits<uint32_t>::max() ||
-            totalSkinningVertexCount > std::numeric_limits<uint32_t>::max())
+        // Check the range.
+        if (totalSkinningVertexCount > std::numeric_limits<uint32_t>::max())
         {
             FALCOR_THROW("Trying to build a scene that exceeds supported mesh data size.");
         }
 
-        mSceneData.meshIndexData.reserve(totalIndexDataCount);
-        mSceneData.meshStaticData.reserve(totalStaticVertexCount);
+        mSceneData.meshIndexData.setName("mMeshIndexData");
+        mSceneData.meshStaticData.setName("meshStaticData");
+
         mSceneData.meshSkinningData.reserve(totalSkinningVertexCount);
 
         // Copy all vertex and index data into the global buffers.
         for (auto& mesh : mMeshes)
         {
-            mesh.staticVertexOffset = (uint32_t)mSceneData.meshStaticData.size();
             mesh.skinningVertexOffset = (uint32_t)mSceneData.meshSkinningData.size();
             mesh.prevVertexOffset = mesh.skinningVertexOffset;
 
             // Insert the static vertex data in the global array.
             // The vertices are automatically converted to their packed format in this step.
-            mSceneData.meshStaticData.insert(mSceneData.meshStaticData.end(), mesh.staticData.begin(), mesh.staticData.end());
+            mesh.staticVertexOffset = mSceneData.meshStaticData.insert(mesh.staticData.begin(), mesh.staticData.end());
 
             if (isIndexed)
             {
-                mesh.indexOffset = (uint32_t)mSceneData.meshIndexData.size();
-                mSceneData.meshIndexData.insert(mSceneData.meshIndexData.end(), mesh.indexData.begin(), mesh.indexData.end());
+                mesh.indexOffset = mSceneData.meshIndexData.insert(mesh.indexData.begin(), mesh.indexData.end());
             }
 
             if (mesh.isSkinned())
@@ -2986,6 +3009,6 @@ namespace Falcor
         sceneBuilder.def("addCustomPrimitive", &SceneBuilder::addCustomPrimitive);
 
         sceneBuilder.def("getSettings", static_cast<Settings&(SceneBuilder::*)()>(&SceneBuilder::getSettings), pybind11::return_value_policy::reference);
-        sceneBuilder.def_property_readonly("assetResolver", &SceneBuilder::getAssetResolver, pybind11::return_value_policy::reference);
+        sceneBuilder.def_property_readonly("assetResolver", pybind11::overload_cast<>(&SceneBuilder::getAssetResolver), pybind11::return_value_policy::reference);
     }
 }

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -52,14 +52,14 @@ void updateTriangleVertices(uint3 DTid : SV_DispatchThreadID)
     uint lightIdx = gTriangleData[triIdx].lightIdx;
     const MeshLightData meshData = gMeshData[lightIdx];
 
-    GeometryInstanceID instanceID = { meshData.instanceID };
     uint triangleIndex = triIdx - meshData.triangleOffset; // Local triangle index in the mesh
 
     // Load triangle data.
     EmissiveTriangle tri = gTriangleData[triIdx].unpack();
-
     // Update triangle data.
+    GeometryInstanceID instanceID = { meshData.instanceID };
     gScene.getVertexPositionsW(instanceID, triangleIndex, tri.posW);
     tri.normal = gScene.computeFaceNormalAndAreaW(instanceID, tri.posW, tri.area);
+
     gTriangleData[triIdx].pack(tri);
 }

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -132,7 +132,7 @@ template<typename T>
 // Functions
 // ----------------------------------------------------------------------------
 
-/// Tranpose a matrix.
+/// Transpose a matrix.
 template<typename T, int R, int C>
 matrix<T, C, R> transpose(const matrix<T, R, C>& m)
 {

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -42,7 +42,7 @@ const uint32_t kNumElems = 256;
 std::mt19937 r;
 std::uniform_real_distribution u;
 
-void test(GPUUnitTestContext& ctx, ShaderModel shaderModel, bool useUav)
+void test(GPUUnitTestContext& ctx, ShaderModel shaderModel, bool useUav, bool useStructured)
 {
     ref<Device> pDevice = ctx.getDevice();
 
@@ -55,14 +55,31 @@ void test(GPUUnitTestContext& ctx, ShaderModel shaderModel, bool useUav)
     for (auto& v : elems)
         v = f32tof16(float(u(r)));
     auto var = ctx.vars().getRootVar();
-    auto pBuf = pDevice->createStructuredBuffer(
-        var["data"],
-        kNumElems,
-        ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess,
-        MemoryType::DeviceLocal,
-        elems.data()
-    );
-    var["data"] = pBuf;
+
+    if (useStructured)
+    {
+        auto buf = pDevice->createStructuredBuffer(
+            var["data"],
+            kNumElems,
+            ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess,
+            MemoryType::DeviceLocal,
+            elems.data()
+        );
+        ASSERT_EQ(buf->getStructSize(), sizeof(float16_t));
+        ASSERT_EQ(buf->getElementCount(), kNumElems);
+        var["data"] = buf;
+    }
+    else
+    {
+        auto buf = pDevice->createBuffer(
+            kNumElems * sizeof(float16_t),
+            ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess,
+            MemoryType::DeviceLocal,
+            elems.data()
+        );
+        ASSERT_EQ(buf->getSize(), kNumElems * sizeof(float16_t));
+        var["data"] = buf;
+    }
 
     ctx.runProgram(kNumElems, 1, 1);
 
@@ -75,15 +92,28 @@ void test(GPUUnitTestContext& ctx, ShaderModel shaderModel, bool useUav)
 }
 } // namespace
 
-GPU_TEST(StructuredBufferLoadFloat16)
+GPU_TEST(StructuredBuffer_LoadFloat16_Structured)
 {
     for (auto sm : kShaderModels)
-        test(ctx, sm, false);
+        test(ctx, sm, false, true);
 }
 
-GPU_TEST(RWStructuredBufferLoadFloat16)
+GPU_TEST(StructuredBuffer_LoadFloat16_Raw)
 {
     for (auto sm : kShaderModels)
-        test(ctx, sm, true);
+        test(ctx, sm, false, false);
 }
+
+GPU_TEST(RWStructuredBuffer_LoadFloat16_Structured)
+{
+    for (auto sm : kShaderModels)
+        test(ctx, sm, true, true);
+}
+
+GPU_TEST(RWStructuredBuffer_LoadFloat16_Raw)
+{
+    for (auto sm : kShaderModels)
+        test(ctx, sm, true, false);
+}
+
 } // namespace Falcor

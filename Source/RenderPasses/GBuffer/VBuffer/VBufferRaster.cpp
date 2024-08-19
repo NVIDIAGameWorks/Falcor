@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -137,7 +137,7 @@ void VBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
     }
 
     // Check for scene changes.
-    if (is_set(mpScene->getUpdates(), Scene::UpdateFlags::RecompileNeeded))
+    if (is_set(mpScene->getUpdates(), IScene::UpdateFlags::RecompileNeeded))
     {
         recreatePrograms();
     }

@@ -1,0 +1,7 @@
+{
+    "name": "GitLab Environment (Windows)",
+    "image_tests": {
+        "result_dir": "${project_drive}/FalcorResults/${vcs_root}/${build_id}",
+        "ref_dir": "${project_drive}/FalcorRefs/${vcs_root}"
+    }
+}

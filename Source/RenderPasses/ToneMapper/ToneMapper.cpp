@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,6 +27,7 @@
  **************************************************************************/
 #include "ToneMapper.h"
 #include "Utils/Color/ColorUtils.h"
+
 #include <fstd/bit.h> // TODO C++20: Replace with <bit>
 
 namespace
@@ -402,6 +403,7 @@ void ToneMapper::setScene(RenderContext* pRenderContext, const ref<Scene>& pScen
             setShutter(metadata.shutterSpeed.value());
     }
 }
+
 
 void ToneMapper::setExposureCompensation(float exposureCompensation)
 {

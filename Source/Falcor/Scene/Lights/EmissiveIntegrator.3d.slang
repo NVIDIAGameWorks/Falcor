@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -44,12 +44,13 @@
     For such triangles, we approximate the average radiance as the average
     of the emission sampled at the three vertices.
 */
-import Scene.Scene;
 import Utils.Geometry.GeometryHelpers;
+import Scene.Scene;
 
 // Check that defines are set.
 #ifndef _VIEWPORT_DIM
 #error _VIEWPORT_DIM is not defined
+#define _VIEWPORT_DIM 1024 // to silence the hinter
 #endif
 
 ParameterBlock<LightCollection> gLightCollection;

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -53,6 +53,10 @@ namespace Falcor
         widgets.var("Intensity", mData.intensity, 0.f, 1000000.f);
         widgets.var("Color tint", mData.tint, 0.f, 1.f);
         widgets.text("EnvMap: " + mpEnvMap->getSourcePath().string());
+
+        widgets.text(fmt::format("Resolution: {}x{}", mpEnvMap->getWidth(), mpEnvMap->getHeight()));
+        widgets.text(fmt::format("Mip levels: {}", mpEnvMap->getMipCount()));
+        widgets.text(fmt::format("Format: {}", to_string(mpEnvMap->getFormat())));
     }
 
     void EnvMap::setRotation(float3 degreesXYZ)

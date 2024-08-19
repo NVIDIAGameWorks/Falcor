@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -67,7 +67,7 @@ struct MERLMaterialInstance : MaterialInstanceBase, IMaterialInstance
         if (!isValidHemisphereReflection(sd, sf, wiLocal, woLocal, wo)) return float3(0.f);
 
 #if VISUALIZE_FITTED_BRDF
-        return fittedBrdf.eval(wiLocal, woLocal, sg);
+        return fittedBrdf.eval(wiLocal, woLocal, sg, BSDFContext());
 #else
         return evalLocal(wiLocal, woLocal);
 #endif
@@ -85,7 +85,7 @@ struct MERLMaterialInstance : MaterialInstanceBase, IMaterialInstance
 
 #if SAMPLE_FITTED_BRDF
         float3 woLocal = {};
-        if (!fittedBrdf.sample(wiLocal, woLocal, result.pdf, result.weight, result.lobeType, sg)) return false;
+        if (!fittedBrdf.sample(wiLocal, woLocal, result.pdf, result.weight, result.lobeType, sg, BSDFContext())) return false;
         result.wo = sf.fromLocal(woLocal);
 
         if (!isValidHemisphereReflection(sd, sf, wiLocal, woLocal, result.wo) || result.pdf == 0.f) return false;
@@ -121,7 +121,7 @@ struct MERLMaterialInstance : MaterialInstanceBase, IMaterialInstance
         if (!isValidHemisphereReflection(sd, sf, wiLocal, woLocal, wo)) return 0.f;
 
 #if SAMPLE_FITTED_BRDF
-        return fittedBrdf.evalPdf(wiLocal, woLocal);
+        return fittedBrdf.evalPdf(wiLocal, woLocal, BSDFContext());
 #else
         return woLocal.z * M_1_PI; // pdf = cos(theta) / pi
 #endif

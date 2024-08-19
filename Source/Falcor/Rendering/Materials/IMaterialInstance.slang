@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -33,27 +33,9 @@ __exported import Rendering.Materials.IBSDF; // For kMinCosTheta
 __exported import Rendering.Materials.LobeType;
 __exported import Utils.Sampling.SampleGeneratorInterface;
 __exported import DiffRendering.DiffMaterialData;
+__exported import MaterialInstanceHints;
 import Rendering.Volumes.PhaseFunction;
 import Scene.Material.VolumeProperties;
-
-/** Hints passed in when creating a material instance.
-*/
-enum MaterialInstanceHints : uint
-{
-    None = 0,
-    DisableNormalMapping = 0x1,     ///< Turn off normal mapping if supported.
-    AdjustShadingNormal = 0x2,      ///< Adjust shading normal to reduce risk of back-facing hits.
-};
-
-bool isNormalMappingEnabled(uint hints)
-{
-    return !(hints & (uint)MaterialInstanceHints::DisableNormalMapping);
-}
-
-bool isAdjustShadingNormalEnabled(uint hints)
-{
-    return hints & (uint)MaterialInstanceHints::AdjustShadingNormal;
-}
 
 /** Describes a BSDF sample.
 */

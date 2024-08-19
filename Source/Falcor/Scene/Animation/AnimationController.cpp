@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -41,7 +41,7 @@ namespace Falcor
         const std::string kPrevInverseTransposeWorldMatrices = "prevInverseTransposeWorldMatrices";
     }
 
-    AnimationController::AnimationController(ref<Device> pDevice, Scene* pScene, const StaticVertexVector& staticVertexData, const SkinningVertexVector& skinningVertexData, uint32_t prevVertexCount, const std::vector<ref<Animation>>& animations)
+    AnimationController::AnimationController(ref<Device> pDevice, Scene* pScene, const SkinningVertexVector& skinningVertexData, uint32_t prevVertexCount, const std::vector<ref<Animation>>& animations)
         : mpDevice(pDevice)
         , mAnimations(animations)
         , mNodesEdited(pScene->mSceneGraph.size())
@@ -73,6 +73,7 @@ namespace Falcor
         // This ensures we have valid data in the buffer before the skinning pass runs for the first time.
         if (prevVertexCount > 0)
         {
+            const SplitVertexBuffer& staticVertexData = pScene->getMeshStaticData();
             std::vector<PrevVertexData> prevVertexData(prevVertexCount);
             for (size_t i = 0; i < skinningVertexData.size(); i++)
             {
@@ -83,7 +84,7 @@ namespace Falcor
             mpPrevVertexData->setName("AnimationController::mpPrevVertexData");
         }
 
-        createSkinningPass(staticVertexData, skinningVertexData);
+        createSkinningPass(skinningVertexData);
 
         // Determine length of global animation loop.
         for (const auto& pAnimation : mAnimations)
@@ -92,7 +93,7 @@ namespace Falcor
         }
     }
 
-    void AnimationController::addAnimatedVertexCaches(std::vector<CachedCurve>&& cachedCurves, std::vector<CachedMesh>&& cachedMeshes, const StaticVertexVector& staticVertexData)
+    void AnimationController::addAnimatedVertexCaches(std::vector<CachedCurve>&& cachedCurves, std::vector<CachedMesh>&& cachedMeshes)
     {
         size_t totalAnimatedMeshVertexCount = 0;
 
@@ -113,6 +114,7 @@ namespace Falcor
             // Initialize remaining previous position data
             std::vector<PrevVertexData> prevVertexData;
             prevVertexData.reserve(totalAnimatedMeshVertexCount);
+            const SplitVertexBuffer& staticVertexData = mpScene->getMeshStaticData();
 
             for (auto& cache : cachedMeshes)
             {
@@ -383,30 +385,27 @@ namespace Falcor
         m += mpSkinningMatricesBuffer ? mpSkinningMatricesBuffer->getSize() : 0;
         m += mpInvTransposeSkinningMatricesBuffer ? mpInvTransposeSkinningMatricesBuffer->getSize() : 0;
         m += mpMeshBindMatricesBuffer ? mpMeshBindMatricesBuffer->getSize() : 0;
-        m += mpStaticVertexData ? mpStaticVertexData->getSize() : 0;
+        m += mStaticVertexData.getByteSize();
         m += mpSkinningVertexData ? mpSkinningVertexData->getSize() : 0;
         m += mpPrevVertexData ? mpPrevVertexData->getSize() : 0;
         m += mpVertexCache ? mpVertexCache->getMemoryUsageInBytes() : 0;
         return m;
     }
 
-    void AnimationController::createSkinningPass(const std::vector<PackedStaticVertexData>& staticVertexData, const std::vector<SkinningVertexData>& skinningVertexData)
+    void AnimationController::createSkinningPass(const std::vector<SkinningVertexData>& skinningVertexData)
     {
-        if (staticVertexData.empty()) return;
-
-        // We always copy the static data, to initialize the non-skinned vertices.
-        FALCOR_ASSERT(mpScene->getMeshVao());
-        const ref<Buffer>& pVB = mpScene->getMeshVao()->getVertexBuffer(Scene::kStaticDataBufferIndex);
-        FALCOR_ASSERT(pVB->getSize() == staticVertexData.size() * sizeof(staticVertexData[0]));
-        pVB->setBlob(staticVertexData.data(), 0, pVB->getSize());
-
         if (!skinningVertexData.empty())
         {
+            const SplitVertexBuffer& staticVertexData = mpScene->getMeshStaticData();
+
             mSkinningMatrices.resize(mpScene->mSceneGraph.size());
             mInvTransposeSkinningMatrices.resize(mSkinningMatrices.size());
             mMeshBindMatrices.resize(mpScene->mSceneGraph.size());
 
-            mpSkinningPass = ComputePass::create(mpDevice, "Scene/Animation/Skinning.slang");
+            DefineList defines;
+            staticVertexData.getShaderDefines(defines);
+
+            mpSkinningPass = ComputePass::create(mpDevice, "Scene/Animation/Skinning.slang", "main", defines);
             auto block = mpSkinningPass->getRootVar()["gData"];
 
             // Initialize mesh bind transforms
@@ -417,17 +416,21 @@ namespace Falcor
                 meshInvBindMatrices[i] = inverse(mMeshBindMatrices[i]);
             }
 
-            // Bind vertex data.
-            FALCOR_ASSERT(staticVertexData.size() <= std::numeric_limits<uint32_t>::max());
+            // Clone the static vertex data into a second set of buffers
+            FALCOR_ASSERT(staticVertexData.hasCpuData(), "Cannot clone without CPU data");
+            mStaticVertexData = staticVertexData;
+            mStaticVertexData.setName("AnimationController::mStaticVertexData");
+            mStaticVertexData.createGpuBuffers(mpDevice, ResourceBindFlags::ShaderResource);
+            mStaticVertexData.dropCpuData();
+
             FALCOR_ASSERT(skinningVertexData.size() <= std::numeric_limits<uint32_t>::max());
-            mpStaticVertexData = mpDevice->createStructuredBuffer(block["staticData"], (uint32_t)staticVertexData.size(), ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, staticVertexData.data(), false);
-            mpStaticVertexData->setName("AnimationController::mpStaticVertexData");
             mpSkinningVertexData = mpDevice->createStructuredBuffer(block["skinningData"], (uint32_t)skinningVertexData.size(), ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, skinningVertexData.data(), false);
             mpSkinningVertexData->setName("AnimationController::mpSkinningVertexData");
 
-            block["staticData"] = mpStaticVertexData;
+            mStaticVertexData.bindShaderData(block["staticData"]);
+            staticVertexData.bindShaderData(block["skinnedVertices"]);
+
             block["skinningData"] = mpSkinningVertexData;
-            block["skinnedVertices"] = pVB;
             block["prevSkinnedVertices"] = mpPrevVertexData;
 
             // Bind transforms.

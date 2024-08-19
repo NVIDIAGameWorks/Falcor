@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -72,6 +72,10 @@ protected:
     // Internal state
 
     ref<Scene> mpScene;
+    sigs::Connection mUpdateFlagsConnection; ///< Connection to the UpdateFlags signal.
+    /// IScene::UpdateFlags accumulated since last `beginFrame()`
+    IScene::UpdateFlags mUpdateFlags = IScene::UpdateFlags::None;
+
     /// Sample generator for camera jitter.
     ref<CPUSampleGenerator> mpSampleGenerator;
 

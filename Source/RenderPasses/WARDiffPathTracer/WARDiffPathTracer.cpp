@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -440,7 +440,7 @@ void WARDiffPathTracer::prepareMaterials(RenderContext* pRenderContext)
     // For now all we need to do is to trigger a recompile so that the right defines get set.
     // In the future, we might want to do additional material-specific setup here.
 
-    if (is_set(mpScene->getUpdates(), Scene::UpdateFlags::RecompileNeeded))
+    if (is_set(mpScene->getUpdates(), IScene::UpdateFlags::RecompileNeeded))
     {
         mRecompile = true;
     }
@@ -450,7 +450,7 @@ bool WARDiffPathTracer::prepareLighting(RenderContext* pRenderContext)
 {
     bool lightingChanged = false;
 
-    if (is_set(mpScene->getUpdates(), Scene::UpdateFlags::RenderSettingsChanged))
+    if (is_set(mpScene->getUpdates(), IScene::UpdateFlags::RenderSettingsChanged))
     {
         lightingChanged = true;
         mRecompile = true;
@@ -477,7 +477,7 @@ bool WARDiffPathTracer::prepareLighting(RenderContext* pRenderContext)
 
             // We only use a uniform emissive sampler for now.
             // LightBVH seems buggy with the Cornell box bunny example.
-            mpEmissiveSampler = std::make_unique<EmissiveUniformSampler>(pRenderContext, mpScene);
+            mpEmissiveSampler = std::make_unique<EmissiveUniformSampler>(pRenderContext, mpScene->getLightCollection(pRenderContext));
 
             lightingChanged = true;
             mRecompile = true;
@@ -496,7 +496,7 @@ bool WARDiffPathTracer::prepareLighting(RenderContext* pRenderContext)
 
     if (mpEmissiveSampler)
     {
-        lightingChanged |= mpEmissiveSampler->update(pRenderContext);
+        lightingChanged |= mpEmissiveSampler->update(pRenderContext, mpScene->getLightCollection(pRenderContext));
         auto defines = mpEmissiveSampler->getDefines();
         if (mpTracePass && mpTracePass->pProgram->addDefines(defines))
             mRecompile = true;
@@ -613,7 +613,6 @@ void WARDiffPathTracer::tracePass(RenderContext* pRenderContext, const RenderDat
 
     // Bind global resources.
     auto var = tracePass.pVars->getRootVar();
-    mpScene->setRaytracingShaderData(pRenderContext, var);
 
     if (mVarsChanged)
         mpSampleGenerator->bindShaderData(var);

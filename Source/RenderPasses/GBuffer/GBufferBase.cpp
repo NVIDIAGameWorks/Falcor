@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -176,12 +176,17 @@ void GBufferBase::execute(RenderContext* pRenderContext, const RenderData& rende
 
 void GBufferBase::setScene(RenderContext* pRenderContext, const ref<Scene>& pScene)
 {
+    mUpdateFlagsConnection = {};
+    mUpdateFlags = IScene::UpdateFlags::None;
+
     mpScene = pScene;
     mFrameCount = 0;
     updateSamplePattern();
 
     if (pScene)
     {
+        mUpdateFlagsConnection = mpScene->getUpdateFlagsSignal().connect([&](IScene::UpdateFlags flags) { mUpdateFlags |= flags; });
+
         // Trigger graph recompilation if we need to change the V-buffer format.
         ResourceFormat format = pScene->getHitInfo().getFormat();
         if (format != mVBufferFormat)
@@ -191,6 +196,7 @@ void GBufferBase::setScene(RenderContext* pRenderContext, const ref<Scene>& pSce
         }
     }
 }
+
 
 static ref<CPUSampleGenerator> createSamplePattern(GBufferBase::SamplePattern type, uint32_t sampleCount)
 {

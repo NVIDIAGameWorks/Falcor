@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -73,10 +73,9 @@ extension MaterialSystem
         \param[in] v Interpolated vertex data.
         \param[in] materialID Material ID at the hit.
         \param[in] viewDir View direction.
-        \param[in] lod Method for computing texture level-of-detail, must implement the `ITextureSampler` interface.
         \return Shading data struct.
     */
-    ShadingData prepareShadingData<L:ITextureSampler>(const VertexData v, const uint materialID, const float3 viewDir, L lod)
+    ShadingData prepareShadingData(const VertexData v, const uint materialID, const float3 viewDir)
     {
         ShadingData sd = {};
 

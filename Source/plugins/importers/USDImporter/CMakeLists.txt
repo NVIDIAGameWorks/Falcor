@@ -13,6 +13,7 @@ target_sources(USDImporter PRIVATE
 
 target_link_libraries(USDImporter PRIVATE nv-usd USDUtils)
 
+
 target_copy_shaders(USDImporter plugins/importers/USDImporter)
 
 target_source_group(USDImporter "Plugins/Importers")

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -69,7 +69,7 @@ struct StandardMaterialInstance : MaterialInstanceBase, IMaterialInstance
 
         StandardBSDF bsdf = StandardBSDF(wiLocal, sd.mtl, data);
 
-        return bsdf.eval(wiLocal, woLocal, sg);
+        return bsdf.eval(wiLocal, woLocal, sg, BSDFContext());
     }
 
     [Differentiable]
@@ -83,7 +83,7 @@ struct StandardMaterialInstance : MaterialInstanceBase, IMaterialInstance
         StandardBSDFData dataAD = StandardBSDFData(diffData);
         StandardBSDF bsdfAD = StandardBSDF(wiLocal, sd.mtl, dataAD);
 
-        return bsdfAD.eval(wiLocal, woLocal, sg);
+        return bsdfAD.eval(wiLocal, woLocal, sg, BSDFContext());
     }
 
     bool sample<S : ISampleGenerator>(const ShadingData sd, inout S sg, out BSDFSample result, bool useImportanceSampling = true)
@@ -99,7 +99,7 @@ struct StandardMaterialInstance : MaterialInstanceBase, IMaterialInstance
         else
         {
             StandardBSDF bsdf = StandardBSDF(wiLocal, sd.mtl, data);
-            if (!bsdf.sample(wiLocal, woLocal, result.pdf, result.weight, result.lobeType, sg))
+            if (!bsdf.sample(wiLocal, woLocal, result.pdf, result.weight, result.lobeType, sg, BSDFContext()))
                 return false;
         }
         result.wo = sf.fromLocal(woLocal);
@@ -123,7 +123,7 @@ struct StandardMaterialInstance : MaterialInstanceBase, IMaterialInstance
         else
         {
             StandardBSDF bsdf = StandardBSDF(wiLocal, sd.mtl, data);
-            return bsdf.evalPdf(wiLocal, woLocal);
+            return bsdf.evalPdf(wiLocal, woLocal, BSDFContext());
         }
     }
 
@@ -224,7 +224,7 @@ struct StandardMaterialInstance : MaterialInstanceBase, IMaterialInstance
 
         StandardBSDF bsdf = StandardBSDF(wi, sd.mtl, data);
 
-        weight = bsdf.eval(wi, wo, sg) / pdf;
+        weight = bsdf.eval(wi, wo, sg, BSDFContext()) / pdf;
         lobeType = (uint)(wo.z > 0.f ? LobeType::DiffuseReflection : LobeType::DiffuseTransmission);
 
         return true;

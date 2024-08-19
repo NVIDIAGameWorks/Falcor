@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -35,6 +35,7 @@
 
 // Quaternion multiplication
 // http://mathworld.wolfram.com/Quaternion.html
+[BackwardDifferentiable]
 float4 qmul(float4 q1, float4 q2)
 {
     return float4(q2.xyz * q1.w + q1.xyz * q2.w + cross(q1.xyz, q2.xyz), q1.w * q2.w - dot(q1.xyz, q2.xyz));
@@ -42,6 +43,7 @@ float4 qmul(float4 q1, float4 q2)
 
 // Vector rotation with a quaternion
 // http://mathworld.wolfram.com/Quaternion.html
+[BackwardDifferentiable]
 float3 rotate_vector(float3 v, float4 r)
 {
     float4 r_c = r * float4(-1, -1, -1, 1);

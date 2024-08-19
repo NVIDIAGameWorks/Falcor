@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -31,8 +31,12 @@
 
 #ifdef HOST_CODE
 #include "Utils/Math/PackedFormats.h"
+#include "VertexData.slang"
 #else
 import Utils.Math.PackedFormats;
+import Utils.SlangUtils;
+import Utils.Attributes;
+__exported import Scene.VertexData;
 #endif
 
 BEGIN_NAMESPACE_FALCOR
@@ -109,11 +113,11 @@ struct GeometryInstanceData
     uint materialID;
     uint geometryID;
 
-    uint vbOffset;          ///< Offset into vertex buffer.
-    uint ibOffset;          ///< Offset into index buffer, or zero if non-indexed.
+    uint vbOffset; ///< Offset into vertex buffer.
+    uint ibOffset; ///< Offset into index buffer, or zero if non-indexed.
 
-    uint instanceIndex;     ///< InstanceIndex in TLAS.
-    uint geometryIndex;     ///< GeometryIndex in BLAS.
+    uint instanceIndex; ///< InstanceIndex in TLAS.
+    uint geometryIndex; ///< GeometryIndex in BLAS.
 
 #ifdef HOST_CODE
     GeometryInstanceData() = default;
@@ -149,7 +153,7 @@ enum class MeshFlags : uint32_t
     IsAnimated = 0x10,      ///< Mesh is affected by vertex-animations.
 };
 
-/** Mesh data stored in 64B.
+/** Mesh data stored in 32B.
 */
 struct MeshDesc
 {
@@ -299,25 +303,9 @@ struct SkinningVertexData
 {
     uint4 boneID;
     float4 boneWeight;
-    uint staticIndex;       ///< The index in the static vertex buffer.
+    uint staticIndex; ///< The index in the static vertex buffer.
     uint bindMatrixID;
     uint skeletonMatrixID;
-};
-
-/** Struct representing interpolated vertex attributes in world space.
-    Note the tangent is not guaranteed to be orthogonal to the normal.
-    The bitangent should be computed: cross(normal, tangent.xyz) * tangent.w.
-    The tangent space is orthogonalized in prepareShadingData().
-*/
-struct VertexData
-{
-    float3 posW;            ///< Position in world space.
-    float3 normalW;         ///< Shading normal in world space (normalized).
-    float4 tangentW;        ///< Shading tangent in world space (normalized). The last component is guaranteed to be +-1.0 or zero if tangents are missing.
-    float2 texC;            ///< Texture coordinate.
-    float3 faceNormalW;     ///< Face normal in world space (normalized).
-    float  curveRadius;     ///< Curve cross-sectional radius. Valid only for geometry generated from curves.
-    float  coneTexLODValue; ///< Texture LOD data for cone tracing. This is zero, unless getVertexDataRayCones() is used.
 };
 
 struct CurveDesc
@@ -355,5 +343,149 @@ struct CustomPrimitiveDesc
     uint userID;        ///< User-defined ID that is specified during scene creation. This can be used to identify different sub-types of custom primitives.
     uint aabbOffset;    ///< Offset into list of procedural primitive AABBs.
 };
+
+#ifndef HOST_CODE
+
+#ifndef SCENE_INDEX_BUFFER_COUNT
+// #error "Define SCENE_INDEX_BUFFER_COUNT, SCENE_INDEX_BUFFER_INDEX_BITS"
+#define SCENE_INDEX_BUFFER_COUNT 1 // here for the benefit of the IntelliSense
+#define SCENE_INDEX_BUFFER_INDEX_BITS 1
+#endif // SCENE_INDEX_BUFFER_COUNT
+
+/**
+ * GPU representation for SplitBuffer<uint32_T>.
+ * Unlike the SplitVertexBuffer, this wraps a ByteAddressBuffer access rather than
+ * StructuredBuffer, but since we do not have templates, Load<uint16_t3> has to be
+ * explicitly instantiated.
+ *
+ * Functions as an adaptor when we need larger-than-4GB buffers.
+ * In such case, the top bits of the index are used to select which buffers
+ * is the item in, while the lower bits address the item inside the buffer.
+ * Host is only used for static_asserts.
+ */
+struct SplitIndexBuffer
+{
+    typedef uint ElementType;
+    static constexpr uint kBufferIndexBits = SCENE_INDEX_BUFFER_INDEX_BITS; // log2(sizeof(ElementType))
+    static constexpr uint kBufferIndexOffset = 32 - kBufferIndexBits;
+    static constexpr uint kElementIndexMask = (1u << kBufferIndexOffset) - 1;
+    static constexpr uint kBufferCount = SCENE_INDEX_BUFFER_COUNT;
+
+#if SCENE_INDEX_BUFFER_COUNT > 0
+#if SCENE_INDEX_BUFFER_COUNT > 1
+    /// TODO: Once the [root] signature issue has been solved, this should be the only version
+    ByteAddressBuffer data[kBufferCount];
+#else
+    [root] ByteAddressBuffer data[kBufferCount];
+#endif
+
+    /// baseOffset - offset to the start of the mesh
+    /// byteIndex - bytes to read from offset
+    /// Returns bytes starting baseOffset*4 + byteIndex, handling the uint overflow
+    /// for large buffers.
+    /// expected usage is LoadUint16_t3(baseOffset, baseOffset*4 + index)
+    uint16_t3 Load16b(uint baseOffset, uint triangleIndex)
+    {
+        if (kBufferCount == 1)
+            return data[0].Load<uint16_t3>(baseOffset * 4 + triangleIndex * 6);
+        uint bufferIndex = baseOffset >> kBufferIndexOffset;
+        uint byteOffset = (baseOffset & kElementIndexMask) * 4;
+        return data[bufferIndex].Load<uint16_t3>(byteOffset + triangleIndex * 6);
+    }
+
+    uint3 Load32b(uint baseOffset, uint triangleIndex)
+    {
+        if (kBufferCount == 1)
+            return data[0].Load3(baseOffset * 4 + triangleIndex * 12);
+        uint bufferIndex = baseOffset >> kBufferIndexOffset;
+        uint byteOffset = (baseOffset & kElementIndexMask) * 4;
+        return data[bufferIndex].Load3(byteOffset + triangleIndex * 12);
+    }
+#endif // SCENE_INDEX_BUFFER_COUNT > 0
+};
+
+#ifndef SCENE_VERTEX_BUFFER_COUNT
+// #error "Define SCENE_VERTEX_BUFFER_COUNT, SCENE_VERTEX_BUFFER_INDEX_BITS"
+#define SCENE_VERTEX_BUFFER_COUNT 1 // here for the benefit of the IntelliSense
+#define SCENE_VERTEX_BUFFER_INDEX_BITS 1
+#endif // SCENE_VERTEX_BUFFER_COUNT
+
+/**
+ * GPU representation for SplitBuffer<PackedStaticVertexData>.
+ * All comments apply to RWSplitVertexBuffer below as well.
+ *
+ * Functions as an adaptor when we need larger-than-4GB buffers.
+ * In such case, the top bits of the index are used to select which buffers
+ * is the item in, while the lower bits address the item inside the buffer.
+ * Host is only used for static_asserts.
+ */
+struct SplitVertexBuffer
+{
+    typedef PackedStaticVertexData ElementType;
+    static constexpr uint kBufferIndexBits = SCENE_VERTEX_BUFFER_INDEX_BITS;
+    static constexpr uint kBufferIndexOffset = 32 - kBufferIndexBits;
+    static constexpr uint kElementIndexMask = (1u << kBufferIndexOffset) - 1;
+    static constexpr uint kBufferCount = SCENE_VERTEX_BUFFER_COUNT;
+
+#if SCENE_VERTEX_BUFFER_COUNT > 1
+    /// TODO: Once the [root] signature issue has been solved, this should be the only version
+    StructuredBuffer<ElementType> data[ArrayMax<1, kBufferCount>.value];
+#else
+    [root] StructuredBuffer<ElementType> data[1];
+#endif
+
+    __subscript(uint index)->ElementType
+    {
+        get {
+            if (kBufferCount == 1)
+                return data[0][index];
+            uint bufferIndex = index >> kBufferIndexOffset;
+            uint elementIndex = index & kElementIndexMask;
+            return data[bufferIndex][elementIndex];
+        }
+    }
+};
+
+struct RWSplitVertexBuffer
+{
+    typedef PackedStaticVertexData ElementType;
+    static constexpr uint kBufferIndexBits = SCENE_VERTEX_BUFFER_INDEX_BITS;
+    static constexpr uint kBufferIndexOffset = 32 - kBufferIndexBits;
+    static constexpr uint kElementIndexMask = (1u << kBufferIndexOffset) - 1;
+    static constexpr uint kBufferCount = SCENE_VERTEX_BUFFER_COUNT;
+
+#if SCENE_VERTEX_BUFFER_COUNT > 1
+    /// TODO: Once the [root] signature issue has been solved, this should be the only version
+    RWStructuredBuffer<ElementType> data[ArrayMax<1, kBufferCount>.value];
+#else
+    [root] RWStructuredBuffer<ElementType> data[1];
+#endif
+
+    __subscript(uint index)->ElementType
+    {
+        get {
+            if (kBufferCount == 1)
+                return data[0][index];
+            uint bufferIndex = index >> kBufferIndexOffset;
+            uint elementIndex = index & kElementIndexMask;
+            return data[bufferIndex][elementIndex];
+        }
+
+        set {
+            if (kBufferCount == 1)
+            {
+                data[0][index] = newValue;
+            }
+            else
+            {
+                uint bufferIndex = index >> kBufferIndexOffset;
+                uint elementIndex = index & kElementIndexMask;
+                data[bufferIndex][elementIndex] = newValue;
+            }
+        }
+    }
+};
+
+#endif /// HOST_CODE
 
 END_NAMESPACE_FALCOR

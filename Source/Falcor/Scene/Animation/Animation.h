@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -33,6 +33,7 @@
 #include "Utils/Math/Matrix.h"
 #include "Utils/Math/Quaternion.h"
 #include "Utils/UI/Gui.h"
+#include <fstd/span.h>
 #include <memory>
 #include <string>
 #include <vector>
@@ -136,6 +137,11 @@ namespace Falcor
             \return Returns the keyframe.
         */
         const Keyframe& getKeyframe(double time) const;
+
+        /** Gets all the keyframes in the animation.
+            \return Returns span of keyframes.
+        */
+        fstd::span<const Keyframe> getKeyframes() const { return mKeyframes; }
 
         /** Check if a keyframe exists at the specified time.
             \param[in] time Time of the keyframe.

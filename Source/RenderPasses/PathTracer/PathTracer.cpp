@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -29,6 +29,7 @@
 #include "RenderGraph/RenderPassHelpers.h"
 #include "RenderGraph/RenderPassStandardFlags.h"
 #include "Rendering/Lights/EmissiveUniformSampler.h"
+
 
 namespace
 {
@@ -415,6 +416,9 @@ void PathTracer::setFrameDim(const uint2 frameDim)
 
 void PathTracer::setScene(RenderContext* pRenderContext, const ref<Scene>& pScene)
 {
+    mUpdateFlagsConnection = {};
+    mUpdateFlags = IScene::UpdateFlags::None;
+
     mpScene = pScene;
     mParams.frameCount = 0;
     mParams.frameDim = {};
@@ -428,6 +432,8 @@ void PathTracer::setScene(RenderContext* pRenderContext, const ref<Scene>& pScen
 
     if (mpScene)
     {
+        mUpdateFlagsConnection = mpScene->getUpdateFlagsSignal().connect([&](IScene::UpdateFlags flags) { mUpdateFlags |= flags; });
+
         if (pScene->hasGeometryType(Scene::GeometryType::Custom))
         {
             logWarning("PathTracer: This render pass does not support custom primitives.");
@@ -436,6 +442,7 @@ void PathTracer::setScene(RenderContext* pRenderContext, const ref<Scene>& pScen
         validateOptions();
     }
 }
+
 
 void PathTracer::execute(RenderContext* pRenderContext, const RenderData& renderData)
 {
@@ -757,6 +764,7 @@ PathTracer::TracePass::TracePass(ref<Device> pDevice, const std::string& name, c
     pProgram = Program::create(pDevice, desc, defines);
 }
 
+
 void PathTracer::TracePass::prepareProgram(ref<Device> pDevice, const DefineList& defines)
 {
     FALCOR_ASSERT(pProgram != nullptr && pBindingTable != nullptr);
@@ -788,11 +796,12 @@ void PathTracer::updatePrograms()
     // When only defines have changed, it is sufficient to update the existing programs and recreate the program vars.
 
     auto defines = mStaticParams.getDefines(*this);
-    auto globalTypeConformances = mpScene->getTypeConformances();
+    TypeConformanceList globalTypeConformances;
+    mpScene->getTypeConformances(globalTypeConformances);
 
     // Create trace pass.
     if (!mpTracePass)
-        mpTracePass = std::make_unique<TracePass>(mpDevice, "tracePass", "", mpScene, defines, globalTypeConformances);
+        mpTracePass = TracePass::create(mpDevice, "tracePass", "", mpScene, defines, globalTypeConformances);
 
     mpTracePass->prepareProgram(mpDevice, defines);
 
@@ -800,9 +809,9 @@ void PathTracer::updatePrograms()
     if (mOutputNRDAdditionalData)
     {
         if (!mpTraceDeltaReflectionPass)
-            mpTraceDeltaReflectionPass = std::make_unique<TracePass>(mpDevice, "traceDeltaReflectionPass", "DELTA_REFLECTION_PASS", mpScene, defines, globalTypeConformances);
+            mpTraceDeltaReflectionPass = TracePass::create(mpDevice, "traceDeltaReflectionPass", "DELTA_REFLECTION_PASS", mpScene, defines, globalTypeConformances);
         if (!mpTraceDeltaTransmissionPass)
-            mpTraceDeltaTransmissionPass = std::make_unique<TracePass>(mpDevice, "traceDeltaTransmissionPass", "DELTA_TRANSMISSION_PASS", mpScene, defines, globalTypeConformances);
+            mpTraceDeltaTransmissionPass = TracePass::create(mpDevice, "traceDeltaTransmissionPass", "DELTA_TRANSMISSION_PASS", mpScene, defines, globalTypeConformances);
 
         mpTraceDeltaReflectionPass->prepareProgram(mpDevice, defines);
         mpTraceDeltaTransmissionPass->prepareProgram(mpDevice, defines);
@@ -810,7 +819,7 @@ void PathTracer::updatePrograms()
 
     // Create compute passes.
     ProgramDesc baseDesc;
-    baseDesc.addShaderModules(mpScene->getShaderModules());
+    mpScene->getShaderModules(baseDesc.shaderModules);
     baseDesc.addTypeConformances(globalTypeConformances);
 
     if (!mpGeneratePaths)
@@ -932,8 +941,8 @@ void PathTracer::prepareMaterials(RenderContext* pRenderContext)
     // Whenever materials or geometry is added/removed to the scene, we reset the shader programs to trigger
     // recompilation with the correct defines, type conformances, shader modules, and binding table.
 
-    if (is_set(mpScene->getUpdates(), Scene::UpdateFlags::RecompileNeeded) ||
-        is_set(mpScene->getUpdates(), Scene::UpdateFlags::GeometryChanged))
+    if (is_set(mUpdateFlags, IScene::UpdateFlags::RecompileNeeded) ||
+        is_set(mUpdateFlags, IScene::UpdateFlags::GeometryChanged))
     {
         resetPrograms();
     }
@@ -943,18 +952,18 @@ bool PathTracer::prepareLighting(RenderContext* pRenderContext)
 {
     bool lightingChanged = false;
 
-    if (is_set(mpScene->getUpdates(), Scene::UpdateFlags::RenderSettingsChanged))
+    if (is_set(mUpdateFlags, IScene::UpdateFlags::RenderSettingsChanged))
     {
         lightingChanged = true;
         mRecompile = true;
     }
 
-    if (is_set(mpScene->getUpdates(), Scene::UpdateFlags::SDFGridConfigChanged))
+    if (is_set(mUpdateFlags, IScene::UpdateFlags::SDFGridConfigChanged))
     {
         mRecompile = true;
     }
 
-    if (is_set(mpScene->getUpdates(), Scene::UpdateFlags::EnvMapChanged))
+    if (is_set(mUpdateFlags, IScene::UpdateFlags::EnvMapChanged))
     {
         mpEnvMapSampler = nullptr;
         lightingChanged = true;
@@ -983,27 +992,27 @@ bool PathTracer::prepareLighting(RenderContext* pRenderContext)
     // Request the light collection if emissive lights are enabled.
     if (mpScene->getRenderSettings().useEmissiveLights)
     {
-        mpScene->getLightCollection(pRenderContext);
+        mpScene->getILightCollection(pRenderContext);
     }
 
     if (mpScene->useEmissiveLights())
     {
         if (!mpEmissiveSampler)
         {
-            const auto& pLights = mpScene->getLightCollection(pRenderContext);
+            const auto& pLights = mpScene->getILightCollection(pRenderContext);
             FALCOR_ASSERT(pLights && pLights->getActiveLightCount(pRenderContext) > 0);
             FALCOR_ASSERT(!mpEmissiveSampler);
 
             switch (mStaticParams.emissiveSampler)
             {
             case EmissiveLightSamplerType::Uniform:
-                mpEmissiveSampler = std::make_unique<EmissiveUniformSampler>(pRenderContext, mpScene);
+                mpEmissiveSampler = std::make_unique<EmissiveUniformSampler>(pRenderContext, mpScene->getILightCollection(pRenderContext));
                 break;
             case EmissiveLightSamplerType::LightBVH:
-                mpEmissiveSampler = std::make_unique<LightBVHSampler>(pRenderContext, mpScene, mLightBVHOptions);
+                mpEmissiveSampler = std::make_unique<LightBVHSampler>(pRenderContext, mpScene->getILightCollection(pRenderContext), mLightBVHOptions);
                 break;
             case EmissiveLightSamplerType::Power:
-                mpEmissiveSampler = std::make_unique<EmissivePowerSampler>(pRenderContext, mpScene);
+                mpEmissiveSampler = std::make_unique<EmissivePowerSampler>(pRenderContext, mpScene->getILightCollection(pRenderContext));
                 break;
             default:
                 FALCOR_THROW("Unknown emissive light sampler type");
@@ -1030,7 +1039,7 @@ bool PathTracer::prepareLighting(RenderContext* pRenderContext)
 
     if (mpEmissiveSampler)
     {
-        lightingChanged |= mpEmissiveSampler->update(pRenderContext);
+        lightingChanged |= mpEmissiveSampler->update(pRenderContext, mpScene->getILightCollection(pRenderContext));
         auto defines = mpEmissiveSampler->getDefines();
         if (mpTracePass && mpTracePass->pProgram->addDefines(defines)) mRecompile = true;
     }
@@ -1094,7 +1103,7 @@ void PathTracer::bindShaderData(const ShaderVar& var, const RenderData& renderDa
     setNRDData(var["outputNRD"], renderData);
 
     ref<Texture> pViewDir;
-    if (mpScene->getCamera()->getApertureRadius() > 0.f)
+    if (mpScene && mpScene->getCamera()->getApertureRadius() > 0.f)
     {
         pViewDir = renderData.getTexture(kInputViewDir);
         if (!pViewDir) logWarning("Depth-of-field requires the '{}' input. Expect incorrect rendering.", kInputViewDir);
@@ -1239,6 +1248,8 @@ bool PathTracer::beginFrame(RenderContext* pRenderContext, const RenderData& ren
     // Update the random seed.
     mParams.seed = mParams.useFixedSeed ? mParams.fixedSeed : mParams.frameCount;
 
+    mUpdateFlags = IScene::UpdateFlags::None;
+
     return true;
 }
 
@@ -1317,7 +1328,6 @@ void PathTracer::tracePass(RenderContext* pRenderContext, const RenderData& rend
 
     // Bind global resources.
     auto var = tracePass.pVars->getRootVar();
-    mpScene->setRaytracingShaderData(pRenderContext, var);
 
     if (mVarsChanged) mpSampleGenerator->bindShaderData(var);
     if (mpRTXDI) mpRTXDI->bindShaderData(var);
@@ -1420,14 +1430,24 @@ DefineList PathTracer::StaticParams::getDefines(const PathTracer& owner) const
     defines.add("GBUFFER_ADJUST_SHADING_NORMALS", owner.mGBufferAdjustShadingNormals ? "1" : "0");
 
     // Scene-specific configuration.
-    const auto& scene = owner.mpScene;
-    if (scene) defines.add(scene->getSceneDefines());
-    defines.add("USE_ENV_LIGHT", scene && scene->useEnvLight() ? "1" : "0");
-    defines.add("USE_ANALYTIC_LIGHTS", scene && scene->useAnalyticLights() ? "1" : "0");
-    defines.add("USE_EMISSIVE_LIGHTS", scene && scene->useEmissiveLights() ? "1" : "0");
-    defines.add("USE_CURVES", scene && (scene->hasGeometryType(Scene::GeometryType::Curve)) ? "1" : "0");
-    defines.add("USE_SDF_GRIDS", scene && scene->hasGeometryType(Scene::GeometryType::SDFGrid) ? "1" : "0");
-    defines.add("USE_HAIR_MATERIAL", scene && scene->getMaterialCountByType(MaterialType::Hair) > 0u ? "1" : "0");
+    // Set defaults
+    defines.add("USE_ENV_LIGHT", "0");
+    defines.add("USE_ANALYTIC_LIGHTS", "0");
+    defines.add("USE_EMISSIVE_LIGHTS", "0");
+    defines.add("USE_CURVES", "0");
+    defines.add("USE_SDF_GRIDS", "0");
+    defines.add("USE_HAIR_MATERIAL", "0");
+
+    if (auto scene = dynamic_ref_cast<Scene>(owner.mpScene))
+    {
+        defines.add(scene->getSceneDefines());
+        defines.add("USE_ENV_LIGHT", scene->useEnvLight() ? "1" : "0");
+        defines.add("USE_ANALYTIC_LIGHTS", scene->useAnalyticLights() ? "1" : "0");
+        defines.add("USE_EMISSIVE_LIGHTS", scene->useEmissiveLights() ? "1" : "0");
+        defines.add("USE_CURVES", (scene->hasGeometryType(Scene::GeometryType::Curve)) ? "1" : "0");
+        defines.add("USE_SDF_GRIDS", scene->hasGeometryType(Scene::GeometryType::SDFGrid) ? "1" : "0");
+        defines.add("USE_HAIR_MATERIAL", scene->getMaterialCountByType(MaterialType::Hair) > 0u ? "1" : "0");
+    }
 
     // Set default (off) values for additional features.
     defines.add("USE_VIEW_DIR", "0");

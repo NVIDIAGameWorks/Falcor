@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -64,6 +64,7 @@ class PipelineCreationAPIDispatcher;
 class ProgramManager;
 class Profiler;
 class AftermathContext;
+
 
 namespace cuda_utils
 {
@@ -151,6 +152,9 @@ public:
         /// GUID list for experimental features
         std::vector<GUID> experimentalFeatures;
 #endif
+
+        /// Whether to enable ray tracing validation (requires NVAPI)
+        bool enableRaytracingValidation = false;
     };
 
     struct Info
@@ -260,7 +264,7 @@ public:
         ResourceBindFlags bindFlags = ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess,
         MemoryType memoryType = MemoryType::DeviceLocal,
         const void* pInitData = nullptr,
-        bool createCounter = true
+        bool createCounter = false
     );
 
     /**
@@ -279,7 +283,7 @@ public:
         ResourceBindFlags bindFlags = ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess,
         MemoryType memoryType = MemoryType::DeviceLocal,
         const void* pInitData = nullptr,
-        bool createCounter = true
+        bool createCounter = false
     );
 
     /**
@@ -298,7 +302,7 @@ public:
         ResourceBindFlags bindFlags = ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess,
         MemoryType memoryType = MemoryType::DeviceLocal,
         const void* pInitData = nullptr,
-        bool createCounter = true
+        bool createCounter = false
     );
 
     /**
@@ -618,6 +622,7 @@ public:
     cuda_utils::CudaDevice* getCudaDevice() const;
 #endif
 
+
     /// Report live objects in GFX.
     /// This is useful for checking clean shutdown where all resources are properly released.
     static void reportLiveObjects();
@@ -651,6 +656,14 @@ public:
      */
     std::mutex& getGlobalGfxMutex() { return mGlobalGfxMutex; }
 
+    /**
+     * When ray tracing validation is enabled, call this to force validation messages to be flushed.
+     * It is automatically called at the end of each frame. Only messages from completed work
+     * will flush, so to guaruntee all are printed, it must be called after a fence.
+     * NOTE: This has no effect on Vulkan, in which the driver flushes automatically at device idle/lost.
+     */
+    void flushRaytracingValidation();
+
 private:
     struct ResourceRelease
     {
@@ -660,6 +673,9 @@ private:
     std::queue<ResourceRelease> mDeferredReleases;
 
     void executeDeferredReleases();
+
+    void enableRaytracingValidation();
+    void disableRaytracingValidation();
 
     Desc mDesc;
     Slang::ComPtr<slang::IGlobalSession> mSlangGlobalSession;
@@ -698,10 +714,15 @@ private:
     std::unique_ptr<ProgramManager> mpProgramManager;
     std::unique_ptr<Profiler> mpProfiler;
 
+#if FALCOR_NVAPI_AVAILABLE && FALCOR_HAS_D3D12
+    void* mpRayTraceValidationHandle = nullptr;
+#endif
+
 #if FALCOR_HAS_CUDA
     /// CUDA device sharing the same adapter as the graphics device.
     mutable ref<cuda_utils::CudaDevice> mpCudaDevice;
 #endif
+
 
     std::mutex mGlobalGfxMutex;
 };

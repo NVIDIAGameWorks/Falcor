@@ -4,7 +4,7 @@ setlocal
 rem %1 -> Project directory
 rem %2 -> Binary output directory
 rem %3 -> Build configuration
-rem %4 -> Slang build configuration
+rem %4 -> Slang directory
 rem %5 -> DLSS directory
 
 set ExtDir=%1\external\packman\
@@ -27,7 +27,7 @@ if %IsDebug% EQU 0 (
 )
 robocopy %ExtDir%\python\ %OutDir% python*.dll /r:0 >nul
 robocopy %ExtDir%\python %OutDir%\pythondist /E /r:0 >nul
-robocopy %ExtDir%\slang\bin\windows-x64\%SlangDir% %OutDir% *.dll /r:0 >nul
+robocopy %SlangDir%\bin %OutDir% *.dll /r:0 >nul
 robocopy %ExtDir%\pix\bin\x64 %OutDir% WinPixEventRuntime.dll /r:0 >nul
 robocopy %ExtDir%\dxcompiler\bin\x64 %OutDir% dxil.dll /r:0 >nul
 robocopy %ExtDir%\dxcompiler\bin\x64 %OutDir% dxcompiler.dll /r:0 >nul

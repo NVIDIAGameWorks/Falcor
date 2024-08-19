@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -48,9 +48,10 @@ struct FALCOR_API ResourceViewInfo
         : mostDetailedMip(mostDetailedMip), mipCount(mipCount), firstArraySlice(firstArraySlice), arraySize(arraySize)
     {}
 
-    ResourceViewInfo(uint32_t firstElement, uint32_t elementCount) : firstElement(firstElement), elementCount(elementCount) {}
+    ResourceViewInfo(uint64_t offset, uint64_t size) : offset(offset), size(size) {}
 
     static constexpr uint32_t kMaxPossible = -1;
+    static constexpr uint64_t kEntireBuffer = -1;
 
     // Textures
     uint32_t mostDetailedMip = 0;
@@ -59,13 +60,13 @@ struct FALCOR_API ResourceViewInfo
     uint32_t arraySize = kMaxPossible;
 
     // Buffers
-    uint32_t firstElement = 0;
-    uint32_t elementCount = kMaxPossible;
+    uint64_t offset = 0;
+    uint64_t size = kEntireBuffer;
 
     bool operator==(const ResourceViewInfo& other) const
     {
         return (firstArraySlice == other.firstArraySlice) && (arraySize == other.arraySize) && (mipCount == other.mipCount) &&
-               (mostDetailedMip == other.mostDetailedMip) && (firstElement == other.firstElement) && (elementCount == other.elementCount);
+               (mostDetailedMip == other.mostDetailedMip) && (offset == other.offset) && (size == other.size);
     }
 };
 
@@ -78,6 +79,7 @@ class FALCOR_API ResourceView : public Object
 public:
     using Dimension = ReflectionResourceType::Dimensions;
     static const uint32_t kMaxPossible = -1;
+    static constexpr uint64_t kEntireBuffer = -1;
     virtual ~ResourceView();
 
     ResourceView(
@@ -95,14 +97,8 @@ public:
         , mpResource(pResource)
     {}
 
-    ResourceView(
-        Device* pDevice,
-        Resource* pResource,
-        Slang::ComPtr<gfx::IResourceView> gfxResourceView,
-        uint32_t firstElement,
-        uint32_t elementCount
-    )
-        : mpDevice(pDevice), mGfxResourceView(gfxResourceView), mViewInfo(firstElement, elementCount), mpResource(pResource)
+    ResourceView(Device* pDevice, Resource* pResource, Slang::ComPtr<gfx::IResourceView> gfxResourceView, uint64_t offset, uint64_t size)
+        : mpDevice(pDevice), mGfxResourceView(gfxResourceView), mViewInfo(offset, size), mpResource(pResource)
     {}
 
     ResourceView(Device* pDevice, Resource* pResource, Slang::ComPtr<gfx::IResourceView> gfxResourceView)
@@ -150,7 +146,7 @@ public:
         uint32_t firstArraySlice,
         uint32_t arraySize
     );
-    static ref<ShaderResourceView> create(Device* pDevice, Buffer* pBuffer, uint32_t firstElement, uint32_t elementCount);
+    static ref<ShaderResourceView> create(Device* pDevice, Buffer* pBuffer, uint64_t offset, uint64_t size);
     static ref<ShaderResourceView> create(Device* pDevice, Dimension dimension);
 
 private:
@@ -169,10 +165,10 @@ private:
         Device* pDevice,
         Resource* pResource,
         Slang::ComPtr<gfx::IResourceView> gfxResourceView,
-        uint32_t firstElement,
-        uint32_t elementCount
+        uint64_t offset,
+        uint64_t size
     )
-        : ResourceView(pDevice, pResource, gfxResourceView, firstElement, elementCount)
+        : ResourceView(pDevice, pResource, gfxResourceView, offset, size)
     {}
     ShaderResourceView(Device* pDevice, Resource* pResource, Slang::ComPtr<gfx::IResourceView> gfxResourceView)
         : ResourceView(pDevice, pResource, gfxResourceView)
@@ -214,7 +210,7 @@ public:
         uint32_t firstArraySlice,
         uint32_t arraySize
     );
-    static ref<UnorderedAccessView> create(Device* pDevice, Buffer* pBuffer, uint32_t firstElement, uint32_t elementCount);
+    static ref<UnorderedAccessView> create(Device* pDevice, Buffer* pBuffer, uint64_t offset, uint64_t size);
     static ref<UnorderedAccessView> create(Device* pDevice, Dimension dimension);
 
 private:
@@ -233,10 +229,10 @@ private:
         Device* pDevice,
         Resource* pResource,
         Slang::ComPtr<gfx::IResourceView> gfxResourceView,
-        uint32_t firstElement,
-        uint32_t elementCount
+        uint64_t offset,
+        uint64_t size
     )
-        : ResourceView(pDevice, pResource, gfxResourceView, firstElement, elementCount)
+        : ResourceView(pDevice, pResource, gfxResourceView, offset, size)
     {}
 };
 

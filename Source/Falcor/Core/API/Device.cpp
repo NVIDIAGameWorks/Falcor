@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -58,6 +58,7 @@
 #include "Core/API/NvApiExDesc.h"
 #include <nvShaderExtnEnums.h> // Required for checking SER support.
 #endif
+
 
 #include <algorithm>
 namespace Falcor
@@ -390,6 +391,7 @@ inline Device::SupportedFeatures querySupportedFeatures(gfx::IDevice* pDevice)
         result |= Device::SupportedFeatures::WaveOperations;
     }
 
+
     return result;
 }
 
@@ -502,6 +504,11 @@ Device::Device(const Desc& desc) : mDesc(desc)
     // Get list of available GPUs.
     const auto gpus = getGPUs(mDesc.type);
 
+    if (gpus.size() == 0)
+    {
+        FALCOR_THROW("Did not find any GPUs for device type '{}'.", enumToString<decltype(mDesc.type)>(mDesc.type));
+    }
+
     if (mDesc.gpu >= gpus.size())
     {
         logWarning("GPU index {} is out of range, using first GPU instead.", mDesc.gpu);
@@ -529,6 +536,10 @@ Device::Device(const Desc& desc) : mDesc(desc)
     mInfo.apiName = deviceInfo.apiName;
     mLimits = queryLimits(mGfxDevice);
     mSupportedFeatures = querySupportedFeatures(mGfxDevice);
+
+    // Attempt to enable ray tracing validation if requested
+    if (mDesc.enableRaytracingValidation)
+        enableRaytracingValidation();
 
 #if FALCOR_HAS_AFTERMATH
     if (mDesc.enableAftermath)
@@ -681,6 +692,8 @@ Device::~Device()
 
     mpProfiler.reset();
 
+    disableRaytracingValidation();
+
     // Release all the bound resources. Need to do that before deleting the RenderContext
     mGfxCommandQueue.setNull();
     mDeferredReleases = decltype(mDeferredReleases)();
@@ -755,10 +768,11 @@ ref<Buffer> Device::createStructuredBuffer(
         FALCOR_THROW("Can't create a structured buffer from type '{}'.", pType->getClassName());
     }
 
-    FALCOR_ASSERT(pResourceType->getSize() <= std::numeric_limits<uint32_t>::max());
-    return make_ref<Buffer>(
-        ref<Device>(this), (uint32_t)pResourceType->getSize(), elementCount, bindFlags, memoryType, pInitData, createCounter
-    );
+    // Read the stride directly from the slang type layout, as the stored 'byte size' may not be the same
+    auto structStride = pResourceType->getStructType()->getSlangTypeLayout()->getStride();
+
+    FALCOR_ASSERT(structStride <= std::numeric_limits<uint32_t>::max());
+    return make_ref<Buffer>(ref<Device>(this), (uint32_t)structStride, elementCount, bindFlags, memoryType, pInitData, createCounter);
 }
 
 ref<Buffer> Device::createStructuredBuffer(
@@ -1054,6 +1068,7 @@ cuda_utils::CudaDevice* Device::getCudaDevice() const
 
 #endif
 
+
 void Device::reportLiveObjects()
 {
     gfx::gfxReportLiveObjects();
@@ -1146,6 +1161,9 @@ void Device::endFrame()
     if (mpFrameFence->getSignaledValue() > kInFlightFrameCount)
         mpFrameFence->wait(mpFrameFence->getSignaledValue() - kInFlightFrameCount);
 
+    // Flush ray tracing validation if enabled
+    flushRaytracingValidation();
+
     // Switch to next transient resource heap.
     getCurrentTransientResourceHeap()->finish();
     mCurrentTransientResourceHeapIndex = (mCurrentTransientResourceHeapIndex + 1) % kInFlightFrameCount;
@@ -1186,6 +1204,86 @@ NativeHandle Device::getNativeHandle(uint32_t index) const
     return {};
 }
 
+// Debug log message from ray tracing validation system
+#if FALCOR_NVAPI_AVAILABLE && FALCOR_HAS_D3D12
+static void RaytracingValidationCallback(
+    void* pUserData,
+    NVAPI_D3D12_RAYTRACING_VALIDATION_MESSAGE_SEVERITY severity,
+    const char* messageCode,
+    const char* message,
+    const char* messageDetails
+)
+{
+    if (severity == NVAPI_D3D12_RAYTRACING_VALIDATION_MESSAGE_SEVERITY_ERROR)
+        logError("Raytracing validation error {}:\n{}\n{}", messageCode, message, messageDetails);
+    else
+        logWarning("Raytracing validation warning {}:\n{}\n{}", messageCode, message, messageDetails);
+}
+#endif
+
+void Device::enableRaytracingValidation()
+{
+#if FALCOR_NVAPI_AVAILABLE
+    if (!isFeatureSupported(Device::SupportedFeatures::Raytracing))
+        FALCOR_THROW("Ray tracing validation is requested, but ray tracing is not supported");
+
+#if FALCOR_HAS_D3D12
+    if (mDesc.type == Type::D3D12)
+    {
+        // Get D3D device and attempt to enable ray tracing
+        ID3D12Device5* pD3D12Device5 = static_cast<ID3D12Device5*>(getNativeHandle().as<ID3D12Device*>());
+        auto res = NvAPI_D3D12_EnableRaytracingValidation(pD3D12Device5, NVAPI_D3D12_RAYTRACING_VALIDATION_FLAG_NONE);
+        if (res == NVAPI_NOT_PERMITTED)
+            FALCOR_THROW(
+                "Failed to enable raytracing validation. Error code: {}.\nThis is typically caused when the "
+                "NV_ALLOW_RAYTRACING_VALIDATION=1 environment variable is not set",
+                (int)res
+            );
+        else if (res != NVAPI_OK)
+            FALCOR_THROW("Failed to enable raytracing validation. Error code: {}", (int)res);
+
+        // Attempt to register the debug callback
+        res = NvAPI_D3D12_RegisterRaytracingValidationMessageCallback(
+            pD3D12Device5, &RaytracingValidationCallback, nullptr, &mpRayTraceValidationHandle
+        );
+        if (res != NVAPI_OK)
+            FALCOR_THROW("Failed to register raytracing validation callback. Error code: {}", (int)res);
+    }
+#endif
+
+#if FALCOR_HAS_VULKAN
+    if (mDesc.type == Type::Vulkan)
+    {
+        // TODO
+    }
+#endif
+
+#endif
+}
+
+void Device::disableRaytracingValidation()
+{
+#if FALCOR_NVAPI_AVAILABLE && FALCOR_HAS_D3D12
+    if (mpRayTraceValidationHandle)
+    {
+        ID3D12Device5* pD3D12Device5 = static_cast<ID3D12Device5*>(getNativeHandle().as<ID3D12Device*>());
+        NvAPI_D3D12_UnregisterRaytracingValidationMessageCallback(pD3D12Device5, mpRayTraceValidationHandle);
+        mpRayTraceValidationHandle = nullptr;
+    }
+#endif
+}
+
+void Device::flushRaytracingValidation()
+{
+#if FALCOR_NVAPI_AVAILABLE && FALCOR_HAS_D3D12
+    if (mpRayTraceValidationHandle)
+    {
+        ID3D12Device5* pD3D12Device5 = static_cast<ID3D12Device5*>(getNativeHandle().as<ID3D12Device*>());
+        NvAPI_D3D12_FlushRaytracingValidationMessages(pD3D12Device5);
+    }
+#endif
+}
+
 FALCOR_SCRIPT_BINDING(Device)
 {
     using namespace pybind11::literals;
@@ -1197,6 +1295,12 @@ FALCOR_SCRIPT_BINDING(Device)
     FALCOR_SCRIPT_BINDING_DEPENDENCY(Profiler)
     FALCOR_SCRIPT_BINDING_DEPENDENCY(RenderContext)
     FALCOR_SCRIPT_BINDING_DEPENDENCY(Program)
+
+    pybind11::class_<AdapterInfo> adapterInfo(m, "AdapterInfo");
+    adapterInfo.def_readonly("device_id", &AdapterInfo::deviceID);
+    adapterInfo.def_readonly("name", &AdapterInfo::name);
+    adapterInfo.def_readonly("vendor_id", &AdapterInfo::vendorID);
+    adapterInfo.def_readonly("luid", &AdapterInfo::luid);
 
     pybind11::class_<Device, ref<Device>> device(m, "Device");
 
@@ -1347,11 +1451,14 @@ FALCOR_SCRIPT_BINDING(Device)
     );
 
     device.def("wait", &Device::wait);
+    device.def("end_frame", &Device::endFrame);
 
     device.def_property_readonly("profiler", &Device::getProfiler);
     device.def_property_readonly("type", &Device::getType);
     device.def_property_readonly("info", &Device::getInfo);
     device.def_property_readonly("limits", &Device::getLimits);
     device.def_property_readonly("render_context", &Device::getRenderContext);
+
+    device.def_static("get_gpus", &Device::getGPUs);
 }
 } // namespace Falcor

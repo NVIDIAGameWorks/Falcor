@@ -1,6 +1,6 @@
 #!/bin/sh
 
-export pwd=`pwd`
+export pwd="$(dirname "$(realpath "$0")")"
 export project_dir=$pwd/..
 export python_dir=$project_dir/tools/.packman/python
 export python=$python_dir/bin/python3

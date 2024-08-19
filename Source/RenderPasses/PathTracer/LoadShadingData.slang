@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -127,14 +127,13 @@ uint getMaterialInstanceHints(const HitInfo hit, const bool isPrimary)
     \param[in] hit Hit information.
     \param[in] rayOrigin Ray origin.
     \param[in] rayDir Normalized ray direction.
-    \param[in] lod Method for computing texture level-of-detail
     \return ShadingData struct.
 */
-ShadingData loadShadingData(const HitInfo hit, const float3 rayOrigin, const float3 rayDir, const ITextureSampler lod)
+ShadingData loadShadingData(const HitInfo hit, const float3 rayOrigin, const float3 rayDir)
 {
     uint materialID = {};
 
     VertexData v = loadVertexData(hit, rayOrigin, rayDir, materialID);
-    ShadingData sd = gScene.materials.prepareShadingData(v, materialID, -rayDir, lod);
+    ShadingData sd = gScene.materials.prepareShadingData(v, materialID, -rayDir);
     return sd;
 }

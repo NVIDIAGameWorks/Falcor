@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -33,7 +33,6 @@ import Rendering.Materials.IsotropicGGX;
 import Rendering.Materials.InteriorListHelpers;
 import Rendering.Volumes.HomogeneousVolumeSampler;
 import Rendering.Utils.PixelStats;
-import Rendering.RTXDI.RTXDI;
 import RenderPasses.Shared.Denoising.NRDConstants;
 import RenderPasses.Shared.Denoising.NRDBuffers;
 import RenderPasses.Shared.Denoising.NRDData;
@@ -46,6 +45,19 @@ import ColorType;
 import NRDHelpers;
 __exported import PathState;
 __exported import Params;
+import Rendering.RTXDI.RTXDI;
+
+/** Interface for querying visibility in the scene.
+    This is used in `handleHit`.
+*/
+interface IVisibilityQuery
+{
+    /** Trace a visibility ray against the scene.
+        \param[in] ray Ray.
+        \return Returns true if the ray endpoints are mutually visible (i.e. the ray does NOT intersect the scene).
+    */
+    [mutating] bool traceVisibilityRay(const Ray ray);
+};
 
 /** Path tracer.
 
@@ -54,18 +66,6 @@ __exported import Params;
 */
 struct PathTracer
 {
-    /** Interface for querying visibility in the scene.
-        This is used in `handleHit`.
-    */
-    interface IVisibilityQuery
-    {
-        /** Trace a visibility ray against the scene.
-            \param[in] ray Ray.
-            \return Returns true if the ray endpoints are mutually visible (i.e. the ray does NOT intersect the scene).
-        */
-        [mutating] bool traceVisibilityRay(const Ray ray);
-    };
-
     PathTracerParams params;                        ///< Runtime parameters.
 
     // Samplers
@@ -290,7 +290,7 @@ struct PathTracer
         path.sg = SampleGenerator(pixel, params.seed * maxSpp + path.getSampleIdx());
 
         // Load the primary hit info from the V-buffer.
-        const HitInfo hit = HitInfo(vbuffer[pixel]);
+        const HitInfo hit = unpackHitInfo(vbuffer[pixel]);
 
         // If invalid, the path is still active and treated as a miss.
         if (hit.isValid())
@@ -796,8 +796,9 @@ struct PathTracer
         \param[in] isPrimaryTriangleHit True if primary hit on a triangle.
         \return Texture sampler instance.
     */
-    ITextureSampler createTextureSampler(const PathState path, bool isPrimaryHit, bool isTriangleHit)
+    ITextureSampler createTextureSampler(const PathState path, bool isPrimaryHit)
     {
+        const bool isTriangleHit = (path.hit.getType() == HitType::Triangle);
         if (kPrimaryLodMode == TexLODMode::RayDiffs && isPrimaryHit && isTriangleHit)
         {
             // Filtered lookups at primary hit on triangle.
@@ -831,10 +832,8 @@ struct PathTracer
         const bool isTriangleHit = hitType == HitType::Triangle;
         const bool isCurveHit = kUseCurves && (hitType == HitType::Curve);
 
-        let lod = createTextureSampler(path, isPrimaryHit, isTriangleHit);
-
         // Load shading data. This is a long latency operation.
-        ShadingData sd = loadShadingData(path.hit, path.origin, path.dir, lod);
+        ShadingData sd = loadShadingData(path.hit, path.origin, path.dir);
 
         const bool isHairMaterial = kUseHairMaterial && (sd.mtl.getMaterialType() == MaterialType::Hair);
         // TODO: Decouple geometry from the material.
@@ -853,6 +852,9 @@ struct PathTracer
         if (!handleNestedDielectrics(sd, path)) return;
 
         logPathVertex();
+
+        // Create texture sampler.
+        let lod = createTextureSampler(path, isPrimaryHit);
 
         // Create BSDF instance and query its properties.
         let hints = getMaterialInstanceHints(path.hit, isPrimaryHit);
@@ -896,8 +898,8 @@ struct PathTracer
                 // Note that MIS is only applied for hits on emissive triangles (other emissive geometry is not supported).
 
                 // Prepare hit point struct with data needed for emissive light PDF evaluation.
-                TriangleHit triangleHit = path.hit.getTriangleHit();
                 TriangleLightHit hit;
+                TriangleHit triangleHit = path.hit.getTriangleHit();
                 hit.triangleIndex = gScene.lightCollection.getTriangleIndex(triangleHit.instanceID, triangleHit.primitiveIndex);
                 hit.posW = sd.posW;
                 hit.normalW = sd.getOrientedFaceNormal();
@@ -969,10 +971,11 @@ struct PathTracer
                 // Setup path vertex.
                 PathVertex vertex = PathVertex(path.getVertexIndex(), sd.posW, sd.faceN, sd.frontFacing);
 
+                const bool canNeeSampleSphere = isCurveHit || isCurvePolyTubeHit;
                 // Determine if upper/lower hemispheres need to be sampled.
-                bool sampleUpperHemisphere = isCurveHit || isCurvePolyTubeHit || ((lobeTypes & (uint)LobeType::NonDeltaReflection) != 0);
+                bool sampleUpperHemisphere = canNeeSampleSphere || ((lobeTypes & (uint)LobeType::NonDeltaReflection) != 0);
+                bool sampleLowerHemisphere = canNeeSampleSphere || ((lobeTypes & (uint)LobeType::NonDeltaTransmission) != 0);
                 if (!kUseLightsInDielectricVolumes && path.isInsideDielectricVolume()) sampleUpperHemisphere = false;
-                bool sampleLowerHemisphere = isCurveHit || isCurvePolyTubeHit || ((lobeTypes & (uint)LobeType::NonDeltaTransmission) != 0);
 
                 // Sample a light.
                 validSample = generateLightSample(vertex, sampleUpperHemisphere, sampleLowerHemisphere, path.sg, ls);
@@ -993,6 +996,7 @@ struct PathTracer
                 if (any(Lr > 0.f))
                 {
                     Ray ray = ls.getVisibilityRay();
+
 
                     if (isCurvePolyTubeHit)
                     {

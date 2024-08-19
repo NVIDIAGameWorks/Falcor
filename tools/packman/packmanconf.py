@@ -1,4 +1,18 @@
-# Use this file to bootstrap packman into your Python environment (3.7.x). Simply
+# Copyright 2021-2024 NVIDIA CORPORATION
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Use this file to bootstrap packman into your Python environment. Simply
 # add the path by doing sys.insert to where packmanconf.py is located and then execute:
 #
 # >>> import packmanconf
@@ -32,11 +46,16 @@ def init():
         >>> import packmanapi
         >>> packmanapi.set_verbosity_level(packmanapi.VERBOSITY_HIGH)
     """
-    major = sys.version_info[0]
-    minor = sys.version_info[1]
-    if major != 3 or minor != 10:
+    major = sys.version_info.major
+    minor = sys.version_info.minor
+    patch = sys.version_info.micro
+    if major == 3 and (minor == 10 or (minor == 11 and patch <= 2)):
+        # we are good
+        pass
+    else:
         raise RuntimeError(
-            f"This version of packman requires Python 3.10.x, but {major}.{minor} was provided"
+            f"This version of packman requires Python 3.10.0 up to 3.11.2, "
+            f"but {major}.{minor}.{patch} was provided"
         )
     conf_dir = os.path.dirname(os.path.abspath(__file__))
     os.environ["PM_INSTALL_PATH"] = conf_dir
@@ -90,7 +109,7 @@ def get_module_dir(conf_dir, packages_root: str, version: str) -> str:
         script_path = os.path.join(conf_dir, "bootstrap", "install_package.py")
         ip = SourceFileLoader("install_package", script_path).load_module()
         print("Unpacking ...")
-        ip.install_package(target_name, module_dir)
+        ip.install_common_module(target_name, module_dir)
         os.unlink(tf.name)
     return module_dir
 
@@ -101,7 +120,7 @@ def get_version(conf_dir: str):
         path += ".sh"
     with open(path, "rt", encoding="utf8") as launch_file:
         for line in launch_file.readlines():
-            if line.startswith("PM_PACKMAN_VERSION"):
+            if "PM_PACKMAN_VERSION" in line:
                 _, value = line.split("=")
                 return value.strip()
     raise RuntimeError(f"Unable to find 'PM_PACKMAN_VERSION' in '{path}'")

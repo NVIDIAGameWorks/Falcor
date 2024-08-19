@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -43,9 +43,9 @@ void main(uint3 dispatchThreadId: SV_DispatchThreadID)
     const Ray ray = gGBufferRT.generateRay(pixel);
 
     SceneRayQuery<GBufferRT::kUseAlphaTest> sceneRayQuery;
-    HitInfo hit;
     float hitT;
-    if (sceneRayQuery.traceRay(ray, hit, hitT, GBufferRT::kRayFlags, 0xff))
+    const HitInfo hit = sceneRayQuery.traceRay(ray, hitT, GBufferRT::kRayFlags);
+    if (hit.isValid())
     {
         gGBufferRT.writeHit(pixel, ray.origin, ray.dir, hit, hitT);
     }

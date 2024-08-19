@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -25,7 +25,6 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-#ifndef FALCOR_USE_SCENE2
 #include "SceneDefines.slangh"
 
 __exported import Scene.HitInfo;
@@ -58,9 +57,6 @@ import Rendering.Materials.TexLODHelpers;
 */
 struct Scene
 {
-    // DEMO21
-    static bool kUseLightProfile = SCENE_USE_LIGHT_PROFILE;
-
     // Raytracing
     [root] RaytracingAccelerationStructure rtAccel;
 
@@ -76,10 +72,13 @@ struct Scene
     // Triangle meshes
     StructuredBuffer<MeshDesc> meshes;
 
-    [root] StructuredBuffer<PackedStaticVertexData> vertices;       ///< Vertex data for this frame.
+    /// Vertex data for this frame.
+    SplitVertexBuffer vertices;
+
     StructuredBuffer<PrevVertexData> prevVertices;                  ///< Vertex data for the previous frame, for dynamic meshes only.
 #if SCENE_HAS_INDEXED_VERTICES
-    [root] ByteAddressBuffer indexData;                             ///< Vertex indices, three indices per triangle packed tightly. The format is specified per mesh.
+    /// Vertex indices, three indices per triangle packed tightly. The format is specified per mesh.
+    SplitIndexBuffer indexData;
 #endif
 
     // Curves
@@ -108,7 +107,6 @@ struct Scene
     uint lightCount;
     StructuredBuffer<LightData> lights;
     LightCollection lightCollection;
-    LightProfile lightProfile;
     EnvMap envMap;
     Camera camera;
 
@@ -294,13 +292,11 @@ struct Scene
         uint3 vtxIndices;
         if (read16Bit)
         {
-            baseIndex += triangleIndex * 6;
-            vtxIndices = (uint3)indexData.Load<uint16_t3>(baseIndex);
+            vtxIndices = (uint3)indexData.Load16b(ibOffset, triangleIndex);
         }
         else
         {
-            baseIndex += triangleIndex * 12;
-            vtxIndices = indexData.Load3(baseIndex);
+            vtxIndices = indexData.Load32b(ibOffset, triangleIndex);
         }
 #else // !SCENE_HAS_INDEXED_VERTICES
         uint baseIndex = triangleIndex * 3;
@@ -978,5 +974,3 @@ struct Scene
 };
 
 ParameterBlock<Scene> gScene;
-#else
-#endif

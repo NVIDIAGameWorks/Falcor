@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -385,6 +385,8 @@ protected:
 
     void initializeResourceBindings();
     void createConstantBuffers(const ShaderVar& var);
+    void checkForNestedTextureArrayResources();
+
     static void prepareResource(CopyContext* pContext, Resource* pResource, bool isUav);
 
     /// Note: We hold an unowned pointer to the device but a strong pointer to the program version.

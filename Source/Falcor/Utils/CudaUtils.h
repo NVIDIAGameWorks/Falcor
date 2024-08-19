@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -100,7 +100,7 @@ FALCOR_API void waitExternalSemaphore(cudaExternalSemaphore_t extSem, uint64_t v
  * cudaExternalMemoryGetMappedBuffer(), so should follow its rules (e.g., the docs claim
  * you are responsible for calling cudaFree() on this pointer).
  */
-FALCOR_API void* getSharedDevicePtr(SharedResourceApiHandle sharedHandle, uint32_t bytes);
+FALCOR_API void* getSharedDevicePtr(Device::Type deviceType, SharedResourceApiHandle sharedHandle, uint32_t bytes);
 
 /**
  * Calls cudaFree() on the provided pointer.
@@ -251,8 +251,8 @@ inline InteropBuffer createInteropBuffer(ref<Device> pDevice, size_t byteSize)
     // Create a new DX <-> CUDA shared buffer using the Falcor API to create, then find its CUDA pointer.
     interop.buffer =
         pDevice->createBuffer(byteSize, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess | ResourceBindFlags::Shared);
-    interop.devicePtr =
-        (CUdeviceptr)cuda_utils::getSharedDevicePtr(interop.buffer->getSharedApiHandle(), (uint32_t)interop.buffer->getSize());
+    interop.devicePtr = (CUdeviceptr
+    )cuda_utils::getSharedDevicePtr(pDevice->getType(), interop.buffer->getSharedApiHandle(), (uint32_t)interop.buffer->getSize());
     FALCOR_CHECK(interop.devicePtr != (CUdeviceptr)0, "Failed to create CUDA device ptr for buffer");
 
     return interop;

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -48,6 +48,7 @@ public:
         ExportAlpha = 1u << 0,  //< Save alpha channel as well
         Lossy = 1u << 1,        //< Try to store in a lossy format
         Uncompressed = 1u << 2, //< Prefer faster load to a more compact file size
+        ExrFloat16 = 1u << 3,   //< Use half-float instead of float when writing EXRs
     };
 
     enum class ImportFlags : uint32_t
@@ -136,7 +137,7 @@ public:
     uint32_t getRowPitch() const { return mRowPitch; }
 
     /// Get the data size in bytes
-    uint32_t getSize() const { return mSize; }
+    size_t getSize() const { return mSize; }
 
     /**
      * Get the file dialog filter vec for images.
@@ -165,7 +166,7 @@ protected:
     uint32_t mWidth = 0;    ///< Width in pixels.
     uint32_t mHeight = 0;   ///< Height in pixels.
     uint32_t mRowPitch = 0; ///< Row pitch in bytes.
-    uint32_t mSize = 0;     ///< Total size in bytes.
+    size_t mSize = 0;       ///< Total size in bytes.
     ResourceFormat mFormat = ResourceFormat::Unknown;
 };
 

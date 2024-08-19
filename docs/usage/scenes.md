@@ -66,7 +66,7 @@ bool YourRenderer::onMouseEvent(const MouseEvent& mouseEvent)
 }
 ```
 
-`Scene::update()` returns a set of flags indicating which objects in the scene has changed. This is useful if your renderer or technique needs to reset values, update resources, etc based on scene changes. See `Scene::UpdateFlags` in `Scene.h` for more details.
+`Scene::update()` returns a set of flags indicating which objects in the scene has changed. This is useful if your renderer or technique needs to reset values, update resources, etc based on scene changes. See `IScene::UpdateFlags` in `IScene::UpdateFlags.h` for more details.
 
 ### Acceleration Structures
 

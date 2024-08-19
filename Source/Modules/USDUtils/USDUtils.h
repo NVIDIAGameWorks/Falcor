@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -45,6 +45,8 @@ BEGIN_DISABLE_USD_WARNINGS
 #include <pxr/usd/usdGeom/imageable.h>
 #include <pxr/usd/usdGeom/mesh.h>
 #include <pxr/usd/usdGeom/primvarsAPI.h>
+#include <pxr/usd/usdShade/shader.h>
+#include <pxr/usd/usdShade/connectableAPI.h>
 END_DISABLE_USD_WARNINGS
 
 #include <string>
@@ -208,6 +210,61 @@ inline bool isTimeSampled(const UsdGeomPointBased& geomPointBased)
     return geomPointBased.GetPointsAttr().GetNumTimeSamples() > 1;
 }
 
+// Return the ultimate source of the given input.
+inline UsdShadeInput getSourceInput(
+    UsdShadeInput input,
+    UsdShadeConnectableAPI& source,
+    TfToken& sourceName,
+    UsdShadeAttributeType& sourceType
+)
+{
+    if (input && input.HasConnectedSource())
+    {
+        if (input.GetConnectedSource(&source, &sourceName, &sourceType))
+        {
+            auto inputs = source.GetInputs();
+            if (!inputs.empty())
+            {
+                // If there's a connected source of type asset, return it.
+                for (uint32_t i = 0; i < inputs.size(); ++i)
+                {
+                    SdfValueTypeName typeName(inputs[i].GetTypeName());
+                    logDebug(
+                        "Input '{}' has source '{}', of type '{}'.",
+                        input.GetBaseName().GetString(),
+                        inputs[i].GetBaseName().GetString(),
+                        typeName.GetAsToken().GetString()
+                    );
+                    if (typeName == SdfValueTypeNames->Asset)
+                    {
+                        return inputs[i];
+                    }
+                }
+                // Otherwise, if there's no input of type asset, use the first connected source.
+                return inputs[0];
+            }
+        }
+        else
+        {
+            logError("Failed to get connected source on {}", source.GetPath().GetString());
+        }
+    }
+    return input;
+}
+
+// Get the layer in which the given authored attribute is defined, if any.
+inline SdfLayerHandle getLayerHandle(const UsdAttribute& attr, const UsdTimeCode& time)
+{
+    for (auto& spec : attr.GetPropertyStack(time))
+    {
+        if (spec->HasDefaultValue() || spec->GetLayer()->GetNumTimeSamplesForPath(spec->GetPath()) > 0)
+        {
+            return spec->GetLayer();
+        }
+    }
+    return SdfLayerHandle();
+}
+
 // Route USD messages through Falcor's logging system
 class DiagDelegate : public TfDiagnosticMgr::Delegate
 {
@@ -237,4 +294,16 @@ public:
 private:
     std::function<void(void)> m_func;
 };
+
+// Recursion bottom-out
+inline void hash_combine(std::size_t& seed) {}
+
+// Varadic helper function to combine hash values. Adapted from boost::hash_combine
+template<typename T, typename... Args>
+inline void hash_combine(std::size_t& seed, const T& v, Args... args)
+{
+    seed ^= std::hash<T>{}(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+    hash_combine(seed, args...);
+}
+
 } // namespace Falcor

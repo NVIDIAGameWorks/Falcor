@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -29,8 +29,10 @@
 
 __exported import Rendering.Materials.IMaterialInstance;
 __exported import Rendering.Materials.IBSDF;
+import Rendering.Materials.Fresnel;
 import Rendering.Volumes.PhaseFunction;
 import Utils.Color.ColorHelpers;
+import Utils.Debug.PixelDebug;
 
 /** This class implements a layered material based on
     "Position-Free Monte Carlo Simulation for Arbitrary Layered BSDFs" by Guo et al.
@@ -65,43 +67,81 @@ struct LayeredBSDF : IBSDF
         this.maxDepth = maxDepth;
     }
 
-    float3 evalTopOrBottom<S : ISampleGenerator>(bool evalTop, float3 wi, float3 wo, inout S sg)
+    BSDFContext initBSDFContext(
+        const bool scatterTop,
+        const float3 wi,
+        const float iors[2],
+        const float iorOutside,
+    )
     {
-        if (evalTop)
+        BSDFContext bc;
+        if (wi.z >= 0.f)
         {
-            return top.eval(wi, wo, sg);
+            if (scatterTop)
+            {
+                bc.iorI = iorOutside;
+                bc.iorT = iors[0];
+            }
+            else
+            {
+                bc.iorI = iors[0];
+                bc.iorT = iors[1];
+            }
         }
         else
         {
-            return bottom.eval(wi, wo, sg);
+            if (scatterTop)
+            {
+                bc.iorI = iors[0];
+                bc.iorT = iorOutside;
+            }
+            else
+            {
+                bc.iorI = iors[1];
+                bc.iorT = iors[0];
+            }
+        }
+
+        return bc;
+    }
+
+    float3 evalTopOrBottom<S : ISampleGenerator>(bool evalTop, float3 wi, float3 wo, inout S sg, BSDFContext bc)
+    {
+        if (evalTop)
+        {
+            return top.eval(wi, wo, sg, bc);
+        }
+        else
+        {
+            return bottom.eval(wi, wo, sg, bc);
         }
     }
 
-    bool sampleTopOrBottom<S : ISampleGenerator>(bool sampleTop, float3 wi, out BSDFSample bs, inout S sg)
+    bool sampleTopOrBottom<S : ISampleGenerator>(bool sampleTop, float3 wi, out BSDFSample bs, inout S sg, BSDFContext bc)
     {
         if (sampleTop)
         {
-            return top.sample(wi, bs.wo, bs.pdf, bs.weight, bs.lobeType, sg);
+            return top.sample(wi, bs.wo, bs.pdf, bs.weight, bs.lobeType, sg, bc);
         }
         else
         {
-            return bottom.sample(wi, bs.wo, bs.pdf, bs.weight, bs.lobeType, sg);
+            return bottom.sample(wi, bs.wo, bs.pdf, bs.weight, bs.lobeType, sg, bc);
         }
     }
 
-    float evalPdfTopOrBottom(bool evalTop, float3 wi, float3 wo)
+    float evalPdfTopOrBottom(bool evalTop, float3 wi, float3 wo, BSDFContext bc)
     {
         if (evalTop)
         {
-            return top.evalPdf(wi, wo);
+            return top.evalPdf(wi, wo, bc);
         }
         else
         {
-            return bottom.evalPdf(wi, wo);
+            return bottom.evalPdf(wi, wo, bc);
         }
     }
 
-    float3 eval<S : ISampleGenerator>(const float3 wi, const float3 wo, inout S sg)
+    float3 eval<S : ISampleGenerator>(const float3 wi, const float3 wo, inout S sg, BSDFContext bc)
     {
         bool enterTop = wi.z > 0.0f;
         bool exitTop = wo.z > 0.0f;
@@ -110,10 +150,17 @@ struct LayeredBSDF : IBSDF
         float z = enterTop ? 1.0f : 0.0f;
         float exitZ = exitTop ? 1.0f : 0.0f;
 
-        if (z == exitZ) result += evalTopOrBottom(exitTop, wi, wo, sg);
+        float iors[2];
+        iors[0] = reflectanceToIOR(top.getIorAsReflectance());
+        iors[1] = reflectanceToIOR(bottom.getIorAsReflectance());
+        const float iorOutside = bc.iorI;
+
+        BSDFContext bcLocal = BSDFContext(bc.iorI, bc.iorT);
+
+        if (z == exitZ) result += evalTopOrBottom(exitTop, wi, wo, sg, bcLocal);
 
         BSDFSample bs;
-        if (!sampleTopOrBottom(enterTop, wi, bs, sg)) return result;
+        if (!sampleTopOrBottom(enterTop, wi, bs, sg, bcLocal)) return result;
         if (bs.isLobe(LobeType::Reflection)) return result;
 
         float3 w = bs.wo;
@@ -148,8 +195,9 @@ struct LayeredBSDF : IBSDF
             }
             bool scatterTop = z == 1.0f;
 
-            if (z == exitZ) result += weight * evalTopOrBottom(exitTop, -w, wo, sg);
-            if (!sampleTopOrBottom(scatterTop, -w, bs, sg)) return result;
+            bcLocal = initBSDFContext(scatterTop, -w, iors, iorOutside);
+            if (z == exitZ) result += weight * evalTopOrBottom(exitTop, -w, wo, sg, bcLocal);
+            if (!sampleTopOrBottom(scatterTop, -w, bs, sg, bcLocal)) return result;
             weight *= bs.weight;
             w = bs.wo;
 
@@ -165,7 +213,7 @@ struct LayeredBSDF : IBSDF
         return result;
     }
 
-    bool sample<S : ISampleGenerator>(const float3 wi, out float3 wo, out float pdfOut, out float3 weightOut, out uint lobeType, inout S sg)
+    bool sample<S : ISampleGenerator>(const float3 wi, out float3 wo, out float pdfOut, out float3 weightOut, out uint lobeType, inout S sg, BSDFContext bc)
     {
         wo = {};
         pdfOut = {};
@@ -174,8 +222,15 @@ struct LayeredBSDF : IBSDF
 
         bool enterTop = wi.z > 0.0f;
 
+        float iors[2];
+        iors[0] = reflectanceToIOR(top.getIorAsReflectance());
+        iors[1] = reflectanceToIOR(bottom.getIorAsReflectance());
+        const float iorOutside = bc.iorI;
+
+        BSDFContext bcLocal = BSDFContext(bc.iorI, bc.iorT);
+
         BSDFSample bs;
-        if (!sampleTopOrBottom(enterTop, wi, bs, sg)) return false;
+        if (!sampleTopOrBottom(enterTop, wi, bs, sg, bcLocal)) return false;
         if (bs.isLobe(LobeType::Reflection))
         {
             wo = bs.wo;
@@ -219,7 +274,8 @@ struct LayeredBSDF : IBSDF
                 weight *= exp(-sigma);
             }
             bool scatterTop = z == 1.0f;
-            if (!sampleTopOrBottom(scatterTop, -w, bs, sg)) return false;
+            bcLocal = initBSDFContext(scatterTop, -w, iors, iorOutside);
+            if (!sampleTopOrBottom(scatterTop, -w, bs, sg, bcLocal)) return false;
             weight *= bs.weight;
             w = bs.wo;
             pdf *= bs.pdf;
@@ -227,7 +283,7 @@ struct LayeredBSDF : IBSDF
             if (bs.isLobe(LobeType::Transmission))
             {
                 wo = w;
-                pdfOut = evalPdf(wi, w);
+                pdfOut = evalPdf(wi, w, bc);
                 weightOut = weight;
                 lobeType =
                     (uint)(w.z*wi.z > 0.0f ? LobeType::Reflection : LobeType::Transmission) &
@@ -254,14 +310,21 @@ struct LayeredBSDF : IBSDF
         do without invoking the sampling routine. We don't have sg available here,
         and a stochastic PDF could cause problems with MIS.
     */
-    float evalPdf(const float3 wi, const float3 wo)
+    float evalPdf(const float3 wi, const float3 wo, BSDFContext bc)
     {
         bool enterTop = wi.z > 0.0f;
         bool exitTop = wo.z > 0.0f;
 
+        float iors[2];
+        iors[0] = reflectanceToIOR(top.getIorAsReflectance());
+        iors[1] = reflectanceToIOR(bottom.getIorAsReflectance());
+        const float iorOutside = bc.iorI;
+
+        BSDFContext bcLocal = BSDFContext(bc.iorI, bc.iorT);
+
         float pdfCos = abs(wi.z) * M_1_PI;
         float pdfSingle = 0.0f;
-        if (enterTop == exitTop) pdfSingle = evalPdfTopOrBottom(exitTop, wi, wo);
+        if (enterTop == exitTop) pdfSingle = evalPdfTopOrBottom(exitTop, wi, wo, bcLocal);
 
         return lerp(pdfSingle, pdfCos, 0.5f);
     }
@@ -270,6 +333,11 @@ struct LayeredBSDF : IBSDF
     {
         // TODO: This would need a closed-form version.
         return AlbedoContributions(1.f, 0.f, 0.f, 0.f);
+    }
+
+    float3 getIorAsReflectance()
+    {
+        return float3(1.f);
     }
 
     RoughnessInformation getRoughnessInformation(const float3 wi)

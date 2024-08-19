@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -60,7 +60,7 @@ void flattenDictionary(const nlohmann::json& dict, const std::string& prefix, nl
         flattenDictionary(it.value(), name, flattened);
     }
 }
-}
+} // namespace
 
 /// Flattens nested dictionaries into colon separated name,
 /// e.g. {"foo":{"bar":4}} becomes {"foo:bar":4}
@@ -101,20 +101,14 @@ inline bool isType(const nlohmann::json& json)
 template<typename T, typename gccfix = void>
 struct TypeChecker
 {
-    static bool validType(const nlohmann::json& json)
-    {
-        return isType<T>(json);
-    }
+    static bool validType(const nlohmann::json& json) { return isType<T>(json); }
 };
 
 template<typename U, size_t N, typename gccfix>
 struct TypeChecker<std::array<U, N>, gccfix>
 {
     using ArrayType = std::array<U, N>;
-    static bool validType(const nlohmann::json& json)
-    {
-        return isType<ArrayType, U, N>(json);
-    }
+    static bool validType(const nlohmann::json& json) { return isType<ArrayType, U, N>(json); }
 };
 
 class TypeError : public std::runtime_error

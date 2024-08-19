@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -41,7 +41,7 @@ namespace pybind11
 {
 class dict;
 class list;
-}
+} // namespace pybind11
 
 namespace Falcor
 {
@@ -52,6 +52,7 @@ public:
     using Options = settings::Attributes;
     using Attributes = settings::Attributes;
     using TypeError = settings::detail::TypeError;
+
 public:
     using SearchDirectories = std::vector<std::filesystem::path>;
 
@@ -60,10 +61,7 @@ public:
 
     Settings() : mData(1) {}
 
-    const Options& getOptions() const
-    {
-        return getActive().mOptions;
-    }
+    const Options& getOptions() const { return getActive().mOptions; }
 
     template<typename T>
     std::optional<T> getOption(std::string_view optionName) const
@@ -105,6 +103,8 @@ public:
     {
         return getActive().mAttributeFilters.getAttribute<T>(shapeName, attributeName, def);
     }
+
+    Attributes getAttributes(std::string_view shapeName) const { return getActive().mAttributeFilters.getAttributes(shapeName); }
 
     /**
      * @brief Adds filtered attributes with the following syntax.
@@ -155,6 +155,7 @@ public:
     void addFilteredAttributes(const nlohmann::json& attributes);
     void addFilteredAttributes(const pybind11::dict& attributes);
     void addFilteredAttributes(const pybind11::list& attributes);
+    bool addFilteredAttributes(const std::filesystem::path& path);
 
     // Clears all the attributes to default
     void clearFilteredAttributes();

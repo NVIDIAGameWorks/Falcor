@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,7 +26,6 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #include "Scene/SceneDefines.slangh"
-
 import Scene.Raytracing;
 import Scene.RaytracingInline; // For visibility queries.
 import Scene.Intersection;
@@ -80,7 +79,7 @@ struct PathPayload
         p.packed[4].xyz = asuint(path.L);
         p.packed[4].w = asuint(path.pdf);
 
-        p.hit = path.hit.getData();
+        p.hit = path.hit.pack();
         p.guideData = path.guideData;
         p.interiorList = path.interiorList;
         p.sg = path.sg;
@@ -108,7 +107,7 @@ struct PathPayload
         path.L = asfloat(p.packed[4].xyz);
         path.pdf = asfloat(p.packed[4].w);
 
-        path.hit = HitInfo(p.hit);
+        path.hit = unpackHitInfo(p.hit);
         path.guideData = p.guideData;
         path.interiorList = p.interiorList;
         path.sg = p.sg;
@@ -117,12 +116,12 @@ struct PathPayload
     }
 };
 
-struct VisibilityQuery : PathTracer::IVisibilityQuery
+struct VisibilityQuery : IVisibilityQuery
 {
     bool traceVisibilityRay(const Ray ray)
     {
         SceneRayQuery<kUseAlphaTest> sceneRayQuery;
-        return sceneRayQuery.traceVisibilityRay(ray, RAY_FLAG_NONE, 0xff);
+        return sceneRayQuery.traceVisibilityRay(ray);
     }
 };
 
@@ -195,7 +194,7 @@ HitInfo makeHitInfo(const HitObject hitObject)
 
 /** Reordering scheduler using SER/HitObject API.
 
-    The API allows to implement the PathTracer::IClosestHitQuery interface, because
+    The API allows to implement the IClosestHitQuery interface, because
     after executing ray traversal using HitObject::TraceRay(), control is given back to the
     caller before the CHS/MS is explicitly invoked using InvokeHitObject().
     This allows for executing volume distance sampling as part of PathTracer::nextHit.
@@ -281,7 +280,7 @@ struct ReorderingScheduler
                     primitiveIndex,         // PrimitiveIndex
                     0,                      // HitKind
                     kRayTypeScatter,        // RayContributionToHitGroupIndex
-                    rayTypeCount,           // MultiplierForGeometryContributionToHitGroupIndex
+                    getRayTypeCount(),      // MultiplierForGeometryContributionToHitGroupIndex
                     dummyRay,               // Ray
                     dummyAttribs            // Attributes
                 );
@@ -315,7 +314,7 @@ struct ReorderingScheduler
                 const Ray ray = path.getScatterRay();
                 payload = PathPayload::pack(path);
                 const uint rayFlags = kUseAlphaTest ? RAY_FLAG_NONE : RAY_FLAG_FORCE_OPAQUE;
-                hitObject = HitObject::TraceRay( gScene.rtAccel, rayFlags, 0xff /* instanceInclusionMask */, kRayTypeScatter /* hitIdx */, rayTypeCount, kMissScatter, ray.toRayDesc(), payload );
+                hitObject = HitObject::TraceRay(gScene.rtAccel, rayFlags, 0xff /* instanceInclusionMask */, kRayTypeScatter /* hitIdx */, getRayTypeCount(), kMissScatter, ray.toRayDesc(), payload);
                 path = PathPayload::unpack(payload);
 
                 if (hitObject.IsHit())
@@ -440,7 +439,7 @@ struct Scheduler
         PathPayload payload = PathPayload::pack(path);
         uint rayFlags = RAY_FLAG_NONE;
         if (!kUseAlphaTest) rayFlags |= RAY_FLAG_FORCE_OPAQUE;
-        TraceRay(gScene.rtAccel, rayFlags, 0xff /* instanceInclusionMask */, kRayTypeScatter /* hitIdx */, rayTypeCount, kMissScatter /* missIdx */, ray.toRayDesc(), payload);
+        TraceRay(gScene.rtAccel, rayFlags, 0xff /* instanceInclusionMask */, kRayTypeScatter /* hitIdx */, getRayTypeCount(), kMissScatter /* missIdx */, ray.toRayDesc(), payload);
 
         path = PathPayload::unpack(payload);
     }

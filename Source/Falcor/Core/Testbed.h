@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -61,6 +61,7 @@ public:
         Device::Desc deviceDesc;
         Window::Desc windowDesc;
         bool createWindow = false;
+        bool showFPS = true;
 
         /// Color format of the frame buffer.
         ResourceFormat colorFormat = ResourceFormat::BGRA8UnormSrgb;
@@ -118,6 +119,9 @@ public:
     /// Get the active render graph.
     const ref<RenderGraph>& getRenderGraph() const;
 
+    /// Get the window.
+    const ref<Window>& getWindow() const { return mpWindow; }
+
     /// Get the python UI screen.
     const ref<python_ui::Screen>& getScreen() const { return mpScreen; }
 
@@ -139,6 +143,21 @@ public:
     /// Returns true if the application should terminate.
     /// This is true if the window was closed or escape was pressed.
     bool shouldClose() const { return mShouldClose || (mpWindow && mpWindow->shouldClose()); }
+
+    std::function<bool(const KeyboardEvent&)> getKeyboardEventcallback() const { return mKeyboardEventCallback; }
+    void setKeyboardEventCallback(std::function<bool(const KeyboardEvent&)>& cb) { mKeyboardEventCallback = cb; }
+
+    std::function<bool(const MouseEvent&)> getMouseEventCallback() const { return mMouseEventCallback; }
+    void setMouseEventCallback(std::function<bool(const MouseEvent&)>& cb) { mMouseEventCallback = cb; }
+
+    std::function<void(uint32_t, uint32_t)> getWindowSizeChangeCallback() const { return mWindowSizeChangeCallback; }
+    void setWindowSizeChangeCallback(std::function<void(uint32_t, uint32_t)>& cb) { mWindowSizeChangeCallback = cb; }
+
+    /// Get paths to assets loaded in creating the scene
+    std::vector<std::string> getImportPaths() const;
+
+    /// Get dictionaries associated with assets loaded in creating the scene
+    std::vector<pybind11::dict> getImportDicts() const;
 
 private:
     // Implementation of Window::ICallbacks
@@ -174,6 +193,10 @@ private:
 
     FrameRate mFrameRate;
     Clock mClock;
+
+    std::function<bool(const KeyboardEvent&)> mKeyboardEventCallback;
+    std::function<bool(const MouseEvent&)> mMouseEventCallback;
+    std::function<void(uint32_t, uint32_t)> mWindowSizeChangeCallback;
 
     bool mShouldInterrupt{false};
     bool mShouldClose{false};

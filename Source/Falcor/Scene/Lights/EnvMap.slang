@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -33,7 +33,7 @@ import Utils.Math.MathHelpers;
 struct EnvMap
 {
     Texture2D       envMap;         ///< Environment map texture.
-    SamplerState    envSampler;     ///< Environment map sampler.
+    SamplerState    envSampler;     ///< Environment map texture sampler.
 
     EnvMapData      data;           ///< Environment map data.
 
