@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -200,6 +200,11 @@ public:
     virtual void renderUI(RenderContext* pRenderContext, Gui::Widgets& widget) { renderUI(widget); }
 
     /**
+     * Render the pass's Overlay UI. Use ImGui::GetBackgroundDrawList() to render.
+     */
+    virtual void renderOverlayUI(RenderContext* pRenderContext) {}
+
+    /**
      * Set a scene into the render pass.
      * This function is called when a new scene is loaded.
      * @param[in] pRenderContext The render context.
@@ -214,7 +219,7 @@ public:
      * @param[in] pRenderContext The render context.
      * @param[in] sceneUpdates Accumulated scene update flags since the last call, or since `setScene()` for a new scene.
      */
-    virtual void onSceneUpdates(RenderContext* pRenderContext, Scene::UpdateFlags sceneUpdates) {}
+    virtual void onSceneUpdates(RenderContext* pRenderContext, IScene::UpdateFlags sceneUpdates) {}
 
     /**
      * Mouse event handler.

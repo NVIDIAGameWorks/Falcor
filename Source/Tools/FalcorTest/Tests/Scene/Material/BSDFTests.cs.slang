@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -74,7 +74,7 @@ struct SamplingTest
             float pdf;
             float3 weight;
             uint lobeType;
-            if (bsdf.sample(wi, wo, pdf, weight, lobeType, sg))
+            if (bsdf.sample(wi, wo, pdf, weight, lobeType, sg, BSDFContext()))
             {
                 if (wo.z < -1.f + kCosThetaMargin || wo.z > 1.f - kCosThetaMargin)
                     continue;
@@ -127,7 +127,7 @@ struct SamplingTest
                 float cosPhi = cos(phi);
                 float3 wo = normalize(float3(sinTheta * cosPhi, sinTheta * sinPhi, cosTheta));
 
-                pdf += bsdf.evalPdf(wi, wo);
+                pdf += bsdf.evalPdf(wi, wo, BSDFContext());
             }
         }
 
@@ -160,10 +160,10 @@ struct SamplingTest
             float pdf;
             float3 weight;
             uint lobeType;
-            if (bsdf.sample(wi, wo, pdf, weight, lobeType, sg))
+            if (bsdf.sample(wi, wo, pdf, weight, lobeType, sg, BSDFContext()))
             {
-                float3 value = bsdf.eval(wi, wo, sg);
-                float pdfRef = bsdf.evalPdf(wi, wo);
+                float3 value = bsdf.eval(wi, wo, sg, BSDFContext());
+                float pdfRef = bsdf.evalPdf(wi, wo, BSDFContext());
                 float3 weightRef = pdfRef > 0.f ? (value / pdfRef) : float3(0.f);
 
                 float3 weightErrors = abs(weight - weightRef) / (weightRef > 0.f ? weightRef : 1.f);

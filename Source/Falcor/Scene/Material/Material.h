@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -342,6 +342,12 @@ namespace Falcor
         virtual const MaterialParamLayout& getParamLayout() const { FALCOR_THROW("Material does not have a parameter layout."); }
         virtual SerializedMaterialParams serializeParams() const { FALCOR_THROW("Material does not support serializing parameters."); }
         virtual void deserializeParams(const SerializedMaterialParams& params) { FALCOR_THROW("Material does not support deserializing parameters."); }
+
+        /** Set roughness mollification factor.
+        *   Mollification smooths over highly glossy lobes in the distribution.
+        *   The factor range from 0 (no mollification) to 1 (maximum mollification).
+        */
+        virtual void setRoughnessMollification( float factor ) {};
 
     protected:
         Material(ref<Device> pDevice, const std::string& name, MaterialType type);

@@ -43,11 +43,11 @@ def get_vcs_root(path):
     '''
     url = get_git_remote_origin(path)
     url = urlparse(url)
-    url = url.netloc.split('.')
-    for u in url:
-        if u.startswith("git@"): u = u.replace("git@", "")
-        if u == "gitlab-master" or u == "github": return u
-    print("Error. Unknown VCS root `" + url[0] + "`")
+    roots = ["gitlab-master", "github"]
+    for root in roots:
+        if root in url.netloc:
+            return root
+    print("Error. Unknown VCS root `" + url.netloc + "`")
     return url[0].lower()
 
 def mirror_folders(src_dir, dst_dir):

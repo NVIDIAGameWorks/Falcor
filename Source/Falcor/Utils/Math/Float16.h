@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -106,6 +106,9 @@ private:
 #elif FALCOR_CLANG
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wuser-defined-literals"
+#elif FALCOR_GCC
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wliteral-suffix"
 #endif
 
 /// h suffix for "half float" literals.
@@ -118,6 +121,8 @@ inline float16_t operator""h(long double value)
 #pragma warning(pop)
 #elif FALCOR_CLANG
 #pragma clang diagnostic pop
+#elif FALCOR_GCC
+#pragma GCC diagnostic pop
 #endif
 
 } // namespace math

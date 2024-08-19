@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -112,15 +112,14 @@ void primaryClosestHit(inout PrimaryRayData hitData, BuiltInTriangleIntersection
     float hitT = RayTCurrent();
     uint triangleIndex = PrimitiveIndex();
 
-    let lod = ExplicitLodTextureSampler(0.f);
-
     // Prepare the shading data.
     const GeometryInstanceID instanceID = getGeometryInstanceID();
     VertexData v = getVertexData(instanceID, triangleIndex, attribs);
     uint materialID = gScene.getMaterialID(instanceID);
-    ShadingData sd = gScene.materials.prepareShadingData(v, materialID, -rayDirW, lod);
+    ShadingData sd = gScene.materials.prepareShadingData(v, materialID, -rayDirW);
 
     // Create material instance and query its properties.
+    let lod = ExplicitLodTextureSampler(0.f);
     let mi = gScene.materials.getMaterialInstance(sd, lod);
     let bsdfProperties = mi.getProperties(sd);
 

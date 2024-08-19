@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -131,10 +131,9 @@ struct ScatterRayData
  * @param[in] hit Hit information.
  * @param[in] rayOrigin Ray origin.
  * @param[in] rayDir Normalized ray direction.
- * @param[in] lod Method for computing texture level-of-detail.
  * @return ShadingData struct.
  */
-ShadingData loadShadingData(const HitInfo hit, const float3 rayOrigin, const float3 rayDir, const ITextureSampler lod)
+ShadingData loadShadingData(const HitInfo hit, const float3 rayOrigin, const float3 rayDir)
 {
     VertexData v = {};
     uint materialID = {};
@@ -172,7 +171,7 @@ ShadingData loadShadingData(const HitInfo hit, const float3 rayOrigin, const flo
     }
 #endif
 
-    ShadingData sd = gScene.materials.prepareShadingData(v, materialID, -rayDir, lod);
+    ShadingData sd = gScene.materials.prepareShadingData(v, materialID, -rayDir);
 
     return sd;
 }
@@ -325,12 +324,12 @@ bool generateScatterRay(const ShadingData sd, const IMaterialInstance mi, bool i
 void handleHit(const HitInfo hit, inout ScatterRayData rayData)
 {
     const bool isCurveHit = hit.getType() == HitType::Curve;
-    let lod = ExplicitLodTextureSampler(0.f);
 
     // Load shading data.
-    ShadingData sd = loadShadingData(hit, rayData.origin, rayData.direction, lod);
+    ShadingData sd = loadShadingData(hit, rayData.origin, rayData.direction);
 
     // Create material instance.
+    let lod = ExplicitLodTextureSampler(0.f);
     let mi = gScene.materials.getMaterialInstance(sd, lod);
 
     // Add emitted light.
@@ -403,12 +402,12 @@ float3 tracePath(const uint2 pixel, const uint2 frameDim)
         // Pixel represents a valid primary hit. Compute its contribution.
 
         const bool isCurveHit = hit.getType() == HitType::Curve;
-        let lod = ExplicitLodTextureSampler(0.f);
 
         // Load shading data.
-        ShadingData sd = loadShadingData(hit, primaryRayOrigin, primaryRayDir, lod);
+        ShadingData sd = loadShadingData(hit, primaryRayOrigin, primaryRayDir);
 
         // Create material instance at shading point.
+        let lod = ExplicitLodTextureSampler(0.f);
         let mi = gScene.materials.getMaterialInstance(sd, lod);
 
         // Create sample generator.

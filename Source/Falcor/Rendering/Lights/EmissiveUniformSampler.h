@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -59,7 +59,7 @@ namespace Falcor
             \param[in] pScene The scene.
             \param[in] options The options to override the default behavior.
         */
-        EmissiveUniformSampler(RenderContext* pRenderContext, ref<Scene> pScene, const Options& options = Options());
+        EmissiveUniformSampler(RenderContext* pRenderContext, ref<ILightCollection> pLightCollection, const Options& options = Options());
         virtual ~EmissiveUniformSampler() = default;
 
         /** Returns the current configuration.

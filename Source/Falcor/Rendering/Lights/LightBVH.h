@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -76,7 +76,11 @@ namespace Falcor
             \param[in] pDevice GPU device.
             \param[in] pLightCollection The light collection around which the BVH will be built.
         */
-        LightBVH(ref<Device> pDevice, const ref<const LightCollection>& pLightCollection);
+        LightBVH(ref<Device> pDevice, const ref<const ILightCollection>& pLightCollection);
+
+        /** Returns the LightCollection the LightBVH is built on.
+         */
+        ref<const ILightCollection> getLightCollection() const { return mpLightCollection; }
 
         /** Refit all the BVH nodes to the underlying geometry, without changing the hierarchy.
             The BVH needs to have been built before trying to refit it.
@@ -143,7 +147,7 @@ namespace Falcor
 
         // Internal state
         ref<Device>                           mpDevice;
-        ref<const LightCollection>            mpLightCollection;
+        ref<const ILightCollection>           mpLightCollection;
 
         ref<ComputePass>                      mLeafUpdater;             ///< Compute pass for refitting the leaf nodes.
         ref<ComputePass>                      mInternalUpdater;         ///< Compute pass for refitting internal nodes.

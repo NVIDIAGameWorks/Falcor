@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -53,6 +53,9 @@ struct AABB
 
     /// Construct bounding box initialized to min/max point.
     AABB(const float3& pmin, const float3& pmax) : minPoint(pmin), maxPoint(pmax) {}
+
+    /// Construct bounding box initialized to min/max point.
+    explicit AABB(const RtAABB& aabb) : minPoint(aabb.min), maxPoint(aabb.max) {}
 
     /// Set box to single point.
     void set(const float3& p) { minPoint = maxPoint = p; }
@@ -155,7 +158,7 @@ struct AABB
      * @param[in] mat Transform matrix
      * @return Bounding box after transformation.
      */
-    AABB transform(const float4x4& mat) const
+    [[nodiscard]] AABB transform(const float4x4& mat) const
     {
         if (!valid())
             return {};

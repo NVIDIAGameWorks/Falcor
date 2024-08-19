@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -54,7 +54,7 @@ struct DiffuseSpecularBRDF : IBSDF
         this.roughness = params.roughness;
     }
 
-    float3 eval<S : ISampleGenerator>(const float3 wi, const float3 wo, inout S sg)
+    float3 eval<S : ISampleGenerator>(const float3 wi, const float3 wo, inout S sg, BSDFContext bc)
     {
         if (min(wi.z, wo.z) < kMinCosTheta)
             return float3(0.f);
@@ -64,7 +64,15 @@ struct DiffuseSpecularBRDF : IBSDF
         return (fd + fs) * wo.z;
     }
 
-    bool sample<S : ISampleGenerator>(const float3 wi, out float3 wo, out float pdf, out float3 weight, out uint lobeType, inout S sg)
+    bool sample<S : ISampleGenerator>(
+        const float3 wi,
+        out float3 wo,
+        out float pdf,
+        out float3 weight,
+        out uint lobeType,
+        inout S sg,
+        BSDFContext bc
+    )
     {
         wo = {};
         pdf = {};
@@ -98,11 +106,11 @@ struct DiffuseSpecularBRDF : IBSDF
         if (min(wi.z, wo.z) < kMinCosTheta || pdf == 0.f)
             return false;
 
-        weight = eval(wi, wo, sg) / pdf;
+        weight = eval(wi, wo, sg, bc) / pdf;
         return true;
     }
 
-    float evalPdf(const float3 wi, const float3 wo)
+    float evalPdf(const float3 wi, const float3 wo, BSDFContext bc)
     {
         if (min(wi.z, wo.z) < kMinCosTheta)
             return 0.f;
@@ -129,6 +137,8 @@ struct DiffuseSpecularBRDF : IBSDF
         // TODO: Return more accurate albedos.
         return AlbedoContributions(diffuse, 1.0f - diffuse, 0.0f, 0.0f);
     }
+
+    float3 getIorAsReflectance() { return float3(1.f); }
 
     RoughnessInformation getRoughnessInformation(const float3 wi)
     {

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -218,6 +218,23 @@ GPU_TEST(BufferWrite)
 
     testWrite(uint4(1, 2, 3, 4), false);
     testWrite(uint4(3, 4, 5, 6), true);
+}
+
+void checkBufferSize(GPUUnitTestContext& ctx, std::string bufferName, uint32_t expectedSize)
+{
+    auto buffer = ctx.getDevice()->createStructuredBuffer(ctx.getVars()->getRootVar()[bufferName], 16);
+    EXPECT_EQ(buffer->getStructSize(), expectedSize);
+    EXPECT_EQ(buffer->getSize(), expectedSize * 16);
+}
+
+GPU_TEST(BufferStrides)
+{
+    ctx.createProgram("Tests/Core/BufferTests.cs.slang", "writeSizeTest");
+
+    checkBufferSize(ctx, "bufferSizeTest1_12B_buffer", 12);
+    checkBufferSize(ctx, "bufferSizeTest2_2B_buffer", 2);
+    checkBufferSize(ctx, "bufferSizeTest3_24B_buffer", 24);
+    checkBufferSize(ctx, "bufferSizeTest4_24B_buffer", 24);
 }
 
 } // namespace Falcor

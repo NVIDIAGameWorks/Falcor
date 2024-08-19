@@ -1,6 +1,6 @@
 #!/bin/sh
 
-DIR="$( dirname -- "$BASH_SOURCE"; )";
+DIR="$(dirname "$(realpath "$0")")"
 
 if [ -z "${CONDA_PYTHON_EXE}" ]; then
     echo "Python tests require conda environment to run."

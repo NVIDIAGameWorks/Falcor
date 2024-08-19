@@ -55,13 +55,15 @@ class Database:
     '''
     Helper for accessing image test results.
     '''
-    def __init__(self, env):
+    def __init__(self, env: Environment):
         result_dir_template = env.image_tests_result_dir
         ref_dir_template = env.image_tests_ref_dir
 
         # Substitute project_dir as it is a static part of the path.
         result_dir_template = result_dir_template.replace('${project_dir}', str(env.project_dir))
         ref_dir_template = ref_dir_template.replace('${project_dir}', str(env.project_dir))
+        result_dir_template = result_dir_template.replace('${project_drive}', str(env.project_dir.drive))
+        ref_dir_template = ref_dir_template.replace('${project_drive}', str(env.project_dir.drive))
 
         # Extract result directory and run pattern.
         index = result_dir_template.index('$')

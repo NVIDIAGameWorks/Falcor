@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -72,6 +72,31 @@ ref<RenderGraph> RenderGraph::createFromFile(ref<Device> pDevice, const std::fil
     ref<Device> pPrevDevice = getActivePythonRenderGraphDevice();
     setActivePythonRenderGraphDevice(pDevice);
     Scripting::runScriptFromFile(path, ctx);
+    setActivePythonRenderGraphDevice(pPrevDevice);
+
+    return pGraph;
+}
+
+ref<RenderGraph> RenderGraph::createFromString(ref<Device> pDevice, const std::string_view script)
+{
+    using namespace pybind11::literals;
+
+    ref<RenderGraph> pGraph;
+
+    // Setup a temporary scripting context that defines a local variable 'm' that
+    // has a 'addGraph' function exposed. This mimmicks the old Mogwai Python API
+    // allowing to load python based render graph scripts.
+    auto addGraph = pybind11::cpp_function([&pGraph](ref<RenderGraph> graph) { pGraph = graph; });
+
+    auto SimpleNamespace = pybind11::module_::import("types").attr("SimpleNamespace");
+    pybind11::object m = SimpleNamespace("addGraph"_a = addGraph);
+
+    Scripting::Context ctx;
+    ctx.setObject("m", m);
+
+    ref<Device> pPrevDevice = getActivePythonRenderGraphDevice();
+    setActivePythonRenderGraphDevice(pDevice);
+    Scripting::runScript(script, ctx);
     setActivePythonRenderGraphDevice(pPrevDevice);
 
     return pGraph;
@@ -655,7 +680,13 @@ void RenderGraph::renderUI(RenderContext* pRenderContext, Gui::Widgets& widget)
         mpExe->renderUI(pRenderContext, widget);
 }
 
-void RenderGraph::onSceneUpdates(RenderContext* pRenderContext, Scene::UpdateFlags sceneUpdates)
+void RenderGraph::renderOverlayUI(RenderContext* pRenderContext)
+{
+    if (mpExe)
+        mpExe->renderOverlayUI(pRenderContext);
+}
+
+void RenderGraph::onSceneUpdates(RenderContext* pRenderContext, IScene::UpdateFlags sceneUpdates)
 {
     // Notify all passes in graph about scene updates.
     // Note we don't rely on `mpExe` here because it is not created until the graph is compiled in `execute()`.

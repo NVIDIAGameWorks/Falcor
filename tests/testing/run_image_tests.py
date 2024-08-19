@@ -2,6 +2,7 @@
 Frontend for running image tests.
 '''
 
+import hashlib
 import os
 import sys
 import re
@@ -119,7 +120,7 @@ class Test:
 
     process_controller = None
 
-    def __init__(self, script_file, root_dir, device_type, header):
+    def __init__(self, script_file, root_dir: Path, device_type, header):
         self.script_file = script_file
         self.device_type = device_type
         self.header = header
@@ -166,7 +167,7 @@ class Test:
         files = filter(lambda f: f.suffix.lower() in config.IMAGE_EXTENSIONS, files)
         return list(files)
 
-    def generate_images(self, output_dir, mogwai_exe, run_only=False):
+    def generate_images(self, output_dir: Path, mogwai_exe: Path, run_only: bool, temp_dir: Path):
         '''
         Run Mogwai to generate a set of images and store them in output_dir.
         Returns a tuple containing the result code and a list of messages.
@@ -178,6 +179,7 @@ class Test:
         # Determine full output directory.
         output_dir = output_dir / self.test_dir
         output_dir.mkdir(parents=True, exist_ok=True)
+        temp_dir.mkdir(parents=True, exist_ok=True)
 
         # In order to simplify module imports in test scripts, we run Mogwai with
         # a working directory set to the directory the test script resides in.
@@ -187,8 +189,14 @@ class Test:
         cwd = self.script_file.parent
         relative_to_cwd = lambda p: os.path.relpath(p, cwd)
 
+        # Calculate string to hash for generate string
+        hash_str = f'{self.script_file}'
+
+        # Calculate short name for useful generate.py filename
+        short_name = self.name.split('/')[-1]
+
         # Write helper script to run test.
-        generate_file = output_dir / 'generate.py'
+        generate_file = temp_dir / f'{short_name}_{hashlib.sha1(hash_str.encode()).hexdigest()[:8]}.py'
         with open(generate_file, 'w') as f:
             # Hack to pass run only flag to helpers.py
             if run_only:
@@ -230,7 +238,7 @@ class Test:
 
         return Test.Result.PASSED, [], rerun_env
 
-    def compare_images(self, ref_dir, result_dir, image_compare_exe):
+    def compare_images(self, ref_dir: Path, result_dir: Path, image_compare_exe: Path):
         '''
         Run ImageCompare on a set of images in ref_dir and result_dir.
         Checks if error between reference and result image is within a given tolerance.
@@ -306,7 +314,7 @@ class Test:
 
         return result, messages, image_reports
 
-    def run(self, run_only, compare_only, ref_dir, result_dir, mogwai_exe, image_compare_exe):
+    def run(self, run_only: bool, compare_only: bool, ref_dir: Path, result_dir: Path, mogwai_exe: Path, image_compare_exe: Path, temp_dir: Path):
         '''
         Run the image test.
         First, result images are generated (unless compare_only is True).
@@ -328,7 +336,7 @@ class Test:
 
         # Generate results images.
         if not compare_only:
-            result, messages, rerun_env = self.generate_images(result_dir, mogwai_exe, run_only)
+            result, messages, rerun_env = self.generate_images(result_dir, mogwai_exe, run_only, temp_dir)
 
         # Compare to references.
         if not run_only and result == Test.Result.PASSED:
@@ -349,19 +357,19 @@ class Test:
 
         return result, messages
 
-def generate_ref(env, test, ref_dir, process_controller):
+def generate_ref(env: Environment, test: Test, ref_dir: Path, process_controller):
     if process_controller.is_interrupted():
         return
     with print_mutex:
         print(f'  {test.name:<60} : STARTED')
     test.process_controller = process_controller
     start_time = time.time()
-    result, messages, rerun_env = test.generate_images(ref_dir, env.mogwai_exe)
+    result, messages, rerun_env = test.generate_images(ref_dir, env.mogwai_exe, False, env.temp_dir)
     elapsed_time = time.time() - start_time
     return {"name": test.name, "elapsed_time": elapsed_time, "result": result, "messages": messages, "rerun_env": rerun_env}
 
 
-def generate_refs(env, tests, ref_dir, process_controller):
+def generate_refs(env: Environment, tests: list[Test], ref_dir, process_controller):
     '''
     Computes references for a set of tests and stores them into ref_dir.
     '''
@@ -412,7 +420,7 @@ def generate_refs(env, tests, ref_dir, process_controller):
 
     return success
 
-def run_test(env, test, run_only, compare_only, ref_dir, result_dir, min_tolerance, process_controller):
+def run_test(env: Environment, test: Test, run_only: bool, compare_only: bool, ref_dir: Path, result_dir: Path, min_tolerance, process_controller: ProcessController, build_id: str):
     if process_controller.is_interrupted():
         return
     with print_mutex:
@@ -420,11 +428,15 @@ def run_test(env, test, run_only, compare_only, ref_dir, result_dir, min_toleran
     test.tolerance = max(test.tolerance, min_tolerance)
     test.process_controller = process_controller
     start_time = time.time()
-    result, messages = test.run(run_only, compare_only, ref_dir, result_dir, env.mogwai_exe, env.image_compare_exe)
+    result, messages = test.run(run_only, compare_only, ref_dir, result_dir, env.mogwai_exe, env.image_compare_exe, env.temp_dir)
     elapsed_time = time.time() - start_time
+
+    if result != Test.Result.SKIPPED:
+        messages.append(f'View test at: http://{env.hostname}:8080/{env.vcs_root}/{build_id}/{test.name}')
+
     return {"name": test.name, "elapsed_time": elapsed_time, "result": result, "messages": messages}
 
-def run_tests(env, tests, run_only, compare_only, ref_dir, result_dir, min_tolerance, xml_report, process_controller):
+def run_tests(env: Environment, tests: list[Test], run_only: bool, compare_only: bool, ref_dir: Path, result_dir: Path, min_tolerance, xml_report, process_controller: ProcessController, build_id: str):
     '''
     Runs a set of tests, stores them into result_dir and compares them to ref_dir.
     '''
@@ -443,7 +455,7 @@ def run_tests(env, tests, run_only, compare_only, ref_dir, result_dir, min_toler
     try:
         # Run tests on #CPU - 2 (to retain some performance control)
         with concurrent.futures.ThreadPoolExecutor(process_controller.thread_count) as executor:
-            futures = {executor.submit(run_test, env, test, run_only, compare_only, ref_dir, result_dir, min_tolerance, process_controller) for test in tests}
+            futures = {executor.submit(run_test, env, test, run_only, compare_only, ref_dir, result_dir, min_tolerance, process_controller,build_id) for test in tests}
             try:
                 for future in concurrent.futures.as_completed(futures):
                     run_result   = future.result()
@@ -508,7 +520,7 @@ def run_tests(env, tests, run_only, compare_only, ref_dir, result_dir, min_toler
 
     return success
 
-def list_tests(tests):
+def list_tests(tests: list[Test]):
     '''
     Print a list of tests.
     '''
@@ -516,7 +528,7 @@ def list_tests(tests):
     for test in tests:
         print(f'  {test.name}')
 
-def collect_tests(root_dir, filter_regex, tags):
+def collect_tests(root_dir, filter_regex, tags)->list[Test]:
     '''
     Collect a list of all tests found in root_dir that are matching the filter_regex and tags.
     A test script needs to be named test_*.py to be detected.
@@ -553,6 +565,7 @@ def collect_tests(root_dir, filter_regex, tags):
     # Filter using tags.
     tags = tags.split(',')
     tests = list(filter(lambda t: t.matches_tags(tags), tests))
+    tests = sorted(tests, key=lambda t: t.name)
 
     return tests
 
@@ -635,7 +648,9 @@ def main():
     elif args.gen_refs:
         # Generate references.
         ref_dir = env.resolve_image_dir(env.image_tests_ref_dir, env.branch, args.build_id)
-        if not generate_refs(env, tests, ref_dir, process_controller):
+        result = generate_refs(env, tests, ref_dir, process_controller)
+        shutil.rmtree(env.temp_dir, ignore_errors=True)
+        if not result:
             sys.exit(1)
 
         # Push references to remote.
@@ -678,7 +693,14 @@ def main():
             sys.exit(1)
 
         # Run tests.
-        if not run_tests(env, tests, args.run_only, args.compare_only, ref_dir, result_dir, args.tolerance, args.xml_report, process_controller):
+        result = run_tests(env, tests, args.run_only, args.compare_only, ref_dir, result_dir, args.tolerance, args.xml_report, process_controller, args.build_id)
+        shutil.rmtree(env.temp_dir, ignore_errors=True)
+
+        # Print out url to test viewer
+        print(f"View test results at: http://{env.hostname}:8080/{env.vcs_root}/{args.build_id}")
+
+        # Exit with error if failed
+        if not result:
             sys.exit(1)
 
     sys.exit(0)

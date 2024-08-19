@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -147,7 +147,7 @@ public:
         {
             return ((std::hash<uint32_t>()(v.firstArraySlice) ^ (std::hash<uint32_t>()(v.arraySize) << 1)) >> 1) ^
                    (std::hash<uint32_t>()(v.mipCount) << 1) ^ (std::hash<uint32_t>()(v.mostDetailedMip) << 3) ^
-                   (std::hash<uint32_t>()(v.firstElement) << 5) ^ (std::hash<uint32_t>()(v.elementCount) << 7);
+                   (std::hash<uint32_t>()(v.offset) << 5) ^ (std::hash<uint32_t>()(v.size) << 7);
         }
     };
 

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -145,6 +145,19 @@ class FALCOR_API Buffer : public Resource
 {
     FALCOR_OBJECT(Buffer)
 public:
+    static constexpr uint64_t kEntireBuffer = ResourceViewInfo::kEntireBuffer;
+
+    /// Constructor.
+    Buffer(
+        ref<Device> pDevice,
+        size_t size,
+        size_t structSize,
+        ResourceFormat format,
+        ResourceBindFlags bindFlags,
+        MemoryType memoryType,
+        const void* pInitData
+    );
+
     /// Constructor for raw buffer.
     Buffer(ref<Device> pDevice, size_t size, ResourceBindFlags bindFlags, MemoryType memoryType, const void* pInitData);
 
@@ -184,17 +197,17 @@ public:
 
     /**
      * Get a shader-resource view.
-     * @param[in] firstElement The first element of the view. For raw buffers, an element is a single float
-     * @param[in] elementCount The number of elements to bind
+     * @param[in] offset Offset in bytes.
+     * @param[in] size Size in bytes.
      */
-    ref<ShaderResourceView> getSRV(uint32_t firstElement, uint32_t elementCount = kMaxPossible);
+    ref<ShaderResourceView> getSRV(uint64_t offset, uint64_t size = kEntireBuffer);
 
     /**
      * Get an unordered access view.
-     * @param[in] firstElement The first element of the view. For raw buffers, an element is a single float
-     * @param[in] elementCount The number of elements to bind
+     * @param[in] offset Offset in bytes.
+     * @param[in] size size in bytes.
      */
-    ref<UnorderedAccessView> getUAV(uint32_t firstElement, uint32_t elementCount = kMaxPossible);
+    ref<UnorderedAccessView> getUAV(uint64_t offset, uint64_t size = kEntireBuffer);
 
     /**
      * Get a shader-resource view for the entire resource
@@ -205,15 +218,6 @@ public:
      * Get an unordered access view for the entire resource
      */
     virtual ref<UnorderedAccessView> getUAV() override;
-
-    /**
-     * Get the size of each element in this buffer.
-     *
-     * For a typed buffer, this will be the size of the format.
-     * For a structured buffer, this will be the same value as `getStructSize()`.
-     * For a raw buffer, this will be the number of bytes.
-     */
-    uint32_t getElementSize() const;
 
     /**
      * Update the buffer's data

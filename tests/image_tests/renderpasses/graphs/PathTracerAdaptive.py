@@ -2,7 +2,7 @@ from falcor import *
 
 def render_graph_PathTracerAdaptive():
     g = RenderGraph("PathTracerAdaptive")
-    PathTracer = createPass("PathTracer")
+    PathTracer = createPass("PathTracer", {'useSER': False})
     g.addPass(PathTracer, "PathTracer")
     VBufferRT = createPass("VBufferRT", {'samplePattern': 'Center', 'sampleCount': 16, 'useAlphaTest': True})
     g.addPass(VBufferRT, "VBufferRT")

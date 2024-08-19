@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -56,16 +56,23 @@ struct EnvMapSampler
     uint                importanceBaseMip;      ///< Mip level for 1x1 resolution.
     // TODO: Add scalar value for total integrated intensity, i.e., same as 1x1 mip
 
-    /** Evaluates the radiance coming from world space direction 'dir'.
-    */
+    /**
+     * Evaluates the radiance coming from world space direction.
+     * \param[in] dir World space direction.
+     * \param[in] lod Texture level of detail for envmap evaluation.
+     */
     float3 eval(float3 dir, float lod = 0.f)
     {
         return gScene.envMap.eval(dir, lod);
     }
 
-    /** Importance sampling of the environment map.
-    */
-    bool sample(const float2 rnd, out EnvMapSample result)
+    /**
+     * Importance sampling of the environment map.
+     * \param[in] rnd Uniform random numbers in [0,1)^2.
+     * \param[out] result Result struct.
+     * \param[in] lod Texture level of detail for envmap evaluation.
+     */
+    bool sample(const float2 rnd, out EnvMapSample result, float lod = 0.f)
     {
         float2 p = rnd;     // Random sample in [0,1)^2.
         uint2 pos = 0;      // Top-left texel pos of current 2x2 region.
@@ -136,7 +143,7 @@ struct EnvMapSampler
 
         result.dir = gScene.envMap.toWorld(dir);
         result.pdf = pdf * M_1_4PI;
-        result.Le = gScene.envMap.eval(result.dir);
+        result.Le = gScene.envMap.eval(result.dir, lod);
 
         return true;
     }

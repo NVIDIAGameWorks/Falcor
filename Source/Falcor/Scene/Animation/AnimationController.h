@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -33,28 +33,30 @@
 #include "Core/Pass/ComputePass.h"
 #include "Utils/Math/Matrix.h"
 #include "Scene/SceneTypes.slang"
+#include "Utils/SplitBuffer.h"
 #include <memory>
 #include <vector>
 
 namespace Falcor
 {
     class Scene;
+    using SplitVertexBuffer = SplitBuffer<PackedStaticVertexData, false>;
+    using SplitIndexBuffer = SplitBuffer<uint32_t, true>;
 
     class FALCOR_API AnimationController
     {
     public:
         ~AnimationController() = default;
 
-        using StaticVertexVector = std::vector<PackedStaticVertexData>;
         using SkinningVertexVector = std::vector<SkinningVertexData>;
 
         /** Constructor. Throws an exception if creation failed.
         */
-        AnimationController(ref<Device> pDevice, Scene* pScene, const StaticVertexVector& staticVertexData, const SkinningVertexVector& skinningVertexData, uint32_t prevVertexCount, const std::vector<ref<Animation>>& animations);
+        AnimationController(ref<Device> pDevice, Scene* pScene, const SkinningVertexVector& skinningVertexData, uint32_t prevVertexCount, const std::vector<ref<Animation>>& animations);
 
         /** Add animated vertex caches (curves and meshes) to the controller.
         */
-        void addAnimatedVertexCaches(std::vector<CachedCurve>&& cachedCurves, std::vector<CachedMesh>&& cachedMeshes, const StaticVertexVector& staticVertexData);
+        void addAnimatedVertexCaches(std::vector<CachedCurve>&& cachedCurves, std::vector<CachedMesh>&& cachedMeshes);
 
         /** Returns true if controller contains animations.
         */
@@ -153,7 +155,7 @@ namespace Falcor
 
         void bindBuffers();
 
-        void createSkinningPass(const std::vector<PackedStaticVertexData>& staticVertexData, const SkinningVertexVector& skinningVertexData);
+        void createSkinningPass(const SkinningVertexVector& skinningVertexData);
         void executeSkinningPass(RenderContext* pRenderContext, bool initPrev = false);
 
         ref<Device> mpDevice;
@@ -192,9 +194,9 @@ namespace Falcor
         ref<Buffer> mpMeshInvBindMatricesBuffer;
         ref<Buffer> mpSkinningMatricesBuffer;
         ref<Buffer> mpInvTransposeSkinningMatricesBuffer;
-        ref<Buffer> mpStaticVertexData;
         ref<Buffer> mpSkinningVertexData;
         ref<Buffer> mpPrevVertexData;
+        SplitVertexBuffer mStaticVertexData;
 
         // Animated vertex caches
         std::unique_ptr<AnimatedVertexCache> mpVertexCache;

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -94,14 +94,7 @@ float evalMIS(float n0, float p0, float n1, float p1)
 
 [Differentiable]
 [PreferRecompute]
-ShadingData loadShadingData(
-    SceneQueryAD sceneQuery,
-    HitInfo hit,
-    IntersectionAD isect,
-    const float3 rayOrigin,
-    const float3 rayDir,
-    const ITextureSampler lod
-)
+ShadingData loadShadingData(SceneQueryAD sceneQuery, HitInfo hit, IntersectionAD isect, const float3 rayOrigin, const float3 rayDir)
 {
     VertexData v = {};
     uint materialID = {};
@@ -114,7 +107,7 @@ ShadingData loadShadingData(
         materialID = gScene.getMaterialID(isect.instanceID);
     }
 
-    ShadingData sd = no_diff gScene.materials.prepareShadingData(v, materialID, -rayDir, lod);
+    ShadingData sd = no_diff gScene.materials.prepareShadingData(v, materialID, -rayDir);
 
     // Overwrite some fields to enable auto-diff.
     sd.V = -rayDir;
@@ -273,7 +266,7 @@ void handleHit(
     HitInfo hit = HitInfo(triHit);
 
     // Load shading data.
-    ShadingData sd = loadShadingData(sceneQuery, hit, isect, ray.origin, ray.direction, lod);
+    ShadingData sd = loadShadingData(sceneQuery, hit, isect, ray.origin, ray.direction);
 
     // Create differentiable material instance.
     DiffMaterialData diffData;

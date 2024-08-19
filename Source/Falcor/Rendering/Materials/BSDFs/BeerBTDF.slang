@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -42,9 +42,17 @@ struct BeerBTDF : IBSDF
         this.pathshortening = pathshortening;
     }
 
-    float3 eval<S : ISampleGenerator>(const float3 wi, const float3 wo, inout S sg) { return float3(0.f); }
+    float3 eval<S : ISampleGenerator>(const float3 wi, const float3 wo, inout S sg, BSDFContext bc) { return float3(0.f); }
 
-    bool sample<S : ISampleGenerator>(const float3 wi, out float3 wo, out float pdf, out float3 weight, out uint lobeType, inout S sg)
+    bool sample<S : ISampleGenerator>(
+        const float3 wi,
+        out float3 wo,
+        out float pdf,
+        out float3 weight,
+        out uint lobeType,
+        inout S sg,
+        BSDFContext bc
+    )
     {
         // Default initialization to avoid divergence at returns.
         wo = {};
@@ -65,7 +73,7 @@ struct BeerBTDF : IBSDF
         return true;
     }
 
-    float evalPdf(const float3 wi, const float3 wo) { return 0.f; }
+    float evalPdf(const float3 wi, const float3 wo, BSDFContext bc) { return 0.f; }
 
     AlbedoContributions evalAlbedo(const float3 wi, const LobeType lobetype)
     {
@@ -74,6 +82,8 @@ struct BeerBTDF : IBSDF
 
         return AlbedoContributions(0.0f, 0.0f, transmittance, 1.0f - transmittance);
     }
+
+    float3 getIorAsReflectance() { return float3(0.f); }
 
     RoughnessInformation getRoughnessInformation(const float3 wi)
     {

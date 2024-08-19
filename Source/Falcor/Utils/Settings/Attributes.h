@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -48,6 +48,8 @@ public:
     Attributes() = default;
     Attributes(nlohmann::json jsonDict) : mJsonDict(jsonDict) {}
 
+    void overrideWith(const Attributes& other) { addDict(other.mJsonDict); }
+
     template<typename T>
     std::optional<T> get(std::string_view attrName) const
     {
@@ -60,7 +62,7 @@ public:
         if (attribute.is_null())
             return {};
 
-        if(!detail::TypeChecker<T>::validType(attribute))
+        if (!detail::TypeChecker<T>::validType(attribute))
             throw detail::TypeError("Attribute's type does not match the requested type.");
 
         // Handle return value of bool, if the actual is convertible to bool (from int, usually)
@@ -100,10 +102,7 @@ public:
             mJsonDict[it.key()] = it.value();
     }
 
-    void clear()
-    {
-        mJsonDict = nlohmann::json::object();
-    }
+    void clear() { mJsonDict = nlohmann::json::object(); }
 
     void removePrefix(std::string_view prefix)
     {
@@ -116,15 +115,10 @@ public:
         mJsonDict = std::move(filtered);
     }
 
-    void removeExact(std::string_view name)
-    {
-        mJsonDict.erase(name);
-    }
+    void removeExact(std::string_view name) { mJsonDict.erase(name); }
 
-    std::string to_string() const
-    {
-        return mJsonDict.dump();
-    }
+    std::string to_string() const { return mJsonDict.dump(); }
+
 private:
     nlohmann::json mJsonDict;
 };

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -154,6 +154,8 @@ Slang::ComPtr<gfx::IBufferResource> createBufferResource(
     ref<Device> pDevice,
     Buffer::State initState,
     size_t size,
+    size_t elementSize,
+    ResourceFormat format,
     ResourceBindFlags bindFlags,
     MemoryType memoryType
 );
@@ -183,6 +185,8 @@ void GpuMemoryHeap::initBasePageData(BaseData& data, size_t size)
         mpDevice,
         getInitState(mMemoryType),
         size,
+        0,
+        ResourceFormat::Unknown,
         ResourceBindFlags::Vertex | ResourceBindFlags::Index | ResourceBindFlags::Constant,
         mMemoryType
     );

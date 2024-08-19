@@ -13,6 +13,10 @@ target_sources(USDUtils PRIVATE
     Tessellator/Tessellation.h
     Tessellator/UsdIndexedVector.h
 
+    ConvertedInput.h
+    ConvertedInput.cpp
+    ConvertedMaterialCache.h
+    ConvertedMaterialCache.cpp
     USDHelpers.h
     USDScene1Utils.cpp
     USDScene1Utils.h

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -92,8 +92,8 @@ void Testbed::frame()
     // Update the scene.
     if (mpScene)
     {
-        Scene::UpdateFlags sceneUpdates = mpScene->update(pRenderContext, mClock.getTime());
-        if (mpRenderGraph && sceneUpdates != Scene::UpdateFlags::None)
+        IScene::UpdateFlags sceneUpdates = mpScene->update(pRenderContext, mClock.getTime());
+        if (mpRenderGraph && sceneUpdates != IScene::UpdateFlags::None)
             mpRenderGraph->onSceneUpdates(pRenderContext, sceneUpdates);
     }
 
@@ -220,6 +220,9 @@ void Testbed::handleWindowSizeChange()
     mpSwapchain->resize(width, height);
 
     resizeTargetFBO(width, height);
+
+    if (mWindowSizeChangeCallback)
+        mWindowSizeChangeCallback(width, height);
 }
 
 void Testbed::handleRenderFrame() {}
@@ -249,6 +252,8 @@ void Testbed::handleKeyboardEvent(const KeyboardEvent& keyEvent)
         }
     }
 
+    if (mKeyboardEventCallback && mKeyboardEventCallback(keyEvent))
+        return;
     if (mpRenderGraph && mpRenderGraph->onKeyEvent(keyEvent))
         return;
     if (mpScene && mpScene->onKeyEvent(keyEvent))
@@ -258,6 +263,8 @@ void Testbed::handleKeyboardEvent(const KeyboardEvent& keyEvent)
 void Testbed::handleMouseEvent(const MouseEvent& mouseEvent)
 {
     if (mpGui->onMouseEvent(mouseEvent))
+        return;
+    if (mMouseEventCallback && mMouseEventCallback(mouseEvent))
         return;
     if (mpRenderGraph && mpRenderGraph->onMouseEvent(mouseEvent))
         return;
@@ -322,6 +329,7 @@ void Testbed::internalInit(const Options& options)
 
     // Create python UI screen.
     mpScreen = make_ref<python_ui::Screen>();
+    mUI.showFPS = options.showFPS;
 
     mFrameRate.reset();
 }
@@ -603,6 +611,46 @@ void Testbed::captureOutput(const std::filesystem::path& path, uint32_t outputIn
     }
 }
 
+std::vector<std::string> Testbed::getImportPaths() const
+{
+    if (mpScene == nullptr)
+        return std::vector<std::string>();
+
+    const std::vector<std::filesystem::path>& paths(mpScene->getImportPaths());
+    std::vector<std::string> ret;
+
+    // Convert vector of std::filesytem::paths to vector of std::string
+    std::for_each(paths.begin(), paths.end(), [&](const std::filesystem::path& path) { ret.push_back(path.string()); });
+
+    return ret;
+}
+
+std::vector<pybind11::dict> Testbed::getImportDicts() const
+{
+    if (mpScene == nullptr)
+        return std::vector<pybind11::dict>();
+
+    const std::vector<Scene::SceneData::ImportDict>& dicts(mpScene->getImportDicts());
+    std::vector<pybind11::dict> ret;
+
+    // Convert vector of std::map to vector of pybind11::dict
+    std::for_each(
+        dicts.begin(),
+        dicts.end(),
+        [&](const std::map<std::string, std::string>& m)
+        {
+            pybind11::dict d;
+            for (const auto& e : m)
+            {
+                d[e.first.c_str()] = e.second.c_str();
+            }
+            ret.push_back(d);
+        }
+    );
+
+    return ret;
+}
+
 FALCOR_SCRIPT_BINDING(Testbed)
 {
     FALCOR_SCRIPT_BINDING_DEPENDENCY(Device)
@@ -615,6 +663,43 @@ FALCOR_SCRIPT_BINDING(Testbed)
 
     using namespace pybind11::literals;
 
+    pybind11::enum_<Input::MouseButton>(m, "MouseButton")
+        .value("Left", Input::MouseButton::Left)
+        .value("Right", Input::MouseButton::Right)
+        .value("Middle", Input::MouseButton::Middle);
+    pybind11::enum_<Input::ModifierFlags>(m, "ModifierFlags", pybind11::arithmetic())
+        .value("None", Input::ModifierFlags::None)
+        .value("Shift", Input::ModifierFlags::Shift)
+        .value("Ctrl", Input::ModifierFlags::Ctrl)
+        .value("Alt", Input::ModifierFlags::Alt)
+        .export_values();
+
+    pybind11::enum_<Input::Key>(m, "Key").value("Space", Input::Key::Space).value("E", Input::Key::E).value("R", Input::Key::R);
+
+    pybind11::class_<MouseEvent> mouseEvent(m, "MouseEvent");
+    pybind11::enum_<MouseEvent::Type>(mouseEvent, "Type")
+        .value("ButtonDown", MouseEvent::Type::ButtonDown)
+        .value("ButtonUp", MouseEvent::Type::ButtonUp)
+        .value("Move", MouseEvent::Type::Move)
+        .value("Wheel", MouseEvent::Type::Wheel);
+    mouseEvent.def_readonly("type", &MouseEvent::type);
+    mouseEvent.def_readonly("pos", &MouseEvent::pos);
+    mouseEvent.def_readonly("screen_pos", &MouseEvent::screenPos);
+    mouseEvent.def_readonly("wheel_delta", &MouseEvent::wheelDelta);
+    mouseEvent.def_readonly("mods", &MouseEvent::mods);
+    mouseEvent.def_readonly("button", &MouseEvent::button);
+
+    pybind11::class_<KeyboardEvent> keyboardEvent(m, "KeyboardEvent");
+    pybind11::enum_<KeyboardEvent::Type>(keyboardEvent, "Type")
+        .value("KeyPressed", KeyboardEvent::Type::KeyPressed)
+        .value("KeyReleased", KeyboardEvent::Type::KeyReleased)
+        .value("KeyRepeated", KeyboardEvent::Type::KeyRepeated)
+        .value("Input", KeyboardEvent::Type::Input);
+    keyboardEvent.def_readonly("type", &KeyboardEvent::type);
+    keyboardEvent.def_readonly("key", &KeyboardEvent::key);
+    keyboardEvent.def_readonly("mods", &KeyboardEvent::mods);
+    keyboardEvent.def_readonly("codepoint", &KeyboardEvent::codepoint);
+
     pybind11::class_<Testbed, ref<Testbed>> testbed(m, "Testbed");
 
     testbed.def(
@@ -626,17 +711,21 @@ FALCOR_SCRIPT_BINDING(Testbed)
                uint32_t gpu,
                bool enable_debug_layers,
                bool enable_aftermath,
+               const std::string& title,
+               bool show_fps,
                ref<Device> device)
             {
                 Testbed::Options options;
                 options.pDevice = device;
                 options.windowDesc.width = width;
                 options.windowDesc.height = height;
+                options.windowDesc.title = title;
                 options.createWindow = create_window;
                 options.deviceDesc.type = device_type;
                 options.deviceDesc.gpu = gpu;
                 options.deviceDesc.enableDebugLayer = enable_debug_layers;
                 options.deviceDesc.enableAftermath = enable_aftermath;
+                options.showFPS = show_fps;
                 return Testbed::create(options);
             }
         ),
@@ -647,6 +736,8 @@ FALCOR_SCRIPT_BINDING(Testbed)
         "gpu"_a = 0,
         "enable_debug_layers"_a = false,
         "enable_aftermath"_a = false,
+        "title"_a = "Falcor Sample",
+        "show_fps"_a = true,
         "device"_a = nullptr
     );
     testbed.def("run", &Testbed::run);
@@ -663,6 +754,8 @@ FALCOR_SCRIPT_BINDING(Testbed)
     testbed.def("create_render_graph", &Testbed::createRenderGraph, "name"_a = "");
     testbed.def("load_render_graph", &Testbed::loadRenderGraph, "path"_a);
     testbed.def("capture_output", &Testbed::captureOutput, "path"_a, "output_index"_a = uint32_t(0)); // PYTHONDEPRECATED
+    testbed.def("get_import_paths", &Testbed::getImportPaths);
+    testbed.def("get_import_dicts", &Testbed::getImportDicts);
     testbed.def_property_readonly("profiler", [](Testbed* pTestbed) { return pTestbed->getDevice()->getProfiler(); });
 
     testbed.def_property_readonly("device", &Testbed::getDevice);
@@ -670,9 +763,13 @@ FALCOR_SCRIPT_BINDING(Testbed)
     testbed.def_property_readonly("clock", &Testbed::getClock); // PYTHONDEPRECATED
     testbed.def_property("render_graph", &Testbed::getRenderGraph, &Testbed::setRenderGraph);
     testbed.def_property("render_texture", &Testbed::getRenderTexture, &Testbed::setRenderTexture);
+    testbed.def_property_readonly("window", &Testbed::getWindow);
     testbed.def_property_readonly("screen", &Testbed::getScreen);
     testbed.def_property("show_ui", &Testbed::getShowUI, &Testbed::setShowUI);
     testbed.def_property_readonly("should_close", &Testbed::shouldClose);
+    testbed.def_property("keyboard_event_callback", &Testbed::getKeyboardEventcallback, &Testbed::setKeyboardEventCallback);
+    testbed.def_property("mouse_event_callback", &Testbed::getMouseEventCallback, &Testbed::setMouseEventCallback);
+    testbed.def_property("window_size_change_callback", &Testbed::getWindowSizeChangeCallback, &Testbed::setWindowSizeChangeCallback);
 }
 
 } // namespace Falcor

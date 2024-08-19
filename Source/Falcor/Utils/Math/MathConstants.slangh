@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -63,6 +63,7 @@
 #define M_PI_4              0.785398163397448309616 // pi/4
 #define M_1_PI              0.318309886183790671538 // 1/pi
 #define M_2_PI              0.636619772367581343076 // 2/pi
+#define M_1_SQRTPI          0.564189583547756279280 // 1/sqrt(pi)
 #define M_2_SQRTPI          1.12837916709551257390  // 2/sqrt(pi)
 #define M_SQRT2             1.41421356237309504880  // sqrt(2)
 #define M_SQRT1_2           0.707106781186547524401 // 1/sqrt(2)

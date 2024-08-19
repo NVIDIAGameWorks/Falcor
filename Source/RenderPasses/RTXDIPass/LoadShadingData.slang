@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -49,18 +49,10 @@ uint getMaterialInstanceHints()
  * @param[in] frameDim Frame dimensions in pixel.
  * @param[in] camera Current camera.
  * @param[in] vbuffer VBuffer texture.
- * @param[in] lod Method for computing texture level-of-detail.
  * @param[out] sd ShadingData struct.
  * @return True if the pixel has valid data (not a background pixel). Note sd.V is always valid.
  */
-bool loadShadingData(
-    const uint2 pixel,
-    const uint2 frameDim,
-    const Camera camera,
-    Texture2D<PackedHitInfo> vbuffer,
-    const ITextureSampler lod,
-    out ShadingData sd
-)
+bool loadShadingData(const uint2 pixel, const uint2 frameDim, const Camera camera, Texture2D<PackedHitInfo> vbuffer, out ShadingData sd)
 {
     sd = {};
 
@@ -71,12 +63,9 @@ bool loadShadingData(
     if (hit.isValid() && hit.getType() == HitType::Triangle)
     {
         const TriangleHit triangleHit = hit.getTriangleHit();
-
-        // Evaluate Falcor's material parameters at the hit point.
-        // TODO: Implement texLOD to enable texture filtering in prepareShadingData().
         const VertexData v = gScene.getVertexData(triangleHit);
         const uint materialID = gScene.getMaterialID(triangleHit.instanceID);
-        sd = gScene.materials.prepareShadingData(v, materialID, -rayDir, lod);
+        sd = gScene.materials.prepareShadingData(v, materialID, -rayDir);
 
         valid = true;
     }

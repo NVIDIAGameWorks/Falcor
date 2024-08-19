@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -66,10 +66,10 @@ struct FinalShading
         float hitT = 10000.f; // TODO: Remove magic number also used in SpatioTemporalResampling pass.
 
         ShadingData sd;
-        let lod = ExplicitLodTextureSampler(0.f); // TODO: Implement texture level-of-detail.
-        if (loadShadingData(pixel, frameDim, gScene.camera, vbuffer, lod, sd))
+        if (loadShadingData(pixel, frameDim, gScene.camera, vbuffer, sd))
         {
             // Create material instance and query its properties.
+            let lod = ExplicitLodTextureSampler(0.f); // TODO: Implement texture level-of-detail.
             let hints = getMaterialInstanceHints();
             let mi = gScene.materials.getMaterialInstance(sd, lod, hints);
             let bsdfProperties = mi.getProperties(sd);
@@ -86,7 +86,7 @@ struct FinalShading
                 // Create a DXR 1.1 query object to trace a ray (the <1> means use alpha testing)
                 SceneRayQuery<1> rayQuery;
                 const Ray ray = Ray(sd.computeRayOrigin(), dir, 0.f, distance);
-                if (!rayQuery.traceVisibilityRay(ray, RAY_FLAG_NONE, 0xff))
+                if (!rayQuery.traceVisibilityRay(ray))
                 {
                     valid = false;
                 }

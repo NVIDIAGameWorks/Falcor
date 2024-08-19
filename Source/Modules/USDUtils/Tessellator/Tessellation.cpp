@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -399,6 +399,7 @@ UsdMeshData tessellate(
     Far::TopologyDescriptor::FVarChannel channels;
 
     Far::TopologyDescriptor desc = {};
+    desc.isLeftHanded = (baseMesh.topology.orient == UsdGeomTokens->leftHanded);
     desc.numVertices = baseMesh.topology.faceIndices.size();
     desc.numFaces = baseMesh.topology.getNumFaces();
     desc.numVertsPerFace = (const int*)baseMesh.topology.faceCounts.data();
@@ -447,8 +448,6 @@ UsdMeshData tessellate(
     Bfr::Tessellation::Options tessOptions;
     // Facet size 3 => triangulate
     tessOptions.SetFacetSize(3);
-
-    bool leftHanded = baseMesh.topology.orient == UsdGeomTokens->leftHanded;
 
     // Note that normals on refined meshes are always per-vertex, and generated as part of
     // the subdivision process, as per the USD spec. As such, any authored normals are ignored.
@@ -538,8 +537,6 @@ UsdMeshData tessellate(
                 );
                 // Use the partials to construct a normal vector.
                 float3 normal = normalize(cross(du, dv));
-                if (leftHanded)
-                    normal = -normal;
                 outNormals[j + 0] = normal.x;
                 outNormals[j + 1] = normal.y;
                 outNormals[j + 2] = normal.z;

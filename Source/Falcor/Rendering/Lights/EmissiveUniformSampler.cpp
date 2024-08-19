@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -29,11 +29,9 @@
 
 namespace Falcor
 {
-    EmissiveUniformSampler::EmissiveUniformSampler(RenderContext* pRenderContext, ref<Scene> pScene, const Options& options)
-        : EmissiveLightSampler(EmissiveLightSamplerType::Uniform, pScene)
+    EmissiveUniformSampler::EmissiveUniformSampler(RenderContext* pRenderContext, ref<ILightCollection> pLightCollection, const Options& options)
+        : EmissiveLightSampler(EmissiveLightSamplerType::Uniform, std::move(pLightCollection))
         , mOptions(options)
     {
-        // Make sure the light collection is created.
-        mpScene->getLightCollection(pRenderContext);
     }
 }

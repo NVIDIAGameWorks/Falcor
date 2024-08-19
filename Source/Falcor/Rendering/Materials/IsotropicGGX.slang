@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -100,10 +100,23 @@ float evalPdfGGX_VNDF(float alpha, float3 wi, float3 h)
     return G1 * D * max(0.f, dot(wi, h)) / wi.z;
 }
 
+float3 SampleVndf_Hemisphere(float2 u, float3 Vh)
+{
+    float phi = 2.f * M_PI * u.x;
+    float z = fma((1.f - u.y), (1.f + Vh.z), -Vh.z);
+    float sinTheta = sqrt(saturate(1.f - z * z));
+    float x = sinTheta * cos(phi);
+    float y = sinTheta * sin(phi);
+    float3 c = float3(x, y, z);
+    float3 h = c + Vh;
+    return h;
+}
 /** Samples the GGX (Trowbridge-Reitz) using the distribution of visible normals (VNDF).
     The GGX VDNF yields significant variance reduction compared to sampling of the GGX NDF.
     See http://jcgt.org/published/0007/04/01/paper.pdf
-
+    The visible hemisphere sampling procedure is now performed with the technique in
+    "Sampling Visible GGX Normals with Spherical Caps" by Dupuy and Benyoub [2023]
+    See https://arxiv.org/abs/2306.05044
     \param[in] alpha Isotropic GGX width parameter (should be clamped to small epsilon beforehand).
     \param[in] wi Incident direction in local space, in the positive hemisphere.
     \param[in] u Uniform random number (2D).
@@ -113,28 +126,11 @@ float evalPdfGGX_VNDF(float alpha, float3 wi, float3 h)
 float3 sampleGGX_VNDF(float alpha, float3 wi, float2 u, out float pdf)
 {
     float alpha_x = alpha, alpha_y = alpha;
-
     // Transform the view vector to the hemisphere configuration.
     float3 Vh = normalize(float3(alpha_x * wi.x, alpha_y * wi.y, wi.z));
-
-    // Construct orthonormal basis (Vh,T1,T2).
-    float3 T1 = (Vh.z < 0.9999f) ? normalize(cross(float3(0, 0, 1), Vh)) : float3(1, 0, 0); // TODO: fp32 precision
-    float3 T2 = cross(Vh, T1);
-
-    // Parameterization of the projected area of the hemisphere.
-    float r = sqrt(u.x);
-    float phi = (2.f * M_PI) * u.y;
-    float t1 = r * cos(phi);
-    float t2 = r * sin(phi);
-    float s = 0.5f * (1.f + Vh.z);
-    t2 = (1.f - s) * sqrt(1.f - t1 * t1) + s * t2;
-
-    // Reproject onto hemisphere.
-    float3 Nh = t1 * T1 + t2 * T2 + sqrt(max(0.f, 1.f - t1 * t1 - t2 * t2)) * Vh;
-
+    float3 Nh = SampleVndf_Hemisphere(u, Vh);
     // Transform the normal back to the ellipsoid configuration. This is our half vector.
-    float3 h = normalize(float3(alpha_x * Nh.x, alpha_y * Nh.y, max(0.f, Nh.z)));
-
+    float3 h = normalize(float3(alpha_x * Nh.x, alpha_y * Nh.y, Nh.z));
     pdf = evalPdfGGX_VNDF(alpha, wi, h);
     return h;
 }

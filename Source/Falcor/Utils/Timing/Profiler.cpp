@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -123,7 +123,7 @@ Profiler::Stats Profiler::Stats::compute(const float* data, size_t len)
 
     double mean = sum / len;
     double mean2 = sum2 / len;
-    double variance = mean2 - mean * mean;
+    double variance = len > 1 ? std::max(mean2 - mean * mean, 0.0) : 0.0;
     double stdDev = std::sqrt(variance);
 
     return {min, max, (float)mean, (float)stdDev};
@@ -229,6 +229,13 @@ void Profiler::Event::endFrame(uint32_t frameIndex)
     mHistorySize = std::min(mHistorySize + 1, kMaxHistorySize);
 
     mTriggered = 0;
+}
+
+void Profiler::Event::resetStats()
+{
+    FALCOR_ASSERT(mTriggered == 0);
+    mHistoryWriteIndex = 0;
+    mHistorySize = 0;
 }
 
 // Profiler::Capture
@@ -394,6 +401,18 @@ void Profiler::endFrame(RenderContext* pRenderContext)
 
     mLastFrameEvents = std::move(mCurrentFrameEvents);
     ++mFrameIndex;
+
+    if (mPendingReset)
+    {
+        for (auto e : mLastFrameEvents)
+            e->resetStats();
+        mPendingReset = false;
+    }
+}
+
+void Profiler::resetStats()
+{
+    mPendingReset = true;
 }
 
 void Profiler::startCapture(size_t reservedFrames)
@@ -481,6 +500,8 @@ FALCOR_SCRIPT_BINDING(Profiler)
     profiler.def_property_readonly("events", [](const Profiler& profiler) { return toPython(profiler.getEvents()); });
     profiler.def("start_capture", &Profiler::startCapture, "reserved_frames"_a = 1000);
     profiler.def("end_capture", endCapture);
+    profiler.def("end_frame", [](Profiler& self) { self.endFrame(self.getDevice()->getRenderContext()); });
+    profiler.def("reset_stats", &Profiler::resetStats);
 
     pybind11::class_<PythonProfilerEvent>(m, "ProfilerEvent")
         .def(pybind11::init<RenderContext*, std::string_view>())

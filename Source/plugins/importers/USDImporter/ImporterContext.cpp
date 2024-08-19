@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -37,6 +37,7 @@
 #include "USDUtils/USDUtils.h"
 #include "USDUtils/USDScene1Utils.h"
 #include "USDUtils/Tessellator/Tessellation.h"
+#include "Utils/Settings/Settings.h"
 
 #include <tbb/parallel_for.h>
 
@@ -228,8 +229,8 @@ namespace Falcor
                 if (texCoordPrimvars.size() > 1)
                 {
                     // USD allows specifying multiple sets of texture coordinates, whereas Falcor only supports a single set.
-                    logWarning("Prim '{}' specifies more than one set of texture coordinates. Using '{}', ignoring others.",
-                               prim.GetPath().GetString(), primvar.GetName().GetString());
+                    logWarning("Prim '{}' specifies {} sets of texture coordinates. Using '{}', ignoring others.",
+                               prim.GetPath().GetString(), texCoordPrimvars.size(), primvar.GetName().GetString());
                 }
                 return true;
             }
@@ -476,7 +477,7 @@ namespace Falcor
                 {
                     for (int idx : unassignedIndices)
                     {
-                        FALCOR_ASSERT(faceMap[idx] == -1);
+                        FALCOR_CHECK(faceMap[idx] == -1, "A face appears in more than one subset");
                         faceMap[idx] = subsetCount;
                     }
                     ++subsetCount;
@@ -1801,7 +1802,7 @@ namespace Falcor
         if (material)
         {
             // Note that this call will block if another thread is in the process of converting the same material.
-            pMaterial = mpPreviewSurfaceConverter->convert(material, primName, builder.getDevice()->getRenderContext());
+            pMaterial = mpPreviewSurfaceConverter->convert(material, builder.getDevice()->getRenderContext());
         }
         if (!pMaterial)
         {
@@ -1937,6 +1938,31 @@ namespace Falcor
         }
     }
 
+    void ImporterContext::applyVariantOverrides(UsdPrim& prim, const Falcor::Settings& settings)
+    {
+        UsdVariantSets variantSets(prim.GetVariantSets());
+        std::vector<std::string> variantSetNames(variantSets.GetNames());
+        const std::string primName(prim.GetPath().GetString());
+        // Because the attribute dictionary is flattened, we must iterate over
+        // "variants:variant-name", rather than querying to see if any varients are specified.
+        for (const auto& variantSetName : variantSetNames)
+        {
+            std::string attributeKey = "variants:" + variantSetName;
+            std::string variantValue(settings.getAttribute<std::string>(primName, attributeKey, ""));
+            if (!variantValue.empty())
+            {
+                if (variantSets[variantSetName].HasAuthoredVariant(variantValue))
+                {
+                    variantSets[variantSetName].SetVariantSelection(variantValue);
+                }
+                else
+                {
+                    logWarning("Variant set '{}' specified for '{}' on prim '{}' does not exist. Ignoring.", variantValue, variantSetName, primName);
+                }
+            }
+        }
+    }
+
     void ImporterContext::createPrototype(const UsdPrim& rootPrim)
     {
         PrototypeGeom proto(rootPrim, timeCodesPerSecond);
@@ -1955,6 +1981,11 @@ namespace Falcor
             if (!it.IsPostVisit())
             {
                 // Pre visits
+
+                if (prim.HasVariantSets())
+                {
+                    applyVariantOverrides(prim, builder.getSettings());
+                }
 
                 // If this prim has an xform associated with it, push it onto the xform stack
                 if (prim.IsA<UsdGeomXformable>())

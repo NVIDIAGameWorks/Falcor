@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -71,7 +71,7 @@ void testPbrtReference(uint3 threadId: SV_DispatchThreadID)
 
     SampleGenerator sg = SampleGenerator(threadId.xy, 0);
 
-    gResultOurs[idx] = bcsdf.eval(gWi[idx], gWo[idx], sg);
+    gResultOurs[idx] = bcsdf.eval(gWi[idx], gWo[idx], sg, BSDFContext());
 }
 
 [numthreads(16, 1, 1)]
@@ -104,7 +104,7 @@ void testWhiteFurnaceUniform(uint3 threadId: SV_DispatchThreadID)
         bcsdf.precompute();
 
         float3 wo = sample_sphere(sampleNext2D(sg));
-        sum += bcsdf.eval(wi, wo, sg);
+        sum += bcsdf.eval(wi, wo, sg, BSDFContext());
     }
 
     result[threadId.x] = luminance(sum) / sampleCount * M_4PI;
@@ -143,7 +143,7 @@ void testWhiteFurnaceImportanceSampling(uint3 threadId: SV_DispatchThreadID)
         float pdf;
         uint lobeType;
 
-        if (bcsdf.sample(wi, wo, pdf, weight, lobeType, sg))
+        if (bcsdf.sample(wi, wo, pdf, weight, lobeType, sg, BSDFContext()))
         {
             sum += weight;
         }
@@ -180,7 +180,7 @@ void testImportanceSamplingWeights(uint3 threadId: SV_DispatchThreadID)
     float3 wo, weight;
     float pdf;
     uint lobeType;
-    if (bcsdf.sample(wi, wo, pdf, weight, lobeType, sg))
+    if (bcsdf.sample(wi, wo, pdf, weight, lobeType, sg, BSDFContext()))
     {
         result[threadId.x * sampleCount + threadId.y] = luminance(weight);
     }
@@ -229,14 +229,14 @@ void testSamplingConsistency(uint3 threadId: SV_DispatchThreadID)
         // Assume Li = wo.z * wo.z.
 
         // Importance sampling.
-        if (bcsdf.sample(wi, wo, pdf, weight, lobeType, sg))
+        if (bcsdf.sample(wi, wo, pdf, weight, lobeType, sg, BSDFContext()))
         {
             fIS += weight * (wo.z * wo.z) / sampleCount;
         }
 
         // Uniform sampling.
         wo = sample_sphere(sampleNext2D(sg));
-        fUniform += bcsdf.eval(wi, wo, sg) * M_4PI * (wo.z * wo.z) / sampleCount;
+        fUniform += bcsdf.eval(wi, wo, sg, BSDFContext()) * M_4PI * (wo.z * wo.z) / sampleCount;
     }
 
     result[threadId.x] = abs(luminance(fIS) - luminance(fUniform)) / luminance(fUniform);

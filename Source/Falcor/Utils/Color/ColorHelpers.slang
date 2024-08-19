@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -198,6 +198,9 @@ inline float computeMichelsonContrast(float iMin, float iMax)
 static const float3 kD65ReferenceIlluminant = float3(0.950428545, 1.000000000, 1.088900371);
 static const float3 kInvD65ReferenceIlluminant = float3(1.052156925, 1.000000000, 0.918357670);
 
+#ifndef HOST_CODE
+[BackwardDifferentiable]
+#endif
 inline float3 linearRGBToXYZ(float3 linColor)
 {
     // Source: https://www.image-engineering.de/library/technotes/958-how-to-convert-between-srgb-and-ciexyz
@@ -220,6 +223,9 @@ inline float3 linearRGBToXYZ(float3 linColor)
     return xyzColor;
 }
 
+#ifndef HOST_CODE
+[BackwardDifferentiable]
+#endif
 inline float3 XYZToLinearRGB(float3 xyzColor)
 {
     // Return values in linear RGB, assuming D65 standard illuminant.
@@ -240,6 +246,103 @@ inline float3 XYZToLinearRGB(float3 xyzColor)
 
     return linColor;
 }
+
+#ifndef HOST_CODE
+
+[BackwardDifferentiable]
+float actualPow(float x, float y)
+{
+    if (x >= 0.f)
+        return pow(x, y);
+    else
+        return -pow(-x, y);
+}
+
+[BackwardDifferentiable]
+float3 actualPow(float3 in, float y)
+{
+    return float3(actualPow(in.x, y), actualPow(in.y, y), actualPow(in.z, y));
+}
+
+[BackwardDifferentiable]
+inline float3 XYZToOklab(float3 xyzColor)
+{
+    static const float3x3 M1 = {
+        0.8189330101f,
+        0.3618667424f,
+        -0.1288597137f,
+        0.0329845436f,
+        0.9293118715f,
+        0.0361456387f,
+        0.0482003018f,
+        0.2643662691f,
+        0.6338517070f
+    };
+    float3 lms = mul(M1, xyzColor);
+    lms = actualPow(lms, 1.f / 3.f);
+    static const float3x3 M2 = {
+        0.2104542553f,
+        0.7936177850f,
+        -0.0040720468f,
+        1.9779984951f,
+        -2.4285922050f,
+        0.4505937099f,
+        0.0259040371f,
+        0.7827717662f,
+        -0.8086757660f
+    };
+    return mul(M2, lms);
+}
+
+[BackwardDifferentiable]
+inline float3 OklabToXYZ(float3 oklabColor)
+{
+    float3x3 M2inv =
+        float3x3(1.00000000f, 0.39633779f, 0.21580376f, 1.00000001f, -0.10556134f, -0.06385417f, 1.00000005f, -0.08948418f, -1.29148554f);
+    float3 lms = mul(M2inv, oklabColor);
+    lms = lms * lms * lms;
+    float3x3 M1inv =
+        float3x3(1.22701385f, -0.55779998f, 0.28125615f, -0.04058018f, 1.11225687f, -0.07167668f, -0.07638128f, -0.42148198f, 1.58616322f);
+    return mul(M1inv, lms);
+}
+
+[BackwardDifferentiable]
+inline float3 OklabToHCL(float3 oklabColor)
+{
+    float L = oklabColor.x;
+    float a = oklabColor.y;
+    float b = oklabColor.z;
+
+    float H = atan2(b, a);
+    float C = sqrt(a * a + b * b);
+    return float3(H, C, L);
+}
+
+[BackwardDifferentiable]
+inline float3 HCLToOklab(float3 hclColor)
+{
+    float H = hclColor.x;
+    float C = hclColor.y;
+    float L = hclColor.z;
+
+    float a = C * cos(H);
+    float b = C * sin(H);
+    return float3(L, a, b);
+}
+
+[BackwardDifferentiable]
+inline float3 RGBToOklab(float3 lColor)
+{
+    return XYZToOklab(linearRGBToXYZ(lColor));
+}
+
+[BackwardDifferentiable]
+inline float3 OklabToRGB(float3 lab)
+{
+    return XYZToLinearRGB(OklabToXYZ(lab));
+}
+
+#endif
 
 inline float3 XYZToCIELab(float3 xyzColor, const float3 invReferenceIlluminant = kInvD65ReferenceIlluminant)
 {

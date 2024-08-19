@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,8 +27,12 @@
  **************************************************************************/
 #include "SceneDebugger.h"
 
+
+#include <sstream>
+
 namespace
 {
+
 const char kShaderFile[] = "RenderPasses/SceneDebugger/SceneDebugger.cs.slang";
 
 const std::string kOutput = "output";
@@ -39,6 +43,8 @@ std::string getModeDesc(SceneDebuggerMode mode)
     {
     case SceneDebuggerMode::FlatShaded:
         return "Flat shaded";
+    case SceneDebuggerMode::TriangleDensity:
+        return "Triangle density";
     // Geometry
     case SceneDebuggerMode::HitType:
         return "Hit type in pseudocolor";
@@ -55,6 +61,8 @@ std::string getModeDesc(SceneDebuggerMode mode)
     case SceneDebuggerMode::InstancedGeometry:
         return "Green = instanced geometry\n"
                "Red = non-instanced geometry";
+    case SceneDebuggerMode::MaterialType:
+        return "Material type in pseudocolor";
     // Shading data
     case SceneDebuggerMode::FaceNormal:
         return "Face normal in RGB color";
@@ -83,6 +91,7 @@ std::string getModeDesc(SceneDebuggerMode mode)
 // Scripting
 const char kMode[] = "mode";
 const char kShowVolumes[] = "showVolumes";
+const char kUseVBuffer[] = "useVBuffer";
 
 void registerBindings(pybind11::module& m)
 {
@@ -115,11 +124,16 @@ SceneDebugger::SceneDebugger(ref<Device> pDevice, const Properties& props) : Ren
             mParams.mode = (uint32_t)value.operator SceneDebuggerMode();
         else if (key == kShowVolumes)
             mParams.showVolumes = value;
+        else if (key == kUseVBuffer)
+            mParams.useVBuffer = static_cast<bool>(value);
         else
             logWarning("Unknown property '{}' in a SceneDebugger properties.", key);
     }
 
     mpFence = mpDevice->createFence();
+
+    mpPixelDebug = std::make_unique<PixelDebug>(mpDevice);
+    mpSampleGenerator = SampleGenerator::create(mpDevice, SAMPLE_GENERATOR_TINY_UNIFORM);
 }
 
 Properties SceneDebugger::getProperties() const
@@ -127,12 +141,17 @@ Properties SceneDebugger::getProperties() const
     Properties props;
     props[kMode] = SceneDebuggerMode(mParams.mode);
     props[kShowVolumes] = mParams.showVolumes;
+    props[kUseVBuffer] = mParams.useVBuffer;
     return props;
 }
 
 RenderPassReflection SceneDebugger::reflect(const CompileData& compileData)
 {
     RenderPassReflection reflector;
+    reflector.addInput("vbuffer", "Visibility buffer in packed format")
+        .texture2D()
+        .format(ResourceFormat::RGBA32Uint)
+        .flags(RenderPassReflection::Field::Flags::Optional);
     reflector.addOutput(kOutput, "Scene debugger output").bindFlags(ResourceBindFlags::UnorderedAccess).format(ResourceFormat::RGBA32Float);
 
     return reflector;
@@ -141,22 +160,32 @@ RenderPassReflection SceneDebugger::reflect(const CompileData& compileData)
 void SceneDebugger::compile(RenderContext* pRenderContext, const CompileData& compileData)
 {
     mParams.frameDim = compileData.defaultTexDims;
+    mVBufferAvailable = compileData.connectedResources.getField("vbuffer");
 }
 
 void SceneDebugger::setScene(RenderContext* pRenderContext, const ref<Scene>& pScene)
 {
+    mUpdateFlagsConnection = {};
+    mUpdateFlags = IScene::UpdateFlags::None;
+
     mpScene = pScene;
     mpMeshToBlasID = nullptr;
     mpDebugPass = nullptr;
+    mUpdateFlags = IScene::UpdateFlags::None;
 
     if (mpScene)
     {
+        mUpdateFlagsConnection = mpScene->getUpdateFlagsSignal().connect([&](IScene::UpdateFlags flags) { mUpdateFlags |= flags; });
+
         // Prepare our programs for the scene.
         ProgramDesc desc;
         desc.addShaderModules(mpScene->getShaderModules());
         desc.addShaderLibrary(kShaderFile).csEntry("main");
         desc.addTypeConformances(mpScene->getTypeConformances());
-        mpDebugPass = ComputePass::create(mpDevice, desc, mpScene->getSceneDefines());
+
+        DefineList defines = mpScene->getSceneDefines();
+        defines.add(mpSampleGenerator->getDefines());
+        mpDebugPass = ComputePass::create(mpDevice, desc, defines);
 
         // Create lookup table for mesh to BLAS ID.
         auto blasIDs = mpScene->getMeshBlasIDs();
@@ -196,30 +225,45 @@ void SceneDebugger::setScene(RenderContext* pRenderContext, const ref<Scene>& pS
     }
 }
 
+
 void SceneDebugger::execute(RenderContext* pRenderContext, const RenderData& renderData)
 {
     mPixelDataAvailable = false;
     const auto& pOutput = renderData.getTexture(kOutput);
+    const auto& pVBuffer = renderData.getTexture("vbuffer");
+
+    if (mParams.useVBuffer && pVBuffer == nullptr)
+    {
+        logWarningOnce("SceneDebugger cannot use vbuffer as none is connected");
+        mParams.useVBuffer = false;
+    }
 
     if (mpScene == nullptr)
     {
         pRenderContext->clearUAV(pOutput->getUAV().get(), float4(0.f));
         return;
     }
+
     // DEMO21:
     // mpScene->getCamera()->setJitter(0.f, 0.f);
 
-    if (is_set(mpScene->getUpdates(), Scene::UpdateFlags::RecompileNeeded) ||
-        is_set(mpScene->getUpdates(), Scene::UpdateFlags::GeometryChanged))
+    if (is_set(mUpdateFlags, IScene::UpdateFlags::RecompileNeeded) || is_set(mUpdateFlags, IScene::UpdateFlags::GeometryChanged))
     {
         FALCOR_THROW("This render pass does not support scene changes that require shader recompilation.");
     }
 
-    mpScene->setRaytracingShaderData(pRenderContext, mpDebugPass->getRootVar());
+    if (mpScene)
+        mpScene->bindShaderDataForRaytracing(pRenderContext, mpDebugPass->getRootVar()["gScene"]);
+
 
     ShaderVar var = mpDebugPass->getRootVar()["CB"]["gSceneDebugger"];
     var["params"].setBlob(mParams);
     var["output"] = pOutput;
+    var["vbuffer"] = pVBuffer;
+
+    mpPixelDebug->beginFrame(pRenderContext, renderData.getDefaultTextureDims());
+    mpPixelDebug->prepareProgram(mpDebugPass->getProgram(), mpDebugPass->getRootVar());
+    mpSampleGenerator->bindShaderData(mpDebugPass->getRootVar());
 
     mpDebugPass->execute(pRenderContext, uint3(mParams.frameDim, 1));
 
@@ -229,12 +273,24 @@ void SceneDebugger::execute(RenderContext* pRenderContext, const RenderData& ren
 
     mPixelDataAvailable = true;
     mParams.frameCount++;
+
+    mpPixelDebug->endFrame(pRenderContext);
+
+    mUpdateFlags = IScene::UpdateFlags::None;
 }
 
 void SceneDebugger::renderUI(Gui::Widgets& widget)
 {
+    if (mVBufferAvailable)
+        widget.checkbox("Use VBuffer", mParams.useVBuffer);
+
     widget.dropdown("Mode", reinterpret_cast<SceneDebuggerMode&>(mParams.mode));
     widget.tooltip("Selects visualization mode");
+
+    if (mParams.mode == (uint32_t)SceneDebuggerMode::TriangleDensity)
+    {
+        widget.var("Triangle density range (log2)", mParams.triangleDensityLogRange);
+    }
 
     if (mParams.mode == (uint32_t)SceneDebuggerMode::BSDFProperties)
     {
@@ -259,7 +315,7 @@ void SceneDebugger::renderUI(Gui::Widgets& widget)
     widget.checkbox("Show volumes", mParams.showVolumes);
     if (mParams.showVolumes)
     {
-        widget.var("Density scale", mParams.densityScale, 0.f, 1000.f, 0.1f);
+        widget.var("Volume density scale", mParams.volumeDensityScale, 0.f, 1000.f, 0.1f);
     }
 
     widget.textWrapped("Description:\n" + getModeDesc((SceneDebuggerMode)mParams.mode));
@@ -268,10 +324,31 @@ void SceneDebugger::renderUI(Gui::Widgets& widget)
     widget.dummy("#spacer0", {1, 20});
     widget.var("Selected pixel", mParams.selectedPixel);
 
-    renderPixelDataUI(widget);
+    if (mpScene)
+        renderPixelDataUI(widget);
 
     widget.dummy("#spacer1", {1, 20});
     widget.text("Scene: " + (mpScene ? mpScene->getPath().string() : "No scene loaded"));
+
+    if (auto loggingGroup = widget.group("Logging", false))
+    {
+        mpPixelDebug->renderUI(widget);
+    }
+
+    if (auto g = widget.group("Profiling", false))
+    {
+        widget.checkbox("Trace secondary rays", mParams.profileSecondaryRays);
+        if (mParams.profileSecondaryRays)
+        {
+            widget.checkbox("Load hit info", mParams.profileSecondaryLoadHit);
+
+            widget.var("Cone angle (deg)", mParams.profileSecondaryConeAngle, 0.f, 90.f, 1.f);
+            widget.tooltip(
+                "Traces secondary rays from the primary hits. The secondary rays have directions that are randomly distributed in a cone "
+                "around the face normal."
+            );
+        }
+    }
 }
 
 void SceneDebugger::renderPixelDataUI(Gui::Widgets& widget)
@@ -469,7 +546,7 @@ bool SceneDebugger::onMouseEvent(const MouseEvent& mouseEvent)
         mParams.selectedPixel = (uint2)clamp(cursorPos, float2(0.f), float2(mParams.frameDim.x - 1, mParams.frameDim.y - 1));
     }
 
-    return false;
+    return mpPixelDebug->onMouseEvent(mouseEvent);
 }
 
 void SceneDebugger::initInstanceInfo()
@@ -516,3 +593,4 @@ void SceneDebugger::initInstanceInfo()
         false
     );
 }
+

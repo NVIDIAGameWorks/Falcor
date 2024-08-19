@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -31,6 +31,7 @@
 #include "Utils/Logger.h"
 #include "Utils/StringUtils.h"
 #include "MaterialTypeRegistry.h"
+#include "Scene/Lights/LightProfile.h"
 #include <numeric>
 
 namespace Falcor
@@ -43,6 +44,7 @@ namespace Falcor
         const std::string kMaterialTexturesName = "materialTextures";
         const std::string kMaterialBuffersName = "materialBuffers";
         const std::string kMaterialTextures3DName = "materialTextures3D";
+        const std::string kLightProfile = "lightProfile";
 
         const size_t kMaxSamplerCount = 1ull << MaterialHeader::kSamplerIDBits;
         const size_t kMaxTextureCount = 1ull << TextureHandle::kTextureIDBits;
@@ -77,6 +79,18 @@ namespace Falcor
 
     void MaterialSystem::renderUI(Gui::Widgets& widget)
     {
+        widget.text("Material types:");
+        auto materialTypes = getMaterialTypes();
+        for (auto materialType : materialTypes)
+        {
+            uint32_t count = getMaterialCountByType(materialType);
+            std::string name = to_string(materialType);
+            widget.text(fmt::format("  {}: {}", name, count));
+        }
+
+        widget.text("");
+        widget.text("Materials:");
+
         auto showMaterial = [&](uint32_t materialID, const std::string& label) {
             const auto& pMaterial = mMaterials[materialID];
             if (auto materialGroup = widget.group(label))
@@ -433,6 +447,13 @@ namespace Falcor
 
     Material::UpdateFlags MaterialSystem::update(bool forceUpdate)
     {
+        // Some materials only determine the required number of textures during their update.
+        // If the number of required textures is greated than getMaxTextureCount() reported,
+        // we could run out of texture slots. This is why metadata is reupdated again,
+        // after the material's update() has been called. (A typical example is UDIM, the number
+        // of actually used texture slots depends on the number of files on drive)
+        bool reupdateMetadata = false;
+
         // If materials were added/removed since last update, we update all metadata
         // and trigger re-creation of the parameter block and update of all materials.
         if (forceUpdate || mMaterialsChanged)
@@ -443,6 +464,7 @@ namespace Falcor
             mpMaterialsBlock = nullptr;
             mMaterialsChanged = false;
             forceUpdate = true;
+            reupdateMetadata = true;
         }
 
         // Update all materials.
@@ -476,6 +498,18 @@ namespace Falcor
         {
             for (const auto& materialID : mDynamicMaterialIDs)
                 updateMaterial(materialID);
+        }
+
+        if (reupdateMetadata)
+        {
+            updateMetadata();
+            reupdateMetadata = false;
+        }
+
+        if (mpLightProfile && !mLightProfileBaked)
+        {
+            mpLightProfile->bake(mpDevice->getRenderContext());
+            mLightProfileBaked = true;
         }
 
         // Include updates recorded since last update.
@@ -639,6 +673,13 @@ namespace Falcor
         return s;
     }
 
+    void MaterialSystem::loadLightProfile(const std::filesystem::path& absoluteFilename, bool normalize)
+    {
+        FALCOR_ASSERT(absoluteFilename.is_absolute());
+        mpLightProfile = LightProfile::createFromIesProfile(mpDevice, absoluteFilename, normalize);
+        mLightProfileBaked = false;
+    }
+
     void MaterialSystem::getDefines(DefineList& defines) const
     {
         FALCOR_CHECK(!mMaterialsChanged, "Materials have changed. Call update() first.");
@@ -653,6 +694,7 @@ namespace Falcor
         defines.add("MATERIAL_SYSTEM_TEXTURE_3D_DESC_COUNT", std::to_string(mTexture3DDescCount));
         defines.add("MATERIAL_SYSTEM_UDIM_INDIRECTION_ENABLED", mpTextureManager->getUdimIndirectionCount() > 0 ? "1" : "0");
         defines.add("MATERIAL_SYSTEM_HAS_SPEC_GLOSS_MATERIALS", mHasSpecGlossStandardMaterial ? "1" : "0");
+        defines.add("MATERIAL_SYSTEM_USE_LIGHT_PROFILE", mpLightProfile != nullptr ? "1" : "0");
         defines.add("FALCOR_MATERIAL_INSTANCE_SIZE", std::to_string(materialInstanceByteSize));
 
         // Add defines specified by the materials.
@@ -749,6 +791,11 @@ namespace Falcor
         // Bind resources to parameter block.
         blockVar[kMaterialDataName] = !mMaterials.empty() ? mpMaterialDataBuffer : nullptr;
         blockVar["materialCount"] = getMaterialCount();
+        if (mpLightProfile)
+        {
+            FALCOR_ASSERT(mLightProfileBaked);
+            mpLightProfile->bindShaderData(blockVar[kLightProfile]);
+        }
     }
 
     void MaterialSystem::uploadMaterial(const uint32_t materialID)

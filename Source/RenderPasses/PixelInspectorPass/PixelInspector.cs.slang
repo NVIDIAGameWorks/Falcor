@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -85,7 +85,7 @@ ITextureSampler createTextureSampler(const uint2 pixel)
 /**
  * Helper to load G-buffer data and prepare shading data.
  */
-bool loadShadingData(const float3 viewDir, const ITextureSampler lod, inout ShadingData sd)
+bool loadShadingData(const float3 viewDir, inout ShadingData sd)
 {
     float4 worldPos = gWorldPosition[gWorldPositionCoord];
     if (worldPos.w != 0.f) // Using w to indicate valid geometry for now.
@@ -106,7 +106,7 @@ bool loadShadingData(const float3 viewDir, const ITextureSampler lod, inout Shad
         v.coneTexLODValue = 0.f;
 
         // Prepare shading data.
-        sd = gScene.materials.prepareShadingData(v, materialID, viewDir, lod);
+        sd = gScene.materials.prepareShadingData(v, materialID, viewDir);
 
         return true;
     }
@@ -126,10 +126,10 @@ void main(uint3 DTid: SV_DispatchThreadID)
 
     PixelData data = PixelData();
     ShadingData sd = {};
-    let lod = createTextureSampler(gTextureGradsCoord);
 
-    if (loadShadingData(viewDir, lod, sd))
+    if (loadShadingData(viewDir, sd))
     {
+        let lod = createTextureSampler(gTextureGradsCoord);
         let mi = gScene.materials.getMaterialInstance(sd, lod);
         let bsdfProperties = mi.getProperties(sd);
 

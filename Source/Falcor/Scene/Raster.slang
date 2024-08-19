@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -124,14 +124,13 @@ VertexData prepareVertexData(VSOut vsOut, float3 faceNormalW)
     \param[in] vsOut Interpolated vertex attributes.
     \param[in] triangleIndex Triangle index.
     \param[in] viewDir View direction. Points from the shading point towards the viewer.
-    \param[in] lod Method for computing texture level-of-detail, must implement the `ITextureSampler` interface.
     \return Shading data struct.
 */
-ShadingData prepareShadingData<L:ITextureSampler>(VSOut vsOut, uint triangleIndex, float3 viewDir, L lod)
+ShadingData prepareShadingData(VSOut vsOut, uint triangleIndex, float3 viewDir)
 {
     float3 faceNormal = gScene.getFaceNormalW(vsOut.instanceID, triangleIndex);
     VertexData v = prepareVertexData(vsOut, faceNormal);
-    return gScene.materials.prepareShadingData(v, vsOut.materialID, viewDir, lod);
+    return gScene.materials.prepareShadingData(v, vsOut.materialID, viewDir);
 }
 
 /** Helper function to evaluate alpha testing based on VSOut.

@@ -1,0 +1,7 @@
+{
+    "name": "GitLab Environment (Linux)",
+    "image_tests": {
+        "result_dir": "/home/gitlab-runner/FalcorResults/${vcs_root}/${build_id}",
+        "ref_dir": "/home/gitlab-runner/FalcorRefs/${vcs_root}"
+    }
+}

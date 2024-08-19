@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -587,13 +587,13 @@ namespace Mogwai
                 desc.setMaxAnisotropy(8);
                 mpSampler = getDevice()->createSampler(desc);
             }
-            mpScene->getMaterialSystem().setDefaultTextureSampler(mpSampler);
+            mpScene->setDefaultTextureSampler(mpSampler);
         }
 
         for (auto& g : mGraphs)
         {
             g.pGraph->setScene(mpScene);
-            g.sceneUpdates = Scene::UpdateFlags::None;
+            g.sceneUpdates = IScene::UpdateFlags::None;
         }
         getGlobalClock().setTime(0);
     }
@@ -646,10 +646,10 @@ namespace Mogwai
         auto& pGraph = data.pGraph;
 
         // Notify active graph of any scene updates.
-        if (data.sceneUpdates != Scene::UpdateFlags::None)
+        if (data.sceneUpdates != IScene::UpdateFlags::None)
         {
             pGraph->onSceneUpdates(pRenderContext, data.sceneUpdates);
-            data.sceneUpdates = Scene::UpdateFlags::None;
+            data.sceneUpdates = IScene::UpdateFlags::None;
         }
 
         // Execute graph.
@@ -693,6 +693,9 @@ namespace Mogwai
         if (mActiveGraph < mGraphs.size())
         {
             auto& pGraph = mGraphs[mActiveGraph].pGraph;
+
+            if (mSceneUpdateCallback)
+                mSceneUpdateCallback(mpScene, getGlobalClock().getTime());
 
             // Update scene and camera.
             if (mpScene)
@@ -847,6 +850,8 @@ int runMain(int argc, char** argv)
     args::Flag generateShaderDebugInfoFlag(parser, "", "Generate shader debug info.", {"debug-shaders"});
     args::Flag enableDebugLayerFlag(parser, "", "Enable debug layer (enabled by default in Debug build).", {"enable-debug-layer"});
     args::Flag preciseProgramFlag(parser, "", "Force all slang programs to run in precise mode", { "precise" });
+    args::ValueFlag<std::string> attributesFlag(parser, "path", "JSON attributes file.", { 'a', "attributes" });
+    args::Flag rayTracingValidationFlag(parser, "", "Enable ray tracing validation (requires env-var NV_ALLOW_RAYTRACING_VALIDATION=1)", {"enable-raytracing-validation"});
 
     args::CompletionFlag completionFlag(parser, {"complete"});
 
@@ -893,6 +898,16 @@ int runMain(int argc, char** argv)
         Logger::setLogFilePath(logfile);
     }
 
+    if (attributesFlag)
+    {
+        std::filesystem::path attributesPath(args::get(attributesFlag));
+        if (!Settings::getGlobalSettings().addFilteredAttributes(attributesPath))
+        {
+            std::cerr << "Failed to load attributes file '" << attributesPath.string() << "'." << std::endl;
+            return 1;
+        }
+    }
+
     SampleAppConfig config;
     if (deviceTypeFlag)
     {
@@ -925,6 +940,8 @@ int runMain(int argc, char** argv)
         config.generateShaderDebugInfo = true;
     if (preciseProgramFlag)
         config.shaderPreciseFloat = true;
+    if (rayTracingValidationFlag)
+        config.deviceDesc.enableRaytracingValidation = true;
 
     config.windowDesc.title = "Mogwai";
     if (widthFlag)

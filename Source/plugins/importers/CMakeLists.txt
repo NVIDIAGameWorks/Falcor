@@ -1,4 +1,5 @@
 add_subdirectory(AssimpImporter)
+add_subdirectory(MitsubaImporter)
 add_subdirectory(PBRTImporter)
 add_subdirectory(PythonImporter)
 add_subdirectory(USDImporter)

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -176,6 +176,8 @@ public:
     virtual void render() override
     {
         ScopedID id(this);
+        if (!m_visible)
+            return;
         ScopedDisable disable(!m_enabled);
         ImGui::TextUnformatted(m_text.c_str());
     }
@@ -196,6 +198,8 @@ public:
     virtual void render() override
     {
         ScopedID id(this);
+        if (!m_visible)
+            return;
         ScopedDisable disable(!m_enabled);
         ImGui::ProgressBar(m_fraction);
     }
@@ -221,6 +225,8 @@ public:
     virtual void render() override
     {
         ScopedID id(this);
+        if (!m_visible)
+            return;
         ScopedDisable disable(!m_enabled);
         if (ImGui::Button(m_label.c_str()))
         {
@@ -269,6 +275,8 @@ public:
     virtual void render() override
     {
         ScopedID id(this);
+        if (!m_visible)
+            return;
         ScopedDisable disable(!m_enabled);
         if (ImGui::Checkbox(m_label.c_str(), &m_value))
         {
@@ -304,6 +312,8 @@ public:
     virtual void render() override
     {
         ScopedID id(this);
+        if (!m_visible)
+            return;
         ScopedDisable disable(!m_enabled);
         if (ImGui::Combo(
                 m_label.c_str(),
@@ -401,6 +411,8 @@ public:
     virtual void render() override
     {
         ScopedID id(this);
+        if (!m_visible)
+            return;
         ScopedDisable disable(!m_enabled);
         bool changed = false;
         if constexpr (is_float == true)
@@ -494,6 +506,8 @@ public:
     virtual void render() override
     {
         ScopedID id(this);
+        if (!m_visible)
+            return;
         ScopedDisable disable(!m_enabled);
         bool changed = false;
         if constexpr (is_float == true)

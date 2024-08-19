@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-22, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -41,7 +41,7 @@ float4 psMain(VSOut vsOut, uint triangleIndex: SV_PrimitiveID) : SV_TARGET
         discard;
 
     float3 viewDir = normalize(gScene.camera.getPosition() - vsOut.posW);
-    ShadingData sd = prepareShadingData(vsOut, triangleIndex, viewDir, lod);
+    ShadingData sd = prepareShadingData(vsOut, triangleIndex, viewDir);
 
     // Create material instance.
     let mi = gScene.materials.getMaterialInstance(sd, lod);

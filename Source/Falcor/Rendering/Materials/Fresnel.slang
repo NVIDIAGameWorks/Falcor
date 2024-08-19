@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -25,6 +25,7 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
+import Utils.Color.ColorHelpers;
 
 /** Evaluates the Fresnel term using Schlick's approximation.
     Introduced in http://www.cs.virginia.edu/~jdl/bib/appearance/analytic%20models/schlick94b.pdf
@@ -149,3 +150,17 @@ float3 evalFresnelConductor(float3 eta, float3 k, float cosThetaI)
         evalFresnelConductor(eta.z, k.z, cosThetaI)
     );
 }
+
+/** Converts reflectance into IOR assuming normal incidence and n_i = 1.0
+
+    \param[in] reflectance Reflectance at normal incidence
+    \return Returns index or refraction.
+*/
+float reflectanceToIOR(float3 reflectance)
+{
+    const float r = min(luminance(reflectance), 0.999f);
+    const float iorI = 1.f;
+
+    return (-iorI - 2.f * iorI * sqrt(r) - iorI * r) / (r - 1.f);
+}
+

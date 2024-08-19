@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -74,6 +74,7 @@ public:
      * @return New object, or throws an exception if creation failed.
      */
     static ref<RenderGraph> createFromFile(ref<Device> pDevice, const std::filesystem::path& path);
+    static ref<RenderGraph> createFromString(ref<Device> pDevice, const std::string_view script);
 
     /**
      * Return the associated GPU device.
@@ -256,11 +257,16 @@ public:
     void renderUI(RenderContext* pRenderContext, Gui::Widgets& widget);
 
     /**
+     * Render the graph overlay UI (meant for rasterizing lines, boxes, etc, independent of the widget).
+     */
+    void renderOverlayUI(RenderContext* pRenderContext);
+
+    /**
      * Called upon scene updates.
      * @param[in] pRenderContext The render context.
      * @param[in] sceneUpdates Accumulated scene update flags.
      */
-    void onSceneUpdates(RenderContext* pRenderContext, Scene::UpdateFlags sceneUpdates);
+    void onSceneUpdates(RenderContext* pRenderContext, IScene::UpdateFlags sceneUpdates);
 
     /**
      * Mouse event handler.

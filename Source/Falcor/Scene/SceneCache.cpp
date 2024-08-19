@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -117,6 +117,17 @@ namespace Falcor
             if (hasValue) write(opt.value());
         }
 
+        template<typename K, typename V>
+        void write(const std::map<K,V>& map)
+        {
+            write((uint32_t)map.size());
+            for (const auto& e : map)
+            {
+                write(e.first);
+                write(e.second);
+            }
+        }
+
     private:
         std::ostream& mStream;
     };
@@ -185,6 +196,18 @@ namespace Falcor
                 T value;
                 read(value);
                 opt = value;
+            }
+        }
+
+        template<typename K, typename V>
+        void read(std::map<K,V>& map)
+        {
+            uint32_t count = read<uint32_t>();
+            for (uint32_t i = 0; i < count; ++i)
+            {
+                K k = read<K>();
+                V v = read<V>();
+                map.emplace(k, v);
             }
         }
 
@@ -265,8 +288,13 @@ namespace Falcor
 
     void SceneCache::writeSceneData(OutputStream& stream, const Scene::SceneData& sceneData)
     {
-        writeMarker(stream, "Path");
-        stream.write(sceneData.path);
+        writeMarker(stream, "Paths");
+        stream.write((uint32_t)sceneData.importPaths.size());
+        for (const auto& pPath: sceneData.importPaths) stream.write(pPath);
+
+        writeMarker(stream, "Dicts");
+        stream.write((uint32_t)sceneData.importDicts.size());
+        for (const auto& pDict: sceneData.importDicts) stream.write(pDict);
 
         writeMarker(stream, "RenderSettings");
         stream.write(sceneData.renderSettings);
@@ -347,8 +375,8 @@ namespace Falcor
         stream.write(sceneData.has16BitIndices);
         stream.write(sceneData.has32BitIndices);
         stream.write(sceneData.meshDrawCount);
-        stream.write(sceneData.meshIndexData);
-        stream.write(sceneData.meshStaticData);
+        writeSplitBuffer(stream, sceneData.meshIndexData);
+        writeSplitBuffer(stream, sceneData.meshStaticData);
         stream.write(sceneData.meshSkinningData);
 
         writeMarker(stream, "Curves");
@@ -381,8 +409,13 @@ namespace Falcor
         Scene::SceneData sceneData;
         sceneData.pMaterials = std::make_unique<MaterialSystem>(pDevice);
 
-        readMarker(stream, "Path");
-        stream.read(sceneData.path);
+        readMarker(stream, "Paths");
+        sceneData.importPaths.resize(stream.read<uint32_t>());
+        for (auto& pPath : sceneData.importPaths) stream.read(pPath);
+
+        readMarker(stream, "Dicts");
+        sceneData.importDicts.resize(stream.read<uint32_t>());
+        for (auto& pDict : sceneData.importDicts) stream.read(pDict);
 
         readMarker(stream, "RenderSettings");
         stream.read(sceneData.renderSettings);
@@ -468,8 +501,8 @@ namespace Falcor
         stream.read(sceneData.has16BitIndices);
         stream.read(sceneData.has32BitIndices);
         stream.read(sceneData.meshDrawCount);
-        stream.read(sceneData.meshIndexData);
-        stream.read(sceneData.meshStaticData);
+        readSplitBuffer(stream, sceneData.meshIndexData);
+        readSplitBuffer(stream, sceneData.meshStaticData);
         stream.read(sceneData.meshSkinningData);
 
         readMarker(stream, "Curves");
@@ -947,4 +980,22 @@ namespace Falcor
         auto str = stream.read<std::string>();
         if (id != str) FALCOR_THROW("Found invalid marker");
     }
+
+    // SplitBuffer
+    template<typename T, bool TUseByteAddressBuffer>
+    void SceneCache::writeSplitBuffer(OutputStream& stream, const SplitBuffer<T, TUseByteAddressBuffer>& buffer)
+    {
+        stream.write(buffer.mBufferName);
+        stream.write(buffer.mBufferCountDefinePrefix);
+        stream.write(buffer.mCpuBuffers);
+    }
+
+    template<typename T, bool TUseByteAddressBuffer>
+    void SceneCache::readSplitBuffer(InputStream& stream, SplitBuffer<T, TUseByteAddressBuffer>& buffer)
+    {
+        stream.read(buffer.mBufferName);
+        stream.read(buffer.mBufferCountDefinePrefix);
+        stream.read(buffer.mCpuBuffers);
+    }
+
 }

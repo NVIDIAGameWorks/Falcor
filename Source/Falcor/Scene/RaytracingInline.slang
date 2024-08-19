@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -28,7 +28,7 @@
 
 /** Utilities for inline ray tracing using DXR 1.1.
 
-    Import this module in your shader and call Scene::setRaytracingShaderData()
+    Import this module in your shader and call Scene::bindShaderDataForRaytracing()
     on the host to bind the necessary resources.
 */
 #include "Scene/SceneDefines.slangh"
@@ -37,6 +37,7 @@ import Scene.Intersection;
 import Scene.SDFs.SDFGridHitData;
 __exported import Scene.Shading;
 __exported import Scene.SceneRayQueryInterface;
+
 
 /** Return the geometry type for a committed hit.
 */
@@ -82,7 +83,7 @@ TriangleHit getCandidateTriangleHit<let Flags : int>(RayQuery<Flags> rayQuery)
 
 
 // TODO: Pass UseAlphaTest as a template argument.
-bool traceSceneRayImpl<let Flags : int>(const bool useAlphaTest, inout RayQuery<Flags> rayQuery, const Ray ray, out HitInfo hit, out float hitT, uint rayFlags, uint instanceInclusionMask)
+HitInfo traceSceneRayImpl<let Flags : int>(const bool useAlphaTest, inout RayQuery<Flags> rayQuery, const Ray ray, out float hitT, uint rayFlags, uint instanceInclusionMask)
 {
     rayQuery.TraceRayInline(gScene.rtAccel, rayFlags, instanceInclusionMask, ray.toRayDesc());
 
@@ -160,14 +161,14 @@ bool traceSceneRayImpl<let Flags : int>(const bool useAlphaTest, inout RayQuery<
 #endif
     }
 
-    hit = {};
+    HitInfo hit = makeInvalidHit();
     hitT = 0.f;
 
     if (rayQuery.CommittedStatus() == COMMITTED_TRIANGLE_HIT)
     {
         hit = HitInfo(getCommittedTriangleHit(rayQuery));
         hitT = rayQuery.CommittedRayT();
-        return true;
+        return hit;
     }
 
 #if SCENE_HAS_PROCEDURAL_GEOMETRY()
@@ -188,7 +189,7 @@ bool traceSceneRayImpl<let Flags : int>(const bool useAlphaTest, inout RayQuery<
                 displacedTriangleHit.displacement = displacedTriangleMeshCommittedAttribs.displacement;
                 hit = HitInfo(displacedTriangleHit);
                 hitT = rayQuery.CommittedRayT();
-                return true;
+                return hit;
             }
 #endif
 #if SCENE_HAS_GEOMETRY_TYPE(GEOMETRY_TYPE_CURVE)
@@ -200,7 +201,7 @@ bool traceSceneRayImpl<let Flags : int>(const bool useAlphaTest, inout RayQuery<
                 curveHit.barycentrics = curveCommittedAttribs.barycentrics;
                 hit = HitInfo(curveHit);
                 hitT = rayQuery.CommittedRayT();
-                return true;
+                return hit;
 
             }
 #endif
@@ -211,20 +212,20 @@ bool traceSceneRayImpl<let Flags : int>(const bool useAlphaTest, inout RayQuery<
             sdfGridHit.hitData = sdfGridCommittedHitData;
             hit = HitInfo(sdfGridHit);
             hitT = rayQuery.CommittedRayT();
-            return true;
+            return hit;
 #endif
         default:
             // Should not happen.
-            return false;
+            return hit;
         }
     }
 #endif
 
-    return false;
+    return hit;
 }
 
 [__NoSideEffect] // Required for the performance of reverse-mode auto-diff.
-bool traceSceneRay<let UseAlphaTest : int>(const Ray ray, out HitInfo hit, out float hitT, uint rayFlags, uint instanceInclusionMask)
+HitInfo traceSceneRay<let UseAlphaTest : int>(const Ray ray, out float hitT, uint rayFlags, uint instanceInclusionMask)
 {
     // TODO: Use a constant expression to derive static ray flags.
 
@@ -235,7 +236,7 @@ bool traceSceneRay<let UseAlphaTest : int>(const Ray ray, out HitInfo hit, out f
 #else
         RayQuery<RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES> rayQuery;
 #endif
-        return traceSceneRayImpl(true, rayQuery, ray, hit, hitT, rayFlags, instanceInclusionMask);
+        return traceSceneRayImpl(true, rayQuery, ray, hitT, rayFlags, instanceInclusionMask);
     }
     else
     {
@@ -244,7 +245,7 @@ bool traceSceneRay<let UseAlphaTest : int>(const Ray ray, out HitInfo hit, out f
 #else
         RayQuery<RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES | RAY_FLAG_FORCE_OPAQUE> rayQuery;
 #endif
-        return traceSceneRayImpl(false, rayQuery, ray, hit, hitT, rayFlags, instanceInclusionMask);
+        return traceSceneRayImpl(false, rayQuery, ray, hitT, rayFlags, instanceInclusionMask);
     }
 }
 
@@ -349,12 +350,12 @@ bool traceSceneVisibilityRay<let UseAlphaTest : int>(const Ray ray, uint rayFlag
 */
 struct SceneRayQuery<let UseAlphaTest : int> : ISceneRayQuery
 {
-    bool traceRay(const Ray ray, out HitInfo hit, out float hitT, uint rayFlags, uint instanceInclusionMask)
+    HitInfo traceRay(const Ray ray, out float hitT, uint rayFlags = RAY_FLAG_NONE, uint instanceInclusionMask = 0xff)
     {
-        return traceSceneRay<UseAlphaTest>(ray, hit, hitT, rayFlags, instanceInclusionMask);
+        return traceSceneRay<UseAlphaTest>(ray, hitT, rayFlags, instanceInclusionMask);
     }
 
-    bool traceVisibilityRay(const Ray ray, uint rayFlags, uint instanceInclusionMask)
+    bool traceVisibilityRay(const Ray ray, uint rayFlags = RAY_FLAG_NONE, uint instanceInclusionMask = 0xff)
     {
         return traceSceneVisibilityRay<UseAlphaTest>(ray, rayFlags, instanceInclusionMask);
     }

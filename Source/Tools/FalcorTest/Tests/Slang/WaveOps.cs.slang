@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -54,6 +54,11 @@ void testWaveMinMax(uint3 threadID: SV_DispatchThreadID)
         laneCount[0] = WaveGetLaneCount();
 
     float value = asfloat(testData[i]);
+
+// Silence compiler warnings.
+#ifndef CONDITIONAL
+#define CONDITIONAL 0
+#endif
 
 #if CONDITIONAL == 0
     float minVal = WaveActiveMin(value);

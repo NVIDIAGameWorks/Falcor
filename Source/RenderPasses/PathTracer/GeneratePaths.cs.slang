@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -27,7 +27,6 @@
  **************************************************************************/
 import Utils.Attributes;
 import Utils.Color.ColorHelpers;
-import Rendering.Lights.EnvMapSampler;
 import Rendering.RTXDI.RTXDI;
 import RenderPasses.Shared.Denoising.NRDBuffers;
 import RenderPasses.Shared.Denoising.NRDConstants;
@@ -117,7 +116,7 @@ struct PathGenerator
             if (kUseViewDir) cameraRay.dir = -viewDir[pixel];
 
             // Load the primary hit from the V-buffer.
-            const HitInfo hit = HitInfo(vbuffer[pixel]);
+            const HitInfo hit = unpackHitInfo(vbuffer[pixel]);
             hitSurface = hit.isValid();
 
             // Prepare per-pixel surface data for RTXDI.
@@ -126,10 +125,10 @@ struct PathGenerator
                 bool validSurface = false;
                 if (hitSurface)
                 {
-                    let lod = ExplicitLodTextureSampler(0.f);
-                    ShadingData sd = loadShadingData(hit, cameraRay.origin, cameraRay.dir, lod);
+                    ShadingData sd = loadShadingData(hit, cameraRay.origin, cameraRay.dir);
 
                     // Create material instance and query its properties.
+                    let lod = ExplicitLodTextureSampler(0.f);
                     let hints = getMaterialInstanceHints(hit, true /* primary hit */);
                     let mi = gScene.materials.getMaterialInstance(sd, lod, hints);
                     let bsdfProperties = mi.getProperties(sd);

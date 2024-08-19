@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -81,17 +81,19 @@ namespace Falcor
         };
     }
 
-    RTXDI::RTXDI(const ref<Scene>& pScene, const Options& options)
-        : mpScene(pScene)
+    RTXDI::RTXDI(ref<IScene> pScene, const Options& options)
+        : mpScene(std::move(pScene))
         , mpDevice(mpScene->getDevice())
         , mOptions(options)
     {
+        FALCOR_ASSERT(mpScene);
         if (!mpDevice->isShaderModelSupported(ShaderModel::SM6_5))
             FALCOR_THROW("RTXDI requires Shader Model 6.5 support.");
 
         mpPixelDebug = std::make_unique<PixelDebug>(mpDevice);
 
-        FALCOR_ASSERT(pScene);
+        mUpdateFlagsConnection = mpScene->getUpdateFlagsSignal().connect([&](IScene::UpdateFlags flags) { mUpdateFlags |= flags; });
+
         setOptions(options);
         if (!isInstalled()) logWarning("RTXDI SDK is not installed.");
     }
@@ -169,14 +171,14 @@ namespace Falcor
 #if FALCOR_HAS_RTXDI
         // Check for scene changes that require shader recompilation.
         // TODO: We may want to reset other data that depends on the scene geometry or materials.
-        if (is_set(mpScene->getUpdates(), Scene::UpdateFlags::RecompileNeeded) ||
-            is_set(mpScene->getUpdates(), Scene::UpdateFlags::GeometryChanged))
+        if (is_set(mUpdateFlags, IScene::UpdateFlags::RecompileNeeded) ||
+            is_set(mUpdateFlags, IScene::UpdateFlags::GeometryChanged))
         {
             mFlags.recompileShaders = true;
         }
 
         // Make sure the light collection is created.
-        mpScene->getLightCollection(pRenderContext);
+        mpScene->getILightCollection(pRenderContext);
 
         // Initialize previous frame camera data.
         if (mFrameIndex == 0) mPrevCameraData = mpScene->getCamera()->getData();
@@ -203,20 +205,19 @@ namespace Falcor
         }
 
         // Determine what, if anything happened since last frame. TODO: Make more granular / flexible.
-        const Scene::UpdateFlags updates = mpScene->getUpdates();
 
         // Emissive lights.
-        if (is_set(updates, Scene::UpdateFlags::LightCollectionChanged)) mFlags.updateEmissiveLights = true;
-        if (is_set(updates, Scene::UpdateFlags::EmissiveMaterialsChanged)) mFlags.updateEmissiveLightsFlux = true;
+        if (is_set(mUpdateFlags, IScene::UpdateFlags::LightCollectionChanged)) mFlags.updateEmissiveLights = true;
+        if (is_set(mUpdateFlags, IScene::UpdateFlags::EmissiveMaterialsChanged)) mFlags.updateEmissiveLightsFlux = true;
         // Analytic lights.
-        if (is_set(updates, Scene::UpdateFlags::LightCountChanged)) mFlags.updateAnalyticLights = true;
-        if (is_set(updates, Scene::UpdateFlags::LightPropertiesChanged)) mFlags.updateAnalyticLights = true;
-        if (is_set(updates, Scene::UpdateFlags::LightIntensityChanged)) mFlags.updateAnalyticLightsFlux = true;
+        if (is_set(mUpdateFlags, IScene::UpdateFlags::LightCountChanged)) mFlags.updateAnalyticLights = true;
+        if (is_set(mUpdateFlags, IScene::UpdateFlags::LightPropertiesChanged)) mFlags.updateAnalyticLights = true;
+        if (is_set(mUpdateFlags, IScene::UpdateFlags::LightIntensityChanged)) mFlags.updateAnalyticLightsFlux = true;
         // Env light. Update the env light PDF either if the env map changed or its tint/intensity changed.
-        if (is_set(updates, Scene::UpdateFlags::EnvMapChanged)) mFlags.updateEnvLight = true;
-        if (is_set(updates, Scene::UpdateFlags::EnvMapPropertiesChanged) && is_set(mpScene->getEnvMap()->getChanges(), EnvMap::Changes::Intensity)) mFlags.updateEnvLight = true;
+        if (is_set(mUpdateFlags, IScene::UpdateFlags::EnvMapChanged)) mFlags.updateEnvLight = true;
+        if (is_set(mUpdateFlags, IScene::UpdateFlags::EnvMapPropertiesChanged) && is_set(mpScene->getEnvMap()->getChanges(), EnvMap::Changes::Intensity)) mFlags.updateEnvLight = true;
 
-        if (is_set(updates, Scene::UpdateFlags::RenderSettingsChanged))
+        if (is_set(mUpdateFlags, IScene::UpdateFlags::RenderSettingsChanged))
         {
             mFlags.updateAnalyticLights = true;
             mFlags.updateAnalyticLightsFlux = true;
@@ -224,6 +225,8 @@ namespace Falcor
             mFlags.updateEmissiveLightsFlux = true;
             mFlags.updateEnvLight = true;
         }
+
+        mUpdateFlags = IScene::UpdateFlags::None;
 
         mpPixelDebug->beginFrame(pRenderContext, mFrameDim);
 #endif
@@ -368,9 +371,9 @@ namespace Falcor
                 std::vector<uint32_t> localAnalyticLightIDs;
                 std::vector<uint32_t> infiniteAnalyticLightIDs;
 
-                for (uint32_t lightID = 0; lightID < mpScene->getActiveLightCount(); ++lightID)
+                for (uint32_t lightID = 0; lightID < mpScene->getActiveAnalyticLights().size(); ++lightID)
                 {
-                    const auto& pLight = mpScene->getActiveLight(lightID);
+                    const auto& pLight = mpScene->getActiveAnalyticLights()[lightID];
                     switch (pLight->getType())
                     {
                     case LightType::Point:
@@ -419,7 +422,7 @@ namespace Falcor
         }
 
         // Update other light counts.
-        mLights.emissiveLightCount = mpScene->useEmissiveLights() ? mpScene->getLightCollection(pRenderContext)->getActiveLightCount(pRenderContext) : 0;
+        mLights.emissiveLightCount = mpScene->useEmissiveLights() ? mpScene->getILightCollection(pRenderContext)->getActiveLightCount(pRenderContext) : 0;
         mLights.envLightPresent = mpScene->useEnvLight();
 
         uint32_t localLightCount = mLights.getLocalLightCount();
@@ -668,14 +671,15 @@ namespace Falcor
 
         // Helper for creating compute passes.
         auto createComputePass = [&](const std::string& file, const std::string& entryPoint) {
-            DefineList defines = mpScene->getSceneDefines();
+            DefineList defines;
+            mpScene->getShaderDefines(defines);
             defines.add("RTXDI_INSTALLED", "1");
 
             ProgramDesc desc;
-            desc.addShaderModules(mpScene->getShaderModules());
+            mpScene->getShaderModules(desc.shaderModules);
             desc.addShaderLibrary(file);
             desc.csEntry(entryPoint);
-            desc.addTypeConformances(mpScene->getTypeConformances());
+            mpScene->getTypeConformances(desc.typeConformances);
             ref<ComputePass> pPass = ComputePass::create(mpDevice, desc, defines);
             return pPass;
         };

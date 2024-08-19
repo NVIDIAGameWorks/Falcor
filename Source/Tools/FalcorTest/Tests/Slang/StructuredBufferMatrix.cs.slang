@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -38,6 +38,11 @@ struct Test1
 
 struct Test2
 {
+// Silence compiler warnings.
+#ifndef LAYOUT
+#define LAYOUT 0
+#endif
+
 #if LAYOUT == 1
     float16_t4 a, b, c, d;
     float16_t2 getFloat16_2(uint i)

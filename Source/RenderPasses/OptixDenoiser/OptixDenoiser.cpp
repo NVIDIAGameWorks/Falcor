@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -458,7 +458,7 @@ void* OptixDenoiser_::exportBufferToCudaDevice(ref<Buffer>& buf)
 {
     if (buf == nullptr)
         return nullptr;
-    return cuda_utils::getSharedDevicePtr(buf->getSharedApiHandle(), (uint32_t)buf->getSize());
+    return cuda_utils::getSharedDevicePtr(buf->getDevice()->getType(), buf->getSharedApiHandle(), (uint32_t)buf->getSize());
 }
 
 void OptixDenoiser_::setupDenoiser()

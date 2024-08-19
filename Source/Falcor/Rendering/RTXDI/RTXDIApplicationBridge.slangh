@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -415,7 +415,7 @@ bool RAB_GetConservativeVisibility(RAB_Surface surface, RAB_LightSample lightSam
 
     // Trace our ray (with SceneRayQuery<0> meaning no alpha testing) and cull non-opaque geometry.
     SceneRayQuery<0> rayQuery;
-    return rayQuery.traceVisibilityRay(ray, RAY_FLAG_CULL_NON_OPAQUE, 0xff);
+    return rayQuery.traceVisibilityRay(ray, RAY_FLAG_CULL_NON_OPAQUE);
 }
 
 /** Same visibility ray tracing as RAB_GetConservativeVisibility but for surfaces and light samples
@@ -448,31 +448,33 @@ bool RAB_TraceRayForLocalLight(float3 origin, float3 direction, float tMin, floa
     o_randXY = 0;
 
     float hitT;
-    HitInfo hit;
     SceneRayQuery<0> rayQuery;
 
     Ray ray = Ray(origin, direction, tMin, tMax);
-    bool hitAnything = rayQuery.traceRay(ray, hit, hitT, RAY_FLAG_CULL_NON_OPAQUE, 0xff);
-    if (gRTXDI.params.numLocalLights && hitAnything)
+    HitInfo hit = rayQuery.traceRay(ray, hitT, RAY_FLAG_CULL_NON_OPAQUE);
+    if (gRTXDI.params.numLocalLights && hit.isValid())
     {
-        if (hit.getType() == HitType::Triangle)
+        const bool isTriangleHit = hit.getType() == HitType::Triangle;
+
+        if (isTriangleHit)
         {
             const TriangleHit triangleHit = hit.getTriangleHit();
             uint triangleIndex = gScene.lightCollection.getTriangleIndex(triangleHit.instanceID, triangleHit.primitiveIndex);
+            float2 barycentrics = triangleHit.barycentrics;
             if (triangleIndex != LightCollection::kInvalidIndex)
             {
                 uint activeLightIndex = gScene.lightCollection.getActiveTriangleIndex(triangleIndex);
                 if (activeLightIndex != LightCollection::kInvalidIndex)
                 {
                     // hitUVs are mapped directly to randXY in Falcor see EmissiveLight::calcSample.
-                    o_randXY = triangleHit.barycentrics;
+                    o_randXY = barycentrics;
                     o_lightIndex = activeLightIndex;
                 }
             }
         }
     }
 
-    return hitAnything;
+    return hit.isValid();
 }
 
 

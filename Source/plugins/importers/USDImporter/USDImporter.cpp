@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -31,6 +31,7 @@
 #include "Utils/Timing/TimeReport.h"
 #include "Utils/Settings/Settings.h"
 #include "Scene/Importer.h"
+
 
 #include "USDUtils/USDHelpers.h"
 
@@ -86,6 +87,10 @@ namespace Falcor
             if (!it.IsPostVisit())
             {
                 // Pre visits
+                if (prim.HasVariantSets())
+                {
+                    ctx.applyVariantOverrides(prim, ctx.builder.getSettings());
+                }
 
                 // If this prim has an xform associated with it, push it onto the xform stack
                 if (prim.IsA<UsdGeomXformable>())
@@ -324,6 +329,7 @@ namespace Falcor
         // Create resolver.
         auto resolverContext = ArGetResolver().CreateDefaultContextForAsset(path.string());
         ArResolverContextBinder binder(resolverContext);
+
 
         UsdStageRefPtr pStage = UsdStage::Open(path.string());
         if (!pStage)

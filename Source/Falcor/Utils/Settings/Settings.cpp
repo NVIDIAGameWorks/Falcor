@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -98,7 +98,6 @@ void Settings::addOptions(const pybind11::list& options)
     addOptions(settings::detail::flattenDictionary(pyjson::to_json(options)));
 }
 
-
 bool Settings::addOptions(const std::filesystem::path& path)
 {
     if (path.extension() != ".json")
@@ -109,7 +108,9 @@ bool Settings::addOptions(const std::filesystem::path& path)
     std::ifstream ifs(path);
     if (!ifs)
         return false;
-    nlohmann::json jf = settings::detail::flattenDictionary(nlohmann::json::parse(ifs, nullptr /*callback*/, true /*allow exceptions*/, true /*ignore comments*/));
+    nlohmann::json jf = settings::detail::flattenDictionary(
+        nlohmann::json::parse(ifs, nullptr /*callback*/, true /*allow exceptions*/, true /*ignore comments*/)
+    );
     for (auto& it : jf.items())
         getActive().mOptions.removePrefix(it.key());
     getActive().mOptions.addDict(jf);
@@ -131,6 +132,23 @@ void Settings::addFilteredAttributes(const nlohmann::json& attributes)
 {
     FALCOR_CHECK(attributes.is_array() || attributes.is_object(), "The attributes must be a dictionary, or an array of dictionaries.");
     getActive().mAttributeFilters.add(attributes);
+}
+
+bool Settings::addFilteredAttributes(const std::filesystem::path& path)
+{
+    if (path.extension() != ".json")
+        return false;
+
+    if (!std::filesystem::exists(path))
+        return false;
+    std::ifstream ifs(path);
+    if (!ifs)
+        return false;
+
+    nlohmann::json jf = nlohmann::json::parse(ifs, nullptr /*callback*/, true /*allow exceptions*/, true /*ignore comments*/);
+
+    getActive().mAttributeFilters.add(jf);
+    return true;
 }
 
 void Settings::clearFilteredAttributes()

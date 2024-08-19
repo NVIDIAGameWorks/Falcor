@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -176,7 +176,7 @@ void BSDFViewer::execute(RenderContext* pRenderContext, const RenderData& render
         return;
     }
 
-    if (is_set(mpScene->getUpdates(), Scene::UpdateFlags::RecompileNeeded))
+    if (is_set(mpScene->getUpdates(), IScene::UpdateFlags::RecompileNeeded))
     {
         FALCOR_THROW("This render pass does not support scene changes that require shader recompilation.");
     }

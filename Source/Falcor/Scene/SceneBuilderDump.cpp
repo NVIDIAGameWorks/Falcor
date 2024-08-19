@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -29,7 +29,7 @@
 #include "Scene/SceneBuilder.h"
 #include "Utils/Math/FNVHash.h"
 #include <fmt/format.h>
-#include <BS_thread_pool.hpp>
+#include <BS_thread_pool/BS_thread_pool.hpp>
 
 /// SceneBuilder printing is split off to its own file to avoid polluting the SceneBuilder.cpp with debug prints
 

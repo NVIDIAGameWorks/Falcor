@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -63,6 +63,27 @@ struct AlbedoContributions
     }
 }
 
+struct BSDFContext
+{
+    float iorI;                  ///< IOR from incidence medium
+    float iorT;                  ///< IOR trom transmission medium
+    bool inited;                 ///< Flag to indicate if the struct was initialized
+
+    __init(float iorI_, float iorT_)
+    {
+        iorI = iorI_;
+        iorT = iorT_;
+        inited = true;
+    }
+
+    __init()
+    {
+        iorI = 1.f;
+        iorT = 1.f;
+        inited = false;
+    }
+}
+
 AlbedoContributions operator+(const AlbedoContributions a, const AlbedoContributions b)
 {
     return AlbedoContributions(
@@ -121,7 +142,7 @@ interface IBSDF
         \param[in,out] sg Sample generator.
         \return Returns f(wi, wo) * dot(wo, n).
     */
-    float3 eval<S : ISampleGenerator>(const float3 wi, const float3 wo, inout S sg);
+    float3 eval<S : ISampleGenerator>(const float3 wi, const float3 wo, inout S sg, BSDFContext bc);
 
     /** Samples the BSDF.
         \param[in] wi Incident direction.
@@ -132,14 +153,14 @@ interface IBSDF
         \param[in,out] sg Sample generator.
         \return Returns true if successful.
     */
-    bool sample<S : ISampleGenerator>(const float3 wi, out float3 wo, out float pdf, out float3 weight, out uint lobeType, inout S sg);
+    bool sample<S : ISampleGenerator>(const float3 wi, out float3 wo, out float pdf, out float3 weight, out uint lobeType, inout S sg, BSDFContext bc);
 
     /** Evaluates the directional pdf for sampling outgoing direction wo.
         \param[in] wi Incident direction.
         \param[in] wo Outgoing direction.
         \return Returns the pdf with respect to solid angle for sampling outgoing direction wo (0 for delta events).
     */
-    float evalPdf(const float3 wi, const float3 wo);
+    float evalPdf(const float3 wi, const float3 wo, BSDFContext bc);
 
     /** Albedo (hemispherical reflectance) of the BSDF. Relfection+transmission hemisphere should be <= 1.0.
         \param[in] wi Incident direction.
@@ -147,6 +168,11 @@ interface IBSDF
         \return Returns the albedo.
     */
     AlbedoContributions evalAlbedo(const float3 wi, const LobeType lobetype);
+
+    /** Unattenuated reflectance at normal incidence primarily used to get a common-form IOR
+        \return Returns the unattenuated albedo at normal incidence.
+    */
+    float3 getIorAsReflectance();
 
     /** Information about roughness of the BSDF in (various) forms.
         \param[in] wi Incident direction.

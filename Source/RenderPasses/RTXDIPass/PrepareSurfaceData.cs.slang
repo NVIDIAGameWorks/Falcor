@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -45,12 +45,12 @@ struct PrepareSurfaceData
             return;
 
         ShadingData sd;
-        let lod = ExplicitLodTextureSampler(0.f); // TODO: Implement texture level-of-detail.
-        bool isValidSurface = loadShadingData(pixel, frameDim, gScene.camera, vbuffer, lod, sd);
+        bool isValidSurface = loadShadingData(pixel, frameDim, gScene.camera, vbuffer, sd);
 
         if (isValidSurface)
         {
             // Create material instance and query its properties.
+            let lod = ExplicitLodTextureSampler(0.f); // TODO: Implement texture level-of-detail.
             let hints = getMaterialInstanceHints();
             let mi = gScene.materials.getMaterialInstance(sd, lod, hints);
             let bsdfProperties = mi.getProperties(sd);

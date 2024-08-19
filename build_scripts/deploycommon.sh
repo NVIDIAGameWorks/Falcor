@@ -3,7 +3,7 @@
 # $1 -> Project directory
 # $2 -> Binary output directory
 # $3 -> Build configuration
-# $4 -> Slang build configuration
+# $4 -> Slang directory
 # $5 -> DLSS directory
 
 EXT_DIR=$1/external/packman/
@@ -27,7 +27,7 @@ mkdir -p ${OUT_DIR}/pythondist
 cp -frp ${EXT_DIR}/python/* ${OUT_DIR}/pythondist
 
 # Copy slang
-cp -f ${EXT_DIR}/slang/bin/linux-x64/${SLANG_DIR}/lib*.so ${OUT_DIR}
+cp -f ${SLANG_DIR}/lib/lib*.so ${OUT_DIR}
 
 # Copy CUDA
 CUDA_DIR=${EXT_DIR}/cuda

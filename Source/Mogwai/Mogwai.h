@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -90,6 +90,7 @@ namespace Mogwai
         };
 
         using KeyCallback = std::function<bool(bool pressed, uint32_t key)>;
+        using SceneUpdateCallback = std::function<void(const ref<Scene>& pScene, double currentTime)>;
 
         Renderer(const SampleAppConfig& config, const Options& options);
         ~Renderer();
@@ -128,6 +129,9 @@ namespace Mogwai
         KeyCallback getKeyCallback() const { return mKeyCallback; }
         void setKeyCallback(KeyCallback keyCallback) { mKeyCallback = keyCallback; }
 
+        SceneUpdateCallback getSceneUpdateCallback() const { return mSceneUpdateCallback; }
+        void setSceneUpdateCallback(SceneUpdateCallback sceneUpdateCallback) { mSceneUpdateCallback = sceneUpdateCallback; }
+
 //    private: // MOGWAI
         friend class Extension;
 
@@ -150,7 +154,7 @@ namespace Mogwai
             std::vector<std::string> originalOutputs;
             std::vector<DebugWindow> debugWindows;
             std::unordered_map<std::string, uint32_t> graphOutputRefs;
-            Scene::UpdateFlags sceneUpdates = Scene::UpdateFlags::None;
+            IScene::UpdateFlags sceneUpdates = IScene::UpdateFlags::None;
         };
 
         ref<Scene> mpScene;
@@ -202,6 +206,7 @@ namespace Mogwai
         std::string mEditorScript;
 
         KeyCallback mKeyCallback;
+        SceneUpdateCallback mSceneUpdateCallback;
         FILE*       mPipedOutput = nullptr;
 
         // Scripting

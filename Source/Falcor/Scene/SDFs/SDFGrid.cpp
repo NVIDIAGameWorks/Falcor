@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -37,6 +37,8 @@
 #include "Utils/Logger.h"
 #include "Utils/Math/Common.h"
 #include "Utils/Math/Matrix.h"
+#include "Utils/Math/MatrixJson.h"
+#include "Utils/Math/VectorJson.h"
 #include "Utils/Scripting/ScriptBindings.h"
 #include "GlobalState.h"
 #include <nlohmann/json.hpp>
@@ -44,37 +46,6 @@
 #include <fstream>
 
 using json = nlohmann::json;
-
-namespace Falcor::math
-{
-    void to_json(json& j, const float3& v)
-    {
-        j = { v.x, v.y, v.z };
-    }
-
-    void from_json(const json& j, float3& v)
-    {
-        j[0].get_to(v.x);
-        j[1].get_to(v.y);
-        j[2].get_to(v.z);
-    }
-
-    void to_json(json& j, const float3x3& m)
-    {
-        for (uint32_t i = 0; i < 9; ++i)
-        {
-            j[i] = m[i / 3][i % 3];
-        }
-    }
-
-    void from_json(const json& j, float3x3& m)
-    {
-        for (uint32_t i = 0; i < 9; ++i)
-        {
-            j[i].get_to(m[i / 3][i % 3]);
-        }
-    }
-}
 
 namespace Falcor
 {

@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -38,13 +38,12 @@ interface ISceneRayQuery
 {
     /** Trace a ray against the scene and return the closest hit point.
         \param[in] ray Ray.
-        \param[out] hit Hit info (only valid if function returns true).
         \param[out] hitT Hit distance (only valid if function returns true).
         \param[in] rayFlags Optional ray flags OR'ed with queries flags.
         \param[in] instanceInclusionMask Includes/rejects geometry based on instance mask.
-        \return Returns true if the ray does intersect the scene.
+        \return Returns Hit info, only valid when there was a hit.
     */
-    bool traceRay(const Ray ray, out HitInfo hit, out float hitT, uint rayFlags, uint instanceInclusionMask);
+    HitInfo traceRay(const Ray ray, out float hitT, uint rayFlags = RAY_FLAG_NONE, uint instanceInclusionMask = 0xff);
 
     /** Trace a visibility ray against the scene.
         \param[in] ray Ray.
@@ -52,5 +51,5 @@ interface ISceneRayQuery
         \param[in] instanceInclusionMask Includes/rejects geometry based on instance mask.
         \return Returns true if the ray endpoints are mutually visible (i.e. the ray does NOT intersect the scene).
     */
-    bool traceVisibilityRay(const Ray ray, uint rayFlags, uint instanceInclusionMask);
+    bool traceVisibilityRay(const Ray ray, uint rayFlags = RAY_FLAG_NONE, uint instanceInclusionMask = 0xff);
 };

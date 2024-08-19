@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -127,9 +127,9 @@ void GBufferRT::execute(RenderContext* pRenderContext, const RenderData& renderD
     }
 
     // Check for scene changes.
-    if (is_set(mpScene->getUpdates(), Scene::UpdateFlags::RecompileNeeded) ||
-        is_set(mpScene->getUpdates(), Scene::UpdateFlags::GeometryChanged) ||
-        is_set(mpScene->getUpdates(), Scene::UpdateFlags::SDFGridConfigChanged))
+    if (is_set(mpScene->getUpdates(), IScene::UpdateFlags::RecompileNeeded) ||
+        is_set(mpScene->getUpdates(), IScene::UpdateFlags::GeometryChanged) ||
+        is_set(mpScene->getUpdates(), IScene::UpdateFlags::SDFGridConfigChanged))
     {
         recreatePrograms();
     }
@@ -307,7 +307,7 @@ void GBufferRT::executeCompute(RenderContext* pRenderContext, const RenderData& 
 
         // Bind static resources
         ShaderVar var = mpComputePass->getRootVar();
-        mpScene->setRaytracingShaderData(pRenderContext, var);
+        mpScene->bindShaderDataForRaytracing(pRenderContext, var["gScene"]);
         mpSampleGenerator->bindShaderData(var);
     }
 

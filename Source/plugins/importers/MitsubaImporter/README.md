@@ -1,0 +1,244 @@
+# MitsubaImporter
+
+This is a scene importer for Mitsuba 3 XML scene files.
+Falcor only supports a very limited subset of the features implemented in Mitsuba 3,
+therefore the scene conversion is far from perfect. The list below is an overview
+of the objects and parameters currently supported in this importer.
+
+## Supported objects / parameters
+
+- Sensors
+  - [x] `perspective`
+    - [x] `to_world`
+    - [x] `fov`
+    - [x] `focal_length`
+    - [ ] `fov_axis`
+    - [x] `near_clip`
+    - [x] `far_clip`
+    - [ ] `principal_point_offset_x`
+    - [ ] `principal_point_offset_y`
+    - [ ] `srf`
+  - [ ] `orthographic`
+    - [ ] `to_world`
+    - [ ] `near_clip`
+    - [ ] `far_clip`
+    - [ ] `srf`
+  - [x] `thinlens`
+    - [x] `to_world`
+    - [x] `aperture_radius`
+    - [x] `focus_distance`
+    - [x] `focal_length`
+    - [x] `fov`
+    - [ ] `fov_axis`
+    - [x] `near_clip`
+    - [x] `far_clip`
+    - [ ] `srf`
+  - [ ] `radiancemeter`
+    - [ ] `to_world`
+    - [ ] `origin`
+    - [ ] `direction`
+    - [ ] `srf`
+  - [ ] `irradiancemeter`
+    - [ ] `srf`
+  - [ ] `distant`
+    - [ ] `to_world`
+    - [ ] `direction`
+    - [ ] `target`
+    - [ ] `srf`
+  - [ ] `batch`
+    - [ ] `srf`
+- Emitters
+  - [x] `area`
+    - [x] `radiance`
+  - [x] `point`
+    - [x] `intensity`
+    - [x] `position`
+    - [x] `to_world`
+  - [x] `constant`
+    - [x] `radiance`
+  - [x] `envmap`
+    - [x] `filename`
+    - [ ] `bitmap`
+    - [ ] `scale`
+    - [x] `to_world`
+  - [ ] `spot`
+    - [ ] `intensity`
+    - [ ] `cutoff_angle`
+    - [ ] `beam_width`
+    - [ ] `texture`
+    - [ ] `to_world`
+  - [ ] `projector`
+    - [ ] `irradiance`
+    - [ ] `scale`
+    - [ ] `to_world`
+    - [ ] `fov`
+    - [ ] `focal_length`
+    - [ ] `fov_axis`
+  - [ ] `directional`
+    - [ ] `irradiance`
+    - [ ] `to_world`
+    - [ ] `direction`
+  - [ ] `directionalarea`
+    - [ ] `radiance`
+- Textures
+  - [x] `bitmap`
+    - [x] `filename`
+    - [ ] `bitmap`
+    - [ ] `data`
+    - [ ] `filter_type`
+    - [ ] `wrap_mode`
+    - [ ] `format`
+    - [x] `raw`
+    - [x] `to_uv`
+    - [ ] `accel`
+  - [x] `checkerboard`
+    - [x] `color0`
+    - [x] `color1`
+    - [x] `to_uv`
+  - [ ] `mesh_attribute`
+    - [ ] `name`
+    - [ ] `scale`
+  - [ ] `volume`
+    - [ ] `volume`
+- BSDFs
+  - [x] `diffuse`
+    - [x] `reflectance`
+  - [x] `dielectric`
+    - [x] `int_ior`
+    - [x] `ext_ior`
+    - [ ] `specular_reflectance`
+    - [ ] `specular_transmittance`
+  - [x] `thindielectric`
+    - [x] `int_ior`
+    - [x] `ext_ior`
+    - [ ] `specular_reflectance`
+    - [ ] `specular_transmittance`
+  - [x] `roughdielectric`
+    - [x] `int_ior`
+    - [x] `ext_ior`
+    - [ ] `specular_reflectance`
+    - [ ] `specular_transmittance`
+    - [ ] `distribution`
+    - [x] `alpha` (only constant isotropic values are supported)
+    - [ ] `alpha_u`
+    - [ ] `alpha_v`
+    - [ ] `sample_visible`
+  - [x] `conductor`
+    - [ ] `material`
+    - [x] `eta` (only constant value is supported)
+    - [x] `k` (only constant value is supported)
+    - [ ] `specular_reflectance`
+  - [x] `roughconductor`
+    - [ ] `material`
+    - [x] `eta` (only constant value is supported)
+    - [x] `k` (only constant value is supported)
+    - [ ] `specular_reflectance`
+    - [ ] `distribution`
+    - [x] `alpha` (only constant isotropic values are supported)
+    - [ ] `alpha_u`
+    - [ ] `alpha_v`
+    - [ ] `sample_visible`
+  - [ ] `hair`
+  - [ ] `measured`
+  - [ ] `measured_polarized`
+  - [x] `plastic`
+    - [x] `diffuse_reflectance`
+    - [ ] `nonlinear`
+    - [x] `int_ior`
+    - [x] `ext_ior`
+    - [ ] `specular_reflectance`
+  - [x] `roughplastic`
+    - [x] `diffuse_reflectance`
+    - [ ] `nonlinear`
+    - [x] `int_ior`
+    - [x] `ext_ior`
+    - [ ] `specular_reflectance`
+    - [ ] `distribution`
+    - [x] `alpha` (only constant isotropic values are supported)
+    - [ ] `sample_visible`
+  - [ ] `bumpmap`
+  - [ ] `normalmap`
+  - [ ] `blendbsdf`
+  - [ ] `mask`
+  - [x] `twosided`
+    - [x] `bsdf` (only one nested BSDF is supported)
+  - [ ] `null`
+  - [ ] `polarizer`
+  - [ ] `retarder`
+  - [ ] `circular`
+  - [ ] `pplastic`
+  - [ ] `principled`
+  - [ ] `principledthin`
+- Media
+  - [x] `homogeneous`
+    - [x] `albedo`
+    - [x] `sigma_t`
+    - [x] `scale`
+    - [ ] `sample_emitters`
+    - [ ] `phase`
+  - [ ] `heterogeneous`
+    - [ ] `albedo`
+    - [ ] `sigma_t`
+    - [ ] `scale`
+    - [ ] `sample_emitters`
+    - [ ] `phase`
+- Shapes
+  - [x] `obj`
+    - [x] `filename`
+    - [x] `face_normals`
+    - [ ] `flip_tex_coords`
+    - [ ] `flip_normals`
+    - [x] `to_world`
+  - [x] `ply`
+    - [x] `filename`
+    - [x] `face_normals`
+    - [ ] `flip_tex_coords`
+    - [ ] `flip_normals`
+    - [x] `to_world`
+  - [ ] `serialized`
+    - [ ] `filename`
+    - [ ] `shape_index`
+    - [ ] `face_normals`
+    - [ ] `flip_normals`
+    - [ ] `to_world`
+  - [x] `disk`
+    - [ ] `flip_normals`
+    - [x] `to_world`
+    - [ ] `silhouette_sampling_weight`
+  - [ ] `cylinder`
+    - [ ] `p0`
+    - [ ] `p1`
+    - [ ] `radius`
+    - [ ] `flip_normals`
+    - [ ] `to_world`
+    - [ ] `silhouette_sampling_weight`
+  - [ ] `bsplinecurve`
+    - [ ] `filename`
+    - [ ] `to_world`
+    - [ ] `silhouette_sampling_weight`
+  - [ ] `linearcurve`
+    - [ ] `filename`
+    - [ ] `to_world`
+  - [x] `rectangle`
+    - [ ] `flip_normals`
+    - [x] `to_world`
+    - [ ] `silhouette_sampling_weight`
+  - [x] `cube`
+    - [ ] `flip_normals`
+    - [x] `to_world`
+  - [ ] `sdfgrid`
+    - [ ] `filename`
+    - [ ] `grid`
+    - [ ] `normals`
+    - [ ] `to_world`
+  - [ ] `shapegroup`
+    - [ ] `shape`
+  - [ ] `instance`
+    - [ ] `shapegroup`
+    - [ ] `to_world`
+  - [x] `sphere`
+    - [x] `center`
+    - [x] `radius`
+    - [ ] `flip_normals`
+    - [x] `to_world`
+    - [ ] `silhouette_sampling_weight`

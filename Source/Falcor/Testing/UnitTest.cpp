@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -42,7 +42,7 @@
 #include <fmt/format.h>
 #include <fmt/color.h>
 #include <pugixml.hpp>
-#include <BS_thread_pool_light.hpp>
+#include <BS_thread_pool/BS_thread_pool_light.hpp>
 
 #include <algorithm>
 #include <chrono>
@@ -218,21 +218,31 @@ inline TestResult runTest(const Test& test, DevicePool& devicePool)
 
     TestResult result{TestResult::Status::Passed};
 
-    ref<Device> pDevice;
-    if (test.gpuFunc)
-        pDevice = devicePool.acquireDevice(test.deviceType);
-
-    CPUUnitTestContext cpuCtx;
-    GPUUnitTestContext gpuCtx(pDevice);
-
     auto startTime = std::chrono::steady_clock::now();
 
     try
     {
         if (test.cpuFunc)
+        {
+            CPUUnitTestContext cpuCtx;
             test.cpuFunc(cpuCtx);
-        else
-            test.gpuFunc(gpuCtx);
+            result.messages = cpuCtx.getFailureMessages();
+        }
+        else if (test.gpuFunc)
+        {
+            ref<Device> pDevice;
+            pDevice = devicePool.acquireDevice(test.deviceType);
+
+            {
+                GPUUnitTestContext gpuCtx(pDevice);
+                test.gpuFunc(gpuCtx);
+                result.messages = gpuCtx.getFailureMessages();
+            }
+
+            pDevice->endFrame();
+            pDevice->wait();
+            devicePool.releaseDevice(std::move(pDevice));
+        }
     }
     catch (const SkippingTestException& e)
     {
@@ -260,8 +270,6 @@ inline TestResult runTest(const Test& test, DevicePool& devicePool)
         result.extraMessage = e.what();
     }
 
-    result.messages = test.cpuFunc ? cpuCtx.getFailureMessages() : gpuCtx.getFailureMessages();
-
     if (!result.messages.empty())
         result.status = TestResult::Status::Failed;
 
@@ -270,14 +278,6 @@ inline TestResult runTest(const Test& test, DevicePool& devicePool)
 
     auto endTime = std::chrono::steady_clock::now();
     result.elapsedMS = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
-
-    // Release GPU resources.
-    if (pDevice)
-    {
-        pDevice->endFrame();
-        pDevice->wait();
-        devicePool.releaseDevice(std::move(pDevice));
-    }
 
     return result;
 }

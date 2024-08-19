@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -29,7 +29,7 @@
 #include "EmissiveLightSamplerType.slangh"
 #include "Core/Macros.h"
 #include "Core/Program/DefineList.h"
-#include "Scene/Scene.h"
+#include "Scene/Lights/LightCollection.h"
 
 namespace Falcor
 {
@@ -48,9 +48,10 @@ namespace Falcor
 
         /** Updates the sampler to the current frame.
             \param[in] pRenderContext The render context.
+            \param[in] pLightCollection Updated LightCollection
             \return True if the sampler was updated.
         */
-        virtual bool update(RenderContext* pRenderContext) { return false; }
+        virtual bool update(RenderContext* pRenderContext, ref<ILightCollection> pLightCollection) { return false; }
 
         /** Return a list of shader defines to use this light sampler.
         *   \return Returns a list of shader defines.
@@ -72,10 +73,14 @@ namespace Falcor
         EmissiveLightSamplerType getType() const { return mType; }
 
     protected:
-        EmissiveLightSampler(EmissiveLightSamplerType type, ref<Scene> pScene) : mType(type), mpScene(pScene) {}
+        EmissiveLightSampler(EmissiveLightSamplerType type, ref<ILightCollection> pLightCollection);
+        void setLightCollection(ref<ILightCollection> pLightCollection);
 
         // Internal state
         const EmissiveLightSamplerType mType;       ///< Type of emissive sampler. See EmissiveLightSamplerType.slangh.
-        ref<Scene> mpScene;
+        ref<Device> mpDevice;
+        ref<ILightCollection> mpLightCollection;
+        sigs::Connection mUpdateFlagsConnection;
+        ILightCollection::UpdateFlags mLightCollectionUpdateFlags = ILightCollection::UpdateFlags::None;
     };
 }

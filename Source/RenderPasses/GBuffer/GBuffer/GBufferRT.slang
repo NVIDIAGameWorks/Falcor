@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -255,7 +255,7 @@ struct GBufferRT
         }
 
         // Prepare shading data.
-        ShadingData sd = gScene.materials.prepareShadingData(v, materialID, -rayDir, lod);
+        ShadingData sd = gScene.materials.prepareShadingData(v, materialID, -rayDir);
 
         bool modifyNormal = evalModifyNormal(hit.getType());
         uint hints = !modifyNormal ? (uint)MaterialInstanceHints::DisableNormalMapping : 0;
@@ -359,7 +359,7 @@ struct GBufferRT
         // Encode hit information.
         if (is_valid(gVBuffer))
         {
-            gVBuffer[pixel] = hit.getData();
+            gVBuffer[pixel] = hit.pack();
         }
     }
 

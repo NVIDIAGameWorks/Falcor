@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -44,7 +44,7 @@ void runTest2(GPUUnitTestContext& ctx, DefineList defines)
         pDevice->createStructuredBuffer(var["data2"], 1, ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, nullptr, false);
 
     EXPECT_EQ(pData->getElementCount(), 1);
-    EXPECT_EQ(pData->getElementSize(), 32);
+    EXPECT_EQ(pData->getStructSize(), 32);
 
     std::vector<float16_t> initData(16);
     for (size_t i = 0; i < 16; i++)
@@ -76,7 +76,7 @@ GPU_TEST(StructuredBufferMatrixLoad1)
         pDevice->createStructuredBuffer(var["data1"], 1, ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, nullptr, false);
 
     EXPECT_EQ(pData->getElementCount(), 1);
-    EXPECT_EQ(pData->getElementSize(), 100);
+    EXPECT_EQ(pData->getStructSize(), 100);
 
     std::vector<uint8_t> initData(100);
     for (size_t i = 0; i < 18; i++)

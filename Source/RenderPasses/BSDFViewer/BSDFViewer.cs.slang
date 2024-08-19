@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -171,12 +171,12 @@ struct BSDFViewer
      * Prepare SurfaceData struct with shading data.
      * All unused fields are initialized to their default values.
      */
-    SurfaceData prepareShadingData(const VertexData v, const float3 viewDir, const ITextureSampler lod)
+    SurfaceData prepareShadingData(const VertexData v, const float3 viewDir)
     {
         SurfaceData data = {};
 
         // Setup Falcor's ShadingData based on the selected scene material and lobes.
-        data.sd = gScene.materials.prepareShadingData(v, params.materialID, viewDir, lod);
+        data.sd = gScene.materials.prepareShadingData(v, params.materialID, viewDir);
         data.sd.mtl.setActiveLobes(getActiveLobes());
 
         return data;
@@ -243,7 +243,7 @@ struct BSDFViewer
         float3 lightDir = calculateSliceGeometry(uv, v, viewDir);
 
         // Setup shading data.
-        data = prepareShadingData(v, viewDir, lod);
+        data = prepareShadingData(v, viewDir);
         data.wo = lightDir;
 
         // Create BSDF instance.
@@ -319,7 +319,7 @@ struct BSDFViewer
             return evalBackground(uv, rayDir);
 
         // Setup shading data.
-        data = prepareShadingData(v, -rayDir, lod);
+        data = prepareShadingData(v, -rayDir);
 
         // Create BSDF instance.
         uint hints = !params.useNormalMapping ? (uint)MaterialInstanceHints::DisableNormalMapping : 0;

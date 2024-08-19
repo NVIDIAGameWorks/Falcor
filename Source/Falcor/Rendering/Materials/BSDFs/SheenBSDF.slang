@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -81,7 +81,7 @@ struct SheenBSDF : IBSDF
         return 1.f / (1.f + pow(lambda(NdotO), 1.f + 2.f * pow(1.f - NdotO, 8)) + lambda(NdotI));
     }
 
-    float3 eval<S : ISampleGenerator>(const float3 wi, const float3 wo, inout S sg)
+    float3 eval<S : ISampleGenerator>(const float3 wi, const float3 wo, inout S sg, BSDFContext bc)
     {
         if (min(wi.z, wo.z) < kMinCosTheta)
             return float3(0.f);
@@ -96,7 +96,15 @@ struct SheenBSDF : IBSDF
         return Fr;
     }
 
-    bool sample<S : ISampleGenerator>(const float3 wi, out float3 wo, out float pdf, out float3 weight, out uint lobeType, inout S sg)
+    bool sample<S : ISampleGenerator>(
+        const float3 wi,
+        out float3 wo,
+        out float pdf,
+        out float3 weight,
+        out uint lobeType,
+        inout S sg,
+        BSDFContext bc
+    )
     {
         // Default initialization to avoid divergence at returns.
         wo = {};
@@ -129,11 +137,11 @@ struct SheenBSDF : IBSDF
 
         lobeType = (uint)LobeType::DiffuseReflection;
 
-        weight = (eval(wi, wo, sg) / (M_1_PI * wo.z));
+        weight = (eval(wi, wo, sg, bc) / (M_1_PI * wo.z));
         return true;
     }
 
-    float evalPdf(const float3 wi, const float3 wo)
+    float evalPdf(const float3 wi, const float3 wo, BSDFContext bc)
     {
         if (min(wi.z, wo.z) < kMinCosTheta)
             return 0.f;
@@ -175,6 +183,8 @@ struct SheenBSDF : IBSDF
 
         return AlbedoContributions(color * albedoR, albedoR - (albedoR * color), (1.f - albedoR), 0.f);
     }
+
+    float3 getIorAsReflectance() { return float3(1.f); }
 
     RoughnessInformation getRoughnessInformation(const float3 wi)
     {

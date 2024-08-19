@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -275,6 +275,13 @@ ParameterBlock::ParameterBlock(
 
 void ParameterBlock::initializeResourceBindings()
 {
+    // On Vulkan nested arrays of textures resources fail silently,
+    // so use reflection to catch errors early
+    if (mpDevice->getType() == Device::Type::Vulkan)
+    {
+        checkForNestedTextureArrayResources();
+    }
+
     for (uint32_t i = 0; i < mpReflector->getResourceRangeCount(); i++)
     {
         auto info = mpReflector->getResourceRangeBindingInfo(i);
@@ -300,6 +307,40 @@ void ParameterBlock::initializeResourceBindings()
             case ShaderResourceType::AccelerationStructureSrv:
                 mpShaderObject->setResource(offset, nullptr);
                 break;
+            }
+        }
+    }
+}
+
+// Check for nested texture arrays and throw an exception if found.
+void ParameterBlock::checkForNestedTextureArrayResources()
+{
+    auto reflectorStruct = mpReflector->getElementType()->asStructType();
+    if (reflectorStruct)
+    {
+        for (uint32_t i = 0; i < reflectorStruct->getMemberCount(); i++)
+        {
+            const ref<const ReflectionVar>& member = reflectorStruct->getMember(i);
+
+            // Recurse through arrays to extract nesting depth + final element type
+            auto elementType = member->getType();
+            int depth = 0;
+            while (elementType->getKind() == ReflectionType::Kind::Array)
+            {
+                elementType = elementType->asArrayType()->getElementType();
+                depth++;
+            }
+
+            // If nesting is > 1 and array element is a texture resource, raise error
+            if (depth > 1)
+            {
+                auto resourceType = elementType->asResourceType();
+                if (resourceType && resourceType->getType() == ReflectionResourceType::Type::Texture)
+                {
+                    FALCOR_THROW(
+                        "Nested texture array '{}' detected in parameter block. This will fail silently on Vulkan.", member->getName()
+                    );
+                }
             }
         }
     }

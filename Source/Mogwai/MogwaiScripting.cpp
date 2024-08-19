@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -55,6 +55,7 @@ namespace Mogwai
         const std::string kScene = "scene";
         const std::string kClock = "clock";
         const std::string kProfiler = "profiler";
+        const std::string kSceneUpdateCallback = "sceneUpdateCallback";
 
         const std::string kRendererVar = "m";
 
@@ -140,6 +141,7 @@ namespace Mogwai
         renderer.def(kRemoveGraph.c_str(), pybind11::overload_cast<const std::string&>(&Renderer::removeGraph), "name"_a);
         renderer.def(kRemoveGraph.c_str(), pybind11::overload_cast<const ref<RenderGraph>&>(&Renderer::removeGraph), "graph"_a);
         renderer.def(kGetGraph.c_str(), &Renderer::getGraph, "name"_a);
+        renderer.def_property(kSceneUpdateCallback.c_str(), &Renderer::getSceneUpdateCallback, &Renderer::setSceneUpdateCallback);
 
         auto resizeFrameBuffer = [](Renderer* pRenderer, uint32_t width, uint32_t height) { pRenderer->resizeFrameBuffer(width, height); };
         renderer.def(kResizeFrameBuffer.c_str(), resizeFrameBuffer);

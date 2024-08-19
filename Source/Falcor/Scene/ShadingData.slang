@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,7 +26,6 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 import Scene.Material.MaterialData;
-import Scene.HitInfo;
 import Utils.Geometry.GeometryHelpers;
 import Utils.Math.ShadingFrame;
 
@@ -34,9 +33,9 @@ import Utils.Math.ShadingFrame;
 
     This includes:
     - Geometric properties of the surface.
+    - View direction.
     - Texture coordinates.
     - Material ID and header.
-    - Opacity value for alpha testing.
     - Index of refraction of the surrounding medium.
 
     Based on a ShadingData struct, the material system can be queried

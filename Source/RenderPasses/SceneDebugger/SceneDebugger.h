@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -28,8 +28,10 @@
 #pragma once
 #include "Falcor.h"
 #include "RenderGraph/RenderPass.h"
+#include "Utils/Debug/PixelDebug.h"
 #include "Scene/HitInfoType.slang"
 #include "SharedTypes.slang"
+
 
 using namespace Falcor;
 
@@ -66,7 +68,13 @@ private:
 
     // Internal state
 
+    std::unique_ptr<PixelDebug> mpPixelDebug; ///< Utility class for pixel debugging (print in shaders).
+    ref<SampleGenerator> mpSampleGenerator;
     ref<Scene> mpScene;
+    sigs::Connection mUpdateFlagsConnection; ///< Connection to the UpdateFlags signal.
+    /// IScene::UpdateFlags accumulated since last `beginFrame()`
+    IScene::UpdateFlags mUpdateFlags = IScene::UpdateFlags::None;
+
     SceneDebuggerParams mParams;
     ref<ComputePass> mpDebugPass;
     ref<Fence> mpFence;
@@ -77,4 +85,5 @@ private:
     ref<Buffer> mpMeshToBlasID;
     ref<Buffer> mpInstanceInfo;
     bool mPixelDataAvailable = false;
+    bool mVBufferAvailable = false;
 };

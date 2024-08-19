@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -78,6 +78,13 @@ private:
         ref<RtProgramVars> pVars;
 
         TracePass(ref<Device> pDevice, const std::string& name, const std::string& passDefine, const ref<Scene>& pScene, const DefineList& defines, const TypeConformanceList& globalTypeConformances);
+        static std::unique_ptr<TracePass> create(ref<Device> pDevice, const std::string& name, const std::string& passDefine, const ref<IScene>& pScene, const DefineList& defines, const TypeConformanceList& globalTypeConformances)
+        {
+            if (auto scene = dynamic_ref_cast<Scene>(pScene))
+                return std::make_unique<TracePass>(std::move(pDevice), name, passDefine, std::move(scene), defines, globalTypeConformances);
+            return {};
+        }
+
         void prepareProgram(ref<Device> pDevice, const DefineList& defines);
     };
 
@@ -158,13 +165,17 @@ private:
     bool                            mSERSupported = false;      ///< True if the device supports SER.
 
     // Internal state
-    ref<Scene>                      mpScene;                    ///< The current scene, or nullptr if no scene loaded.
+    ref<IScene>                     mpScene;                    ///< The current scene, or nullptr if no scene loaded.
     ref<SampleGenerator>            mpSampleGenerator;          ///< GPU pseudo-random sample generator.
     std::unique_ptr<EnvMapSampler>  mpEnvMapSampler;            ///< Environment map sampler or nullptr if not used.
     std::unique_ptr<EmissiveLightSampler> mpEmissiveSampler;    ///< Emissive light sampler or nullptr if not used.
     std::unique_ptr<RTXDI>          mpRTXDI;                    ///< RTXDI sampler for direct illumination or nullptr if not used.
     std::unique_ptr<PixelStats>     mpPixelStats;               ///< Utility class for collecting pixel stats.
     std::unique_ptr<PixelDebug>     mpPixelDebug;               ///< Utility class for pixel debugging (print in shaders).
+
+    sigs::Connection                mUpdateFlagsConnection; ///< Connection to the UpdateFlags signal.
+    /// SceneUpdateFlags accumulated since last `beginFrame()`
+    IScene::UpdateFlags             mUpdateFlags = IScene::UpdateFlags::None;
 
     ref<ParameterBlock>             mpPathTracerBlock;          ///< Parameter block for the path tracer.
 

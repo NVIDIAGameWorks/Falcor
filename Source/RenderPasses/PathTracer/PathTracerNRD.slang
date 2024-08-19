@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -49,17 +49,17 @@ extension PathTracer
         // - Terminate
 
         const bool isPrimaryHit = path.getVertexIndex() == 1;
-        const bool isTriangleHit = path.hit.getType() == HitType::Triangle;
         const uint2 pixel = path.getPixel();
         const float3 viewDir = -path.dir;
 
-        let lod = createTextureSampler(path, isPrimaryHit, isTriangleHit);
-
         // Load shading data. This is a long latency operation.
-        ShadingData sd = loadShadingData(path.hit, path.origin, path.dir, lod);
+        ShadingData sd = loadShadingData(path.hit, path.origin, path.dir);
 
         // Reject false hits in nested dielectrics.
         if (!handleNestedDielectrics(sd, path)) return;
+
+        // Create texture sampler.
+        let lod = createTextureSampler(path, isPrimaryHit);
 
         // Create material instance and query its properties.
         let hints = getMaterialInstanceHints(path.hit, isPrimaryHit);
@@ -186,17 +186,17 @@ extension PathTracer
         // - Sample scatter ray or terminate
 
         const bool isPrimaryHit = path.getVertexIndex() == 1;
-        const bool isTriangleHit = path.hit.getType() == HitType::Triangle;
         const uint2 pixel = path.getPixel();
         const float3 viewDir = -path.dir;
 
-        let lod = createTextureSampler(path, isPrimaryHit, isTriangleHit);
-
         // Load shading data. This is a long latency operation.
-        ShadingData sd = loadShadingData(path.hit, path.origin, path.dir, lod);
+        ShadingData sd = loadShadingData(path.hit, path.origin, path.dir);
 
         // Reject false hits in nested dielectrics.
         if (!handleNestedDielectrics(sd, path)) return;
+
+        // Create texture sampler.
+        let lod = createTextureSampler(path, isPrimaryHit);
 
         // Create material instance and query its properties.
         let hints = getMaterialInstanceHints(path.hit, isPrimaryHit);

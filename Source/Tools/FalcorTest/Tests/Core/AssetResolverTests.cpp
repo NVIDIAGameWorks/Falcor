@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -69,6 +69,8 @@ static void removeTestFiles(UnitTestContext& ctx)
 
 CPU_TEST(AssetResolver)
 {
+    using std::filesystem::canonical;
+
     createTestFiles(ctx);
 
     const std::filesystem::path unresolved;
@@ -78,15 +80,15 @@ CPU_TEST(AssetResolver)
         AssetResolver resolver;
 
         resolver.addSearchPath(kTestRoot / "media1");
-        EXPECT_EQ(resolver.resolvePath(kTestRoot / "media2/asset1"), kTestRoot / "media2/asset1");
+        EXPECT_EQ(resolver.resolvePath(kTestRoot / "media2/asset1"), canonical(kTestRoot / "media2/asset1"));
 
         auto resolved = resolver.resolvePathPattern(kTestRoot / "media4/textures", R"(mip[0-9]\.png)");
         EXPECT_EQ(resolved.size(), 4);
         std::sort(resolved.begin(), resolved.end());
-        EXPECT_EQ(resolved[0], kTestRoot / "media4/textures/mip0.png");
-        EXPECT_EQ(resolved[1], kTestRoot / "media4/textures/mip1.png");
-        EXPECT_EQ(resolved[2], kTestRoot / "media4/textures/mip2.png");
-        EXPECT_EQ(resolved[3], kTestRoot / "media4/textures/mip3.png");
+        EXPECT_EQ(resolved[0], canonical(kTestRoot / "media4/textures/mip0.png"));
+        EXPECT_EQ(resolved[1], canonical(kTestRoot / "media4/textures/mip1.png"));
+        EXPECT_EQ(resolved[2], canonical(kTestRoot / "media4/textures/mip2.png"));
+        EXPECT_EQ(resolved[3], canonical(kTestRoot / "media4/textures/mip3.png"));
     }
 
     // Test resolving relative paths to working directory.
@@ -96,7 +98,7 @@ CPU_TEST(AssetResolver)
         resolver.addSearchPath(kTestRoot / "media1");
         EXPECT_EQ(
             resolver.resolvePath(std::filesystem::relative(kTestRoot / "media2/asset1", std::filesystem::current_path())),
-            kTestRoot / "media2/asset1"
+            canonical(kTestRoot / "media2/asset1")
         );
 
         auto resolved = resolver.resolvePathPattern(
@@ -105,10 +107,10 @@ CPU_TEST(AssetResolver)
         );
         EXPECT_EQ(resolved.size(), 4);
         std::sort(resolved.begin(), resolved.end());
-        EXPECT_EQ(resolved[0], kTestRoot / "media4/textures/mip0.png");
-        EXPECT_EQ(resolved[1], kTestRoot / "media4/textures/mip1.png");
-        EXPECT_EQ(resolved[2], kTestRoot / "media4/textures/mip2.png");
-        EXPECT_EQ(resolved[3], kTestRoot / "media4/textures/mip3.png");
+        EXPECT_EQ(resolved[0], canonical(kTestRoot / "media4/textures/mip0.png"));
+        EXPECT_EQ(resolved[1], canonical(kTestRoot / "media4/textures/mip1.png"));
+        EXPECT_EQ(resolved[2], canonical(kTestRoot / "media4/textures/mip2.png"));
+        EXPECT_EQ(resolved[3], canonical(kTestRoot / "media4/textures/mip3.png"));
     }
 
     // Test resolving with search paths.
@@ -116,21 +118,21 @@ CPU_TEST(AssetResolver)
         AssetResolver resolver;
 
         resolver.addSearchPath(kTestRoot / "media1");
-        EXPECT_EQ(resolver.resolvePath("asset1"), kTestRoot / "media1/asset1");
+        EXPECT_EQ(resolver.resolvePath("asset1"), canonical(kTestRoot / "media1/asset1"));
         EXPECT_EQ(resolver.resolvePath("asset2"), unresolved);
         EXPECT_EQ(resolver.resolvePath("asset3"), unresolved);
         EXPECT_EQ(resolver.resolvePath("asset4"), unresolved);
 
         resolver.addSearchPath(kTestRoot / "media2");
-        EXPECT_EQ(resolver.resolvePath("asset1"), kTestRoot / "media1/asset1");
-        EXPECT_EQ(resolver.resolvePath("asset2"), kTestRoot / "media2/asset2");
+        EXPECT_EQ(resolver.resolvePath("asset1"), canonical(kTestRoot / "media1/asset1"));
+        EXPECT_EQ(resolver.resolvePath("asset2"), canonical(kTestRoot / "media2/asset2"));
         EXPECT_EQ(resolver.resolvePath("asset3"), unresolved);
         EXPECT_EQ(resolver.resolvePath("asset4"), unresolved);
 
         resolver.addSearchPath(kTestRoot / "media3");
-        EXPECT_EQ(resolver.resolvePath("asset1"), kTestRoot / "media1/asset1");
-        EXPECT_EQ(resolver.resolvePath("asset2"), kTestRoot / "media2/asset2");
-        EXPECT_EQ(resolver.resolvePath("asset3"), kTestRoot / "media3/asset3");
+        EXPECT_EQ(resolver.resolvePath("asset1"), canonical(kTestRoot / "media1/asset1"));
+        EXPECT_EQ(resolver.resolvePath("asset2"), canonical(kTestRoot / "media2/asset2"));
+        EXPECT_EQ(resolver.resolvePath("asset3"), canonical(kTestRoot / "media3/asset3"));
         EXPECT_EQ(resolver.resolvePath("asset4"), unresolved);
     }
 
@@ -142,16 +144,18 @@ CPU_TEST(AssetResolver)
         auto resolved = resolver.resolvePathPattern("textures", R"(mip[0-9]\.png)");
         EXPECT_EQ(resolved.size(), 4);
         std::sort(resolved.begin(), resolved.end());
-        EXPECT_EQ(resolved[0], kTestRoot / "media4/textures/mip0.png");
-        EXPECT_EQ(resolved[1], kTestRoot / "media4/textures/mip1.png");
-        EXPECT_EQ(resolved[2], kTestRoot / "media4/textures/mip2.png");
-        EXPECT_EQ(resolved[3], kTestRoot / "media4/textures/mip3.png");
+        EXPECT_EQ(resolved[0], canonical(kTestRoot / "media4/textures/mip0.png"));
+        EXPECT_EQ(resolved[1], canonical(kTestRoot / "media4/textures/mip1.png"));
+        EXPECT_EQ(resolved[2], canonical(kTestRoot / "media4/textures/mip2.png"));
+        EXPECT_EQ(resolved[3], canonical(kTestRoot / "media4/textures/mip3.png"));
 
         resolved = resolver.resolvePathPattern("textures", R"(mip[0-9]\.png)", true);
         EXPECT_EQ(resolved.size(), 1);
         EXPECT(
-            resolved[0] == kTestRoot / "media4/textures/mip0.png" || resolved[0] == kTestRoot / "media4/textures/mip1.png" ||
-            resolved[0] == kTestRoot / "media4/textures/mip2.png" || resolved[0] == kTestRoot / "media4/textures/mip3.png"
+            resolved[0] == canonical(kTestRoot / "media4/textures/mip0.png") ||
+            resolved[0] == canonical(kTestRoot / "media4/textures/mip1.png") ||
+            resolved[0] == canonical(kTestRoot / "media4/textures/mip2.png") ||
+            resolved[0] == canonical(kTestRoot / "media4/textures/mip3.png")
         );
     }
 
@@ -163,17 +167,17 @@ CPU_TEST(AssetResolver)
         resolver.addSearchPath(kTestRoot / "media2", SearchPathPriority::Last, AssetCategory::Scene);
         resolver.addSearchPath(kTestRoot / "media1", SearchPathPriority::Last, AssetCategory::Texture);
 
-        EXPECT_EQ(resolver.resolvePath("asset1", AssetCategory::Any), kTestRoot / "media3/asset1");
-        EXPECT_EQ(resolver.resolvePath("asset1", AssetCategory::Scene), kTestRoot / "media2/asset1");
-        EXPECT_EQ(resolver.resolvePath("asset1", AssetCategory::Texture), kTestRoot / "media1/asset1");
+        EXPECT_EQ(resolver.resolvePath("asset1", AssetCategory::Any), canonical(kTestRoot / "media3/asset1"));
+        EXPECT_EQ(resolver.resolvePath("asset1", AssetCategory::Scene), canonical(kTestRoot / "media2/asset1"));
+        EXPECT_EQ(resolver.resolvePath("asset1", AssetCategory::Texture), canonical(kTestRoot / "media1/asset1"));
 
-        EXPECT_EQ(resolver.resolvePath("asset2", AssetCategory::Any), kTestRoot / "media3/asset2");
-        EXPECT_EQ(resolver.resolvePath("asset2", AssetCategory::Scene), kTestRoot / "media2/asset2");
-        EXPECT_EQ(resolver.resolvePath("asset2", AssetCategory::Texture), kTestRoot / "media3/asset2");
+        EXPECT_EQ(resolver.resolvePath("asset2", AssetCategory::Any), canonical(kTestRoot / "media3/asset2"));
+        EXPECT_EQ(resolver.resolvePath("asset2", AssetCategory::Scene), canonical(kTestRoot / "media2/asset2"));
+        EXPECT_EQ(resolver.resolvePath("asset2", AssetCategory::Texture), canonical(kTestRoot / "media3/asset2"));
 
-        EXPECT_EQ(resolver.resolvePath("asset3", AssetCategory::Any), kTestRoot / "media3/asset3");
-        EXPECT_EQ(resolver.resolvePath("asset3", AssetCategory::Scene), kTestRoot / "media3/asset3");
-        EXPECT_EQ(resolver.resolvePath("asset3", AssetCategory::Texture), kTestRoot / "media3/asset3");
+        EXPECT_EQ(resolver.resolvePath("asset3", AssetCategory::Any), canonical(kTestRoot / "media3/asset3"));
+        EXPECT_EQ(resolver.resolvePath("asset3", AssetCategory::Scene), canonical(kTestRoot / "media3/asset3"));
+        EXPECT_EQ(resolver.resolvePath("asset3", AssetCategory::Texture), canonical(kTestRoot / "media3/asset3"));
     }
 
     // Test search path priorities.
@@ -181,11 +185,11 @@ CPU_TEST(AssetResolver)
         AssetResolver resolver;
 
         resolver.addSearchPath(kTestRoot / "media1");
-        EXPECT_EQ(resolver.resolvePath("asset1"), kTestRoot / "media1/asset1");
+        EXPECT_EQ(resolver.resolvePath("asset1"), canonical(kTestRoot / "media1/asset1"));
         resolver.addSearchPath(kTestRoot / "media2", SearchPathPriority::Last);
-        EXPECT_EQ(resolver.resolvePath("asset1"), kTestRoot / "media1/asset1");
+        EXPECT_EQ(resolver.resolvePath("asset1"), canonical(kTestRoot / "media1/asset1"));
         resolver.addSearchPath(kTestRoot / "media3", SearchPathPriority::First);
-        EXPECT_EQ(resolver.resolvePath("asset1"), kTestRoot / "media3/asset1");
+        EXPECT_EQ(resolver.resolvePath("asset1"), canonical(kTestRoot / "media3/asset1"));
     }
 
     removeTestFiles(ctx);

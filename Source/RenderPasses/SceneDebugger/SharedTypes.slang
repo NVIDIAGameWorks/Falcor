@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -33,14 +33,16 @@ BEGIN_NAMESPACE_FALCOR
 enum class SceneDebuggerMode : uint32_t
 {
     FlatShaded,
+    TriangleDensity,
     // Geometry
     HitType,
     InstanceID,
     MaterialID,
     GeometryID,
     BlasID,
-    InstancedGeometry,
     PrimitiveID,
+    InstancedGeometry,
+    MaterialType,
     // Shading data
     FaceNormal,
     ShadingNormal,
@@ -57,14 +59,16 @@ FALCOR_ENUM_INFO(
     SceneDebuggerMode,
     {
         { SceneDebuggerMode::FlatShaded, "FlatShaded" },
+        { SceneDebuggerMode::TriangleDensity, "TriangleDensity" },
         // Geometry
         { SceneDebuggerMode::HitType, "HitType" },
         { SceneDebuggerMode::InstanceID, "InstanceID" },
         { SceneDebuggerMode::MaterialID, "MaterialID" },
         { SceneDebuggerMode::GeometryID, "GeometryID" },
         { SceneDebuggerMode::BlasID, "BlasID" },
-        { SceneDebuggerMode::InstancedGeometry, "InstancedGeometry" },
         { SceneDebuggerMode::PrimitiveID, "PrimitiveID" },
+        { SceneDebuggerMode::InstancedGeometry, "InstancedGeometry" },
+        { SceneDebuggerMode::MaterialType, "MaterialType" },
         // Shading data
         { SceneDebuggerMode::FaceNormal, "FaceNormal" },
         { SceneDebuggerMode::ShadingNormal, "ShadingNormal" },
@@ -122,8 +126,15 @@ struct SceneDebuggerParams
     int remapRange = true;          ///< Remap valid range to [0,1] before output.
     int clamp = true;               ///< Clamp pixel values to [0,1] before output.
 
-    int showVolumes = true;   ///< Show volumes.
-    float densityScale = 1.f; ///< Volume density scale factor.
+    int showVolumes = true;         ///< Show volumes.
+    float volumeDensityScale = 1.f; ///< Volume density scale factor.
+    int useVBuffer = false;
+
+    int profileSecondaryRays = false;       ///< Trace secondary rays for profiling purposes.
+    int profileSecondaryLoadHit = false;    ///< Load HitInfo for secondary rays, otherwise just visibility rays.
+    float profileSecondaryConeAngle = 90.f; ///< Cone angle (degress) for randomly distributed ray directions.
+
+    float2 triangleDensityLogRange = { -16.f, 16.f };
 };
 
 struct PixelData

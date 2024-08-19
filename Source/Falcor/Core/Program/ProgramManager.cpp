@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-24, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -676,9 +676,13 @@ SlangCompileRequest* ProgramManager::createSlangCompileRequest(const Program& pr
 
     targetDesc.forceGLSLScalarBufferLayout = true;
 
-    if (getEnvironmentVariable("FALCOR_USE_SLANG_SPIRV_BACKEND") == "1")
+    if (getEnvironmentVariable("FALCOR_USE_SLANG_SPIRV_BACKEND") == "1" || program.mDesc.useSPIRVBackend)
     {
         targetDesc.flags |= SLANG_TARGET_FLAG_GENERATE_SPIRV_DIRECTLY;
+    }
+    else
+    {
+        targetDesc.flags &= ~SLANG_TARGET_FLAG_GENERATE_SPIRV_DIRECTLY;
     }
 
     const char* targetMacroName;
@@ -725,12 +729,36 @@ SlangCompileRequest* ProgramManager::createSlangCompileRequest(const Program& pr
     sessionDesc.targets = &targetDesc;
     sessionDesc.targetCount = 1;
 
+    // Setup additional compiler options.
+    std::vector<slang::CompilerOptionEntry> compilerOptionEntries;
+    auto addIntOption = [&compilerOptionEntries](slang::CompilerOptionName name, int value) {
+        compilerOptionEntries.push_back({name, {slang::CompilerOptionValueKind::Int, 1, value, nullptr, nullptr}});
+    };
+    auto addStringOption = [&compilerOptionEntries](slang::CompilerOptionName name, const char* value) {
+        compilerOptionEntries.push_back({name, {slang::CompilerOptionValueKind::String, 0, 0, value, nullptr}});
+    };
+
     // We always use row-major matrix layout in Falcor so by default that's what we pass to Slang
     // to allow it to compute correct reflection information. Slang then invokes the downstream compiler.
     // Column major option can be useful when compiling external shader sources that don't depend
     // on anything Falcor.
     bool useColumnMajor = is_set(compilerFlags, SlangCompilerFlags::MatrixLayoutColumnMajor);
-    sessionDesc.defaultMatrixLayoutMode = useColumnMajor ? SLANG_MATRIX_LAYOUT_COLUMN_MAJOR : SLANG_MATRIX_LAYOUT_ROW_MAJOR;
+    addIntOption(useColumnMajor ? slang::CompilerOptionName::MatrixLayoutColumn : slang::CompilerOptionName::MatrixLayoutRow, 1);
+
+    // New versions of slang default to short-circuiting for logical and/or operators.
+    // Facor is still written with the assumption that these operators do not short-circuit.
+    // We want to transition to the new behavior, but for now we disable it.
+    addIntOption(slang::CompilerOptionName::DisableShortCircuit, 1);
+
+    // Disable noisy warnings enabled in newer slang versions.
+    addStringOption(slang::CompilerOptionName::DisableWarning, "15602"); // #pragma once in modules
+    addStringOption(slang::CompilerOptionName::DisableWarning, "30056"); // non-short-circuiting `?:` operator is deprecated, use 'select'
+                                                                         // instead
+    addStringOption(slang::CompilerOptionName::DisableWarning, "30081"); // implicit conversion
+    addStringOption(slang::CompilerOptionName::DisableWarning, "41203"); // reinterpret<> into not equally sized types
+
+    sessionDesc.compilerOptionEntries = compilerOptionEntries.data();
+    sessionDesc.compilerOptionEntryCount = (uint32_t)compilerOptionEntries.size();
 
     Slang::ComPtr<slang::ISession> pSlangSession;
     pSlangGlobalSession->createSession(sessionDesc, pSlangSession.writeRef());
@@ -741,10 +769,6 @@ SlangCompileRequest* ProgramManager::createSlangCompileRequest(const Program& pr
     SlangCompileRequest* pSlangRequest = nullptr;
     pSlangSession->createCompileRequest(&pSlangRequest);
     FALCOR_ASSERT(pSlangRequest);
-
-    // Disable noisy warnings enabled in newer slang versions.
-    spOverrideDiagnosticSeverity(pSlangRequest, 15602, SLANG_SEVERITY_DISABLED); // #pragma once in modules
-    spOverrideDiagnosticSeverity(pSlangRequest, 30081, SLANG_SEVERITY_DISABLED); // implicit conversion
 
     // Enable/disable intermediates dump
     bool dumpIR = is_set(program.mDesc.compilerFlags, SlangCompilerFlags::DumpIntermediates);
@@ -815,7 +839,9 @@ SlangCompileRequest* ProgramManager::createSlangCompileRequest(const Program& pr
             else
             {
                 FALCOR_ASSERT(source.type == ProgramDesc::ShaderSource::Type::String);
-                spAddTranslationUnitSourceString(pSlangRequest, translationUnitIndex, source.path.string().c_str(), source.string.c_str());
+                spAddTranslationUnitSourceString(
+                    pSlangRequest, translationUnitIndex, source.path.empty() ? "empty" : source.path.string().c_str(), source.string.c_str()
+                );
             }
         }
     }
