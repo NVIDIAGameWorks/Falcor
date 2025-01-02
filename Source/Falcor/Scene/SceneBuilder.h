@@ -272,10 +272,12 @@ namespace Falcor
             NodeID skeletonNodeId{ NodeID::Invalid() }; ///< Forwarded from Mesh struct.
 
             uint64_t indexCount = 0;            ///< Number of indices, or zero if non-indexed.
+            uint64_t clusterCount = 0;
             bool use16BitIndices = false;       ///< True if the indices are in 16-bit format.
             bool isFrontFaceCW = false;         ///< Indicate whether front-facing side has clockwise winding in object space.
             bool isAnimated = false;            ///< True if the mesh vertices can be modified during rendering (e.g., skinning or inverse rendering).
             std::vector<uint32_t> indexData;    ///< Vertex indices in either 32-bit or 16-bit format packed tightly, or empty if non-indexed.
+            std::vector<uint32_t> clusterData;
             std::vector<StaticVertexData> staticData;
             std::vector<SkinningVertexData> skinningData;
         };
@@ -700,6 +702,8 @@ namespace Falcor
             uint32_t prevVertexCount = 0;           ///< Number of previous vertices stored. This can be the static or skinned vertex count depending on animation type.
             uint32_t indexOffset = 0;               ///< Offset into the shared 'indexData' array. This is calculated in createGlobalBuffers().
             uint32_t indexCount = 0;                ///< Number of indices, or zero if non-indexed.
+            uint32_t clusterOffset = 0;
+            uint32_t clusterCount = 0;
             uint32_t vertexCount = 0;               ///< Number of vertices.
             NodeID  skeletonNodeID{ NodeID::Invalid() }; ///< Node ID of skeleton world transform. Forwarded from Mesh struct.
             bool use16BitIndices = false;           ///< True if the indices are in 16-bit format.
@@ -713,6 +717,7 @@ namespace Falcor
 
             // Pre-processed vertex data.
             std::vector<uint32_t> indexData;    ///< Vertex indices in either 32-bit or 16-bit format packed tightly, or empty if non-indexed.
+            std::vector<uint32_t> clusterData;
             std::vector<StaticVertexData> staticData;
             std::vector<SkinningVertexData> skinningData;
 

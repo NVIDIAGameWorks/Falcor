@@ -122,6 +122,7 @@ namespace Falcor
 
         using SplitVertexBuffer = SplitBuffer<PackedStaticVertexData, false>;
         using SplitIndexBuffer = SplitBuffer<uint32_t, true>;
+        using SplitClusterBuffer = SplitBuffer<uint32_t, true>;
 
         static constexpr uint32_t kMaxBonesPerVertex = 4;
         static constexpr uint32_t kInvalidAttributeIndex = -1;
@@ -277,6 +278,8 @@ namespace Falcor
             SplitIndexBuffer meshIndexData;
             /// Vertex attributes for all meshes in packed format.
             SplitVertexBuffer meshStaticData;
+            /// Island Cluster buffer
+            SplitClusterBuffer meshClusterData;
             /// Additional vertex attributes for skinned meshes.
             std::vector<SkinningVertexData> meshSkinningData;
 
@@ -308,6 +311,7 @@ namespace Falcor
             uint64_t meshCount = 0;                     ///< Number of meshes.
             uint64_t meshInstanceCount = 0;             ///< Number if mesh instances.
             uint64_t meshInstanceOpaqueCount = 0;       ///< Number if mesh instances that are opaque.
+            uint64_t meshIslandCount = 0;
             uint64_t transformCount = 0;                ///< Number of transform matrices.
             uint64_t uniqueTriangleCount = 0;           ///< Number of unique triangles. A triangle can exist in multiple instances.
             uint64_t uniqueVertexCount = 0;             ///< Number of unique vertices. A vertex can be referenced by multiple triangles/instances.
@@ -1439,6 +1443,7 @@ namespace Falcor
         /// Used for very large scenes
         SplitIndexBuffer mMeshIndexData;
         SplitVertexBuffer mMeshStaticData;
+        SplitClusterBuffer mMeshClusterData;
 
         UpdateFlagsSignal mUpdateFlagsSignal;
     public:

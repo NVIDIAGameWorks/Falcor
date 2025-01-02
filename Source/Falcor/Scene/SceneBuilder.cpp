@@ -43,6 +43,8 @@
 #include <cmath>
 #include <execution>
 
+#define USE_ISLAND 1
+
 namespace Falcor
 {
     namespace
@@ -655,6 +657,7 @@ namespace Falcor
         // Copy indices into processed mesh.
         if (isIndexed)
         {
+
             processedMesh.indexCount = indices.size();
             processedMesh.use16BitIndices = (vertices.size() <= (1u << 16)) && !(is_set(mFlags, Flags::Force32BitIndices));
 
@@ -693,6 +696,8 @@ namespace Falcor
                 processedMesh.skinningData[i] = s;
             }
         }
+        processedMesh.clusterCount = processedMesh.indexCount;
+        processedMesh.clusterData = processedMesh.indexData;
 
         return processedMesh;
     }
@@ -752,6 +757,9 @@ namespace Falcor
         spec.indexData = std::move(mesh.indexData);
         spec.staticData = std::move(mesh.staticData);
         spec.skinningData = std::move(mesh.skinningData);
+
+        spec.clusterData = std::move(mesh.clusterData);
+        spec.clusterCount = (uint32_t)mesh.clusterCount;
 
         if (isIndexed)
         {
@@ -2419,6 +2427,7 @@ namespace Falcor
         FALCOR_ASSERT(mSceneData.meshIndexData.empty());
         FALCOR_ASSERT(mSceneData.meshStaticData.empty());
         FALCOR_ASSERT(mSceneData.meshSkinningData.empty());
+        FALCOR_ASSERT(mSceneData.curveIndexData.empty());
 
         const bool isIndexed = !is_set(mFlags, Flags::NonIndexedVertices);
 
@@ -2438,6 +2447,7 @@ namespace Falcor
 
         mSceneData.meshIndexData.setName("mMeshIndexData");
         mSceneData.meshStaticData.setName("meshStaticData");
+        mSceneData.meshClusterData.setName("mMeshClusterData");
 
         mSceneData.meshSkinningData.reserve(totalSkinningVertexCount);
 
@@ -2473,6 +2483,147 @@ namespace Falcor
             mesh.staticData.clear();
             mesh.skinningData.clear();
         }
+
+        if (true)
+        { // IslandCluster
+
+            struct Cluster
+            {
+                uint32_t id;
+                std::vector<std::vector<uint>> indices;
+                std::vector<uint32_t> clusterIndex;
+            };
+
+            std::vector<Cluster> clusters;
+            std::vector<std::vector<float3>> triangles;
+            std::vector<float3> normals;
+            std::vector<std::vector<uint>> faces;
+
+            auto ibf = mSceneData.meshIndexData.getCpuBuffer(0);
+            auto vbf = mSceneData.meshStaticData.getCpuBuffer(0);
+
+            size_t totalTriangleCount = ibf.size() / 3;
+
+            clusters.clear();
+            triangles.reserve(totalTriangleCount);
+            normals.reserve(totalTriangleCount);
+            faces.reserve(totalTriangleCount);
+
+            for (auto& mesh : mMeshes)
+            {
+                for (uint i = 0;i<mesh.indexCount;i+=3)
+                {
+                    std::vector<float3>triangle;
+                    std::vector<float3> vertexNormals;
+                    std::vector<uint> face;
+                    for (uint j = 0; j < 3; ++j)
+                    {
+                        uint index = ibf[i + j];
+                        auto vData = vbf[index].unpack();
+                        float3 pos = vData.position;
+                        float3 normal = vData.normal;
+                        triangle.push_back(pos);
+                        vertexNormals.push_back(normal);
+                        face.push_back(index);
+                    }
+                    faces.push_back(face);
+                    triangles.push_back(triangle);
+                    float3 triangleNormal = [vertexNormals]() -> float3
+                    {
+                        float3 res = {0.0f, 0.0f, 0.0f};
+                        for (auto normal : vertexNormals)
+                        {
+                            res.x += normal.x;
+                            res.y += normal.y;
+                            res.z += normal.z;
+                        }
+                        return normalize(res);
+                    }();
+                    normals.push_back(triangleNormal);
+                }
+            }
+
+            std::unordered_map<uint32_t, std::vector<uint32_t>> triangleAdjacencyList;
+            for (size_t i = 0; i < triangles.size(); i++)
+            {
+                for (size_t j = 0; j < triangles.size(); j++)
+                {
+                    if (std::abs(dot(normals[i], normals[j]))>0.75f)
+                    {
+                        int sharedVertices = 0;
+                        for (const auto& index1 : faces[i])
+                        {
+                            for (const auto& index2 : faces[j])
+                            {
+                                if (index1 == index2)
+                                {
+                                    sharedVertices++;
+                                }
+                            }
+                        }
+                        if (sharedVertices >= 2)
+                        {
+                            triangleAdjacencyList[i].push_back(j);
+                            triangleAdjacencyList[j].push_back(i);
+                        }
+                    }
+                }
+            }
+
+            std::vector<bool> visited(triangles.size(), false);
+            for (uint32_t i =0;i<triangles.size();++i)
+            {
+                if (!visited[i])
+                {
+                    std::vector<std::vector<uint>> clusterIndices;
+                    std::vector<uint32_t> clusterIndex;
+                    std::queue<uint32_t> queue;
+
+                    queue.push(i);
+                    visited[i] = true;
+                    while (!queue.empty())
+                    {
+                        
+                        uint32_t current = queue.front();
+                        queue.pop();
+                        clusterIndices.push_back(faces[current]);
+                        
+
+                        for (uint32_t neighborIndex : triangleAdjacencyList[current])
+                        {
+                            if (!visited[neighborIndex])
+                            {
+                                queue.push(neighborIndex);
+                                visited[neighborIndex] = true;
+                            }
+                        }
+                    }
+
+                    if (!clusterIndices.empty())
+                    {
+                        clusters.push_back({static_cast<uint32_t>(clusters.size()), clusterIndices, clusterIndex});
+                    }
+                }
+
+            }
+
+            for (auto& cluster : clusters)
+            {
+                for (const auto& index:cluster.clusterIndex){
+                    for (uint32_t i = 0; i < 3; ++i)
+                    {
+                        mSceneData.meshClusterData[index * 3 + i] = cluster.id;
+                    }
+                }
+            }
+
+            for (auto& mesh : mMeshes)
+            {
+                mesh.clusterOffset = mSceneData.meshClusterData.insert(mesh.clusterData.begin(), mesh.clusterData.end());
+                mesh.clusterData.clear();
+            }
+        }
+        
 
         // Initialize offsets for prev vertex data for vertex-animated meshes
         uint32_t prevOffset = (uint32_t)mSceneData.meshSkinningData.size();

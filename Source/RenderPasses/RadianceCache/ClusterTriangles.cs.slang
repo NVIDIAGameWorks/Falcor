@@ -70,8 +70,12 @@ cbuffer CB
     uint gPRNGDimension; // First available PRNG dimension.
 }
 
+struct Island {
+    float3 radiance;
+
+};
+
 // Inputs
-Texture2D<uint> gIslandID;
 Texture2D<PackedHitInfo> gVBuffer;
 Texture2D<float4> gViewW; // Optional
 

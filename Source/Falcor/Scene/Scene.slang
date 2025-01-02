@@ -79,6 +79,7 @@ struct Scene
 #if SCENE_HAS_INDEXED_VERTICES
     /// Vertex indices, three indices per triangle packed tightly. The format is specified per mesh.
     SplitIndexBuffer indexData;
+    SplitClusterBuffer clusterData;
 #endif
 
     // Curves

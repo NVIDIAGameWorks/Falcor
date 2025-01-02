@@ -71,6 +71,7 @@ namespace Falcor
         const std::string kGeometryInstanceBufferName = "geometryInstances";
         const std::string kMeshBufferName = "meshes";
         const std::string kIndexBufferName = "indexData";
+        const std::string kClusterBufferName = "clusterData";
         const std::string kVertexBufferName = "vertices";
         const std::string kPrevVertexBufferName = "prevVertices";
         const std::string kProceduralPrimAABBBufferName = "proceduralPrimitiveAABBs";
@@ -209,9 +210,12 @@ namespace Falcor
 
         mMeshIndexData = std::move(sceneData.meshIndexData);
         mMeshStaticData = std::move(sceneData.meshStaticData);
+        mMeshClusterData = std::move(sceneData.meshClusterData);
 
         mMeshIndexData.setBufferCountDefinePrefix("SCENE_INDEX");
         mMeshIndexData.createGpuBuffers(mpDevice, ResourceBindFlags::Index | ResourceBindFlags::ShaderResource);
+        mMeshClusterData.setBufferCountDefinePrefix("SCENE_CLUSTER");
+        mMeshClusterData.createGpuBuffers(mpDevice, ResourceBindFlags::Index | ResourceBindFlags::ShaderResource);
         mMeshStaticData.setBufferCountDefinePrefix("SCENE_VERTEX");
         mMeshStaticData.createGpuBuffers(mpDevice, ResourceBindFlags::ShaderResource | ResourceBindFlags::UnorderedAccess | ResourceBindFlags::Vertex);
 
@@ -290,6 +294,7 @@ namespace Falcor
         defines.add("SCENE_HAS_32BIT_INDICES", mHas32BitIndices ? "1" : "0");
         mMeshIndexData.getShaderDefines(defines);
         mMeshStaticData.getShaderDefines(defines);
+        mMeshClusterData.getShaderDefines(defines);
 
         defines.add(mHitInfo.getDefines());
         defines.add(getSceneSDFGridDefines());
@@ -825,6 +830,7 @@ namespace Falcor
 
         if (hasIndexBuffer())
             mMeshIndexData.bindShaderData(var[kIndexBufferName]);
+        mMeshClusterData.bindShaderData(var[kClusterBufferName]);
         mMeshStaticData.bindShaderData(var[kVertexBufferName]);
         var[kPrevVertexBufferName] = mpAnimationController->getPrevVertexData();
 

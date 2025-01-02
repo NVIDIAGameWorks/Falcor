@@ -377,6 +377,7 @@ namespace Falcor
         stream.write(sceneData.meshDrawCount);
         writeSplitBuffer(stream, sceneData.meshIndexData);
         writeSplitBuffer(stream, sceneData.meshStaticData);
+        writeSplitBuffer(stream, sceneData.meshClusterData);
         stream.write(sceneData.meshSkinningData);
 
         writeMarker(stream, "Curves");
@@ -503,6 +504,7 @@ namespace Falcor
         stream.read(sceneData.meshDrawCount);
         readSplitBuffer(stream, sceneData.meshIndexData);
         readSplitBuffer(stream, sceneData.meshStaticData);
+        readSplitBuffer(stream, sceneData.meshClusterData);
         stream.read(sceneData.meshSkinningData);
 
         readMarker(stream, "Curves");

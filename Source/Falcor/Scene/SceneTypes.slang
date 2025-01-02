@@ -486,6 +486,65 @@ struct RWSplitVertexBuffer
     }
 };
 
+#ifndef SCENE_INDEX_BUFFER_COUNT
+// #error "Define SCENE_INDEX_BUFFER_COUNT, SCENE_INDEX_BUFFER_INDEX_BITS"
+#define SCENE_INDEX_BUFFER_COUNT 1 // here for the benefit of the IntelliSense
+#define SCENE_INDEX_BUFFER_INDEX_BITS 1
+#endif // SCENE_INDEX_BUFFER_COUNT
+
+/**
+ * GPU representation for SplitBuffer<uint32_T>.
+ * Unlike the SplitVertexBuffer, this wraps a ByteAddressBuffer access rather than
+ * StructuredBuffer, but since we do not have templates, Load<uint16_t3> has to be
+ * explicitly instantiated.
+ *
+ * Functions as an adaptor when we need larger-than-4GB buffers.
+ * In such case, the top bits of the index are used to select which buffers
+ * is the item in, while the lower bits address the item inside the buffer.
+ * Host is only used for static_asserts.
+ */
+struct SplitClusterBuffer
+{
+    typedef uint ElementType;
+    static constexpr uint kBufferIndexBits = SCENE_INDEX_BUFFER_INDEX_BITS; // log2(sizeof(ElementType))
+    static constexpr uint kBufferIndexOffset = 32 - kBufferIndexBits;
+    static constexpr uint kElementIndexMask = (1u << kBufferIndexOffset) - 1;
+    static constexpr uint kBufferCount = SCENE_INDEX_BUFFER_COUNT;
+
+#if SCENE_INDEX_BUFFER_COUNT > 0
+#if SCENE_INDEX_BUFFER_COUNT > 1
+    /// TODO: Once the [root] signature issue has been solved, this should be the only version
+    ByteAddressBuffer data[kBufferCount];
+#else
+    [root] ByteAddressBuffer data[kBufferCount];
+#endif
+
+    /// baseOffset - offset to the start of the mesh
+    /// byteIndex - bytes to read from offset
+    /// Returns bytes starting baseOffset*4 + byteIndex, handling the uint overflow
+    /// for large buffers.
+    /// expected usage is LoadUint16_t3(baseOffset, baseOffset*4 + index)
+    uint16_t3 Load16b(uint baseOffset, uint triangleIndex)
+    {
+        if (kBufferCount == 1)
+            return data[0].Load<uint16_t3>(baseOffset * 4 + triangleIndex * 6);
+        uint bufferIndex = baseOffset >> kBufferIndexOffset;
+        uint byteOffset = (baseOffset & kElementIndexMask) * 4;
+        return data[bufferIndex].Load<uint16_t3>(byteOffset + triangleIndex * 6);
+    }
+
+    uint3 Load32b(uint baseOffset, uint triangleIndex)
+    {
+        if (kBufferCount == 1)
+            return data[0].Load3(baseOffset * 4 + triangleIndex * 12);
+        uint bufferIndex = baseOffset >> kBufferIndexOffset;
+        uint byteOffset = (baseOffset & kElementIndexMask) * 4;
+        return data[bufferIndex].Load3(byteOffset + triangleIndex * 12);
+    }
+#endif // SCENE_INDEX_BUFFER_COUNT > 0
+};
+
 #endif /// HOST_CODE
+
 
 END_NAMESPACE_FALCOR
