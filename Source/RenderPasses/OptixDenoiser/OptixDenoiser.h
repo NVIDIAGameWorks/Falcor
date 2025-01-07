@@ -167,7 +167,7 @@ private:
         OptixDenoiserOptions options = {0u, 0u};
         OptixDenoiserModelKind modelKind = OptixDenoiserModelKind::OPTIX_DENOISER_MODEL_KIND_HDR;
         OptixDenoiser denoiser = nullptr;
-        OptixDenoiserParams params = {0u, static_cast<CUdeviceptr>(0), 0.0f, static_cast<CUdeviceptr>(0)};
+        OptixDenoiserParams params = {static_cast<CUdeviceptr>(0), 0.0f, static_cast<CUdeviceptr>(0), 0u};
         OptixDenoiserSizes sizes = {};
 
         // TODO: Parameters currently set to false and not exposed to the user.  These parameters are here to
