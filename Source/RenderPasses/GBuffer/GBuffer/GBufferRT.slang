@@ -153,19 +153,19 @@ struct GBufferRT
 
     float3 computeDdxPosW(float3 posW, float3 normW, float2 invFrameDim)
     {
-        float3 projRight = normalize(cross(normW, cross(normW, gScene.camera.data.cameraV)));
+        float3 projRight = normalize(cross(normW, cross(normW, gScene.camera.data.cameraU)));
         float distanceToHit = length(posW - gScene.camera.data.posW);
         float2 ddNdc = float2(2.f, -2.f) * invFrameDim;
-        float distRight = distanceToHit * ddNdc.x / dot(normalize(gScene.camera.data.cameraV), projRight);
+        float distRight = distanceToHit * ddNdc.x / dot(normalize(gScene.camera.data.cameraU), projRight);
         return distRight * projRight;
     }
 
     float3 computeDdyPosW(float3 posW, float3 normW, float2 invFrameDim)
     {
-        float3 projUp = normalize(cross(normW, cross(normW, gScene.camera.data.cameraU)));
+        float3 projUp = normalize(cross(normW, cross(normW, gScene.camera.data.cameraV)));
         float distanceToHit = length(posW - gScene.camera.data.posW);
         float2 ddNdc = float2(2.f, -2.f) * invFrameDim;
-        float distUp = distanceToHit * ddNdc.y / dot(normalize(gScene.camera.data.cameraU), projUp);
+        float distUp = distanceToHit * ddNdc.y / dot(normalize(gScene.camera.data.cameraV), projUp);
         return distUp * projUp;
     }
 
@@ -329,7 +329,7 @@ struct GBufferRT
             float3 ddxPosW = computeDdxPosW(sd.posW, sd.faceN, invFrameDim);
             float3 ddyPosW = computeDdyPosW(sd.posW, sd.faceN, invFrameDim);
             float4 curPosH_dx = mul(gScene.camera.data.viewProjMatNoJitter, float4(sd.posW + ddxPosW, 1.f));
-            float4 curPosH_dy = mul(gScene.camera.data.viewProjMatNoJitter, float4(sd.posW + ddxPosW, 1.f));
+            float4 curPosH_dy = mul(gScene.camera.data.viewProjMatNoJitter, float4(sd.posW + ddyPosW, 1.f));
             float ddxLinearZ = abs(curPosH_dx.w - curLinearZ);
             float ddyLinearZ = abs(curPosH_dy.w - curLinearZ);
             float dLinearZ = max(ddxLinearZ, ddyLinearZ);
