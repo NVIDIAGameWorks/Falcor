@@ -1,8 +1,8 @@
 {
     "version": 3,
     "cmakeMinimumRequired": {
-        "major": 3,
-        "minor": 15,
+        "major": 4,
+        "minor": 2,
         "patch": 0
     },
     "configurePresets": [
@@ -10,7 +10,9 @@
             "name": "base",
             "description": "Base configuration inherited by all presets.",
             "hidden": true,
-            "cacheVariables": {},
+            "cacheVariables": {
+                "CMAKE_POLICY_VERSION_MINIMUM": "3.5"
+            },
             "cmakeExecutable": "${sourceDir}/tools/.packman/cmake/bin/cmake",
             "binaryDir": "${sourceDir}/build/${presetName}"
         },
@@ -60,6 +62,36 @@
             "displayName": "Windows VS2022 (CI)",
             "inherits": [
                 "windows-vs2022-base",
+                "ci"
+            ]
+        },
+        {
+            "name": "windows-vs2026-base",
+            "description": "Base Visual Studio 2026 configuration.",
+            "hidden": true,
+            "inherits": "windows-base",
+            "generator": "Visual Studio 18 2026",
+            "architecture": {
+                "value": "x64",
+                "strategy": "set"
+            },
+            "toolset": {
+                "value": "host=x64",
+                "strategy": "set"
+            }
+        },
+        {
+            "name": "windows-vs2026",
+            "displayName": "Windows VS2026",
+            "inherits": [
+                "windows-vs2026-base"
+            ]
+        },
+        {
+            "name": "windows-vs2026-ci",
+            "displayName": "Windows VS2026 (CI)",
+            "inherits": [
+                "windows-vs2026-base",
                 "ci"
             ]
         },
@@ -166,6 +198,18 @@
         }
     ],
     "buildPresets": [
+        {
+            "name": "windows-vs2026-release",
+            "displayName": "Release",
+            "configurePreset": "windows-vs2026",
+            "configuration": "Release"
+        },
+        {
+            "name": "windows-vs2026-debug",
+            "displayName": "Debug",
+            "configurePreset": "windows-vs2026",
+            "configuration": "Debug"
+        },
         {
             "name": "windows-ninja-msvc-release",
             "displayName": "Release",

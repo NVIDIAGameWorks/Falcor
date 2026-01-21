@@ -509,9 +509,17 @@ ref<DepthStencilView> Texture::getDSV(uint32_t mipLevel, uint32_t firstArraySlic
 
 ref<UnorderedAccessView> Texture::getUAV(uint32_t mipLevel, uint32_t firstArraySlice, uint32_t arraySize)
 {
-    auto createFunc = [](Texture* pTexture, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize)
-    { return UnorderedAccessView::create(pTexture->getDevice().get(), pTexture, mostDetailedMip, firstArraySlice, arraySize); };
-
+    auto createFunc =
+        [mipLevel](Texture* pTexture, uint32_t mostDetailedMip, uint32_t mipCount, uint32_t firstArraySlice, uint32_t arraySize)
+    {
+        auto& size = pTexture->getGfxTextureResource()->getDesc()->size;
+        gfx::ITextureResource::Extents origSize = size;
+        size.depth = size.depth >> mipLevel;
+        size.depth = size.depth < 1 ? 1 : size.depth;
+        auto view = UnorderedAccessView::create(pTexture->getDevice().get(), pTexture, mostDetailedMip, firstArraySlice, arraySize);
+        size = origSize;
+        return view;
+    };
     return findViewCommon<UnorderedAccessView>(this, mipLevel, 1, firstArraySlice, arraySize, mUavs, createFunc);
 }
 

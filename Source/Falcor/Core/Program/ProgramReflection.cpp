@@ -173,13 +173,6 @@ struct ExtendedReflectionPath : ReflectionPath
             primaryLinkStorage.pParent = pPrimary;
             primaryLinkStorage.pVar = pVar;
             pPrimary = &primaryLinkStorage;
-
-            if (auto pDeferredVar = pVar->getPendingDataLayout())
-            {
-                deferredLinkStorage.pParent = pDeferred;
-                deferredLinkStorage.pVar = pDeferredVar;
-                pDeferred = &deferredLinkStorage;
-            }
         }
     }
 
@@ -956,29 +949,6 @@ ref<ReflectionType> reflectInterfaceType(
 
     bindingInfo.flavor = ParameterBlockReflection::ResourceRangeBindingInfo::Flavor::Interface;
 
-    if (auto pSlangPendingTypeLayout = pSlangType->getPendingDataTypeLayout())
-    {
-        ReflectionPath subPath;
-        subPath.pPrimary = pPath->pDeferred;
-        subPath.pDeferred = nullptr;
-
-        auto pPendingBlock = ParameterBlockReflection::createEmpty(pProgramVersion);
-        auto pPendingType = reflectType(pSlangPendingTypeLayout, pPendingBlock.get(), &subPath, pProgramVersion);
-        pPendingBlock->setElementType(pPendingType);
-
-        // TODO: What to do if `pPendingType->getByteSize()` is non-zero?
-
-        pPendingBlock->finalize();
-
-        pType->setParameterBlockReflector(pPendingBlock);
-
-        bindingInfo.pSubObjectReflector = pPendingBlock;
-
-        category = slang::ParameterCategory::Uniform;
-        bindingInfo.regIndex = (uint32_t)getRegisterIndexFromPath(pPath->pDeferred, SlangParameterCategory(category));
-        bindingInfo.regSpace = getRegisterSpaceFromPath(pPath->pPrimary, SlangParameterCategory(category));
-    }
-
     if (pBlock)
     {
         pBlock->addResourceRange(bindingInfo);
@@ -996,7 +966,7 @@ ref<ReflectionType> reflectSpecializedType(
 {
     auto pSlangBaseType = pSlangType->getElementTypeLayout();
 
-    auto pSlangVarLayout = pSlangType->getSpecializedTypePendingDataVarLayout();
+    auto pSlangVarLayout = pSlangType->getElementVarLayout();
 
     ReflectionPathLink deferredLink;
     deferredLink.pParent = pPath->pPrimary;

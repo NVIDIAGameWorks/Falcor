@@ -214,6 +214,7 @@ void SampleApp::handleKeyboardEvent(const KeyboardEvent& keyEvent)
             switch (keyEvent.key)
             {
             case Input::Key::F12:
+            case Input::Key::PrintScreen:
                 mCaptureScreen = true;
                 break;
 #if FALCOR_ENABLE_PROFILER
@@ -352,7 +353,7 @@ std::string SampleApp::getKeyboardShortcutsStr()
         "F2 - Show/hide UI\n"
         "F3 - Capture current camera location\n"
         "F5 - Reload shaders\n"
-        "F12 - Capture screenshot\n"
+        "F12/PrintScreen - Capture screenshot\n"
         "V - Toggle VSync\n"
         "Pause|Space - Pause/resume the global timer\n"
         "Ctrl+Pause|Space - Pause/resume the renderer\n"

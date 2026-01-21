@@ -12,7 +12,7 @@
 :: See the License for the specific language governing permissions and
 :: limitations under the License.
 
-set PM_PACKMAN_VERSION=7.23.2
+set PM_PACKMAN_VERSION=7.34
 
 :: Specify where packman command is rooted
 set PM_INSTALL_PATH=%~dp0..
@@ -22,7 +22,7 @@ if defined PM_PACKAGES_ROOT goto ENSURE_DIR
 
 :: If the folder isn't set we assume that the best place for it is on the drive that we are currently
 :: running from
-set PM_DRIVE=%CD:~0,2%
+set PM_DRIVE=%PM_INSTALL_PATH:~0,2%
 
 set PM_PACKAGES_ROOT=%PM_DRIVE%\packman-repo
 
@@ -59,7 +59,7 @@ if defined PM_PYTHON_EXT (
 	goto PACKMAN
 )
 
-set PM_PYTHON_VERSION=3.10.5-1-windows-x86_64
+set PM_PYTHON_VERSION=3.10.19-nv2-windows-x86_64
 set PM_PYTHON_BASE_DIR=%PM_PACKAGES_ROOT%\python
 set PM_PYTHON_DIR=%PM_PYTHON_BASE_DIR%\%PM_PYTHON_VERSION%
 set PM_PYTHON=%PM_PYTHON_DIR%\python.exe
@@ -91,8 +91,15 @@ if %errorlevel% neq 0 (
 if exist "%PM_PYTHON%" (
     call :CLEAN_UP_TEMP_FOLDER
     goto PACKMAN
-) else (
-    if exist "%PM_PYTHON_DIR%" ( rd /s /q "%PM_PYTHON_DIR%" > nul )
+) 
+
+:: Clean out broken PM_PYTHON_DIR if it exists
+if exist "%PM_PYTHON_DIR%" (
+    call :REMOVE_DIR "%PM_PYTHON_DIR%"
+    if errorlevel 1 (
+        call :CLEAN_UP_TEMP_FOLDER
+        goto ERROR
+    )
 )
 
 :: Perform atomic move (allowing overwrite, /y)
@@ -122,7 +129,10 @@ set PM_MODULE=%PM_MODULE_DIR%\run.py
 if exist "%PM_MODULE%" goto END
 
 :: Clean out broken PM_MODULE_DIR if it exists
-if exist "%PM_MODULE_DIR%" ( rd /s /q "%PM_MODULE_DIR%" > nul )
+if exist "%PM_MODULE_DIR%" (
+    call :REMOVE_DIR "%PM_MODULE_DIR%"
+    if errorlevel 1 goto :ERROR
+)
 
 set PM_MODULE_PACKAGE=packman-common@%PM_PACKMAN_VERSION%.zip
 for /f "delims=" %%a in ('powershell -ExecutionPolicy ByPass -NoLogo -NoProfile -File "%~dp0\generate_temp_file_name.ps1"') do set TEMP_FILE_NAME=%%a
@@ -153,13 +163,26 @@ echo.
 echo Then launch a new command console for the changes to take effect and run packman command again.
 exit /B %errorlevel%
 
+:REMOVE_DIR
+rd /s /q "%~1" > nul
+if exist "%~1" (
+    echo !!! Error removing corrupt directory %~1 !!!
+    echo !!! Please remove this path manually !!!
+    exit /B 1
+)
+exit /B 0
+
 :ERROR
 echo !!! Failure while configuring local machine :( !!!
-exit /B %errorlevel%
+exit /B 1
 
 :CLEAN_UP_TEMP_FOLDER
-rd /S /Q "%TEMP_FOLDER_NAME%"
-exit /B
+rd /S /Q "%TEMP_FOLDER_NAME%" > nul
+if exist "%TEMP_FOLDER_NAME%" (
+    echo !!! Error removing temporary directory %TEMP_FOLDER_NAME% !!!
+    exit /B 1
+)
+exit /B 0
 
 :CREATE_PYTHON_BASE_DIR
 :: We ignore errors and clean error state - if two processes create the directory one will fail which is fine

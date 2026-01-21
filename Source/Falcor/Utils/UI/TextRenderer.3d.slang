@@ -45,7 +45,7 @@ void vsMain(float2 posS: POSITION, inout float2 texC: TEXCOORD, out float4 posSV
 
 float4 calcColor(float2 texC)
 {
-    float4 color = gFontTex.Load(int3(texC, 0));
+    float4 color = gFontTex.Load(int3(int2(texC), 0));
     color.rgb = gFontColor;
     return color;
 }
