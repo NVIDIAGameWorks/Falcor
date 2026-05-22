@@ -313,7 +313,7 @@ struct MaterialSystem
         case TextureHandle::Mode::Uniform:
             return uniformValue;
         case TextureHandle::Mode::Texture:
-            return lod.sampleTexture(materialTextures[handle.getTextureID()], s, uv);
+            return lod.sampleTexture(materialTextures[NonUniformResourceIndex(handle.getTextureID())], s, uv);
         default:
             return float4(0.f);
         }
