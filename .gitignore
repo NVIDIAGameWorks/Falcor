@@ -8,6 +8,14 @@
 /media
 /media_internal
 
+# Models
+Models/*.json
+# custom stuff
+Models/Unity_Eye
+
+# idk
+Source/imgui.ini
+
 # Packman folders.
 /external/packman/
 /tools/.packman/

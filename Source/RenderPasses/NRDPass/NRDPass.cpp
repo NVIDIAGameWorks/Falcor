@@ -30,80 +30,17 @@
 
 #include "NRDPass.h"
 #include "RenderPasses/Shared/Denoising/NRDConstants.slang"
+#include "NRDPasses/NRDPassNormal.h"
 
 namespace
 {
-const char kShaderPackRadiance[] = "RenderPasses/NRDPass/PackRadiance.cs.slang";
-
-// Input buffer names.
-const char kInputDiffuseRadianceHitDist[] = "diffuseRadianceHitDist";
-const char kInputSpecularRadianceHitDist[] = "specularRadianceHitDist";
-const char kInputSpecularHitDist[] = "specularHitDist";
-const char kInputMotionVectors[] = "mvec";
-const char kInputNormalRoughnessMaterialID[] = "normWRoughnessMaterialID";
-const char kInputViewZ[] = "viewZ";
-const char kInputDeltaPrimaryPosW[] = "deltaPrimaryPosW";
-const char kInputDeltaSecondaryPosW[] = "deltaSecondaryPosW";
-
-// Output buffer names.
-const char kOutputFilteredDiffuseRadianceHitDist[] = "filteredDiffuseRadianceHitDist";
-const char kOutputFilteredSpecularRadianceHitDist[] = "filteredSpecularRadianceHitDist";
-const char kOutputReflectionMotionVectors[] = "reflectionMvec";
-const char kOutputDeltaMotionVectors[] = "deltaMvec";
-
-// Serialized parameters.
-
-const char kEnabled[] = "enabled";
-const char kMethod[] = "method";
-const char kOutputSize[] = "outputSize";
-
-// Common settings.
-const char kWorldSpaceMotion[] = "worldSpaceMotion";
-const char kDisocclusionThreshold[] = "disocclusionThreshold";
-
-// Pack radiance settings.
-const char kMaxIntensity[] = "maxIntensity";
-
-// ReLAX diffuse/specular settings.
-const char kDiffusePrepassBlurRadius[] = "diffusePrepassBlurRadius";
-const char kSpecularPrepassBlurRadius[] = "specularPrepassBlurRadius";
-const char kDiffuseMaxAccumulatedFrameNum[] = "diffuseMaxAccumulatedFrameNum";
-const char kSpecularMaxAccumulatedFrameNum[] = "specularMaxAccumulatedFrameNum";
-const char kDiffuseMaxFastAccumulatedFrameNum[] = "diffuseMaxFastAccumulatedFrameNum";
-const char kSpecularMaxFastAccumulatedFrameNum[] = "specularMaxFastAccumulatedFrameNum";
-const char kDiffusePhiLuminance[] = "diffusePhiLuminance";
-const char kSpecularPhiLuminance[] = "specularPhiLuminance";
-const char kDiffuseLobeAngleFraction[] = "diffuseLobeAngleFraction";
-const char kSpecularLobeAngleFraction[] = "specularLobeAngleFraction";
-const char kRoughnessFraction[] = "roughnessFraction";
-const char kDiffuseHistoryRejectionNormalThreshold[] = "diffuseHistoryRejectionNormalThreshold";
-const char kSpecularVarianceBoost[] = "specularVarianceBoost";
-const char kSpecularLobeAngleSlack[] = "specularLobeAngleSlack";
-const char kDisocclusionFixEdgeStoppingNormalPower[] = "disocclusionFixEdgeStoppingNormalPower";
-const char kDisocclusionFixMaxRadius[] = "disocclusionFixMaxRadius";
-const char kDisocclusionFixNumFramesToFix[] = "disocclusionFixNumFramesToFix";
-const char kHistoryClampingColorBoxSigmaScale[] = "historyClampingColorBoxSigmaScale";
-const char kSpatialVarianceEstimationHistoryThreshold[] = "spatialVarianceEstimationHistoryThreshold";
-const char kAtrousIterationNum[] = "atrousIterationNum";
-const char kMinLuminanceWeight[] = "minLuminanceWeight";
-const char kDepthThreshold[] = "depthThreshold";
-const char kRoughnessEdgeStoppingRelaxation[] = "roughnessEdgeStoppingRelaxation";
-const char kNormalEdgeStoppingRelaxation[] = "normalEdgeStoppingRelaxation";
-const char kLuminanceEdgeStoppingRelaxation[] = "luminanceEdgeStoppingRelaxation";
-const char kEnableAntiFirefly[] = "enableAntiFirefly";
-const char kEnableReprojectionTestSkippingWithoutMotion[] = "enableReprojectionTestSkippingWithoutMotion";
-const char kEnableSpecularVirtualHistoryClamping[] = "enableSpecularVirtualHistoryClamping";
-const char kEnableRoughnessEdgeStopping[] = "enableRoughnessEdgeStopping";
-const char kEnableMaterialTestForDiffuse[] = "enableMaterialTestForDiffuse";
-const char kEnableMaterialTestForSpecular[] = "enableMaterialTestForSpecular";
-
 // Expose only togglable methods.
 // There is no reason to expose runtime toggle for other methods.
 const Gui::DropdownList kDenoisingMethod = {
     {(uint32_t)NRDPass::DenoisingMethod::RelaxDiffuseSpecular, "ReLAX"},
     {(uint32_t)NRDPass::DenoisingMethod::ReblurDiffuseSpecular, "ReBLUR"},
 };
-} // namespace
+}
 
 NRDPass::NRDPass(ref<Device> pDevice, const Properties& props) : RenderPass(pDevice)
 {
@@ -1271,5 +1208,6 @@ void NRDPass::dispatch(RenderContext* pRenderContext, const RenderData& renderDa
 
 extern "C" FALCOR_API_EXPORT void registerPlugin(PluginRegistry& registry)
 {
-    registry.registerClass<RenderPass, NRDPass>();
+    //registry.registerClass<RenderPass, NRDPass>();
+    registry.registerClass<RenderPass, NRDPassNormal>();
 }

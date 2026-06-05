@@ -1,0 +1,16 @@
+Sibenik by Marko Dabrovic, with holes corrected by Kenzie Lamar at
+Vicarious Visions and high-resolution texture and bump maps painted by
+Morgan McGuire.
+
+Downloaded from http://igad.nhtv.nl/~bikker/
+
+Originally from http://hdri.cgtechniques.com/~sibenik2/download/
+"The Sibenik cathedral is a project by Marko Dabrovic form www.RNA.HR .
+It's very rich modeled but isn't completly finished yet... there are some holes in the mesh which only hurts if you look at them."
+
+
+Cross (CC0); From sketchfab: 
+https://sketchfab.com/3d-models/1931461-ceremonial-cross-of-count-liudolf-c9b68c716acb44e6be7a58e40e1bbb31
+
+Statue St. Anna (CC0); From sketchfab: 
+https://sketchfab.com/3d-models/sculpture-showing-st-anna-from-18th-century-f46414a1d86a42349e6cdb046f892a4e

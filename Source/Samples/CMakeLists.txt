@@ -1,6 +1,8 @@
+add_subdirectory(Caustics)
 add_subdirectory(CudaInterop)
 add_subdirectory(HelloDXR)
 add_subdirectory(MultiSampling)
+add_subdirectory(ReSTIR_FG)
 add_subdirectory(SampleAppTemplate)
 add_subdirectory(ShaderToy)
 add_subdirectory(Visualization2D)

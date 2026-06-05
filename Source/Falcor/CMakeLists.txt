@@ -188,6 +188,10 @@ target_sources(Falcor PRIVATE
     RenderGraph/ResourceCache.cpp
     RenderGraph/ResourceCache.h
 
+    Rendering/AccelerationStructure/CustomAccelerationStructure.cpp
+    Rendering/AccelerationStructure/CustomAccelerationStructure.h
+    Rendering/AccelerationStructure/ClearAABBs.cs.slang
+
     Rendering/Lights/EmissiveLightSampler.cpp
     Rendering/Lights/EmissiveLightSampler.h
     Rendering/Lights/EmissiveLightSampler.slang
