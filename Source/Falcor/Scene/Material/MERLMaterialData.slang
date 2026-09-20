@@ -39,7 +39,7 @@ __exported import Scene.Material.DiffuseSpecularData;
 BEGIN_NAMESPACE_FALCOR
 
 /** This is a host/device structure that describes a measured MERL material.
-*/
+ */
 struct MERLMaterialData
 {
     // MaterialHeader (16B) is stored just before this struct in memory.

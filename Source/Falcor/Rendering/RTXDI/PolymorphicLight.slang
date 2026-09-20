@@ -80,13 +80,13 @@ extension PackedPolymorphicLight
 */
 struct PolymorphicLightSample
 {
-    float3 position;    ///< Position on the light in world-space.
-    float3 normal;      ///< Normal on the light in world-space.
-    float3 direction;   ///< Direction from the shading point to the light in world-space.
-    float distance;     ///< Distance from the shading point to the light in world-space.
-    float3 Li;          ///< Incident radiance at the shading point (unshadowed), pre-divided by the PDF.
-    float pdf;          ///< PDF wrt. solid angle.
-    uint flags;         ///< Light type enum.
+    float3 position = {};  ///< Position on the light in world-space.
+    float3 normal = {};    ///< Normal on the light in world-space.
+    float3 direction = {}; ///< Direction from the shading point to the light in world-space.
+    float distance = {};   ///< Distance from the shading point to the light in world-space.
+    float3 Li = {};        ///< Incident radiance at the shading point (unshadowed), pre-divided by the PDF.
+    float pdf = {};        ///< PDF wrt. solid angle.
+    uint flags = {};       ///< Light type enum.
 
     property PolymorphicLightType lightType
     {
@@ -131,11 +131,13 @@ interface IPolymorphicLight
 */
 struct EmissiveLight : IPolymorphicLight
 {
-    uint triIdx;            ///< Global triangle index in the scene's LightCollection.
-    float3 position;        ///< Position in world-space.
-    float3 edge0;           ///< First triangle edge in world-space.
-    float3 edge1;           ///< Second triangle edge in world-space.
-    float averageRadiance;  ///< Average emitted radiance (scalar).
+    uint triIdx = {};            ///< Global triangle index in the scene's LightCollection.
+    float3 position = {};        ///< Position in world-space.
+    float3 edge0 = {};           ///< First triangle edge in world-space.
+    float3 edge1 = {};           ///< Second triangle edge in world-space.
+    float averageRadiance = {};  ///< Average emitted radiance (scalar).
+
+    __init() {}
 
     __init(const PackedPolymorphicLight packed)
     {
@@ -236,7 +238,9 @@ struct EmissiveLight : IPolymorphicLight
 */
 struct AnalyticLight : IPolymorphicLight
 {
-    uint lightID;
+    uint lightID = {};
+
+    __init() {}
 
     __init(const PackedPolymorphicLight packed)
     {
@@ -305,6 +309,9 @@ struct AnalyticLight : IPolymorphicLight
 */
 struct EnvLight : IPolymorphicLight
 {
+    __init()
+    {}
+
     __init(const PackedPolymorphicLight packed)
     {
     }
@@ -355,7 +362,9 @@ struct EnvLight : IPolymorphicLight
 */
 struct PolymorphicLight : IPolymorphicLight
 {
-    PackedPolymorphicLight packed;
+    PackedPolymorphicLight packed = {};
+
+    __init() {}
 
     __init(const PackedPolymorphicLight packed)
     {

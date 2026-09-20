@@ -36,7 +36,12 @@ struct PBRTDielectricMaterial : MaterialBase, IMaterial
 
     typedef PBRTDielectricMaterialInstance MaterialInstance;
 
-    PBRTDielectricMaterialInstance setupMaterialInstance(const MaterialSystem ms, const ShadingData sd, const ITextureSampler lod, const uint hints)
+    PBRTDielectricMaterialInstance setupMaterialInstance(
+        const MaterialSystem ms,
+        const ShadingData sd,
+        const ITextureSampler lod,
+        const uint hints
+    )
     {
         SamplerState s = ms.getTextureSampler(header.getDefaultTextureSamplerID());
 
@@ -57,13 +62,19 @@ struct PBRTDielectricMaterial : MaterialBase, IMaterial
             adjustShadingNormal(sd, sf);
         }
 
-        PBRTDielectricMaterialInstance mi = {sf, {AnisotropicGGX(roughness), eta}};
+        PBRTDielectricMaterialInstance mi = { sf, { AnisotropicGGX(roughness), eta } };
 
         return mi;
     }
 
     [Differentiable]
-    PBRTDielectricMaterialInstance setupDiffMaterialInstance(out DiffMaterialData diffData, const MaterialSystem ms, const ShadingData sd, const ITextureSampler lod, const uint hints)
+    PBRTDielectricMaterialInstance setupDiffMaterialInstance(
+        out DiffMaterialData diffData,
+        const MaterialSystem ms,
+        const ShadingData sd,
+        const ITextureSampler lod,
+        const uint hints
+    )
     {
         diffData = DiffMaterialData();
         return no_diff setupMaterialInstance(ms, sd, lod, hints);

@@ -110,6 +110,10 @@ void VBufferRT::execute(RenderContext* pRenderContext, const RenderData& renderD
         // Configure depth-of-field.
         // When DOF is enabled, two PRNG dimensions are used. Pass this info to subsequent passes via the dictionary.
         mComputeDOF = mUseDOF && mpScene->getCamera()->getApertureRadius() > 0.f;
+        // some other renderpasses may need to disable DoF in the G/VBuffer
+        if (renderData.getDictionary().keyExists("disableGBufferDoF") && renderData.getDictionary()["disableGBufferDoF"])
+            mComputeDOF = false;
+
         if (mUseDOF)
         {
             renderData.getDictionary()[Falcor::kRenderPassPRNGDimension] = mComputeDOF ? 2u : 0u;

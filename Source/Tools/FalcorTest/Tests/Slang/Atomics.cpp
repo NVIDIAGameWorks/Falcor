@@ -45,7 +45,6 @@ void testInterlockedAddF16(GPUUnitTestContext& ctx, std::string_view entryPoint)
 
     ProgramDesc desc;
     desc.addShaderLibrary(kShaderFile).csEntry("testBufferAddF16");
-    desc.setUseSPIRVBackend(); // NOTE: The SPIR-V backend is required for RWByteAddressBuffer.InterlockedAddF16() on Vulkan!
     ctx.createProgram(desc);
 
     std::vector<float16_t> elems(kNumElems * 2);
@@ -145,7 +144,6 @@ GPU_TEST(Atomics_Texture2D_InterlockedAddF32)
 
     ProgramDesc desc;
     desc.addShaderLibrary(kShaderFile).csEntry("testTextureAddF32");
-    desc.setUseSPIRVBackend(); // NOTE: The SPIR-V backend is required for RWTexture2D.InterlockedAddF32() on Vulkan!
     ctx.createProgram(desc);
 
     std::vector<float> elems(kNumElems);

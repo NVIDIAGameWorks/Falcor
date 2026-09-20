@@ -31,6 +31,7 @@
 #include "Core/Error.h"
 #include "Core/ObjectPython.h"
 #include "Utils/Scripting/ScriptBindings.h"
+#include "Utils/Math/FNVHash.h"
 
 namespace Falcor
 {
@@ -158,23 +159,19 @@ ResourceBindFlags getBindFlags(bool isDepth, bool allowUav)
 
 size_t Fbo::DescHash::operator()(const Fbo::Desc& d) const
 {
-    size_t hash = 0;
-    std::hash<uint32_t> u32hash;
-    std::hash<bool> bhash;
+    FNVHash64 hasher;
+
     for (uint32_t i = 0; i < getMaxColorTargetCount(); i++)
     {
-        uint32_t format = (uint32_t)d.getColorTargetFormat(i);
-        format <<= i;
-        hash |= u32hash(format) >> i;
-        hash |= bhash(d.isColorTargetUav(i)) << i;
+        hasher.insert(d.getColorTargetFormat(i));
+        hasher.insert(d.isColorTargetUav(i));
     }
 
-    uint32_t format = (uint32_t)d.getDepthStencilFormat();
-    hash |= u32hash(format);
-    hash |= bhash(d.isDepthStencilUav());
-    hash |= u32hash(d.getSampleCount());
+    hasher.insert(d.getDepthStencilFormat());
+    hasher.insert(d.isDepthStencilUav());
+    hasher.insert(d.getSampleCount());
 
-    return hash;
+    return hasher.get();
 }
 
 bool Fbo::Desc::operator==(const Fbo::Desc& other) const
@@ -469,9 +466,18 @@ void Fbo::calcAndValidateProperties() const
     }
 
     // The GraphicsState class relies on stable pointers of the descriptor to
-    // walk the tree of cached state objects. Store the desc in a global set
-    // and get a pointer to it.
-    mpDesc = &(*(getGlobalDescCache().insert(mTempDesc).first));
+    // walk the tree of cached state objects. We store the heap allocated
+    // descriptor in the global map indexed by the descriptor, as the map
+    // elements can move upon rehash and are not stable.
+    {
+        auto& cache = getGlobalDescCache();
+        auto it = cache.find(mTempDesc);
+        if (it == cache.end())
+        {
+            it = cache.insert(std::make_pair(mTempDesc, std::make_unique<Desc>(mTempDesc))).first;
+        }
+        mpDesc = it->second.get();
+    }
 }
 
 ref<Texture> Fbo::getColorTexture(uint32_t index) const

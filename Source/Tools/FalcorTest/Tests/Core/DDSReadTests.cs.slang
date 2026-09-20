@@ -25,7 +25,7 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
-RWStructuredBuffer<uint> result;
+RWStructuredBuffer<float> result;
 RWStructuredBuffer<float> difference;
 
 Texture2D<float4> tex;
@@ -47,10 +47,8 @@ void readback(uint3 threadId: SV_DispatchThreadID)
 
     // Convert to uint8_t, and pack into uint32_t
     // clang-format off
-    result[idx] = ((uint)(saturate(v[3]) * 255) << 24) |
-                  ((uint)(saturate(v[2]) * 255) << 16) |
-                  ((uint)(saturate(v[1]) * 255) <<  8) |
-                  ((uint)(saturate(v[0]) * 255));
+    for (uint32_t i = 0; i < 4; ++i)
+        result[4 * idx + i] = v[i];
     // clang-format on
 }
 
@@ -62,9 +60,10 @@ void diff(uint3 threadId: SV_DispatchThreadID)
 
     uint idx = threadId.y * sz.x + threadId.x;
     float4 tv = tex[threadId.xy];
-    float4 rv = tex[threadId.xy];
+    float4 rv = ref[threadId.xy];
     for (uint32_t i = 0; i < 4; ++i)
     {
-        difference[4 * idx + i] = rv[i] - tv[i];
+        // We have to abs here, because the TextureAnalyzer clamps min/max values to zero, so negative values would be wrong.
+        difference[4 * idx + i] = abs(rv[i] - tv[i]);
     }
 }

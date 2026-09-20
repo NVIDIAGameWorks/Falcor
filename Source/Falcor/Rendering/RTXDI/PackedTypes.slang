@@ -30,9 +30,9 @@
 */
 struct PackedPolymorphicLight
 {
-    uint header;
-    uint3 data0;
-    uint4 data1;
+    uint header = {};
+    uint3 data0 = {};
+    uint4 data1 = {};
 };
 
 /** Packed version of SurfaceData (defined in SurfaceData.slang).

@@ -31,17 +31,12 @@
 #include "Core/Error.h"
 
 #include <nlohmann/json.hpp>
+#include <pybind11/pytypes.h>
 
 #include <optional>
 #include <map>
 #include <filesystem>
 #include <vector>
-
-namespace pybind11
-{
-class dict;
-class list;
-} // namespace pybind11
 
 namespace Falcor
 {
@@ -80,6 +75,7 @@ public:
     void addOptions(const nlohmann::json& options);
     void addOptions(const pybind11::dict& options);
     void addOptions(const pybind11::list& options);
+    void addOption(std::string_view name, const nlohmann::json& value);
 
     /// Add options from a JSON file, returning true on success and false on failure
     bool addOptions(const std::filesystem::path& path);

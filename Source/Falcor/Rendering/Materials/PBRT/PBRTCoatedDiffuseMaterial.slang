@@ -36,7 +36,12 @@ struct PBRTCoatedDiffuseMaterial : MaterialBase, IMaterial
 
     typedef PBRTCoatedDiffuseMaterialInstance MaterialInstance;
 
-    PBRTCoatedDiffuseMaterialInstance setupMaterialInstance(const MaterialSystem ms, const ShadingData sd, const ITextureSampler lod, const uint hints)
+    PBRTCoatedDiffuseMaterialInstance setupMaterialInstance(
+        const MaterialSystem ms,
+        const ShadingData sd,
+        const ITextureSampler lod,
+        const uint hints
+    )
     {
         SamplerState s = ms.getTextureSampler(header.getDefaultTextureSamplerID());
 
@@ -58,13 +63,19 @@ struct PBRTCoatedDiffuseMaterial : MaterialBase, IMaterial
             adjustShadingNormal(sd, sf);
         }
 
-        PBRTCoatedDiffuseMaterialInstance mi = {sf, AnisotropicGGX(roughness), eta, baseColor, 32};
+        PBRTCoatedDiffuseMaterialInstance mi = { sf, AnisotropicGGX(roughness), eta, baseColor, 32 };
 
         return mi;
     }
 
     [Differentiable]
-    PBRTCoatedDiffuseMaterialInstance setupDiffMaterialInstance(out DiffMaterialData diffData, const MaterialSystem ms, const ShadingData sd, const ITextureSampler lod, const uint hints)
+    PBRTCoatedDiffuseMaterialInstance setupDiffMaterialInstance(
+        out DiffMaterialData diffData,
+        const MaterialSystem ms,
+        const ShadingData sd,
+        const ITextureSampler lod,
+        const uint hints
+    )
     {
         diffData = DiffMaterialData();
         return no_diff setupMaterialInstance(ms, sd, lod, hints);

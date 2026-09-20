@@ -40,9 +40,11 @@ __exported import Scene.Material.DiffuseSpecularData;
  */
 struct DiffuseSpecularBRDF : IBSDF
 {
-    float3 diffuse;  ///< Diffuse albedo.
-    float3 specular; ///< Specular albedo.
-    float roughness; ///< Roughness (linear).
+    float3 diffuse = {};  ///< Diffuse albedo.
+    float3 specular = {}; ///< Specular albedo.
+    float roughness = {}; ///< Roughness (linear).
+
+    __init() {}
 
     /**
      * Initialize using parameters from the Disney parameterization.
@@ -142,7 +144,7 @@ struct DiffuseSpecularBRDF : IBSDF
 
     RoughnessInformation getRoughnessInformation(const float3 wi)
     {
-        RoughnessInformation r;
+        RoughnessInformation r = {};
         r.roughnessBSDFNotation = float2(roughness);
         return r;
     }

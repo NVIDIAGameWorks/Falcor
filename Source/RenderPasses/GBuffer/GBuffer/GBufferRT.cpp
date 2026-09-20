@@ -137,6 +137,10 @@ void GBufferRT::execute(RenderContext* pRenderContext, const RenderData& renderD
     // Configure depth-of-field.
     // When DOF is enabled, two PRNG dimensions are used. Pass this info to subsequent passes via the dictionary.
     mComputeDOF = mUseDOF && mpScene->getCamera()->getApertureRadius() > 0.f;
+    // some other renderpasses may need to disable DoF in the G/VBuffer
+    if (renderData.getDictionary().keyExists("disableGBufferDoF") && renderData.getDictionary()["disableGBufferDoF"])
+        mComputeDOF = false;
+
     if (mUseDOF)
     {
         renderData.getDictionary()[Falcor::kRenderPassPRNGDimension] = mComputeDOF ? 2u : 0u;
@@ -237,6 +241,10 @@ void GBufferRT::executeRaytrace(RenderContext* pRenderContext, const RenderData&
         desc.setMaxPayloadSize(kMaxPayloadSizeBytes);
         desc.setMaxAttributeSize(mpScene->getRaytracingMaxAttributeSize());
         desc.setMaxTraceRecursionDepth(kMaxRecursionDepth);
+        if (mpDevice->getType() == Device::Type::D3D12)
+            desc.addCompilerArguments({"-Xdxc", "-disable-payload-qualifiers"}); // TODO WAR: Dxc requires that all fields carry payload access qualifiers.
+        if (mpDevice->getType() == Device::Type::D3D12 && mpDevice->isFeatureSupported(Device::SupportedFeatures::CoopVector))
+            desc.setShaderModel(ShaderModel::SM6_9); // Required for CoopVector on D3D12 devices
 
         ref<RtBindingTable> sbt = RtBindingTable::create(1, 1, mpScene->getGeometryCount());
         sbt->setRayGen(desc.addRayGen("rayGen"));
@@ -297,6 +305,8 @@ void GBufferRT::executeCompute(RenderContext* pRenderContext, const RenderData& 
         desc.addShaderModules(mpScene->getShaderModules());
         desc.addShaderLibrary(kProgramComputeFile).csEntry("main");
         desc.addTypeConformances(mpScene->getTypeConformances());
+        if (mpDevice->getType() == Device::Type::D3D12 && mpDevice->isFeatureSupported(Device::SupportedFeatures::CoopVector))
+            desc.setShaderModel(ShaderModel::SM6_9); // Required for CoopVector on D3D12 devices
 
         DefineList defines;
         defines.add(mpScene->getSceneDefines());

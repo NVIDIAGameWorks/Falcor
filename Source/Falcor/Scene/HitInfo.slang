@@ -67,9 +67,9 @@ typedef uint4 PackedHitInfo;
 */
 struct GeometryHit
 {
-    GeometryInstanceID instanceID;
-    uint primitiveIndex;
-    float2 barycentrics;
+    GeometryInstanceID instanceID = {};
+    uint primitiveIndex = 0;
+    float2 barycentrics = float2(0.f);
 
     /** Return the barycentric weights.
     */
@@ -101,8 +101,6 @@ struct TriangleHit : GeometryHit
         barycentrics.x = asfloat(packed[2]);
         barycentrics.y = asfloat(packed[3]);
 #endif
-#else
-        this = {};
 #endif
     }
 
@@ -130,7 +128,7 @@ struct TriangleHit : GeometryHit
 */
 struct DisplacedTriangleHit : GeometryHit
 {
-    float displacement;
+    float displacement = 0.f;
 
     __init(const PackedHitInfo packed)
     {
@@ -140,8 +138,6 @@ struct DisplacedTriangleHit : GeometryHit
         const uint uy = ((packed[2] & 0xff) << 16) | (packed[3] >> 16);
         barycentrics = float2(ux, uy) * (1.f / 16777215);
         displacement = f16tof32(packed[3]);
-#else
-        this = {};
 #endif
     }
 
@@ -172,8 +168,6 @@ struct CurveHit : GeometryHit
         HitInfo::unpackHeader(packed, instanceID, primitiveIndex);
         barycentrics.x = asfloat(packed[2]);
         barycentrics.y = asfloat(packed[3]);
-#else
-        this = {};
 #endif
     }
 
@@ -198,8 +192,8 @@ struct CurveHit : GeometryHit
 */
 struct SDFGridHit
 {
-    GeometryInstanceID instanceID;
-    SDFGridHitData hitData;
+    GeometryInstanceID instanceID = {};
+    SDFGridHitData hitData = {};
 
     __init(const PackedHitInfo packed)
     {
@@ -220,8 +214,6 @@ struct SDFGridHit
 #endif
 
 
-#else
-        this = {};
 #endif // SCENE_HAS_GEOMETRY_TYPE(GEOMETRY_TYPE_SDF_GRID)
     }
 
@@ -317,7 +309,7 @@ struct HitInfo
     */
     __init()
     {
-        data = {};
+        data = PackedHitInfo(0);
     }
 
     /** Initialize hit info from a packed hit info.

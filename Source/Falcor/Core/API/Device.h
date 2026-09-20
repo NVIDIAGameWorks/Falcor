@@ -186,6 +186,7 @@ public:
         WaveOperations = 0x200,
         ShaderExecutionReorderingAPI = 0x400,           ///< On D3D12 and Vulkan, this means SER API is available (in the future this will be part of the shader model).
         RaytracingReordering = 0x800,                   ///< On D3D12, this means SER is supported on the hardware.
+        CoopVector = 0x1000,                            ///< Cooperative vector extension is supported.
 
         // clang-format on
     };

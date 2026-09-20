@@ -97,6 +97,7 @@ struct SceneQueryAD : IDifferentiable
     // Differentiable `traceRayInline` function.
     [Differentiable]
     [PreferRecompute]
+    [__NoSideEffect]
     bool traceRayInlineAD(const RayAD rayAD, out IntersectionAD isect, DiffIntersectionMode mode)
     {
         Ray ray = Ray(detach(rayAD.origin), detach(rayAD.direction), 0.f, FLT_MAX);

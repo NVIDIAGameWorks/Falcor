@@ -12,12 +12,23 @@ target_sources(PathTracer PRIVATE
     PathTracer.cpp
     PathTracer.h
     PathTracerNRD.slang
+    PathTracerUtils.slang
     ReflectTypes.cs.slang
     ResolvePass.cs.slang
+    ResolveReSTIRPTPass.cs.slang
+    ReSTIRPTData.slang
+    LightTileRISHelper.slang
     StaticParams.slang
     TracePass.rt.slang
+    TracePassMinimalPayload.rt.slang
 )
 
 target_copy_shaders(PathTracer RenderPasses/PathTracer)
 
 target_source_group(PathTracer "RenderPasses")
+
+target_link_libraries(PathTracer
+    PRIVATE
+        ReSTIRPathTracing
+        LightTileResampling
+)

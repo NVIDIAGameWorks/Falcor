@@ -172,6 +172,14 @@ RangeDesc insertEmpty(SplitBuffer<U, TByteBuffer>& buffer, uint32_t count)
 
 GPU_TEST(SplitBuffer_ByteBuffer_Large48b)
 {
+#if FALCOR_LINUX
+    if (ctx.getDevice()->getType() == Device::Type::Vulkan)
+    {
+        ctx.skip("Skipping on Linux/Vulkan due intermittent SIGKILL failures.");
+        return;
+    }
+#endif
+
     static size_t k2GB = UINT64_C(1) << UINT64_C(31);
     static size_t k4GB = UINT64_C(1) << UINT64_C(32);
 
@@ -231,6 +239,14 @@ GPU_TEST(SplitBuffer_ByteBuffer_Large48b)
 
 GPU_TEST(SplitBuffer_ByteBuffer_Large96b)
 {
+#if FALCOR_LINUX
+    if (ctx.getDevice()->getType() == Device::Type::Vulkan)
+    {
+        ctx.skip("Skipping on Linux/Vulkan due intermittent SIGKILL failures.");
+        return;
+    }
+#endif
+
     static size_t k2GB = UINT64_C(1) << UINT64_C(31);
     static size_t k4GB = UINT64_C(1) << UINT64_C(32);
 
@@ -290,6 +306,14 @@ GPU_TEST(SplitBuffer_ByteBuffer_Large96b)
 
 GPU_TEST(SplitBuffer_StructuredBuffer_Large4B)
 {
+#if FALCOR_LINUX
+    if (ctx.getDevice()->getType() == Device::Type::Vulkan)
+    {
+        ctx.skip("Skipping on Linux/Vulkan due intermittent SIGKILL failures.");
+        return;
+    }
+#endif
+
     static size_t k2GB = UINT64_C(1) << UINT64_C(31);
     static size_t k4GB = UINT64_C(1) << UINT64_C(32);
 
@@ -351,6 +375,14 @@ GPU_TEST(SplitBuffer_StructuredBuffer_Large4B)
 
 GPU_TEST(SplitBuffer_StructuredBuffer_Large32B)
 {
+#if FALCOR_LINUX
+    if (ctx.getDevice()->getType() == Device::Type::Vulkan)
+    {
+        ctx.skip("Skipping on Linux/Vulkan due intermittent SIGKILL failures.");
+        return;
+    }
+#endif
+
     static size_t k2GB = UINT64_C(1) << UINT64_C(31);
     static size_t k4GB = UINT64_C(1) << UINT64_C(32);
 
@@ -412,6 +444,14 @@ GPU_TEST(SplitBuffer_StructuredBuffer_Large32B)
 
 GPU_TEST(SplitBuffer_ByteBuffer_Many48b)
 {
+#if FALCOR_LINUX
+    if (ctx.getDevice()->getType() == Device::Type::Vulkan)
+    {
+        ctx.skip("Skipping on Linux/Vulkan due intermittent SIGKILL failures.");
+        return;
+    }
+#endif
+
     static size_t k2GB = UINT64_C(1) << UINT64_C(31);
     static size_t k4GB = UINT64_C(1) << UINT64_C(32);
 
@@ -470,6 +510,14 @@ GPU_TEST(SplitBuffer_ByteBuffer_Many48b)
 
 GPU_TEST(SplitBuffer_ByteBuffer_Many96b)
 {
+#if FALCOR_LINUX
+    if (ctx.getDevice()->getType() == Device::Type::Vulkan)
+    {
+        ctx.skip("Skipping on Linux/Vulkan due intermittent SIGKILL failures.");
+        return;
+    }
+#endif
+
     static size_t k2GB = UINT64_C(1) << UINT64_C(31);
     static size_t k4GB = UINT64_C(1) << UINT64_C(32);
 
@@ -530,6 +578,14 @@ GPU_TEST(SplitBuffer_ByteBuffer_Many96b)
 
 GPU_TEST(SplitBuffer_StructuredBuffer_Many4B)
 {
+#if FALCOR_LINUX
+    if (ctx.getDevice()->getType() == Device::Type::Vulkan)
+    {
+        ctx.skip("Skipping on Linux/Vulkan due intermittent SIGKILL failures.");
+        return;
+    }
+#endif
+
     static size_t k2GB = UINT64_C(1) << UINT64_C(31);
     static size_t k4GB = UINT64_C(1) << UINT64_C(32);
 
@@ -592,6 +648,14 @@ GPU_TEST(SplitBuffer_StructuredBuffer_Many4B)
 
 GPU_TEST(SplitBuffer_StructuredBuffer_Many32B)
 {
+#if FALCOR_LINUX
+    if (ctx.getDevice()->getType() == Device::Type::Vulkan)
+    {
+        ctx.skip("Skipping on Linux/Vulkan due intermittent SIGKILL failures.");
+        return;
+    }
+#endif
+
     static size_t k2GB = UINT64_C(1) << UINT64_C(31);
     static size_t k4GB = UINT64_C(1) << UINT64_C(32);
 

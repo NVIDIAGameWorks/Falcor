@@ -40,7 +40,6 @@
 #include "Core/API/RenderContext.h"
 #include "Core/API/IndirectCommands.h"
 #include "Utils/StringUtils.h"
-#include "Utils/ObjectIDPython.h"
 #include "Utils/Math/Common.h"
 #include "Utils/Math/MathHelpers.h"
 #include "Utils/Math/Vector.h"
@@ -360,6 +359,9 @@ namespace Falcor
 
             mSceneStats.emissiveMemoryInBytes = mpLightCollection->getMemoryUsageInBytes();
         }
+        else
+            mpLightCollection->updateTriangleDataShaderBinding(mpSceneBlock->getRootVar()["lightCollection"]);
+
         return mpLightCollection;
     }
 
@@ -1233,8 +1235,8 @@ namespace Falcor
 
         // Perform setup that affects the scene defines.
         initSDFGrids();
-        mHitInfo.init(*this, mUseCompressedHitInfo);
         updateGeometryTypes();
+        mHitInfo.init(*this, mUseCompressedHitInfo);
 
         // Prepare the materials.
         // This sets up defines and materials parameter block, which are needed for creating the scene parameter block.
@@ -1733,8 +1735,8 @@ namespace Falcor
             if (envMapChanges != EnvMap::Changes::None || mEnvMapChanged || forceUpdate)
             {
                 if (envMapChanges != EnvMap::Changes::None) flags |= IScene::UpdateFlags::EnvMapPropertiesChanged;
-                mpEnvMap->bindShaderData(mpSceneBlock->getRootVar()[kEnvMap]);
             }
+            mpEnvMap->bindShaderData(mpSceneBlock->getRootVar()[kEnvMap]); // also binds prev frame data
         }
         mSceneStats.envMapMemoryInBytes = mpEnvMap ? mpEnvMap->getMemoryUsageInBytes() : 0;
 
@@ -1840,6 +1842,8 @@ namespace Falcor
     IScene::UpdateFlags Scene::update(RenderContext* pRenderContext, double currentTime)
     {
         mUpdates = IScene::UpdateFlags::None;
+
+        initializePrevTlasCache(pRenderContext);
 
         // Perform updates that may affect the scene defines.
         updateGeometryTypes();
@@ -3705,6 +3709,40 @@ namespace Falcor
         }
     }
 
+    void Scene::initializePrevTlasCache(RenderContext* pRenderContext)
+    {
+        for (auto& tlas : mTlasCache)
+        {
+            if (mPrevTlasCache.find(tlas.first) == mPrevTlasCache.end())
+            {
+                mPrevTlasCache[tlas.first] = tlas.second;
+
+                // create new buffer and accel
+                size_t resultDataMaxSize = tlas.second.pTlasBuffer->getSize();
+                mPrevTlasCache[tlas.first].pTlasBuffer =
+                    mpDevice->createBuffer(resultDataMaxSize, ResourceBindFlags::AccelerationStructure, MemoryType::DeviceLocal);
+
+                RtAccelerationStructure::Desc asCreateDesc = {};
+                asCreateDesc.setKind(RtAccelerationStructureKind::TopLevel);
+                asCreateDesc.setBuffer(mPrevTlasCache[tlas.first].pTlasBuffer, 0, mTlasPrebuildInfo.resultDataMaxSize);
+                mPrevTlasCache[tlas.first].pTlasObject = RtAccelerationStructure::create(mpDevice, asCreateDesc);
+
+                // copy previous frame accel
+                pRenderContext->copyAccelerationStructure(mPrevTlasCache[tlas.first].pTlasObject.get(), tlas.second.pTlasObject.get(), RenderContext::RtAccelerationStructureCopyMode::Clone);
+            }
+            else
+            {
+                if (mpAnimationController->isEnabled())
+                {
+                    mPrevTlasCache[tlas.first].updateMode = tlas.second.updateMode;
+                    // swap the buffers and accels, the buffer in tlasCache will be written if scene changes
+                    std::swap(mPrevTlasCache[tlas.first].pTlasObject, tlas.second.pTlasObject);
+                    std::swap(mPrevTlasCache[tlas.first].pTlasBuffer, tlas.second.pTlasBuffer);
+                }
+            }
+        }
+    }
+
     void Scene::invalidateTlasCache()
     {
         for (auto& tlas : mTlasCache)
@@ -3846,6 +3884,12 @@ namespace Falcor
         // Bind TLAS.
         FALCOR_ASSERT(tlasIt != mTlasCache.end() && tlasIt->second.pTlasObject)
         mpSceneBlock->getRootVar()["rtAccel"].setAccelerationStructure(tlasIt->second.pTlasObject);
+
+        auto tlasItPrev = mPrevTlasCache.find(rayTypeCount);
+        if (tlasItPrev != mPrevTlasCache.end() && tlasItPrev->second.pTlasObject && mpAnimationController->isEnabled())
+            mpSceneBlock->getRootVar()["rtAccelPrev"].setAccelerationStructure(tlasItPrev->second.pTlasObject);
+        else // use the current frame tlas instead
+            mpSceneBlock->getRootVar()["rtAccelPrev"].setAccelerationStructure(tlasIt->second.pTlasObject);
 
         // Bind Scene parameter block.
         getCamera()->bindShaderData(mpSceneBlock->getRootVar()[kCamera]); // TODO REMOVE: Shouldn't be needed anymore?
@@ -4277,6 +4321,18 @@ namespace Falcor
     {
         using namespace pybind11::literals;
 
+        FALCOR_SCRIPT_BINDING_DEPENDENCY(NodeID)
+        FALCOR_SCRIPT_BINDING_DEPENDENCY(MeshID)
+        FALCOR_SCRIPT_BINDING_DEPENDENCY(CurveID)
+        FALCOR_SCRIPT_BINDING_DEPENDENCY(CurveOrMeshID)
+        FALCOR_SCRIPT_BINDING_DEPENDENCY(SdfDescID)
+        FALCOR_SCRIPT_BINDING_DEPENDENCY(SdfGridID)
+        FALCOR_SCRIPT_BINDING_DEPENDENCY(MaterialID)
+        FALCOR_SCRIPT_BINDING_DEPENDENCY(LightID)
+        FALCOR_SCRIPT_BINDING_DEPENDENCY(CameraID)
+        FALCOR_SCRIPT_BINDING_DEPENDENCY(VolumeID)
+        FALCOR_SCRIPT_BINDING_DEPENDENCY(GlobalGeometryID)
+
         FALCOR_SCRIPT_BINDING_DEPENDENCY(Material)
         FALCOR_SCRIPT_BINDING_DEPENDENCY(Rectangle)
         FALCOR_SCRIPT_BINDING_DEPENDENCY(Light)
@@ -4346,9 +4402,12 @@ namespace Falcor
 
         // Materials
         scene.def_property_readonly(kMaterials.c_str(), &Scene::getMaterials);
-        scene.def(kGetMaterial.c_str(), &Scene::getMaterial, "index"_a); // PYTHONDEPRECATED
+        //scene.def(kGetMaterial.c_str(), &Scene::getMaterial, "index"_a); // PYTHONDEPRECATED
         scene.def(kGetMaterial.c_str(), &Scene::getMaterialByName, "name"_a); // PYTHONDEPRECATED
-        scene.def("get_material", &Scene::getMaterial, "index"_a);
+        //scene.def("get_material", &Scene::getMaterial, "index"_a);
+        // TODO: MaterialID has no conversion from integer ID in python, adding integer ID accessors. Remove this WAR when MaterialID is fixed.
+        scene.def(kGetMaterial.c_str(), [](const Scene* pScene, uint32_t index) { return pScene->getMaterial(MaterialID{ index }); }, "index"_a); // PYTHONDEPRECATED
+        scene.def("get_material", [](const Scene* pScene, uint32_t index) { return pScene->getMaterial(MaterialID{ index }); }, "index"_a); // PYTHONDEPRECATED
         scene.def("get_material", &Scene::getMaterialByName, "name"_a);
         scene.def("addMaterial", &Scene::addMaterial, "material"_a);
         scene.def("getGeometryIDsForMaterial", [](const Scene* scene, const ref<Material>& pMaterial)

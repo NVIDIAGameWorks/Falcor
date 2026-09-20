@@ -110,6 +110,22 @@ public:
         mDevices[device->getType()].push_back(device);
     }
 
+    void primePool(const std::vector<Test>& tests)
+    {
+        std::set<Device::Type> deviceTypes;
+        for (auto& test : tests)
+        {
+            if (!test.gpuFunc || test.deviceType == Device::Type::Default)
+                continue;
+            deviceTypes.insert(test.deviceType);
+        }
+
+        if (deviceTypes.count(Device::Type::Vulkan) > 0)
+            releaseDevice(acquireDevice(Device::Type::Vulkan));
+        if (deviceTypes.count(Device::Type::D3D12) > 0)
+            releaseDevice(acquireDevice(Device::Type::D3D12));
+    }
+
 private:
     Device::Desc mDefaultDesc;
     std::mutex mMutex;
@@ -301,6 +317,7 @@ inline int32_t runTestsParallel(const RunOptions& options)
     // Gather tests.
     std::vector<Test> tests = enumerateTests();
     tests = filterTests(tests, options.testSuiteFilter, options.testCaseFilter, options.tagFilter, options.deviceDesc.type);
+    devicePool.primePool(tests);
 
     std::vector<TestResult> results(tests.size());
 
@@ -393,6 +410,7 @@ inline int32_t runTestsSerial(const RunOptions& options)
     // Gather tests.
     std::vector<Test> tests = enumerateTests();
     tests = filterTests(tests, options.testSuiteFilter, options.testCaseFilter, options.tagFilter, options.deviceDesc.type);
+    devicePool.primePool(tests);
 
     // Split tests into suites.
     std::map<std::string, std::vector<Test>> suites;

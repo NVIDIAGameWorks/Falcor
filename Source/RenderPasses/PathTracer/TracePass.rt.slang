@@ -49,17 +49,23 @@ Scheduler gScheduler;
 static const uint kRayTypeScatter = 0;
 static const uint kMissScatter = 0;
 
-struct DummyAttribs { uint dummy; };
+struct DummyAttribs
+{
+    uint dummy;
+};
 
 struct PathPayload
 {
-    uint4 packed[5];
+    uint4 packed[5] = {};
 
-    PackedHitInfo hit;
-    GuideData guideData;
-    InteriorList interiorList;  ///< Interior list. Keeping track of a stack of materials with medium properties. The size depends on the config (4B/item).
-    SampleGenerator sg;         ///< Sample generator state. Typically 4-16B.
-
+    PackedHitInfo hit = {};
+    GuideData guideData = {};
+    InteriorList interiorList = {}; ///< Interior list. Keeping track of a stack of materials with medium properties. The size depends on
+                                    ///< the config (4B/item).
+    SampleGenerator sg = {};        ///< Sample generator state. Typically 4-16B.
+#if USE_RESTIRPT
+    ReSTIRPTData restirPTData = {}; ///< ReSTIR PT data carried through ray bounces.
+#endif
     static PathPayload pack(const PathState path)
     {
         PathPayload p = {};
@@ -83,7 +89,9 @@ struct PathPayload
         p.guideData = path.guideData;
         p.interiorList = path.interiorList;
         p.sg = path.sg;
-
+#if USE_RESTIRPT
+        p.restirPTData = path.restirPTData;
+#endif
         return p;
     }
 
@@ -111,7 +119,9 @@ struct PathPayload
         path.guideData = p.guideData;
         path.interiorList = p.interiorList;
         path.sg = p.sg;
-
+#if USE_RESTIRPT
+        path.restirPTData = p.restirPTData;
+#endif
         return path;
     }
 };
@@ -248,6 +258,12 @@ struct ReorderingScheduler
         gPathTracer.generatePath(pathID, path);
         gPathTracer.setupPathLogging(path);
 
+#if USE_RESTIRPT && !defined(DELTA_REFLECTION_PASS) && !defined(DELTA_TRANSMISSION_PASS)
+        const bool processPrimaryMiss = gPathTracer.restirpt.kUseAreaReservoirs;
+#else
+        const bool processPrimaryMiss = false;
+#endif
+
         if (path.isHit())
         {
             // Handle primary hits.
@@ -256,6 +272,7 @@ struct ReorderingScheduler
             // The created HitObject does only contain the minimal required data,
             // most data is already passed in the path.hit object.
             // For volume hits, a miss object is returned(and handled in the handleMiss() function).
+            // TODO: Move to a utility function when Slang limitation has been resolved. See
             HitObject hitObject;
             RayDesc dummyRay = {};
             DummyAttribs dummyAttribs = {};
@@ -292,6 +309,14 @@ struct ReorderingScheduler
             HitObject::Invoke(gScene.rtAccel, hitObject, payload);
             path = PathPayload::unpack(payload);
         }
+        else if (processPrimaryMiss)
+        {
+            // For ReSTIR PT area reservoirs, handle primary miss here so that the
+            // environment emission contributes to the area reservoir and the result
+            // is written via writeOutput below.
+            path.setVertexIndex(1);
+            gPathTracer.handleMiss(path);
+        }
         else
         {
             // Note the primary miss has already been handled by the separate path generation pass
@@ -314,7 +339,16 @@ struct ReorderingScheduler
                 const Ray ray = path.getScatterRay();
                 payload = PathPayload::pack(path);
                 const uint rayFlags = kUseAlphaTest ? RAY_FLAG_NONE : RAY_FLAG_FORCE_OPAQUE;
-                hitObject = HitObject::TraceRay(gScene.rtAccel, rayFlags, 0xff /* instanceInclusionMask */, kRayTypeScatter /* hitIdx */, getRayTypeCount(), kMissScatter, ray.toRayDesc(), payload);
+                hitObject = HitObject::TraceRay(
+                    gScene.rtAccel,
+                    rayFlags,
+                    0xff /* instanceInclusionMask */,
+                    kRayTypeScatter /* hitIdx */,
+                    getRayTypeCount(),
+                    kMissScatter,
+                    ray.toRayDesc(),
+                    payload
+                );
                 path = PathPayload::unpack(payload);
 
                 if (hitObject.IsHit())
@@ -369,7 +403,8 @@ struct ReorderingScheduler
             if (kSamplesPerPixel == 0)
             {
                 bool needReorder = WaveActiveAnyTrue(samplesRemaining == 0);
-                if (samplesRemaining == 0) break;
+                if (samplesRemaining == 0)
+                    break;
                 if (needReorder)
                 {
                     HitObject hitObject = HitObject::MakeNop();
@@ -381,7 +416,7 @@ struct ReorderingScheduler
 }
 
 /** Simple scheduler using a fullscreen raytracing dispatch.
-*/
+ */
 struct Scheduler
 {
     /** Handle a miss.
@@ -438,8 +473,18 @@ struct Scheduler
         const Ray ray = path.getScatterRay();
         PathPayload payload = PathPayload::pack(path);
         uint rayFlags = RAY_FLAG_NONE;
-        if (!kUseAlphaTest) rayFlags |= RAY_FLAG_FORCE_OPAQUE;
-        TraceRay(gScene.rtAccel, rayFlags, 0xff /* instanceInclusionMask */, kRayTypeScatter /* hitIdx */, getRayTypeCount(), kMissScatter /* missIdx */, ray.toRayDesc(), payload);
+        if (!kUseAlphaTest)
+            rayFlags |= RAY_FLAG_FORCE_OPAQUE;
+        TraceRay(
+            gScene.rtAccel,
+            rayFlags,
+            0xff /* instanceInclusionMask */,
+            kRayTypeScatter /* hitIdx */,
+            getRayTypeCount(),
+            kMissScatter /* missIdx */,
+            ray.toRayDesc(),
+            payload
+        );
 
         path = PathPayload::unpack(payload);
     }
@@ -454,6 +499,12 @@ struct Scheduler
         gPathTracer.generatePath(pathID, path);
         gPathTracer.setupPathLogging(path);
 
+#if USE_RESTIRPT && !defined(DELTA_REFLECTION_PASS) && !defined(DELTA_TRANSMISSION_PASS)
+        const bool processPrimaryMiss = gPathTracer.restirpt.kUseAreaReservoirs;
+#else
+        const bool processPrimaryMiss = false;
+#endif
+
         // Handle primary hit/miss.
         if (path.isHit())
         {
@@ -465,6 +516,14 @@ struct Scheduler
             VisibilityQuery vq;
             gPathTracer.handleHit(path, vq);
 #endif
+        }
+        else if (processPrimaryMiss)
+        {
+            // For ReSTIR PT area reservoirs, handle primary miss here so that the
+            // environment emission contributes to the area reservoir and the result
+            // is written via writeOutput below.
+            path.setVertexIndex(1);
+            gPathTracer.handleMiss(path);
         }
         else
         {
@@ -511,7 +570,7 @@ struct Scheduler
 //
 
 [shader("miss")]
-void scatterMiss(inout PathPayload payload : SV_RayPayload)
+void scatterMiss(inout PathPayload payload: SV_RayPayload)
 {
     gScheduler.handleMiss(payload);
 }
@@ -521,19 +580,26 @@ void scatterMiss(inout PathPayload payload : SV_RayPayload)
 //
 
 [shader("anyhit")]
-void scatterTriangleAnyHit(inout PathPayload payload : SV_RayPayload, BuiltInTriangleIntersectionAttributes attribs : SV_IntersectionAttributes)
+void scatterTriangleAnyHit(
+    inout PathPayload payload: SV_RayPayload,
+    BuiltInTriangleIntersectionAttributes attribs: SV_IntersectionAttributes
+)
 {
 #if USE_ALPHA_TEST
     // Alpha test for non-opaque geometry.
     GeometryInstanceID instanceID = getGeometryInstanceID();
     VertexData v = getVertexData(instanceID, PrimitiveIndex(), attribs);
     const uint materialID = gScene.getMaterialID(instanceID);
-    if (gScene.materials.alphaTest(v, materialID, 0.f)) IgnoreHit();
+    if (gScene.materials.alphaTest(v, materialID, 0.f))
+        IgnoreHit();
 #endif
 }
 
 [shader("closesthit")]
-void scatterTriangleClosestHit(inout PathPayload payload : SV_RayPayload, BuiltInTriangleIntersectionAttributes attribs : SV_IntersectionAttributes)
+void scatterTriangleClosestHit(
+    inout PathPayload payload: SV_RayPayload,
+    BuiltInTriangleIntersectionAttributes attribs: SV_IntersectionAttributes
+)
 {
 #if USE_SER
     gScheduler.handleHit(payload);
@@ -646,7 +712,8 @@ void rayGen()
 {
     uint2 pixel = DispatchRaysIndex().xy;
     uint2 frameDim = DispatchRaysDimensions().xy;
-    if (all(pixel >= frameDim)) return;
+    if (all(pixel >= frameDim))
+        return;
 
     gScheduler.run(pixel);
 }

@@ -47,9 +47,9 @@ struct BSDFViewer
 
     struct SurfaceData
     {
-        ShadingData sd;
-        BSDFProperties bsdfProperties;
-        float3 wo;
+        ShadingData sd = {};
+        BSDFProperties bsdfProperties = {};
+        float3 wo = {};
     };
 
     /**
@@ -275,6 +275,7 @@ struct BSDFViewer
      */
     bool generateBSDFSample(const ShadingData sd, const IMaterialInstance mi, inout SampleGenerator sg, out BSDFSample s)
     {
+        s = {};
         if (params.useDirectionalLight)
         {
             // With directional light, disable BSDF sampling and just return a sample in the light's direction.

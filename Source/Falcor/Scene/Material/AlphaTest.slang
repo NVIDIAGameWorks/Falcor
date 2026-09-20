@@ -27,7 +27,7 @@
  **************************************************************************/
 
 /** List of alpha testing modes.
-*/
+ */
 enum AlphaTestMode
 {
     Disabled,
@@ -40,7 +40,7 @@ enum AlphaTestMode
     This works for both raster and raytrace passes.
 */
 #ifndef _ALPHA_TEST_MODE
-#define _ALPHA_TEST_MODE (uint)AlphaTestMode::Basic
+#define _ALPHA_TEST_MODE (uint) AlphaTestMode::Basic
 #endif
 
 static const AlphaTestMode kAlphaTestMode = AlphaTestMode(_ALPHA_TEST_MODE);
@@ -77,14 +77,14 @@ bool evalAlphaTest(float alpha, float threshold, float3 posW)
 }
 
 /** Evaluates alpha testing using hard thresholding.
-*/
+ */
 bool evalBasicAlphaTest(float alpha, float threshold)
 {
     return alpha < threshold;
 }
 
 /** Evaluates alpha testing using hashed thresholding.
-*/
+ */
 bool evalHashedAlphaTest(float alpha, float materialThreshold, float hashedThreshold)
 {
     float compareTo = hashedThreshold <= 0 ? materialThreshold : saturate(hashedThreshold);
@@ -112,25 +112,16 @@ float calculateHashedAlpha(float3 hashInputCoord, float hashScale, bool useAniso
 
         // Find the discretized derivatives of our coordinates
         float3 anisoDeriv = max(abs(ddx(hashInputCoord)), abs(ddy(hashInputCoord)));
-        float3 anisoScales = float3(0.707f / (hashScale * anisoDeriv.x),
-                                    0.707f / (hashScale * anisoDeriv.y),
-                                    0.707f / (hashScale * anisoDeriv.z));
+        float3 anisoScales =
+            float3(0.707f / (hashScale * anisoDeriv.x), 0.707f / (hashScale * anisoDeriv.y), 0.707f / (hashScale * anisoDeriv.z));
         // Find log-discretized noise scales
-        float3 scaleFlr = float3(exp2(floor(log2(anisoScales.x))),
-                                 exp2(floor(log2(anisoScales.y))),
-                                 exp2(floor(log2(anisoScales.z))));
-        float3 scaleCeil = float3(exp2(ceil(log2(anisoScales.x))),
-                                  exp2(ceil(log2(anisoScales.y))),
-                                  exp2(ceil(log2(anisoScales.z))));
+        float3 scaleFlr = float3(exp2(floor(log2(anisoScales.x))), exp2(floor(log2(anisoScales.y))), exp2(floor(log2(anisoScales.z))));
+        float3 scaleCeil = float3(exp2(ceil(log2(anisoScales.x))), exp2(ceil(log2(anisoScales.y))), exp2(ceil(log2(anisoScales.z))));
         // Compute alpha thresholds at our two noise scales
-        float2 alpha = float2(sineHash3D(floor(scaleFlr * hashInputCoord)),
-                              sineHash3D(floor(scaleCeil * hashInputCoord)));
+        float2 alpha = float2(sineHash3D(floor(scaleFlr * hashInputCoord)), sineHash3D(floor(scaleCeil * hashInputCoord)));
         // Factor to linearly interpolate with
-        float3 fractLoc = float3(frac(log2(anisoScales.x)),
-                                 frac(log2(anisoScales.y)),
-                                 frac(log2(anisoScales.z)));
-        float2 toCorners = float2(length(fractLoc),
-                                  length(float3(1.0f, 1.0f, 1.0f) - fractLoc));
+        float3 fractLoc = float3(frac(log2(anisoScales.x)), frac(log2(anisoScales.y)), frac(log2(anisoScales.z)));
+        float2 toCorners = float2(length(fractLoc), length(float3(1.0f, 1.0f, 1.0f) - fractLoc));
         float lerpFactor = toCorners.x / (toCorners.x + toCorners.y);
         // Interpolate alpha threshold from noise at two scales
         float x = (1 - lerpFactor) * alpha.x + lerpFactor * alpha.y;

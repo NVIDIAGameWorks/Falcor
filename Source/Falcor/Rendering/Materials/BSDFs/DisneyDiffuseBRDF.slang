@@ -59,6 +59,9 @@ struct DisneyDiffuseBRDF : IBSDF, IDifferentiable
         BSDFContext bc
     )
     {
+#if PAD_RANDOM_NUMBERS
+        sampleNext1D(sg);
+#endif
         wo = sample_cosine_hemisphere_concentric(sampleNext2D(sg), pdf);
         lobeType = (uint)LobeType::DiffuseReflection;
 
@@ -104,7 +107,7 @@ struct DisneyDiffuseBRDF : IBSDF, IDifferentiable
 
     RoughnessInformation getRoughnessInformation(const float3 wi)
     {
-        RoughnessInformation r;
+        RoughnessInformation r = {};
         r.roughnessBSDFNotation = float2(0.5f, 0.5f);
         return r;
     }

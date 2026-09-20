@@ -63,13 +63,24 @@ interface IMaterial
         \param[in] hints Optional hints to control the behavior of the material instance. Combination of `MaterialInstanceHints` flags.
         \return MaterialInstance implementing the `IMaterialInstance` interface.
     */
-    MaterialInstance setupMaterialInstance(const MaterialSystem ms, const ShadingData sd, const ITextureSampler lod, const uint hints = (uint)MaterialInstanceHints::None);
+    MaterialInstance setupMaterialInstance(
+        const MaterialSystem ms,
+        const ShadingData sd,
+        const ITextureSampler lod,
+        const uint hints = (uint)MaterialInstanceHints::None
+    );
 
     /** A differentiable version of `setupMaterialInstance`.
         This operation returns an additional `DiffMaterialData` structure that contains differentiable parameters.
     */
     [Differentiable]
-    MaterialInstance setupDiffMaterialInstance(out DiffMaterialData diffData, const MaterialSystem ms, const ShadingData sd, const ITextureSampler lod, const uint hints = (uint)MaterialInstanceHints::None);
+    MaterialInstance setupDiffMaterialInstance(
+        out DiffMaterialData diffData,
+        const MaterialSystem ms,
+        const ShadingData sd,
+        const ITextureSampler lod,
+        const uint hints = (uint)MaterialInstanceHints::None
+    );
 
     /** Returns volume properties that are homogeneous for the whole volume (do not depend on the hitpoint).
      */

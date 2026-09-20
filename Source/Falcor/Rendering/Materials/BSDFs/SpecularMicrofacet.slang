@@ -48,9 +48,9 @@ __exported import Rendering.Materials.IBSDF;
  */
 struct SpecularMicrofacetBRDF : IBSDF, IDifferentiable
 {
-    float3 albedo;    ///< Specular albedo.
-    float alpha;      ///< GGX width parameter.
-    uint activeLobes; ///< BSDF lobes to include for sampling and evaluation. See LobeType.slang.
+    float3 albedo = {};    ///< Specular albedo.
+    float alpha = {};      ///< GGX width parameter.
+    uint activeLobes = {}; ///< BSDF lobes to include for sampling and evaluation. See LobeType.slang.
 
     bool hasLobe(LobeType lobeType) { return (activeLobes & (uint)lobeType) != 0; }
 
@@ -101,12 +101,20 @@ struct SpecularMicrofacetBRDF : IBSDF, IDifferentiable
         if (wi.z < kMinCosTheta)
             return false;
 
+#if PAD_RANDOM_NUMBERS
+        sampleNext1D(sg);
+#endif
+
 #if EnableDeltaBSDF
         // Handle delta reflection.
         if (alpha == 0.f)
         {
             if (!hasLobe(LobeType::DeltaReflection))
                 return false;
+
+#if PAD_RANDOM_NUMBERS
+            sampleNext2D(sg);
+#endif
 
             wo = float3(-wi.x, -wi.y, wi.z);
             pdf = 0.f;
@@ -134,8 +142,8 @@ struct SpecularMicrofacetBRDF : IBSDF, IDifferentiable
 
 #if ExplicitSampleWeights
         // For testing.
-        pdf = evalPdf(wi, wo);
-        weight = eval(wi, wo, sg) / pdf;
+        pdf = evalPdf(wi, wo, bc);
+        weight = eval(wi, wo, sg, bc) / pdf;
         lobeType = (uint)LobeType::SpecularReflection;
         return true;
 #endif
@@ -194,7 +202,7 @@ struct SpecularMicrofacetBRDF : IBSDF, IDifferentiable
 
     RoughnessInformation getRoughnessInformation(const float3 wi)
     {
-        RoughnessInformation r;
+        RoughnessInformation r = {};
         r.roughnessBSDFNotation = float2(alpha);
         return r;
     }
@@ -205,10 +213,10 @@ struct SpecularMicrofacetBRDF : IBSDF, IDifferentiable
  */
 struct SpecularMicrofacetBSDF : IBSDF, IDifferentiable
 {
-    float3 transmissionAlbedo; ///< Transmission albedo.
-    float alpha;               ///< GGX width parameter.
-    float eta;                 ///< Relative index of refraction (etaI / etaT).
-    uint activeLobes;          ///< BSDF lobes to include for sampling and evaluation. See LobeType.slang.
+    float3 transmissionAlbedo = {}; ///< Transmission albedo.
+    float alpha = {};               ///< GGX width parameter.
+    float eta = {};                 ///< Relative index of refraction (etaI / etaT).
+    uint activeLobes = {};          ///< BSDF lobes to include for sampling and evaluation. See LobeType.slang.
 
     bool hasLobe(LobeType lobeType) { return (activeLobes & (uint)lobeType) != 0; }
 
@@ -288,6 +296,10 @@ struct SpecularMicrofacetBSDF : IBSDF, IDifferentiable
             if (!(hasReflection || hasTransmission))
                 return false;
 
+#if PAD_RANDOM_NUMBERS
+            sampleNext2D(sg);
+#endif
+
             float cosThetaT;
             float F = evalFresnelDielectric(eta, wi.z, cosThetaT);
 
@@ -302,7 +314,7 @@ struct SpecularMicrofacetBSDF : IBSDF, IDifferentiable
             }
 
             pdf = 0.f;
-            weight = isReflection ? float3(1.f) : transmissionAlbedo;
+            weight = isReflection ? float3(1.f) : transmissionAlbedo * eta * eta;
             if (!(hasReflection && hasTransmission))
                 weight *= float3(isReflection ? F : 1.f - F);
             wo = isReflection ? float3(-wi.x, -wi.y, wi.z) : float3(-wi.x * eta, -wi.y * eta, -cosThetaT);
@@ -354,8 +366,8 @@ struct SpecularMicrofacetBSDF : IBSDF, IDifferentiable
 
 #if ExplicitSampleWeights
         // For testing.
-        pdf = evalPdf(wi, wo);
-        weight = pdf > 0.f ? eval(wi, wo, sg) / pdf : float3(0.f);
+        pdf = evalPdf(wi, wo, bc);
+        weight = pdf > 0.f ? eval(wi, wo, sg, bc) / pdf : float3(0.f);
         return true;
 #endif
 
@@ -464,7 +476,7 @@ struct SpecularMicrofacetBSDF : IBSDF, IDifferentiable
 
     RoughnessInformation getRoughnessInformation(const float3 wi)
     {
-        RoughnessInformation r;
+        RoughnessInformation r = {};
         r.roughnessBSDFNotation = float2(alpha);
         return r;
     }

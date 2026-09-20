@@ -91,6 +91,7 @@ namespace Falcor
         if (mPrevData.jitterX != mData.jitterX) mChanges |= Changes::Jitter;
         if (mPrevData.jitterY != mData.jitterY) mChanges |= Changes::Jitter;
 
+        mPrevDataForBinding = mPrevData;
         mPrevData = mData;
 
         return getChanges();
@@ -264,6 +265,7 @@ namespace Falcor
     {
         calculateCameraParameters();
         var["data"].setBlob(mData);
+        var["prevData"].setBlob(mPrevDataForBinding);
     }
 
     void Camera::setPatternGenerator(const ref<CPUSampleGenerator>& pGenerator, const float2& scale)

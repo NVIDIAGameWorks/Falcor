@@ -56,9 +56,9 @@ FALCOR_API std::string to_string(MaterialType type);
 FALCOR_API size_t getMaterialTypeCount();
 
 /** Return the material parameter layout of serialized material parameters (for differentiable materials).
-*/
+ */
 FALCOR_API MaterialParamLayout getMaterialParamLayout(MaterialType type);
-}
+} // namespace Falcor
 
 template<>
 struct fmt::formatter<Falcor::MaterialType>

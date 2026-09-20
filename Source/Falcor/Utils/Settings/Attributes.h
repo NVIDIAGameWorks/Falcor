@@ -62,9 +62,6 @@ public:
         if (attribute.is_null())
             return {};
 
-        if (!detail::TypeChecker<T>::validType(attribute))
-            throw detail::TypeError("Attribute's type does not match the requested type.");
-
         // Handle return value of bool, if the actual is convertible to bool (from int, usually)
         if constexpr (std::is_same_v<T, bool>)
         {

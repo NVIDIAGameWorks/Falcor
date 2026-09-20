@@ -136,7 +136,7 @@ public:
         std::size_t operator()(const Desc& d) const;
     };
 
-    using DescCache = std::unordered_set<Fbo::Desc, Fbo::DescHash>;
+    using DescCache = std::unordered_map<Fbo::Desc, std::unique_ptr<Fbo::Desc>, Fbo::DescHash>;
 
     /**
      * Used to tell some functions to attach all array slices of a specific mip-level.

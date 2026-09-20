@@ -43,6 +43,7 @@ struct TriangleLightSample
     float3  Le;                 ///< Emitted radiance. This is zero if the light is back-facing or sample is invalid.
     float   pdf;                ///< Probability density with respect to solid angle from the shading point. The range is [0,inf] (inclusive), where pdf == 0.0 indicated an invalid sample.
     float2  uv;                 ///< Light sample barycentric coords over the triangle
+    float   geometryTerm;       ///< for computing jacobian in GRIS
 };
 
 /** Describes a light sample at a hit point on an emissive triangle.
@@ -67,7 +68,7 @@ interface IEmissiveLightSampler
         \param[out] ls Light sample. Only valid if true is returned.
         \return True if a sample was generated, false otherwise.
     */
-    bool sampleLight<S : ISampleGenerator>(const float3 posW, const float3 normalW, const bool upperHemisphere, inout S sg, out TriangleLightSample ls);
+    bool sampleLight<S : ISampleGenerator>(const float3 posW, const float3 normalW, const bool upperHemisphere, inout S sg, out TriangleLightSample ls, bool isPrevFrame=false);
 
     /** Evaluate the PDF associated with selecting an emissive triangle.
         \param[in] posW Shading point in world space.

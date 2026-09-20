@@ -33,7 +33,7 @@ import Rendering.Materials.PBRT.PBRTDiffuseMaterialInstance;
 
 struct PBRTCoatedDiffuseMaterialInstance : MaterialInstanceBase, IMaterialInstance
 {
-    ShadingFrame sf;            ///< Shading frame in world space.
+    ShadingFrame sf; ///< Shading frame in world space.
     AnisotropicGGX interfaceD;
     float interfaceEta;
     float3 diffuseAlbedo;
@@ -44,10 +44,11 @@ struct PBRTCoatedDiffuseMaterialInstance : MaterialInstanceBase, IMaterialInstan
         float3 wiLocal = sf.toLocal(sd.V);
         float3 woLocal = sf.toLocal(wo);
 
-        if (!isValidHemisphereReflection(sd, sf, wiLocal, woLocal, wo)) return float3(0.f);
+        if (!isValidHemisphereReflection(sd, sf, wiLocal, woLocal, wo))
+            return float3(0.f);
 
-        PBRTDielectricBSDF top = {interfaceD, interfaceEta};
-        PBRTDiffuseBSDF bottom = {diffuseAlbedo};
+        PBRTDielectricBSDF top = { interfaceD, interfaceEta };
+        PBRTDiffuseBSDF bottom = { diffuseAlbedo };
 
         const BSDFContext bc = BSDFContext(sd.IoR, top.getEta());
         return LayeredBSDF(top, bottom).eval(wiLocal, woLocal, sg, bc);
@@ -64,8 +65,8 @@ struct PBRTCoatedDiffuseMaterialInstance : MaterialInstanceBase, IMaterialInstan
         float3 wiLocal = sf.toLocal(sd.V);
         float3 woLocal = {};
 
-        PBRTDielectricBSDF top = {interfaceD, interfaceEta};
-        PBRTDiffuseBSDF bottom = {diffuseAlbedo};
+        PBRTDielectricBSDF top = { interfaceD, interfaceEta };
+        PBRTDiffuseBSDF bottom = { diffuseAlbedo };
 
         // We flip the material so that on both sides we coat the conductor with the dielectric. Note that this has little implications
         // since we evaluate black when hitting the inside.
@@ -73,7 +74,8 @@ struct PBRTCoatedDiffuseMaterialInstance : MaterialInstanceBase, IMaterialInstan
         bool valid = LayeredBSDF(top, bottom).sample(wiLocal, woLocal, result.pdf, result.weight, result.lobeType, sg, bc);
         result.wo = sf.fromLocal(woLocal);
 
-        if (!isValidHemisphereReflection(sd, sf, wiLocal, woLocal, result.wo) || result.pdf == 0.f) return false;
+        if (!isValidHemisphereReflection(sd, sf, wiLocal, woLocal, result.wo) || result.pdf == 0.f)
+            return false;
 
         return valid;
     }
@@ -83,10 +85,11 @@ struct PBRTCoatedDiffuseMaterialInstance : MaterialInstanceBase, IMaterialInstan
         float3 wiLocal = sf.toLocal(sd.V);
         float3 woLocal = sf.toLocal(wo);
 
-        if (!isValidHemisphereReflection(sd, sf, wiLocal, woLocal, wo)) return 0.f;
+        if (!isValidHemisphereReflection(sd, sf, wiLocal, woLocal, wo))
+            return 0.f;
 
-        PBRTDielectricBSDF top = {interfaceD, interfaceEta};
-        PBRTDiffuseBSDF bottom = {diffuseAlbedo};
+        PBRTDielectricBSDF top = { interfaceD, interfaceEta };
+        PBRTDiffuseBSDF bottom = { diffuseAlbedo };
 
         const BSDFContext bc = BSDFContext(sd.IoR, top.getEta());
         return LayeredBSDF(top, bottom).evalPdf(wiLocal, woLocal, bc);
@@ -105,7 +108,8 @@ struct PBRTCoatedDiffuseMaterialInstance : MaterialInstanceBase, IMaterialInstan
 
     uint getLobeTypes(const ShadingData sd)
     {
-        return (uint)(LobeType::DiffuseReflection) | (uint)(interfaceD.isSingular() ? LobeType::DeltaReflection : LobeType::SpecularReflection);
+        return (uint)(LobeType::DiffuseReflection) |
+               (uint)(interfaceD.isSingular() ? LobeType::DeltaReflection : LobeType::SpecularReflection);
     }
 
 };

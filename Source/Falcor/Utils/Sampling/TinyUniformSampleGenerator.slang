@@ -40,9 +40,11 @@ export struct TinyUniformSampleGenerator : ISampleGenerator
 {
     struct Padded
     {
-        TinyUniformSampleGenerator internal;
-        uint3 _pad;
+        TinyUniformSampleGenerator internal = {};
+        uint3 _pad = {};
     };
+
+    __init() {}
 
     /**
      * Initializes the sample generator.
@@ -68,5 +70,5 @@ export struct TinyUniformSampleGenerator : ISampleGenerator
     [mutating]
     uint next() { return nextRandom(rng); }
 
-    LCG rng; ///< Simple LCG 32-bit pseudorandom number generator.
+    LCG rng = {}; ///< Simple LCG 32-bit pseudorandom number generator.
 };

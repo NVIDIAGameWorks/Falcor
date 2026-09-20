@@ -2,10 +2,8 @@ Source/Falcor/Rendering
 Source/Falcor/Scene
 Source/Mogwai
 Source/plugins/importers/USDImporter
-Source/RenderPasses/PathTracer
 
 # Explicitly whitelisted files
-!Source/Falcor/Rendering/Materials/BSDFs
-!Source/RenderPasses/DLSSPass/
-!Source/Falcor/Utils/fast_vector.h
+!Source/Falcor/Rendering/Materials
+!Source/Falcor/Scene/Material
 

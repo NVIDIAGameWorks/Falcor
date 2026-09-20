@@ -118,17 +118,7 @@ SceneDebugger::SceneDebugger(ref<Device> pDevice, const Properties& props) : Ren
         FALCOR_THROW("SceneDebugger requires Raytracing Tier 1.1 support.");
 
     // Parse dictionary.
-    for (const auto& [key, value] : props)
-    {
-        if (key == kMode)
-            mParams.mode = (uint32_t)value.operator SceneDebuggerMode();
-        else if (key == kShowVolumes)
-            mParams.showVolumes = value;
-        else if (key == kUseVBuffer)
-            mParams.useVBuffer = static_cast<bool>(value);
-        else
-            logWarning("Unknown property '{}' in a SceneDebugger properties.", key);
-    }
+    setProperties(props);
 
     mpFence = mpDevice->createFence();
 
@@ -143,6 +133,21 @@ Properties SceneDebugger::getProperties() const
     props[kShowVolumes] = mParams.showVolumes;
     props[kUseVBuffer] = mParams.useVBuffer;
     return props;
+}
+
+void SceneDebugger::setProperties(const Properties& props)
+{
+    for (const auto& [key, value] : props)
+    {
+        if (key == kMode)
+            mParams.mode = (uint32_t)value.operator SceneDebuggerMode();
+        else if (key == kShowVolumes)
+            mParams.showVolumes = value;
+        else if (key == kUseVBuffer)
+            mParams.useVBuffer = static_cast<bool>(value);
+        else
+            logWarning("Unknown property '{}' in a SceneDebugger properties.", key);
+    }
 }
 
 RenderPassReflection SceneDebugger::reflect(const CompileData& compileData)

@@ -297,7 +297,7 @@ float3 evalDirectAnalytic(const ShadingData sd, const IMaterialInstance mi, inou
 bool generateScatterRay(const ShadingData sd, const IMaterialInstance mi, bool isCurveHit, float3 rayOrigin, inout ScatterRayData rayData)
 {
     // Sample material.
-    BSDFSample bsdfSample;
+    BSDFSample bsdfSample = {};
     if (mi.sample(sd, rayData.sg, bsdfSample, kUseImportanceSampling))
     {
         rayData.origin = rayOrigin;

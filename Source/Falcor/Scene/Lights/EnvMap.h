@@ -135,6 +135,7 @@ namespace Falcor
 
         EnvMapData              mData;
         EnvMapData              mPrevData;
+        EnvMapData              mPrevDataForBinding;
 
         float3                  mRotation = { 0.f, 0.f, 0.f };
 

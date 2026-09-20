@@ -1,4 +1,5 @@
 IMAGE_TEST = {
+    'skipped': 'Skipped due to incorrect codegen when used with Slang 2025.5.3.',
     'tolerance': 1e-8
 }
 

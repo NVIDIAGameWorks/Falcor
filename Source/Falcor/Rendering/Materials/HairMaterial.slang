@@ -71,7 +71,13 @@ struct HairMaterial : MaterialBase, IMaterial
     }
 
     [Differentiable]
-    HairMaterialInstance setupDiffMaterialInstance(out DiffMaterialData diffData, const MaterialSystem ms, const ShadingData sd, const ITextureSampler lod, const uint hints)
+    HairMaterialInstance setupDiffMaterialInstance(
+        out DiffMaterialData diffData,
+        const MaterialSystem ms,
+        const ShadingData sd,
+        const ITextureSampler lod,
+        const uint hints
+    )
     {
         diffData = DiffMaterialData();
         return no_diff setupMaterialInstance(ms, sd, lod, hints);

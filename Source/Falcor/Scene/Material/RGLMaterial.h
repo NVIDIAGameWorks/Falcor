@@ -32,57 +32,60 @@
 
 namespace Falcor
 {
-    /** Class representing a measured material from the RGL BRDF database.
+/** Class representing a measured material from the RGL BRDF database.
 
-        For details refer to:
-        Jonathan Dupuy, Wenzel Jakob
-        "An Adaptive Parameterization for Efficient Material Acquisition and Rendering".
-        Transactions on Graphics (Proc. SIGGRAPH Asia 2018)
-    */
-    class FALCOR_API RGLMaterial : public Material
+    For details refer to:
+    Jonathan Dupuy, Wenzel Jakob
+    "An Adaptive Parameterization for Efficient Material Acquisition and Rendering".
+    Transactions on Graphics (Proc. SIGGRAPH Asia 2018)
+*/
+class FALCOR_API RGLMaterial : public Material
+{
+    FALCOR_OBJECT(RGLMaterial)
+public:
+    static ref<RGLMaterial> create(ref<Device> pDevice, const std::string& name, const std::filesystem::path& path)
     {
-        FALCOR_OBJECT(RGLMaterial)
-    public:
-        static ref<RGLMaterial> create(ref<Device> pDevice, const std::string& name, const std::filesystem::path& path) { return make_ref<RGLMaterial>(pDevice, name, path); }
+        return make_ref<RGLMaterial>(pDevice, name, path);
+    }
 
-        RGLMaterial(ref<Device> pDevice, const std::string& name, const std::filesystem::path& path);
+    RGLMaterial(ref<Device> pDevice, const std::string& name, const std::filesystem::path& path);
 
-        bool renderUI(Gui::Widgets& widget) override;
-        Material::UpdateFlags update(MaterialSystem* pOwner) override;
-        bool isEqual(const ref<Material>& pOther) const override;
-        MaterialDataBlob getDataBlob() const override { return prepareDataBlob(mData); }
-        ProgramDesc::ShaderModuleList getShaderModules() const override;
-        TypeConformanceList getTypeConformances() const override;
+    bool renderUI(Gui::Widgets& widget) override;
+    Material::UpdateFlags update(MaterialSystem* pOwner) override;
+    bool isEqual(const ref<Material>& pOther) const override;
+    MaterialDataBlob getDataBlob() const override { return prepareDataBlob(mData); }
+    ProgramDesc::ShaderModuleList getShaderModules() const override;
+    TypeConformanceList getTypeConformances() const override;
 
-        virtual size_t getMaxBufferCount() const override { return 12; }
+    virtual size_t getMaxBufferCount() const override { return 12; }
 
-        bool loadBRDF(const std::filesystem::path& path);
+    bool loadBRDF(const std::filesystem::path& path);
 
-    protected:
-        void prepareData(const int dims[3], const std::vector<double>& data);
-        void prepareAlbedoLUT(RenderContext* pRenderContext);
-        void computeAlbedoLUT(RenderContext* pRenderContext);
+protected:
+    void prepareData(const int dims[3], const std::vector<double>& data);
+    void prepareAlbedoLUT(RenderContext* pRenderContext);
+    void computeAlbedoLUT(RenderContext* pRenderContext);
 
-        std::filesystem::path mPath;        ///< Full path to the BRDF loaded.
-        std::string mBRDFName;              ///< This is the file basename without extension.
-        std::string mBRDFDescription;       ///< Description of the BRDF given in the BRDF file.
+    std::filesystem::path mPath;  ///< Full path to the BRDF loaded.
+    std::string mBRDFName;        ///< This is the file basename without extension.
+    std::string mBRDFDescription; ///< Description of the BRDF given in the BRDF file.
 
-        bool mBRDFUploaded = false;         ///< True if BRDF data buffers have been uploaded to the material system.
-        RGLMaterialData mData;              ///< Material parameters.
-        ref<Buffer> mpThetaBuf;
-        ref<Buffer> mpPhiBuf;
-        ref<Buffer> mpSigmaBuf;
-        ref<Buffer> mpNDFBuf;
-        ref<Buffer> mpVNDFBuf;
-        ref<Buffer> mpLumiBuf;
-        ref<Buffer> mpRGBBuf;
-        ref<Buffer> mpVNDFMarginalBuf;
-        ref<Buffer> mpLumiMarginalBuf;
-        ref<Buffer> mpVNDFConditionalBuf;
-        ref<Buffer> mpLumiConditionalBuf;
-        ref<Texture> mpAlbedoLUT;           ///< Precomputed albedo lookup table.
-        ref<Sampler> mpSampler;             ///< Sampler for accessing BRDF textures.
+    bool mBRDFUploaded = false; ///< True if BRDF data buffers have been uploaded to the material system.
+    RGLMaterialData mData;      ///< Material parameters.
+    ref<Buffer> mpThetaBuf;
+    ref<Buffer> mpPhiBuf;
+    ref<Buffer> mpSigmaBuf;
+    ref<Buffer> mpNDFBuf;
+    ref<Buffer> mpVNDFBuf;
+    ref<Buffer> mpLumiBuf;
+    ref<Buffer> mpRGBBuf;
+    ref<Buffer> mpVNDFMarginalBuf;
+    ref<Buffer> mpLumiMarginalBuf;
+    ref<Buffer> mpVNDFConditionalBuf;
+    ref<Buffer> mpLumiConditionalBuf;
+    ref<Texture> mpAlbedoLUT; ///< Precomputed albedo lookup table.
+    ref<Sampler> mpSampler;   ///< Sampler for accessing BRDF textures.
 
-        ref<ComputePass> mBRDFTesting;
-    };
-}
+    ref<ComputePass> mBRDFTesting;
+};
+} // namespace Falcor

@@ -96,6 +96,7 @@ namespace Falcor
 
         // Set variables.
         var["data"].setBlob(mData);
+        var["prevData"].setBlob(mPrevDataForBinding);
 
         // Bind resources.
         var["envMap"].setTexture(mpEnvMap);
@@ -105,6 +106,8 @@ namespace Falcor
     EnvMap::Changes EnvMap::beginFrame()
     {
         mChanges = Changes::None;
+
+        mPrevDataForBinding = mPrevData;
 
         if (mData.transform != mPrevData.transform) mChanges |= Changes::Transform;
         if (mData.intensity != mPrevData.intensity) mChanges |= Changes::Intensity;
@@ -142,7 +145,7 @@ namespace Falcor
 
         pybind11::class_<EnvMap, ref<EnvMap>> envMap(m, "EnvMap");
         auto createFromFile = [](const std::filesystem::path &path) {
-            ref<EnvMap> envMap = EnvMap::createFromFile(accessActivePythonSceneBuilder().getDevice(), getActiveAssetResolver().resolvePath(path));
+            ref<EnvMap> envMap = EnvMap::createFromFile(accessActivePythonSceneBuilderDevice(), getActiveAssetResolver().resolvePath(path));
             if (!envMap)
                 FALCOR_THROW("Failed to load environment map from '{}'.", path);
             return envMap;

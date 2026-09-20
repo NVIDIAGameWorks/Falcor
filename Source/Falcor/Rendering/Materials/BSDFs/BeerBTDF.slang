@@ -33,8 +33,10 @@ __exported import Rendering.Materials.IBSDF;
  */
 struct BeerBTDF : IBSDF
 {
-    float3 absorption;    ///< Absorption times thickness
-    float pathshortening; ///< Grazing angle saturation control; typically calculated with an IOR
+    float3 absorption = {};    ///< Absorption times thickness
+    float pathshortening = {}; ///< Grazing angle saturation control; typically calculated with an IOR
+
+    __init() {}
 
     __init(float3 absorption, float pathshortening)
     {
@@ -87,7 +89,7 @@ struct BeerBTDF : IBSDF
 
     RoughnessInformation getRoughnessInformation(const float3 wi)
     {
-        RoughnessInformation r;
+        RoughnessInformation r = {};
         r.roughnessBSDFNotation = float2(0.f, 0.f);
         return r;
     }

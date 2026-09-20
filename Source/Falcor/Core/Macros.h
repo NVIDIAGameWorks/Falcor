@@ -81,7 +81,7 @@
  * D3D12 Agility SDK.
  */
 #if FALCOR_HAS_D3D12_AGILITY_SDK
-#define FALCOR_D3D12_AGILITY_SDK_VERSION 4
+#define FALCOR_D3D12_AGILITY_SDK_VERSION 717
 #define FALCOR_D3D12_AGILITY_SDK_PATH ".\\D3D12\\"
 // To enable the D3D12 Agility SDK, this macro needs to be added to the main source file of the executable.
 #define FALCOR_EXPORT_D3D12_AGILITY_SDK                                                                 \

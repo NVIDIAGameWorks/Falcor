@@ -100,13 +100,17 @@ public:
     );
 
 protected:
+    void setIScene(RenderContext* pRenderContext, const ref<IScene>& pScene);
     void prepareAccumulation(RenderContext* pRenderContext, uint32_t width, uint32_t height);
     void accumulate(RenderContext* pRenderContext, const ref<Texture>& pSrc, const ref<Texture>& pDst);
 
     // Internal state
 
     /// The current scene (or nullptr if no scene).
-    ref<Scene> mpScene;
+    ref<IScene> mpScene;
+    sigs::Connection mUpdateFlagsConnection; ///< Connection to the UpdateFlags signal.
+    /// IScene::UpdateFlags accumulated since last `beginFrame()`
+    IScene::UpdateFlags mUpdateFlags = IScene::UpdateFlags::None;
 
     /// Accumulation programs, one per mode.
     std::map<Precision, ref<Program>> mpProgram;

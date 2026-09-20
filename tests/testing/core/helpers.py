@@ -37,6 +37,20 @@ def get_hostname():
     '''
     return socket.gethostname()
 
+def get_ip():
+    '''
+    Returns the local IP address of the machine.
+    '''
+    try:
+        # Connect to an external host; doesn't have to be reachable
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(('8.8.8.8', 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except Exception:
+        return '127.0.0.1'
+
 def get_vcs_root(path):
     '''
     Return the git version control system root (gitlab-master or github).

@@ -33,6 +33,9 @@ PYTHON_TESTS_DIR = "tests/python_tests"
 BUILD_CONFIGS = {
     # Temporary build configurations combining a CMake preset and build type.
     # These should be replaced by parsing CMakePresets.json in the future.
+    'windows-vs2022-RelWithDebInfo': {
+        'build_dir': 'build/windows-vs2022/bin/RelWithDebInfo'
+    },
     'windows-vs2022-Release': {
         'build_dir': 'build/windows-vs2022/bin/Release'
     },
@@ -60,6 +63,9 @@ BUILD_CONFIGS = {
     'linux-clang-Release': {
         'build_dir': 'build/linux-clang/bin/Release'
     },
+    'linux-clang-RelWithDebInfo': {
+        'build_dir': 'build/linux-clang/bin/RelWithDebInfo'
+    },
     'linux-clang-Debug': {
         'build_dir': 'build/linux-clang/bin/Debug'
     },
@@ -71,6 +77,9 @@ BUILD_CONFIGS = {
     },
     'linux-gcc-Release': {
         'build_dir': 'build/linux-gcc/bin/Release'
+    },
+    'linux-gcc-RelWithDebInfo': {
+        'build_dir': 'build/linux-gcc/bin/RelWithDebInfo'
     },
     'linux-gcc-Debug': {
         'build_dir': 'build/linux-gcc/bin/Debug'

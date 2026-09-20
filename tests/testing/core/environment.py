@@ -26,7 +26,7 @@ def validate_json(data, schema, full_name=None):
                 raise TypeError(f'Property "{name}" does not exist')
 
 
-def find_most_recent_build_config():
+def find_most_recent_build_config(checked_binary=None):
     '''
     Find the build config most recently built by checking all
     possible build directories and finding the most recently
@@ -34,15 +34,18 @@ def find_most_recent_build_config():
     '''
     project_dir = Path(__file__).parents[3].resolve()
 
+    if checked_binary == None:
+        checked_binary = config.FALCOR_LIB
+
     best_config_name = None
     best_config_time = None
 
     for config_name, config_values in config.BUILD_CONFIGS.items():
         build_dir = project_dir / config_values["build_dir"]
-        falcor_lib = build_dir / config.FALCOR_LIB
-        if not os.path.exists(falcor_lib):
+        falcor_binary = build_dir / checked_binary
+        if not os.path.exists(falcor_binary):
             continue
-        stat = os.stat(falcor_lib)
+        stat = os.stat(falcor_binary)
         if not best_config_name or stat.st_mtime >= best_config_time:
             best_config_name = config_name
             best_config_time = stat.st_mtime
@@ -111,6 +114,7 @@ class Environment:
 
         self.vcs_root = helpers.get_vcs_root(self.project_dir)
         self.hostname = helpers.get_hostname()
+        self.ipaddress = helpers.get_ip()
 
         self.build_config = build_config
         self.branch = helpers.get_git_head_branch(self.project_dir)

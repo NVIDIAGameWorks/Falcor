@@ -30,13 +30,14 @@
 
 /** Evaluates the GGX (Trowbridge-Reitz) normal distribution function (D).
 
-    Introduced by Trowbridge and Reitz, "Average irregularity representation of a rough surface for ray reflection", Journal of the Optical Society of America, vol. 65(5), 1975.
-    See the correct normalization factor in Walter et al. https://dl.acm.org/citation.cfm?id=2383874
-    We use the simpler, but equivalent expression in Eqn 19 from http://blog.selfshadow.com/publications/s2012-shading-course/hoffman/s2012_pbs_physics_math_notes.pdf
+    Introduced by Trowbridge and Reitz, "Average irregularity representation of a rough surface for ray reflection", Journal of the Optical
+   Society of America, vol. 65(5), 1975. See the correct normalization factor in Walter et al. https://dl.acm.org/citation.cfm?id=2383874 We
+   use the simpler, but equivalent expression in Eqn 19 from
+   http://blog.selfshadow.com/publications/s2012-shading-course/hoffman/s2012_pbs_physics_math_notes.pdf
 
-    For microfacet models, D is evaluated for the direction h to find the density of potentially active microfacets (those for which microfacet normal m = h).
-    The 'alpha' parameter is the standard GGX width, e.g., it is the square of the linear roughness parameter in Disney's BRDF.
-    Note there is a singularity (0/0 = NaN) at NdotH = 1 and alpha = 0, so alpha should be clamped to some epsilon.
+    For microfacet models, D is evaluated for the direction h to find the density of potentially active microfacets (those for which
+   microfacet normal m = h). The 'alpha' parameter is the standard GGX width, e.g., it is the square of the linear roughness parameter in
+   Disney's BRDF. Note there is a singularity (0/0 = NaN) at NdotH = 1 and alpha = 0, so alpha should be clamped to some epsilon.
 
     \param[in] alpha GGX width parameter (should be clamped to small epsilon beforehand).
     \param[in] cosTheta Dot product between shading normal and half vector, in positive hemisphere.
@@ -147,7 +148,8 @@ float3 sampleGGX_VNDF(float alpha, float3 wi, float2 u, out float pdf)
 [Differentiable]
 float evalG1GGX(float alphaSqr, float cosTheta)
 {
-    if (cosTheta <= 0) return 0;
+    if (cosTheta <= 0)
+        return 0;
     float cosThetaSqr = cosTheta * cosTheta;
     float tanThetaSqr = max(1 - cosThetaSqr, 0) / cosThetaSqr;
     return 2 / (1 + sqrt(1 + alphaSqr * tanThetaSqr));
@@ -162,7 +164,8 @@ float evalG1GGX(float alphaSqr, float cosTheta)
 [Differentiable]
 float evalLambdaGGX(float alphaSqr, float cosTheta)
 {
-    if (cosTheta <= 0) return 0;
+    if (cosTheta <= 0)
+        return 0;
     float cosThetaSqr = cosTheta * cosTheta;
     float tanThetaSqr = max(1 - cosThetaSqr, 0) / cosThetaSqr;
     return 0.5 * (-1 + sqrt(1 + alphaSqr * tanThetaSqr));
@@ -230,49 +233,21 @@ float3 approxSpecularIntegralGGX(float3 specularReflectance, float alpha, float 
 
     // Select coefficients based on BRDF version being in use (either separable or correlated G term)
 #if SpecularMaskingFunction == SpecularMaskingFunctionSmithGGXSeparable
-    float2x2 M1 = float2x2(
-        0.99044f, -1.28514f,
-        1.29678f, -0.755907f
-    );
+    float2x2 M1 = float2x2(0.99044f, -1.28514f, 1.29678f, -0.755907f);
 
-    float3x3 M2 = float3x3(
-        1.0f, 2.92338f, 59.4188f,
-        20.3225f, -27.0302f, 222.592f,
-        121.563f, 626.13f, 316.627f
-    );
+    float3x3 M2 = float3x3(1.0f, 2.92338f, 59.4188f, 20.3225f, -27.0302f, 222.592f, 121.563f, 626.13f, 316.627f);
 
-    float2x2 M3 = float2x2(
-        0.0365463f, 3.32707f,
-        9.0632f, -9.04756f
-    );
+    float2x2 M3 = float2x2(0.0365463f, 3.32707f, 9.0632f, -9.04756f);
 
-    float3x3 M4 = float3x3(
-        1.0f, 3.59685f, -1.36772f,
-        9.04401f, -16.3174f, 9.22949f,
-        5.56589f, 19.7886f, -20.2123f
-    );
+    float3x3 M4 = float3x3(1.0f, 3.59685f, -1.36772f, 9.04401f, -16.3174f, 9.22949f, 5.56589f, 19.7886f, -20.2123f);
 #elif SpecularMaskingFunction == SpecularMaskingFunctionSmithGGXCorrelated
-    float2x2 M1 = float2x2(
-        0.995367f, -1.38839f,
-        -0.24751f, 1.97442f
-    );
+    float2x2 M1 = float2x2(0.995367f, -1.38839f, -0.24751f, 1.97442f);
 
-    float3x3 M2 = float3x3(
-        1.0f, 2.68132f, 52.366f,
-        16.0932f, -3.98452f, 59.3013f,
-        -5.18731f, 255.259f, 2544.07f
-    );
+    float3x3 M2 = float3x3(1.0f, 2.68132f, 52.366f, 16.0932f, -3.98452f, 59.3013f, -5.18731f, 255.259f, 2544.07f);
 
-    float2x2 M3 = float2x2(
-        -0.0564526f, 3.82901f,
-        16.91f, -11.0303f
-    );
+    float2x2 M3 = float2x2(-0.0564526f, 3.82901f, 16.91f, -11.0303f);
 
-    float3x3 M4 = float3x3(
-        1.0f, 4.11118f, -1.37886f,
-        19.3254f, -28.9947f, 16.9514f,
-        0.545386f, 96.0994f, -79.4492f
-    );
+    float3x3 M4 = float3x3(1.0f, 4.11118f, -1.37886f, 19.3254f, -28.9947f, 16.9514f, 0.545386f, 96.0994f, -79.4492f);
 #endif
 
     float bias = dot(mul(M1, X.xy), Y.xy) * rcp(dot(mul(M2, X.xyw), Y.xyw));

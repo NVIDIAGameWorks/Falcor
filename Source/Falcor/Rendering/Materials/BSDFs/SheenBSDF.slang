@@ -36,8 +36,10 @@ __exported import Rendering.Materials.IBSDF;
  */
 struct SheenBSDF : IBSDF
 {
-    float3 color;    ///< Sheen reflectivity
-    float roughness; ///< Surface roughness (max 1.0)
+    float3 color = {};    ///< Sheen reflectivity
+    float roughness = {}; ///< Surface roughness (max 1.0)
+
+    __init() {}
 
     __init(float3 color, float roughness)
     {
@@ -188,7 +190,7 @@ struct SheenBSDF : IBSDF
 
     RoughnessInformation getRoughnessInformation(const float3 wi)
     {
-        RoughnessInformation r;
+        RoughnessInformation r = {};
         r.roughnessBSDFNotation = float2(0.5f, 0.5f);
         return r;
     }

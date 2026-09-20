@@ -43,6 +43,8 @@ enum class ShaderModel : uint32_t
     SM6_5 = 65,
     SM6_6 = 66,
     SM6_7 = 67,
+    SM6_8 = 68,
+    SM6_9 = 69,
 };
 FALCOR_ENUM_INFO(
     ShaderModel,
@@ -56,6 +58,8 @@ FALCOR_ENUM_INFO(
         {ShaderModel::SM6_5, "SM6_5"},
         {ShaderModel::SM6_6, "SM6_6"},
         {ShaderModel::SM6_7, "SM6_7"},
+        {ShaderModel::SM6_8, "SM6_8"},
+        {ShaderModel::SM6_9, "SM6_9"},
     }
 );
 FALCOR_ENUM_REGISTER(ShaderModel);

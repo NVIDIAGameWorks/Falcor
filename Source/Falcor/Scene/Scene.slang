@@ -59,6 +59,7 @@ struct Scene
 {
     // Raytracing
     [root] RaytracingAccelerationStructure rtAccel;
+    [root] RaytracingAccelerationStructure rtAccelPrev;
 
     // Instance transforms
     [root] StructuredBuffer<float4x4> worldMatrices;
@@ -483,13 +484,17 @@ struct Scene
         \param[out] Unpacked fetched vertices which can be used for further computations involving individual vertices.
         \return Interpolated vertex attributes.
     */
-    VertexData getVertexData(const GeometryInstanceID instanceID, const uint triangleIndex, const float3 barycentrics, out StaticVertexData vertices[3])
+    VertexData getVertexData(const GeometryInstanceID instanceID, const uint triangleIndex, const float3 barycentrics, out StaticVertexData vertices[3], bool isPrevFrame = false)
     {
         const uint3 vtxIndices = getIndices(instanceID, triangleIndex);
         vertices = { gScene.getVertex(vtxIndices[0]), gScene.getVertex(vtxIndices[1]), gScene.getVertex(vtxIndices[2]) };
 
-        const float4x4 worldMat = gScene.getWorldMatrix(instanceID);
-        const float3x3 worldInvTransposeMat = getInverseTransposeWorldMatrix(instanceID);
+        float4x4 worldMat;
+        float3x3 worldInvTransposeMat;
+        if (isPrevFrame) worldMat = gScene.getPrevWorldMatrix(instanceID);
+        else worldMat = gScene.getWorldMatrix(instanceID);
+        if (isPrevFrame) worldInvTransposeMat = getPrevInverseTransposeWorldMatrix(instanceID);
+        else worldInvTransposeMat = getInverseTransposeWorldMatrix(instanceID);
         const bool isFrontFaceCW = isObjectFrontFaceCW(instanceID);
         return computeVertexData(vertices, worldMat, worldInvTransposeMat, isFrontFaceCW, barycentrics);
     }
@@ -500,19 +505,19 @@ struct Scene
         \param[in] barycentrics Barycentric coordinates in the triangle.
         \return Interpolated vertex attributes.
     */
-    VertexData getVertexData(const GeometryInstanceID instanceID, const uint triangleIndex, const float3 barycentrics)
+    VertexData getVertexData(const GeometryInstanceID instanceID, const uint triangleIndex, const float3 barycentrics, bool isPrevFrame = false)
     {
         StaticVertexData vertices[3];
-        return getVertexData(instanceID, triangleIndex, barycentrics, vertices);
+        return getVertexData(instanceID, triangleIndex, barycentrics, vertices, isPrevFrame);
     }
 
     /** Returns the interpolated vertex attributes for a given hitpoint.
         \param[in] hit Triangle hit info.
         \return Interpolated vertex attributes.
     */
-    VertexData getVertexData(const TriangleHit hit)
+    VertexData getVertexData(const TriangleHit hit, bool isPrevFrame = false)
     {
-        return getVertexData(hit.instanceID, hit.primitiveIndex, hit.getBarycentricWeights());
+        return getVertexData(hit.instanceID, hit.primitiveIndex, hit.getBarycentricWeights(), isPrevFrame);
     }
 
     /** Returns the interpolated vertex attributes for a given hitpoint.
@@ -520,22 +525,26 @@ struct Scene
         \param[out] Unpacked fetched vertices which can be used for further computations involving individual vertices.
         \return Interpolated vertex attributes.
     */
-    VertexData getVertexData(const TriangleHit hit, out StaticVertexData vertices[3])
+    VertexData getVertexData(const TriangleHit hit, out StaticVertexData vertices[3], bool isPrevFrame = false)
     {
-        return getVertexData(hit.instanceID, hit.primitiveIndex, hit.getBarycentricWeights(), vertices);
+        return getVertexData(hit.instanceID, hit.primitiveIndex, hit.getBarycentricWeights(), vertices, isPrevFrame);
     }
 
     /** Returns the interpolated vertex attributes for a given hitpoint.
         \param[in] hit Displaced triangle hit info.
         \return Interpolated vertex attributes.
     */
-    VertexData getVertexData(const DisplacedTriangleHit hit, const float3 viewDir)
+    VertexData getVertexData(const DisplacedTriangleHit hit, const float3 viewDir, bool isPrevFrame = false)
     {
         const uint3 vtxIndices = getIndices(hit.instanceID, hit.primitiveIndex);
         const StaticVertexData vertices[3] = { gScene.getVertex(vtxIndices[0]), gScene.getVertex(vtxIndices[1]), gScene.getVertex(vtxIndices[2]) };
         const float3 barycentrics = hit.getBarycentricWeights();
-        const float4x4 worldMat = gScene.getWorldMatrix(hit.instanceID);
-        const float3x3 worldInvTransposeMat = getInverseTransposeWorldMatrix(hit.instanceID);
+        float4x4 worldMat;
+        float3x3 worldInvTransposeMat;
+        if (isPrevFrame) worldMat = gScene.getPrevWorldMatrix(hit.instanceID);
+        else worldMat = gScene.getWorldMatrix(hit.instanceID);
+        if (isPrevFrame) worldInvTransposeMat = getPrevInverseTransposeWorldMatrix(hit.instanceID);
+        else worldInvTransposeMat = getInverseTransposeWorldMatrix(hit.instanceID);
         const bool isFrontFaceCW = isObjectFrontFaceCW(hit.instanceID);
         VertexData v = computeVertexData(vertices, worldMat, worldInvTransposeMat, isFrontFaceCW, barycentrics);
 
@@ -572,10 +581,10 @@ struct Scene
        \param[in] barycentrics Barycentric coordinates in the triangle.
        \return Interpolated vertex attributes.
    */
-    VertexData getVertexDataRayCones(const GeometryInstanceID instanceID, const uint triangleIndex, const float3 barycentrics)
+    VertexData getVertexDataRayCones(const GeometryInstanceID instanceID, const uint triangleIndex, const float3 barycentrics, bool isPrevFrame = false)
     {
         StaticVertexData triangleVertices[3];
-        VertexData v = getVertexData(instanceID, triangleIndex, barycentrics, triangleVertices);
+        VertexData v = getVertexData(instanceID, triangleIndex, barycentrics, triangleVertices, isPrevFrame);
         v.coneTexLODValue = computeRayConeTriangleLODValue(triangleVertices, float3x3(getWorldMatrix(instanceID)));
         return v;
     }

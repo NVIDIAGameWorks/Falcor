@@ -48,7 +48,7 @@ GPU_TEST(MERLFile)
     EXPECT_EQ(data.size(), 90 * 90 * 360 / 2);
 
     const float3 expected = float3(0.5f);
-    auto lut = merlFile.prepareAlbedoLUT(ctx.getDevice());
+    auto lut = merlFile.prepareAlbedoLUT(ctx.getDevice(), false);
     EXPECT_EQ(lut.size(), MERLMaterialData::kAlbedoLUTSize);
     for (auto v : lut)
     {

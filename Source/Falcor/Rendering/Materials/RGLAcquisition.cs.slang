@@ -53,14 +53,14 @@ struct RGLAcquisition
     RWStructuredBuffer<float> phis;            // Size phiSize
     RWStructuredBuffer<float> vndf;            // Size phiSize * thetaSize * vndfSize.z * vndfSize.w (vndfSize.xy == phiSize, thetaSize)
 
-    ByteAddressBuffer vndfBuf;                 // Size phiSize * thetaSize * vndfSize.z * vndfSize.w
-    ByteAddressBuffer vndfMarginalBuf;         // Size phiSize * thetaSize * vndfSize.z * vndfSize.w
-    ByteAddressBuffer vndfConditionalBuf;      // Size phiSize * thetaSize * vndfSize.z * vndfSize.w
+    ByteAddressBuffer vndfBuf;            // Size phiSize * thetaSize * vndfSize.z * vndfSize.w
+    ByteAddressBuffer vndfMarginalBuf;    // Size phiSize * thetaSize * vndfSize.z * vndfSize.w
+    ByteAddressBuffer vndfConditionalBuf; // Size phiSize * thetaSize * vndfSize.z * vndfSize.w
 
     RWBuffer<float> lumi; // Size phiSize * thetaSize * lumiSize.z * lumiSize.w (lumiSize.xy == phiSize, thetaSize)
     RWBuffer<float> rgb;  // Size phiSize * thetaSize * lumiSize.z * lumiSize.w
 
-    static const uint2 kSampleCount = {8, 8};
+    static const uint2 kSampleCount = { 8, 8 };
 
     ShadingData buildShadingData(float3 wi)
     {
@@ -79,10 +79,7 @@ struct RGLAcquisition
 
     // Clamp directions to lie above the cutoff imposed by the BRDF interface.
     // Otherwise we measure zero reflectance at glancing angles.
-    float3 clampDirection(float3 x)
-    {
-        return normalize(float3(x.xy, max(x.z, kMinCosTheta * 2.0f)));
-    }
+    float3 clampDirection(float3 x) { return normalize(float3(x.xy, max(x.z, kMinCosTheta * 2.0f))); }
 
     void measureRetroreflection(const uint2 threadID)
     {
@@ -141,7 +138,7 @@ struct RGLAcquisition
         return lerp(lerp(v00, v10, uv.x), lerp(v01, v11, uv.x), uv.y);
     }
 
-    float evalNDF  (float2 uv) { return interpolate(ndf,   uv, ndfSize); }
+    float evalNDF(float2 uv) { return interpolate(ndf, uv, ndfSize); }
 
     float evalSigma(float2 uv) { return interpolate(sigma, uv, ndfSize); }
 
@@ -229,7 +226,7 @@ struct RGLAcquisition
         float2 unitH = float2(idxH) / float2(vndfSize.zw - 1);
 
         float3 wi = fromSpherical(sphericalI);
-        float3 h  = fromSpherical(unitToSpherical(unitH));
+        float3 h = fromSpherical(unitToSpherical(unitH));
 
         uint vndfIdx = (threadID.x * vndfSize.y + threadID.y) * vndfSize.z * vndfSize.w + threadID.z;
 
@@ -256,7 +253,7 @@ struct RGLAcquisition
         float2 unitI = sphericalToUnit(sphericalI);
 
         float3 wi = fromSpherical(sphericalI);
-        float3 h  = fromSpherical(sphericalH);
+        float3 h = fromSpherical(sphericalH);
         float3 wo = h * 2.0f * dot(h, wi) - wi;
 
         float3 fr;
@@ -283,8 +280,8 @@ struct RGLAcquisition
         fr *= 4.0f * evalSigma(unitI) / evalNDF(unitH);
 
         uint sliceSize = lumiSize.z * lumiSize.w;
-        uint lumiBase = (threadID.x * lumiSize.y + threadID.y) * sliceSize     + threadID.z;
-        uint  rgbBase = (threadID.x * lumiSize.y + threadID.y) * sliceSize * 3 + threadID.z;
+        uint lumiBase = (threadID.x * lumiSize.y + threadID.y) * sliceSize + threadID.z;
+        uint rgbBase = (threadID.x * lumiSize.y + threadID.y) * sliceSize * 3 + threadID.z;
 
         lumi[lumiBase] = luminance(fr);
         rgb[rgbBase + sliceSize * 0] = fr.x;
@@ -295,71 +292,78 @@ struct RGLAcquisition
 
 ParameterBlock<RGLAcquisition> gAcquisition;
 
-
 [numthreads(16, 16, 1)]
-void measureRetroreflection(uint3 threadID : SV_DispatchThreadID)
+void measureRetroreflection(uint3 threadID: SV_DispatchThreadID)
 {
-    if (any(threadID.xy >= gAcquisition.ndfSize)) return;
+    if (any(threadID.xy >= gAcquisition.ndfSize))
+        return;
 
     gAcquisition.measureRetroreflection(threadID.xy);
 }
 
 [numthreads(16, 16, 1)]
-void buildPowerIterationKernel(uint3 threadID : SV_DispatchThreadID)
+void buildPowerIterationKernel(uint3 threadID: SV_DispatchThreadID)
 {
     int N = gAcquisition.ndfSize.x * gAcquisition.ndfSize.y;
-    if (any(threadID >= N)) return;
+    if (any(threadID >= N))
+        return;
 
     gAcquisition.buildPowerIterationKernel(threadID.xy);
 }
 
 [numthreads(16, 16, 1)]
-void powerIteration(uint3 threadID : SV_DispatchThreadID)
+void powerIteration(uint3 threadID: SV_DispatchThreadID)
 {
-    if (any(threadID.xy >= gAcquisition.ndfSize)) return;
+    if (any(threadID.xy >= gAcquisition.ndfSize))
+        return;
 
     gAcquisition.powerIteration(threadID.xy);
 }
 
 [numthreads(16, 16, 1)]
-void integrateSigma(uint3 threadID : SV_DispatchThreadID)
+void integrateSigma(uint3 threadID: SV_DispatchThreadID)
 {
     int N = gAcquisition.ndfSize.x * gAcquisition.ndfSize.y;
-    if (any(threadID >= int3(gAcquisition.sigmaIntegrationGrid, N))) return;
+    if (any(threadID >= int3(gAcquisition.sigmaIntegrationGrid, N)))
+        return;
 
     gAcquisition.integrateSigma(threadID);
 }
 
 [numthreads(16, 16, 1)]
-void sumSigma(uint3 threadID : SV_DispatchThreadID)
+void sumSigma(uint3 threadID: SV_DispatchThreadID)
 {
-    if (any(threadID.xy >= gAcquisition.ndfSize)) return;
+    if (any(threadID.xy >= gAcquisition.ndfSize))
+        return;
 
     gAcquisition.sumSigma(threadID.xy);
 }
 
 [numthreads(16, 16, 1)]
-void computeTheta(uint3 threadID : SV_DispatchThreadID)
+void computeTheta(uint3 threadID: SV_DispatchThreadID)
 {
-    if (threadID.x >= gAcquisition.thetaSize) return;
+    if (threadID.x >= gAcquisition.thetaSize)
+        return;
 
     gAcquisition.computeTheta(threadID.x);
 }
 
 [numthreads(16, 16, 1)]
-void computeVNDF(uint3 threadID : SV_DispatchThreadID)
+void computeVNDF(uint3 threadID: SV_DispatchThreadID)
 {
     int N = gAcquisition.vndfSize.z * gAcquisition.vndfSize.w;
-    if (any(threadID >= int3(gAcquisition.vndfSize.xy, N))) return;
+    if (any(threadID >= int3(gAcquisition.vndfSize.xy, N)))
+        return;
 
     gAcquisition.computeVNDF(threadID);
 }
 
 [numthreads(16, 16, 1)]
-void acquireBRDF(uint3 threadID : SV_DispatchThreadID)
+void acquireBRDF(uint3 threadID: SV_DispatchThreadID)
 {
     int N = gAcquisition.lumiSize.z * gAcquisition.lumiSize.w;
-    if (any(threadID >= int3(gAcquisition.lumiSize.xy, N))) return;
+    if (any(threadID >= int3(gAcquisition.lumiSize.xy, N)))
+        return;
 
     gAcquisition.acquireBRDF(threadID);
 }

@@ -55,6 +55,7 @@ public:
     {
         None = 0u,                  ///< Default.
         ConvertToFloat16 = 1u << 0, ///< Convert HDR images to 16-bit float per channel on import.
+        FlipVertical = 1u << 1,     ///< Flip image vertically on import.
     };
 
     enum class FileFormat

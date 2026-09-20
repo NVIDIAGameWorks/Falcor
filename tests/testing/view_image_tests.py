@@ -417,7 +417,7 @@ def main():
     url = f'http://{args.host}:{args.port}'
     print(f'Running server on {url}')
 
-        # Open browser window.
+    # Open browser window.
     if not args.no_browser:
         webbrowser.open(url)
 

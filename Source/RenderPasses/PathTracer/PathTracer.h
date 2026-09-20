@@ -27,6 +27,7 @@
  **************************************************************************/
 #pragma once
 #include "Falcor.h"
+#include "Core/Enum.h"
 #include "RenderGraph/RenderPass.h"
 #include "RenderGraph/RenderPassHelpers.h"
 #include "Utils/Debug/PixelDebug.h"
@@ -37,17 +38,34 @@
 #include "Rendering/Materials/TexLODTypes.slang"
 #include "Rendering/Utils/PixelStats.h"
 #include "Rendering/RTXDI/RTXDI.h"
+#include "ReSTIRPathTracing/ReSTIRPathTracing.h"
+#include "LightTileResampling/LightTileResampling.h"
 
 #include "Params.slang"
+#include "PathState.slang"
 
 using namespace Falcor;
 
 /** Fast path tracer.
-*/
+ */
 class PathTracer : public RenderPass
 {
 public:
     FALCOR_PLUGIN_CLASS(PathTracer, "PathTracer", "Reference path tracer.");
+
+    enum class TracePassMode
+    {
+        Default,
+        MinimalPayload,
+    };
+
+    FALCOR_ENUM_INFO(
+        TracePassMode,
+        {
+            {TracePassMode::Default, "Default"},
+            {TracePassMode::MinimalPayload, "MinimalPayload"},
+        }
+    );
 
     static ref<PathTracer> create(ref<Device> pDevice, const Properties& props) { return make_ref<PathTracer>(pDevice, props); }
 
@@ -77,11 +95,27 @@ private:
         ref<RtBindingTable> pBindingTable;
         ref<RtProgramVars> pVars;
 
-        TracePass(ref<Device> pDevice, const std::string& name, const std::string& passDefine, const ref<Scene>& pScene, const DefineList& defines, const TypeConformanceList& globalTypeConformances);
-        static std::unique_ptr<TracePass> create(ref<Device> pDevice, const std::string& name, const std::string& passDefine, const ref<IScene>& pScene, const DefineList& defines, const TypeConformanceList& globalTypeConformances)
+        TracePass(
+            ref<Device> pDevice,
+            const std::string& name,
+            const std::string& passDefine,
+            const std::string& shaderLibrary,
+            const ref<Scene>& pScene,
+            const DefineList& defines,
+            const TypeConformanceList& globalTypeConformances
+        );
+        static std::unique_ptr<TracePass> create(
+            ref<Device> pDevice,
+            const std::string& name,
+            const std::string& passDefine,
+            const std::string& shaderLibrary,
+            const ref<IScene>& pScene,
+            const DefineList& defines,
+            const TypeConformanceList& globalTypeConformances
+        )
         {
             if (auto scene = dynamic_ref_cast<Scene>(pScene))
-                return std::make_unique<TracePass>(std::move(pDevice), name, passDefine, std::move(scene), defines, globalTypeConformances);
+                return std::make_unique<TracePass>(std::move(pDevice), name, passDefine, shaderLibrary, std::move(scene), defines, globalTypeConformances);
             return {};
         }
 
@@ -108,100 +142,120 @@ private:
     void endFrame(RenderContext* pRenderContext, const RenderData& renderData);
     void generatePaths(RenderContext* pRenderContext, const RenderData& renderData);
     void tracePass(RenderContext* pRenderContext, const RenderData& renderData, TracePass& tracePass);
+    void resolveReSTIRPTPass(RenderContext* pRenderContext, const RenderData& renderData);
     void resolvePass(RenderContext* pRenderContext, const RenderData& renderData);
 
     /** Static configuration. Changing any of these options require shader recompilation.
-    */
+     */
     struct StaticParams
     {
         // Rendering parameters
-        uint32_t    samplesPerPixel = 1;                        ///< Number of samples (paths) per pixel, unless a sample density map is used.
-        uint32_t    maxSurfaceBounces = 0;                      ///< Max number of surface bounces (diffuse + specular + transmission), up to kMaxPathLenth. This will be initialized at startup.
-        uint32_t    maxDiffuseBounces = 3;                      ///< Max number of diffuse bounces (0 = direct only), up to kMaxBounces.
-        uint32_t    maxSpecularBounces = 3;                     ///< Max number of specular bounces (0 = direct only), up to kMaxBounces.
-        uint32_t    maxTransmissionBounces = 10;                ///< Max number of transmission bounces (0 = none), up to kMaxBounces.
+        uint32_t samplesPerPixel = 1;    ///< Number of samples (paths) per pixel, unless a sample density map is used.
+        uint32_t maxSurfaceBounces = 0;  ///< Max number of surface bounces (diffuse + specular + transmission), up to kMaxPathLenth. This
+                                         ///< will be initialized at startup.
+        uint32_t maxDiffuseBounces = 3;  ///< Max number of diffuse bounces (0 = direct only), up to kMaxBounces.
+        uint32_t maxSpecularBounces = 3; ///< Max number of specular bounces (0 = direct only), up to kMaxBounces.
+        uint32_t maxTransmissionBounces = 10; ///< Max number of transmission bounces (0 = none), up to kMaxBounces.
 
         // Sampling parameters
-        uint32_t    sampleGenerator = SAMPLE_GENERATOR_TINY_UNIFORM; ///< Pseudorandom sample generator type.
-        bool        useBSDFSampling = true;                     ///< Use BRDF importance sampling, otherwise cosine-weighted hemisphere sampling.
-        bool        useRussianRoulette = false;                 ///< Use russian roulette to terminate low throughput paths.
-        bool        useNEE = true;                              ///< Use next-event estimation (NEE). This enables shadow ray(s) from each path vertex.
-        bool        useMIS = true;                              ///< Use multiple importance sampling (MIS) when NEE is enabled.
-        MISHeuristic misHeuristic = MISHeuristic::Balance;      ///< MIS heuristic.
-        float       misPowerExponent = 2.f;                     ///< MIS exponent for the power heuristic. This is only used when 'PowerExp' is chosen.
-        EmissiveLightSamplerType emissiveSampler = EmissiveLightSamplerType::LightBVH;  ///< Emissive light sampler to use for NEE.
-        bool        useRTXDI = false;                           ///< Use RTXDI for direct illumination.
+        uint32_t sampleGenerator = SAMPLE_GENERATOR_TINY_UNIFORM; ///< Pseudorandom sample generator type.
+        bool useBSDFSampling = true;     ///< Use BRDF importance sampling, otherwise cosine-weighted hemisphere sampling.
+        bool useRussianRoulette = false; ///< Use russian roulette to terminate low throughput paths.
+        bool useNEE = true;              ///< Use next-event estimation (NEE). This enables shadow ray(s) from each path vertex.
+        bool useMIS = true;              ///< Use multiple importance sampling (MIS) when NEE is enabled.
+        MISHeuristic misHeuristic = MISHeuristic::Balance; ///< MIS heuristic.
+        float misPowerExponent = 2.f; ///< MIS exponent for the power heuristic. This is only used when 'PowerExp' is chosen.
+        EmissiveLightSamplerType emissiveSampler = EmissiveLightSamplerType::LightBVH; ///< Emissive light sampler to use for NEE.
+        bool useRTXDI = false;                                                         ///< Use RTXDI for direct illumination.
 
         // Material parameters
-        bool        useAlphaTest = true;                        ///< Use alpha testing on non-opaque triangles.
-        bool        adjustShadingNormals = false;               ///< Adjust shading normals on secondary hits.
-        uint32_t    maxNestedMaterials = 2;                     ///< Maximum supported number of nested materials.
-        bool        useLightsInDielectricVolumes = false;       ///< Use lights inside of volumes (transmissive materials). We typically don't want this because lights are occluded by the interface.
-        bool        disableCaustics = false;                    ///< Disable sampling of caustics.
-        TexLODMode  primaryLodMode = TexLODMode::Mip0;          ///< Use filtered texture lookups at the primary hit.
+        bool useAlphaTest = true;                  ///< Use alpha testing on non-opaque triangles.
+        bool adjustShadingNormals = false;         ///< Adjust shading normals on secondary hits.
+        uint32_t maxNestedMaterials = 2;           ///< Maximum supported number of nested materials.
+        bool useLightsInDielectricVolumes = false; ///< Use lights inside of volumes (transmissive materials). We typically don't want this
+                                                   ///< because lights are occluded by the interface.
+        bool disableCaustics = false;              ///< Disable sampling of caustics.
+        TexLODMode primaryLodMode = TexLODMode::Mip0; ///< Use filtered texture lookups at the primary hit.
 
         // Scheduling parameters
-        bool        useSER = true;                              ///< Enable SER (Shader Execution Reordering).
+        bool useSER = true; ///< Enable SER (Shader Execution Reordering).
+        TracePassMode tracePassMode = TracePassMode::Default; ///< Trace pass implementation to use.
+
+        // ReSTIR PT
+        bool useReSTIRPT = false; ///< Enable ReSTIR Path Tracing for indirect illumination.
+
+        // Light Tile RIS
+        bool useLightTileRIS = false; ///< Use tile-based light resampling for NEE.
 
         // Output parameters
-        ColorFormat colorFormat = ColorFormat::LogLuvHDR;       ///< Color format used for internal per-sample color and denoiser buffers.
+        ColorFormat colorFormat = ColorFormat::LogLuvHDR; ///< Color format used for internal per-sample color and denoiser buffers.
 
         // Denoising parameters
-        bool        useNRDDemodulation = true;                  ///< Global switch for NRD demodulation.
+        bool useNRDDemodulation = true; ///< Global switch for NRD demodulation.
 
         DefineList getDefines(const PathTracer& owner) const;
     };
 
     // Configuration
-    PathTracerParams                mParams;                    ///< Runtime path tracer parameters.
-    StaticParams                    mStaticParams;              ///< Static parameters. These are set as compile-time constants in the shaders.
-    mutable LightBVHSampler::Options mLightBVHOptions;          ///< Current options for the light BVH sampler.
-    RTXDI::Options                  mRTXDIOptions;              ///< Current options for the RTXDI sampler.
+    PathTracerParams mParams;                          ///< Runtime path tracer parameters.
+    StaticParams mStaticParams;                        ///< Static parameters. These are set as compile-time constants in the shaders.
+    mutable LightBVHSampler::Options mLightBVHOptions; ///< Current options for the light BVH sampler.
+    RTXDI::Options mRTXDIOptions;                      ///< Current options for the RTXDI sampler.
+    ReSTIRPathTracing::Options mReSTIRPathTracingOptions; ///< Current options for the ReSTIR PT sampler.
 
-    bool                            mEnabled = true;            ///< Switch to enable/disable the path tracer. When disabled the pass outputs are cleared.
-    RenderPassHelpers::IOSize       mOutputSizeSelection = RenderPassHelpers::IOSize::Default;  ///< Selected output size.
-    uint2                           mFixedOutputSize = { 512, 512 };                            ///< Output size in pixels when 'Fixed' size is selected.
+    bool mEnabled = true; ///< Switch to enable/disable the path tracer. When disabled the pass outputs are cleared.
+    RenderPassHelpers::IOSize mOutputSizeSelection = RenderPassHelpers::IOSize::Default; ///< Selected output size.
+    uint2 mFixedOutputSize = {512, 512}; ///< Output size in pixels when 'Fixed' size is selected.
 
-    bool                            mSERSupported = false;      ///< True if the device supports SER.
+    bool mSERSupported = false; ///< True if the device supports SER.
 
     // Internal state
-    ref<IScene>                     mpScene;                    ///< The current scene, or nullptr if no scene loaded.
-    ref<SampleGenerator>            mpSampleGenerator;          ///< GPU pseudo-random sample generator.
-    std::unique_ptr<EnvMapSampler>  mpEnvMapSampler;            ///< Environment map sampler or nullptr if not used.
-    std::unique_ptr<EmissiveLightSampler> mpEmissiveSampler;    ///< Emissive light sampler or nullptr if not used.
-    std::unique_ptr<RTXDI>          mpRTXDI;                    ///< RTXDI sampler for direct illumination or nullptr if not used.
-    std::unique_ptr<PixelStats>     mpPixelStats;               ///< Utility class for collecting pixel stats.
-    std::unique_ptr<PixelDebug>     mpPixelDebug;               ///< Utility class for pixel debugging (print in shaders).
+    ref<IScene> mpScene;                                     ///< The current scene, or nullptr if no scene loaded.
+    ref<SampleGenerator> mpSampleGenerator;                  ///< GPU pseudo-random sample generator.
+    std::unique_ptr<EnvMapSampler> mpEnvMapSampler;          ///< Environment map sampler or nullptr if not used.
+    std::unique_ptr<EmissiveLightSampler> mpEmissiveSampler; ///< Emissive light sampler or nullptr if not used.
+    std::unique_ptr<RTXDI> mpRTXDI;                          ///< RTXDI sampler for direct illumination or nullptr if not used.
+    std::unique_ptr<ReSTIRPathTracing> mpReSTIRPathTracing;  ///< ReSTIR PT module or nullptr if not used.
+    std::unique_ptr<LightTileResampling> mpLightTileResampling; ///< Light tile resampling or nullptr if not used.
+    std::unique_ptr<PixelStats> mpPixelStats;                ///< Utility class for collecting pixel stats.
+    std::unique_ptr<PixelDebug> mpPixelDebug;                ///< Utility class for pixel debugging (print in shaders).
 
-    sigs::Connection                mUpdateFlagsConnection; ///< Connection to the UpdateFlags signal.
+    sigs::Connection mUpdateFlagsConnection; ///< Connection to the UpdateFlags signal.
     /// SceneUpdateFlags accumulated since last `beginFrame()`
-    IScene::UpdateFlags             mUpdateFlags = IScene::UpdateFlags::None;
+    IScene::UpdateFlags mUpdateFlags = IScene::UpdateFlags::None;
 
-    ref<ParameterBlock>             mpPathTracerBlock;          ///< Parameter block for the path tracer.
+    ref<ParameterBlock> mpPathTracerBlock; ///< Parameter block for the path tracer.
 
-    bool                            mRecompile = false;         ///< Set to true when program specialization has changed.
-    bool                            mVarsChanged = true;        ///< This is set to true whenever the program vars have changed and resources need to be rebound.
-    bool                            mOptionsChanged = false;    ///< True if the config has changed since last frame.
-    bool                            mGBufferAdjustShadingNormals = false; ///< True if GBuffer/VBuffer has adjusted shading normals enabled.
-    bool                            mFixedSampleCount = true;   ///< True if a fixed sample count per pixel is used. Otherwise load it from the pass sample count input.
-    bool                            mOutputGuideData = false;   ///< True if guide data should be generated as outputs.
-    bool                            mOutputNRDData = false;     ///< True if NRD diffuse/specular data should be generated as outputs.
-    bool                            mOutputNRDAdditionalData = false;   ///< True if NRD data from delta and residual paths should be generated as designated outputs rather than being included in specular NRD outputs.
+    bool mRecompile = false;      ///< Set to true when program specialization has changed.
+    bool mVarsChanged = true;     ///< This is set to true whenever the program vars have changed and resources need to be rebound.
+    bool mOptionsChanged = false; ///< True if the config has changed since last frame.
+    bool mGBufferAdjustShadingNormals = false; ///< True if GBuffer/VBuffer has adjusted shading normals enabled.
+    bool mFixedSampleCount = true; ///< True if a fixed sample count per pixel is used. Otherwise load it from the pass sample count input.
+    bool mOutputGuideData = false; ///< True if guide data should be generated as outputs.
+    bool mOutputNRDData = false;   ///< True if NRD diffuse/specular data should be generated as outputs.
+    bool mOutputNRDAdditionalData = false; ///< True if NRD data from delta and residual paths should be generated as designated outputs
+                                           ///< rather than being included in specular NRD outputs.
+    bool mSpecularMVecEnabled = false;     ///< Last observed state of ReSTIRPathTracing::Options::enableSpecularMotionVectors. Tracked so a toggle
+                                           ///< triggers recompilation (delta trace passes and OUTPUT_DELTA_MOTION_VECTORS specialization).
 
-    ref<ComputePass>                mpGeneratePaths;            ///< Fullscreen compute pass generating paths starting at primary hits.
-    ref<ComputePass>                mpResolvePass;              ///< Sample resolve pass.
-    ref<ComputePass>                mpReflectTypes;             ///< Helper for reflecting structured buffer types.
+    ref<ComputePass> mpGeneratePaths;       ///< Fullscreen compute pass generating paths starting at primary hits.
+    ref<ComputePass> mpResolvePass;         ///< Sample resolve pass.
+    ref<ComputePass> mpResolveReSTIRPTPass; ///< ReSTIR PT resolve pass.
+    ref<ComputePass> mpReflectTypes;        ///< Helper for reflecting structured buffer types.
 
-    std::unique_ptr<TracePass>      mpTracePass;                ///< Main trace pass.
-    std::unique_ptr<TracePass>      mpTraceDeltaReflectionPass; ///< Delta reflection trace pass (for NRD).
-    std::unique_ptr<TracePass>      mpTraceDeltaTransmissionPass;   ///< Delta transmission trace pass (for NRD).
+    std::unique_ptr<TracePass> mpTracePass;                  ///< Main trace pass.
+    std::unique_ptr<TracePass> mpTraceDeltaReflectionPass;   ///< Delta reflection trace pass (for NRD).
+    std::unique_ptr<TracePass> mpTraceDeltaTransmissionPass; ///< Delta transmission trace pass (for NRD).
 
-    ref<Texture>                    mpSampleOffset;             ///< Output offset into per-sample buffers to where the samples for each pixel are stored (the offset is relative the start of the tile). Only used with non-fixed sample count.
-    ref<Buffer>                     mpSampleColor;              ///< Compact per-sample color buffer. This is used only if spp > 1.
-    ref<Buffer>                     mpSampleGuideData;          ///< Compact per-sample denoiser guide data.
-    ref<Buffer>                     mpSampleNRDRadiance;        ///< Compact per-sample NRD radiance data.
-    ref<Buffer>                     mpSampleNRDHitDist;         ///< Compact per-sample NRD hit distance data.
-    ref<Buffer>                     mpSampleNRDPrimaryHitNeeOnDelta;///< Compact per-sample NEE on delta primary vertices data.
-    ref<Buffer>                     mpSampleNRDEmission;        ///< Compact per-sample NRD emission data.
-    ref<Buffer>                     mpSampleNRDReflectance;     ///< Compact per-sample NRD reflectance data.
+    ref<Texture> mpSampleOffset;   ///< Output offset into per-sample buffers to where the samples for each pixel are stored (the offset is
+                                   ///< relative the start of the tile). Only used with non-fixed sample count.
+    ref<Buffer> mpSampleColor;     ///< Compact per-sample color buffer. This is used only if spp > 1.
+    ref<Buffer> mpSampleGuideData; ///< Compact per-sample denoiser guide data.
+    ref<Buffer> mpSampleNRDRadiance;             ///< Compact per-sample NRD radiance data.
+    ref<Buffer> mpSampleNRDHitDist;              ///< Compact per-sample NRD hit distance data.
+    ref<Buffer> mpSampleNRDPrimaryHitNeeOnDelta; ///< Compact per-sample NEE on delta primary vertices data.
+    ref<Buffer> mpSampleNRDEmission;             ///< Compact per-sample NRD emission data.
+    ref<Buffer> mpSampleNRDReflectance;          ///< Compact per-sample NRD reflectance data.
 };
+
+FALCOR_ENUM_REGISTER(PathTracer::TracePassMode);

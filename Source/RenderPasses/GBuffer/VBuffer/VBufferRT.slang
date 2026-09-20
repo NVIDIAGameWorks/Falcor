@@ -73,6 +73,7 @@ struct VBufferRT
         VertexData v;
         float depth = 1.f;
         float3 prevPosW = float3(0.f);
+        GeometryInstanceID instanceID = GeometryInstanceID(0);
         float2 motionVector = float2(0.f);
 
         if (hit.getType() == HitType::Triangle)
@@ -80,26 +81,34 @@ struct VBufferRT
             const TriangleHit triangleHit = hit.getTriangleHit();
             v = gScene.getVertexData(triangleHit);
             prevPosW = gScene.getPrevPosW(triangleHit);
+            instanceID = triangleHit.instanceID;
         }
         else if (hit.getType() == HitType::DisplacedTriangle)
         {
             const DisplacedTriangleHit displacedTriangleHit = hit.getDisplacedTriangleHit();
             v = gScene.getVertexData(displacedTriangleHit, -rayDir);
             prevPosW = gScene.getPrevPosW(displacedTriangleHit);
+            instanceID = displacedTriangleHit.instanceID;
         }
         else if (hit.getType() == HitType::Curve)
         {
             const CurveHit curveHit = hit.getCurveHit();
             v = gScene.getVertexDataFromCurve(curveHit);
-            prevPosW = gScene.getPrevPosWFromCurve(curveHit);
+            prevPosW = v.posW;//gScene.getPrevPosWFromCurve(curveHit); <- has GPU crash
+            instanceID = curveHit.instanceID;
         }
         else if (hit.getType() == HitType::SDFGrid)
         {
             const SDFGridHit sdfGridHit = hit.getSDFGridHit();
             v = gScene.getVertexDataFromSDFGrid(sdfGridHit, rayOrigin, rayDir);
-
             prevPosW = gScene.getPrevPosWFromSDFGrid(sdfGridHit, v.posW);
+            instanceID = sdfGridHit.instanceID;
         }
+
+        const GeometryInstanceData instance = gScene.getGeometryInstance(instanceID);
+        const float4x4 prevWorldMat = gScene.loadPrevWorldMatrix(instance.globalMatrixID);
+        const float4x4 curWorldMat = gScene.loadWorldMatrix(instance.globalMatrixID);
+        bool hasMoved = any(prevWorldMat != curWorldMat) || instance.isDynamic();
 
         if (hit.getType() == HitType::Triangle || hit.getType() == HitType::DisplacedTriangle || hit.getType() == HitType::Curve ||
             hit.getType() == HitType::SDFGrid)
@@ -129,8 +138,20 @@ struct VBufferRT
 
         if (is_valid(gDepth))
             gDepth[pixel] = 1.f;
-        if (is_valid(gMotionVector))
-            gMotionVector[pixel] = {};
+        if (is_valid(gMotionVector)) // also need to calculate motion vector
+        {
+            // Compute motion vector.
+            float2 pixelPos = pixel + float2(0.5f, 0.5f);
+            // view direction?
+            // the scale is arbitrary, just to avoid adding a small number to a large number
+            float scale = max(1, max(max(gScene.camera.data.prevPosW.x, gScene.camera.data.prevPosW.y), gScene.camera.data.prevPosW.z));
+            // project to the previous env dir
+            float3 prevRayDir = gScene.envMap.toWorld(gScene.envMap.toLocal(rayDir, false), true);
+            float3 virtualEnvMapPosition = gScene.camera.data.prevPosW + scale * prevRayDir;
+            float4 prevPosH = mul(gScene.camera.data.prevViewProjMatNoJitter, float4(virtualEnvMapPosition, 1.f));
+            float2 motionVector = calcMotionVector(pixelPos, prevPosH, frameDim) + float2(gScene.camera.data.jitterX, -gScene.camera.data.jitterY);
+            gMotionVector[pixel] = motionVector; // value will be wrong if no envmap exists
+        }
         if (is_valid(gMask))
             gMask[pixel] = 0.0f;
     }

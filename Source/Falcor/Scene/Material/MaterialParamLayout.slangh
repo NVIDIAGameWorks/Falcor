@@ -35,19 +35,19 @@
 
 namespace Falcor
 {
-namespace detail
-{
-static constexpr float kMaterialParamEpsilon = 1e-4f;
-template<typename T>
-T clampMaterialParam(T value, T min = T(kMaterialParamEpsilon), T max = T(1.f - kMaterialParamEpsilon))
-{
-    return math::clamp(value, min, max);
-}
-} // namespace detail
+    namespace detail
+    {
+        static constexpr float kMaterialParamEpsilon = 1e-4f;
+        template<typename T>
+        T clampMaterialParam(T value, T min = T(kMaterialParamEpsilon), T max = T(1.f - kMaterialParamEpsilon))
+        {
+            return math::clamp(value, min, max);
+        }
+    } // namespace detail
 } // namespace Falcor
 
 #define _EMIT_MATERIAL_PARAM_LAYOUT_ENTRY(type, offset, name, getter, setter, pythonName, ...) \
-    MaterialParamLayoutEntry{#name, pythonName, sizeof(type) / 4, offset},
+    MaterialParamLayoutEntry { #name, pythonName, sizeof(type) / 4, offset },
 
 #define _EMIT_MATERIAL_PARAM_SERIALIZE(type, offset, name, getter, setter, pythonName, ...) \
     {                                                                                       \
@@ -69,7 +69,7 @@ T clampMaterialParam(T value, T min = T(kMaterialParamEpsilon), T max = T(1.f - 
     {                                                                                                               \
         static const MaterialParamLayout& layout()                                                                  \
         {                                                                                                           \
-            static MaterialParamLayout layout = {params_(_EMIT_MATERIAL_PARAM_LAYOUT_ENTRY)};                       \
+            static MaterialParamLayout layout = { params_(_EMIT_MATERIAL_PARAM_LAYOUT_ENTRY) };                     \
             return layout;                                                                                          \
         }                                                                                                           \
         static SerializedMaterialParams serialize(const materialName_* material)                                    \
@@ -89,7 +89,7 @@ T clampMaterialParam(T value, T min = T(kMaterialParamEpsilon), T max = T(1.f - 
 
 import Scene.Material.MaterialParamLayout;
 
-#define _EMIT_MATERIAL_PARAM_FIELD(type, offset, name, getter, setter, pythonName, ...) static MaterialParamLayoutEntry name = {offset};
+#define _EMIT_MATERIAL_PARAM_FIELD(type, offset, name, getter, setter, pythonName, ...) static MaterialParamLayoutEntry name = { offset };
 
 #define DEFINE_MATERIAL_PARAM_LAYOUT(materialName_, params_) \
     struct materialName_##ParamLayout                        \

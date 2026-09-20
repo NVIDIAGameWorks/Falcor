@@ -38,656 +38,736 @@
 
 namespace Falcor
 {
-    namespace
-    {
-        static_assert((sizeof(MaterialHeader) + sizeof(BasicMaterialData)) <= sizeof(MaterialDataBlob), "Total material data size is too large");
-        static_assert(static_cast<uint32_t>(ShadingModel::Count) <= (1u << BasicMaterialData::kShadingModelBits), "ShadingModel bit count exceeds the maximum");
-        static_assert(static_cast<uint32_t>(NormalMapType::Count) <= (1u << BasicMaterialData::kNormalMapTypeBits), "NormalMapType bit count exceeds the maximum");
-        static_assert(BasicMaterialData::kTotalFlagsBits <= 32, "BasicMaterialData flags bit count exceeds the maximum");
+namespace
+{
+static_assert((sizeof(MaterialHeader) + sizeof(BasicMaterialData)) <= sizeof(MaterialDataBlob), "Total material data size is too large");
+static_assert(
+    static_cast<uint32_t>(ShadingModel::Count) <= (1u << BasicMaterialData::kShadingModelBits),
+    "ShadingModel bit count exceeds the maximum"
+);
+static_assert(
+    static_cast<uint32_t>(NormalMapType::Count) <= (1u << BasicMaterialData::kNormalMapTypeBits),
+    "NormalMapType bit count exceeds the maximum"
+);
+static_assert(BasicMaterialData::kTotalFlagsBits <= 32, "BasicMaterialData flags bit count exceeds the maximum");
 
-        // Constants.
-        const float kMaxVolumeAnisotropy = 0.99f;
+// Constants.
+const float kMaxVolumeAnisotropy = 0.99f;
+} // namespace
+
+BasicMaterial::BasicMaterial(ref<Device> pDevice, const std::string& name, MaterialType type) : Material(pDevice, name, type)
+{
+    mHeader.setIsBasicMaterial(true);
+    mHeader.setIoR(1.5h);
+
+    // Setup common texture slots.
+    mTextureSlotInfo[(uint32_t)TextureSlot::Displacement] = {"displacement", TextureChannelFlags::RGB, false};
+
+    // Call update functions to ensure a valid initial state based on default material parameters.
+    updateAlphaMode();
+    updateNormalMapType();
+    updateEmissiveFlag();
+    updateDeltaSpecularFlag();
+}
+
+bool BasicMaterial::renderUI(Gui::Widgets& widget)
+{
+    // Render the base class UI first.
+    bool changed = Material::renderUI(widget);
+
+    // We're re-using the material's update flags here to track changes.
+    // Cache the previous flag so we can restore it before returning.
+    UpdateFlags prevUpdates = mUpdates;
+    mUpdates = UpdateFlags::None;
+
+    if (auto pTexture = getBaseColorTexture())
+    {
+        bool hasAlpha = isAlphaSupported() && doesFormatHaveAlpha(pTexture->getFormat());
+        bool alphaConst = mIsTexturedAlphaConstant && hasAlpha;
+        bool colorConst = mIsTexturedBaseColorConstant;
+
+        std::string str =
+            fmt::format("Texture info: {}x{} ({})", pTexture->getWidth(), pTexture->getHeight(), to_string(pTexture->getFormat()));
+        if (colorConst && !alphaConst)
+            str += " (color constant)";
+        else if (!colorConst && alphaConst)
+            str += " (alpha constant)";
+        else if (colorConst && alphaConst)
+            str += " (color and alpha constant)"; // Shouldn't happen
+
+        widget.text("Base color: " + pTexture->getSourcePath().string());
+        widget.text(str);
+
+        if (colorConst || alphaConst)
+        {
+            float4 baseColor = getBaseColor();
+            if (widget.var("Base color", baseColor, 0.f, 1.f, 0.01f))
+                setBaseColor(baseColor);
+        }
+
+        widget.image("Base color", pTexture.get(), float2(100.f));
+        if (widget.button("Remove texture##BaseColor"))
+            setBaseColorTexture(nullptr);
+    }
+    else
+    {
+        float4 baseColor = getBaseColor();
+        if (widget.var("Base color", baseColor, 0.f, 1.f, 0.01f))
+            setBaseColor(baseColor);
     }
 
-    BasicMaterial::BasicMaterial(ref<Device> pDevice, const std::string& name, MaterialType type)
-        : Material(pDevice, name, type)
+    if (auto pTexture = getSpecularTexture())
     {
-        mHeader.setIsBasicMaterial(true);
-        mHeader.setIoR(1.5h);
+        widget.text("Specular params: " + pTexture->getSourcePath().string());
+        widget.text(
+            "Texture info: " + std::to_string(pTexture->getWidth()) + "x" + std::to_string(pTexture->getHeight()) + " (" +
+            to_string(pTexture->getFormat()) + ")"
+        );
+        widget.image("Specular params", pTexture.get(), float2(100.f));
+        if (widget.button("Remove texture##Specular"))
+            setSpecularTexture(nullptr);
+    }
+    else
+    {
+        float4 specularParams = getSpecularParams();
+        if (widget.var("Specular params", specularParams, 0.f, 1.f, 0.01f))
+            setSpecularParams(specularParams);
+        widget.tooltip("The encoding depends on the material type");
 
-        // Setup common texture slots.
-        mTextureSlotInfo[(uint32_t)TextureSlot::Displacement] = { "displacement", TextureChannelFlags::RGB, false };
+        renderSpecularUI(widget); // Let derived classes draw additional UI elements.
+    }
 
-        // Call update functions to ensure a valid initial state based on default material parameters.
+    if (auto pTexture = getNormalMap())
+    {
+        widget.text("Normal map: " + pTexture->getSourcePath().string());
+        widget.text(
+            "Texture info: " + std::to_string(pTexture->getWidth()) + "x" + std::to_string(pTexture->getHeight()) + " (" +
+            to_string(pTexture->getFormat()) + ")"
+        );
+        widget.image("Normal map", pTexture.get(), float2(100.f));
+        if (widget.button("Remove texture##NormalMap"))
+            setNormalMap(nullptr);
+    }
+
+    if (auto pTexture = getDisplacementMap())
+    {
+        widget.text("Displacement map: " + pTexture->getSourcePath().string());
+        widget.text(
+            "Texture info: " + std::to_string(pTexture->getWidth()) + "x" + std::to_string(pTexture->getHeight()) + " (" +
+            to_string(pTexture->getFormat()) + ")"
+        );
+        widget.image("Displacement map", pTexture.get(), float2(100.f));
+        if (widget.button("Remove texture##DisplacementMap"))
+            setDisplacementMap(nullptr);
+
+        float scale = getDisplacementScale();
+        if (widget.var("Displacement scale", scale))
+            setDisplacementScale(scale);
+
+        float offset = getDisplacementOffset();
+        if (widget.var("Displacement offset", offset))
+            setDisplacementOffset(offset);
+    }
+
+    if (auto pTexture = getTransmissionTexture())
+    {
+        widget.text("Transmission color: " + pTexture->getSourcePath().string());
+        widget.text(
+            "Texture info: " + std::to_string(pTexture->getWidth()) + "x" + std::to_string(pTexture->getHeight()) + " (" +
+            to_string(pTexture->getFormat()) + ")"
+        );
+        widget.image("Transmission color", pTexture.get(), float2(100.f));
+        if (widget.button("Remove texture##Transmission"))
+            setTransmissionTexture(nullptr);
+    }
+    else
+    {
+        float3 transmissionColor = getTransmissionColor();
+        if (widget.var("Transmission", transmissionColor, 0.f, 1.f, 0.01f))
+            setTransmissionColor(transmissionColor);
+    }
+
+    float diffuseTransmission = getDiffuseTransmission();
+    if (widget.var("Diffuse transmission", diffuseTransmission, 0.f, 1.f, 0.01f))
+        setDiffuseTransmission(diffuseTransmission);
+
+    float specularTransmission = getSpecularTransmission();
+    if (widget.var("Specular transmission", specularTransmission, 0.f, 1.f, 0.01f))
+        setSpecularTransmission(specularTransmission);
+
+    float IoR = getIndexOfRefraction();
+    if (widget.var("Index of refraction", IoR, 1.f, std::numeric_limits<float>::max(), 0.01f))
+        setIndexOfRefraction(IoR);
+
+    float3 volumeAbsorption = getVolumeAbsorption();
+    if (widget.var("Absorption coefficient", volumeAbsorption, 0.f, std::numeric_limits<float>::max(), 0.01f))
+        setVolumeAbsorption(volumeAbsorption);
+
+    float3 volumeScattering = getVolumeScattering();
+    if (widget.var("Scattering coefficient", volumeScattering, 0.f, std::numeric_limits<float>::max(), 0.01f))
+        setVolumeScattering(volumeScattering);
+
+    float volumeAnisotropy = getVolumeAnisotropy();
+    if (widget.var("Anisotropy (g)", volumeAnisotropy, -1.f, 1.f, 0.01f))
+        setVolumeAnisotropy(volumeAnisotropy);
+
+    if (isAlphaSupported())
+    {
+        // Show alpha range. This is not directly editable.
+        float2 alphaRange = mAlphaRange;
+        widget.var("Alpha range", alphaRange);
+    }
+
+    // Restore update flags.
+    changed |= mUpdates != UpdateFlags::None;
+    markUpdates(prevUpdates | mUpdates);
+
+    return changed;
+}
+
+Material::UpdateFlags BasicMaterial::update(MaterialSystem* pOwner)
+{
+    FALCOR_ASSERT(pOwner);
+
+    if (mUpdates != Material::UpdateFlags::None)
+    {
+        // Adjust material sidedness based on current parameters.
+        // TODO: Remove when single-sided transmissive materials are supported.
+        adjustDoubleSidedFlag();
+
+        // Prepare displacement maps for rendering.
+        prepareDisplacementMapForRendering();
+
+        // Update texture handles.
+        updateTextureHandle(pOwner, TextureSlot::BaseColor, mData.texBaseColor);
+        updateTextureHandle(pOwner, TextureSlot::Specular, mData.texSpecular);
+        updateTextureHandle(pOwner, TextureSlot::Emissive, mData.texEmissive);
+        updateTextureHandle(pOwner, TextureSlot::Transmission, mData.texTransmission);
+        updateTextureHandle(pOwner, TextureSlot::Normal, mData.texNormalMap);
+        updateTextureHandle(pOwner, TextureSlot::Displacement, mData.texDisplacementMap);
+
+        // Update default sampler.
+        updateDefaultTextureSamplerID(pOwner, mpDefaultSampler);
+
+        // Update displacement samplers.
+        uint prevFlags = mData.flags;
+        mData.setDisplacementMinSamplerID(pOwner->addTextureSampler(mpDisplacementMinSampler));
+        mData.setDisplacementMaxSamplerID(pOwner->addTextureSampler(mpDisplacementMaxSampler));
+        if (mData.flags != prevFlags)
+            mUpdates |= Material::UpdateFlags::DataChanged;
+
+        // Assume any update for an emissive materials can change its emissive properties.
+        if (mUpdates != Material::UpdateFlags::None && isEmissive())
+            mUpdates |= Material::UpdateFlags::EmissiveChanged;
+    }
+
+    auto flags = mUpdates;
+    mUpdates = Material::UpdateFlags::None;
+
+    return flags;
+}
+
+bool BasicMaterial::isDisplaced() const
+{
+    return hasTextureSlotData(Material::TextureSlot::Displacement);
+}
+
+void BasicMaterial::setAlphaMode(AlphaMode alphaMode)
+{
+    if (!isAlphaSupported())
+    {
+        FALCOR_ASSERT(getAlphaMode() == AlphaMode::Opaque);
+        logWarning(
+            "Alpha is not supported by material type '{}'. Ignoring call to setAlphaMode() for material '{}'.",
+            to_string(getType()),
+            getName()
+        );
+        return;
+    }
+    if (mHeader.getAlphaMode() != alphaMode)
+    {
+        mHeader.setAlphaMode(alphaMode);
+        markUpdates(UpdateFlags::DataChanged);
+    }
+}
+
+void BasicMaterial::setAlphaThreshold(float alphaThreshold)
+{
+    if (!isAlphaSupported())
+    {
+        logWarning(
+            "Alpha is not supported by material type '{}'. Ignoring call to setAlphaThreshold() for material '{}'.",
+            to_string(getType()),
+            getName()
+        );
+        return;
+    }
+    if (mHeader.getAlphaThreshold() != (float16_t)alphaThreshold)
+    {
+        mHeader.setAlphaThreshold((float16_t)alphaThreshold);
+        markUpdates(UpdateFlags::DataChanged);
         updateAlphaMode();
+    }
+}
+
+void BasicMaterial::setDefaultTextureSampler(const ref<Sampler>& pSampler)
+{
+    if (pSampler != mpDefaultSampler)
+    {
+        mpDefaultSampler = pSampler;
+
+        // Create derived samplers for displacement Min/Max filtering.
+        Sampler::Desc desc = pSampler->getDesc();
+        desc.setMaxAnisotropy(16); // Set 16x anisotropic filtering for improved min/max precision per triangle.
+        desc.setReductionMode(TextureReductionMode::Min);
+        mpDisplacementMinSampler = mpDevice->createSampler(desc);
+        desc.setReductionMode(TextureReductionMode::Max);
+        mpDisplacementMaxSampler = mpDevice->createSampler(desc);
+
+        markUpdates(UpdateFlags::ResourcesChanged);
+    }
+}
+
+bool BasicMaterial::setTexture(const TextureSlot slot, const ref<Texture>& pTexture)
+{
+    if (!Material::setTexture(slot, pTexture))
+        return false;
+
+    // Update additional metadata about texture usage.
+    switch (slot)
+    {
+    case TextureSlot::BaseColor:
+        if (pTexture)
+        {
+            // Assume the texture is non-constant and has full alpha range.
+            // This may be changed later by optimizeTexture().
+            mAlphaRange = float2(0.f, 1.f);
+            mIsTexturedBaseColorConstant = mIsTexturedAlphaConstant = false;
+        }
+        updateAlphaMode();
+        updateDeltaSpecularFlag();
+        break;
+    case TextureSlot::Specular:
+        updateDeltaSpecularFlag();
+        break;
+    case TextureSlot::Normal:
         updateNormalMapType();
+        break;
+    case TextureSlot::Emissive:
         updateEmissiveFlag();
+        break;
+    case TextureSlot::Displacement:
+        mDisplacementMapChanged = true;
+        markUpdates(UpdateFlags::DisplacementChanged);
+        break;
+    default:
+        break;
+    }
+
+    return true;
+}
+
+void BasicMaterial::optimizeTexture(const TextureSlot slot, const TextureAnalyzer::Result& texInfo, TextureOptimizationStats& stats)
+{
+    FALCOR_ASSERT(getTexture(slot) != nullptr);
+    TextureChannelFlags channelMask = getTextureSlotInfo(slot).mask;
+
+    switch (slot)
+    {
+    case TextureSlot::BaseColor:
+    {
+        bool previouslyOpaque = isOpaque();
+
+        auto pBaseColor = getBaseColorTexture();
+        bool hasAlpha = isAlphaSupported() && pBaseColor && doesFormatHaveAlpha(pBaseColor->getFormat());
+        bool isColorConstant = texInfo.isConstant(TextureChannelFlags::RGB);
+        bool isAlphaConstant = texInfo.isConstant(TextureChannelFlags::Alpha);
+
+        // Update the alpha range.
+        if (hasAlpha)
+            mAlphaRange = float2(texInfo.minValue.a, texInfo.maxValue.a);
+
+        // Update base color parameter and texture.
+        float4 baseColor = getBaseColor();
+        if (isColorConstant)
+        {
+            baseColor = float4(texInfo.value.xyz(), baseColor.a);
+            mIsTexturedBaseColorConstant = true;
+        }
+        if (hasAlpha && isAlphaConstant)
+        {
+            baseColor = float4(baseColor.xyz(), texInfo.value.a);
+            mIsTexturedAlphaConstant = true;
+        }
+        setBaseColor(baseColor);
+
+        if (isColorConstant && (!hasAlpha || isAlphaConstant))
+        {
+            clearTexture(Material::TextureSlot::BaseColor);
+            stats.texturesRemoved[(size_t)slot]++;
+        }
+        else if (isColorConstant)
+        {
+            // We don't have a way to specify constant base color with non-constant alpha since they share a texture slot.
+            // Count number of cases and issue a perf warning later instead.
+            stats.constantBaseColor++;
+        }
+
+        updateAlphaMode();
+
+        if (!previouslyOpaque && isOpaque())
+            stats.disabledAlpha++;
+
+        break;
+    }
+    case TextureSlot::Specular:
+    {
+        if (texInfo.isConstant(channelMask))
+        {
+            clearTexture(Material::TextureSlot::Specular);
+            setSpecularParams(texInfo.value);
+            stats.texturesRemoved[(size_t)slot]++;
+        }
+        break;
+    }
+    case TextureSlot::Emissive:
+    {
+        if (texInfo.isConstant(channelMask))
+        {
+            clearTexture(Material::TextureSlot::Emissive);
+            setEmissiveColor(texInfo.value.xyz());
+            stats.texturesRemoved[(size_t)slot]++;
+        }
+        break;
+    }
+    case TextureSlot::Normal:
+    {
+        // Determine which channels of the normal map are used.
+        switch (getNormalMapType())
+        {
+        case NormalMapType::RG:
+            channelMask = TextureChannelFlags::Red | TextureChannelFlags::Green;
+            break;
+        case NormalMapType::RGB:
+            channelMask = TextureChannelFlags::RGB;
+            break;
+        default:
+            logWarning("BasicMaterial::optimizeTexture() - Unsupported normal map mode");
+            channelMask = TextureChannelFlags::RGBA;
+            break;
+        }
+
+        if (texInfo.isConstant(channelMask))
+        {
+            // We don't have a way to specify constant normal map value.
+            // Count number of cases and issue a perf warning later instead.
+            stats.constantNormalMaps++;
+        }
+        break;
+    }
+    case TextureSlot::Transmission:
+    {
+        if (texInfo.isConstant(channelMask))
+        {
+            clearTexture(Material::TextureSlot::Transmission);
+            setTransmissionColor(texInfo.value.xyz());
+            stats.texturesRemoved[(size_t)slot]++;
+        }
+        break;
+    }
+    case TextureSlot::Displacement:
+    {
+        // Nothing to do here, displacement texture is prepared when calling prepareDisplacementMap().
+        break;
+    }
+    default:
+        FALCOR_THROW("'slot' refers to unexpected texture slot {}", (uint32_t)slot);
+    }
+}
+
+bool BasicMaterial::isAlphaSupported() const
+{
+    return getTextureSlotInfo(TextureSlot::BaseColor).hasChannel(TextureChannelFlags::Alpha);
+}
+
+void BasicMaterial::prepareDisplacementMapForRendering()
+{
+    if (auto pDisplacementMap = getDisplacementMap(); pDisplacementMap && mDisplacementMapChanged)
+    {
+        RenderContext* pRenderContext = mpDevice->getRenderContext();
+
+        // Creates RGBA texture with MIP pyramid containing average, min, max values.
+        Falcor::ResourceFormat oldFormat = pDisplacementMap->getFormat();
+
+        // Replace texture with a 4 component one if necessary.
+        if (getFormatChannelCount(oldFormat) < 4)
+        {
+            Falcor::ResourceFormat newFormat = ResourceFormat::RGBA16Float;
+            ResourceBindFlags bf = pDisplacementMap->getBindFlags() | ResourceBindFlags::UnorderedAccess | ResourceBindFlags::RenderTarget;
+            ref<Texture> newDisplacementTex = mpDevice->createTexture2D(
+                pDisplacementMap->getWidth(),
+                pDisplacementMap->getHeight(),
+                newFormat,
+                pDisplacementMap->getArraySize(),
+                Resource::kMaxPossible,
+                nullptr,
+                bf
+            );
+
+            // Copy base level.
+            uint32_t arraySize = pDisplacementMap->getArraySize();
+            for (uint32_t a = 0; a < arraySize; a++)
+            {
+                auto srv = pDisplacementMap->getSRV(0, 1, a, 1);
+                auto rtv = newDisplacementTex->getRTV(0, a, 1);
+                const TextureReductionMode redModes[] = {
+                    TextureReductionMode::Standard,
+                    TextureReductionMode::Standard,
+                    TextureReductionMode::Standard,
+                    TextureReductionMode::Standard};
+                const float4 componentsTransform[] = {
+                    float4(1.0f, 0.0f, 0.0f, 0.0f),
+                    float4(1.0f, 0.0f, 0.0f, 0.0f),
+                    float4(1.0f, 0.0f, 0.0f, 0.0f),
+                    float4(1.0f, 0.0f, 0.0f, 0.0f)};
+                pRenderContext->blit(
+                    srv, rtv, RenderContext::kMaxRect, RenderContext::kMaxRect, TextureFilteringMode::Linear, redModes, componentsTransform
+                );
+            }
+
+            pDisplacementMap = newDisplacementTex;
+            setDisplacementMap(newDisplacementTex);
+        }
+
+        // Build min/max MIPS.
+        pDisplacementMap->generateMips(pRenderContext, true);
+    }
+    mDisplacementMapChanged = false;
+}
+
+void BasicMaterial::setDisplacementScale(float scale)
+{
+    if (mData.displacementScale != scale)
+    {
+        mData.displacementScale = scale;
+        markUpdates(UpdateFlags::DataChanged | UpdateFlags::DisplacementChanged);
+    }
+}
+
+void BasicMaterial::setDisplacementOffset(float offset)
+{
+    if (mData.displacementOffset != offset)
+    {
+        mData.displacementOffset = offset;
+        markUpdates(UpdateFlags::DataChanged | UpdateFlags::DisplacementChanged);
+    }
+}
+
+void BasicMaterial::setBaseColor(const float4& color)
+{
+    if (any(mData.baseColor != (float16_t4)color))
+    {
+        mData.baseColor = (float16_t4)color;
+        markUpdates(UpdateFlags::DataChanged);
+        updateAlphaMode();
         updateDeltaSpecularFlag();
     }
+}
 
-    bool BasicMaterial::renderUI(Gui::Widgets& widget)
+void BasicMaterial::setSpecularParams(const float4& color)
+{
+    if (any(mData.specular != (float16_t4)color))
     {
-        // Render the base class UI first.
-        bool changed = Material::renderUI(widget);
-
-        // We're re-using the material's update flags here to track changes.
-        // Cache the previous flag so we can restore it before returning.
-        UpdateFlags prevUpdates = mUpdates;
-        mUpdates = UpdateFlags::None;
-
-        if (auto pTexture = getBaseColorTexture())
-        {
-            bool hasAlpha = isAlphaSupported() && doesFormatHaveAlpha(pTexture->getFormat());
-            bool alphaConst = mIsTexturedAlphaConstant && hasAlpha;
-            bool colorConst = mIsTexturedBaseColorConstant;
-
-            std::string str = fmt::format("Texture info: {}x{} ({})", pTexture->getWidth(), pTexture->getHeight(), to_string(pTexture->getFormat()));
-            if (colorConst && !alphaConst) str += " (color constant)";
-            else if (!colorConst && alphaConst) str += " (alpha constant)";
-            else if (colorConst && alphaConst) str += " (color and alpha constant)"; // Shouldn't happen
-
-            widget.text("Base color: " + pTexture->getSourcePath().string());
-            widget.text(str);
-
-            if (colorConst || alphaConst)
-            {
-                float4 baseColor = getBaseColor();
-                if (widget.var("Base color", baseColor, 0.f, 1.f, 0.01f)) setBaseColor(baseColor);
-            }
-
-            widget.image("Base color", pTexture.get(), float2(100.f));
-            if (widget.button("Remove texture##BaseColor")) setBaseColorTexture(nullptr);
-        }
-        else
-        {
-            float4 baseColor = getBaseColor();
-            if (widget.var("Base color", baseColor, 0.f, 1.f, 0.01f)) setBaseColor(baseColor);
-        }
-
-        if (auto pTexture = getSpecularTexture())
-        {
-            widget.text("Specular params: " + pTexture->getSourcePath().string());
-            widget.text("Texture info: " + std::to_string(pTexture->getWidth()) + "x" + std::to_string(pTexture->getHeight()) + " (" + to_string(pTexture->getFormat()) + ")");
-            widget.image("Specular params", pTexture.get(), float2(100.f));
-            if (widget.button("Remove texture##Specular")) setSpecularTexture(nullptr);
-        }
-        else
-        {
-            float4 specularParams = getSpecularParams();
-            if (widget.var("Specular params", specularParams, 0.f, 1.f, 0.01f)) setSpecularParams(specularParams);
-            widget.tooltip("The encoding depends on the material type");
-
-            renderSpecularUI(widget); // Let derived classes draw additional UI elements.
-        }
-
-        if (auto pTexture = getNormalMap())
-        {
-            widget.text("Normal map: " + pTexture->getSourcePath().string());
-            widget.text("Texture info: " + std::to_string(pTexture->getWidth()) + "x" + std::to_string(pTexture->getHeight()) + " (" + to_string(pTexture->getFormat()) + ")");
-            widget.image("Normal map", pTexture.get(), float2(100.f));
-            if (widget.button("Remove texture##NormalMap")) setNormalMap(nullptr);
-        }
-
-        if (auto pTexture = getDisplacementMap())
-        {
-            widget.text("Displacement map: " + pTexture->getSourcePath().string());
-            widget.text("Texture info: " + std::to_string(pTexture->getWidth()) + "x" + std::to_string(pTexture->getHeight()) + " (" + to_string(pTexture->getFormat()) + ")");
-            widget.image("Displacement map", pTexture.get(), float2(100.f));
-            if (widget.button("Remove texture##DisplacementMap")) setDisplacementMap(nullptr);
-
-            float scale = getDisplacementScale();
-            if (widget.var("Displacement scale", scale)) setDisplacementScale(scale);
-
-            float offset = getDisplacementOffset();
-            if (widget.var("Displacement offset", offset)) setDisplacementOffset(offset);
-        }
-
-        if (auto pTexture = getTransmissionTexture())
-        {
-            widget.text("Transmission color: " + pTexture->getSourcePath().string());
-            widget.text("Texture info: " + std::to_string(pTexture->getWidth()) + "x" + std::to_string(pTexture->getHeight()) + " (" + to_string(pTexture->getFormat()) + ")");
-            widget.image("Transmission color", pTexture.get(), float2(100.f));
-            if (widget.button("Remove texture##Transmission")) setTransmissionTexture(nullptr);
-        }
-        else
-        {
-            float3 transmissionColor = getTransmissionColor();
-            if (widget.var("Transmission", transmissionColor, 0.f, 1.f, 0.01f)) setTransmissionColor(transmissionColor);
-        }
-
-        float diffuseTransmission = getDiffuseTransmission();
-        if (widget.var("Diffuse transmission", diffuseTransmission, 0.f, 1.f, 0.01f)) setDiffuseTransmission(diffuseTransmission);
-
-        float specularTransmission = getSpecularTransmission();
-        if (widget.var("Specular transmission", specularTransmission, 0.f, 1.f, 0.01f)) setSpecularTransmission(specularTransmission);
-
-        float IoR = getIndexOfRefraction();
-        if (widget.var("Index of refraction", IoR, 1.f, std::numeric_limits<float>::max(), 0.01f)) setIndexOfRefraction(IoR);
-
-        float3 volumeAbsorption = getVolumeAbsorption();
-        if (widget.var("Absorption coefficient", volumeAbsorption, 0.f, std::numeric_limits<float>::max(), 0.01f)) setVolumeAbsorption(volumeAbsorption);
-
-        float3 volumeScattering = getVolumeScattering();
-        if (widget.var("Scattering coefficient", volumeScattering, 0.f, std::numeric_limits<float>::max(), 0.01f)) setVolumeScattering(volumeScattering);
-
-        float volumeAnisotropy = getVolumeAnisotropy();
-        if (widget.var("Anisotropy (g)", volumeAnisotropy, -1.f, 1.f, 0.01f)) setVolumeAnisotropy(volumeAnisotropy);
-
-        if (isAlphaSupported())
-        {
-            // Show alpha range. This is not directly editable.
-            float2 alphaRange = mAlphaRange;
-            widget.var("Alpha range", alphaRange);
-        }
-
-        // Restore update flags.
-        changed |= mUpdates != UpdateFlags::None;
-        markUpdates(prevUpdates | mUpdates);
-
-        return changed;
+        mData.specular = (float16_t4)color;
+        markUpdates(UpdateFlags::DataChanged);
+        updateDeltaSpecularFlag();
     }
+}
 
-    Material::UpdateFlags BasicMaterial::update(MaterialSystem* pOwner)
+void BasicMaterial::setTransmissionColor(const float3& transmissionColor)
+{
+    if (any(mData.transmission != (float16_t3)transmissionColor))
     {
-        FALCOR_ASSERT(pOwner);
-
-        if (mUpdates != Material::UpdateFlags::None)
-        {
-            // Adjust material sidedness based on current parameters.
-            // TODO: Remove when single-sided transmissive materials are supported.
-            adjustDoubleSidedFlag();
-
-            // Prepare displacement maps for rendering.
-            prepareDisplacementMapForRendering();
-
-            // Update texture handles.
-            updateTextureHandle(pOwner, TextureSlot::BaseColor, mData.texBaseColor);
-            updateTextureHandle(pOwner, TextureSlot::Specular, mData.texSpecular);
-            updateTextureHandle(pOwner, TextureSlot::Emissive, mData.texEmissive);
-            updateTextureHandle(pOwner, TextureSlot::Transmission, mData.texTransmission);
-            updateTextureHandle(pOwner, TextureSlot::Normal, mData.texNormalMap);
-            updateTextureHandle(pOwner, TextureSlot::Displacement, mData.texDisplacementMap);
-
-            // Update default sampler.
-            updateDefaultTextureSamplerID(pOwner, mpDefaultSampler);
-
-            // Update displacement samplers.
-            uint prevFlags = mData.flags;
-            mData.setDisplacementMinSamplerID(pOwner->addTextureSampler(mpDisplacementMinSampler));
-            mData.setDisplacementMaxSamplerID(pOwner->addTextureSampler(mpDisplacementMaxSampler));
-            if (mData.flags != prevFlags) mUpdates |= Material::UpdateFlags::DataChanged;
-
-            // Assume any update for an emissive materials can change its emissive properties.
-            if (mUpdates != Material::UpdateFlags::None && isEmissive())
-                mUpdates |= Material::UpdateFlags::EmissiveChanged;
-        }
-
-        auto flags = mUpdates;
-        mUpdates = Material::UpdateFlags::None;
-
-        return flags;
+        mData.transmission = (float16_t3)transmissionColor;
+        markUpdates(UpdateFlags::DataChanged);
     }
+}
 
-    bool BasicMaterial::isDisplaced() const
+void BasicMaterial::setDiffuseTransmission(float diffuseTransmission)
+{
+    if (mData.diffuseTransmission != (float16_t)diffuseTransmission)
     {
-        return hasTextureSlotData(Material::TextureSlot::Displacement);
+        mData.diffuseTransmission = (float16_t)diffuseTransmission;
+        markUpdates(UpdateFlags::DataChanged);
+        updateDeltaSpecularFlag();
     }
+}
 
-    void BasicMaterial::setAlphaMode(AlphaMode alphaMode)
+void BasicMaterial::setSpecularTransmission(float specularTransmission)
+{
+    if (mData.specularTransmission != (float16_t)specularTransmission)
     {
-        if (!isAlphaSupported())
-        {
-            FALCOR_ASSERT(getAlphaMode() == AlphaMode::Opaque);
-            logWarning("Alpha is not supported by material type '{}'. Ignoring call to setAlphaMode() for material '{}'.", to_string(getType()), getName());
-            return;
-        }
-        if (mHeader.getAlphaMode() != alphaMode)
-        {
-            mHeader.setAlphaMode(alphaMode);
-            markUpdates(UpdateFlags::DataChanged);
-        }
+        mData.specularTransmission = (float16_t)specularTransmission;
+        markUpdates(UpdateFlags::DataChanged);
+        updateDeltaSpecularFlag();
     }
+}
 
-    void BasicMaterial::setAlphaThreshold(float alphaThreshold)
+void BasicMaterial::setVolumeAbsorption(const float3& volumeAbsorption)
+{
+    if (any(mData.volumeAbsorption != (float16_t3)volumeAbsorption))
     {
-        if (!isAlphaSupported())
-        {
-            logWarning("Alpha is not supported by material type '{}'. Ignoring call to setAlphaThreshold() for material '{}'.", to_string(getType()), getName());
-            return;
-        }
-        if (mHeader.getAlphaThreshold() != (float16_t)alphaThreshold)
-        {
-            mHeader.setAlphaThreshold((float16_t)alphaThreshold);
-            markUpdates(UpdateFlags::DataChanged);
-            updateAlphaMode();
-        }
+        mData.volumeAbsorption = (float16_t3)volumeAbsorption;
+        markUpdates(UpdateFlags::DataChanged);
     }
+}
 
-    void BasicMaterial::setDefaultTextureSampler(const ref<Sampler>& pSampler)
+void BasicMaterial::setVolumeScattering(const float3& volumeScattering)
+{
+    if (any(mData.volumeScattering != (float16_t3)volumeScattering))
     {
-        if (pSampler != mpDefaultSampler)
-        {
-            mpDefaultSampler = pSampler;
-
-            // Create derived samplers for displacement Min/Max filtering.
-            Sampler::Desc desc = pSampler->getDesc();
-            desc.setMaxAnisotropy(16); // Set 16x anisotropic filtering for improved min/max precision per triangle.
-            desc.setReductionMode(TextureReductionMode::Min);
-            mpDisplacementMinSampler = mpDevice->createSampler(desc);
-            desc.setReductionMode(TextureReductionMode::Max);
-            mpDisplacementMaxSampler = mpDevice->createSampler(desc);
-
-            markUpdates(UpdateFlags::ResourcesChanged);
-        }
+        mData.volumeScattering = (float16_t3)volumeScattering;
+        markUpdates(UpdateFlags::DataChanged);
     }
+}
 
-    bool BasicMaterial::setTexture(const TextureSlot slot, const ref<Texture>& pTexture)
+void BasicMaterial::setVolumeAnisotropy(float volumeAnisotropy)
+{
+    auto clampedAnisotropy = math::clamp(volumeAnisotropy, -kMaxVolumeAnisotropy, kMaxVolumeAnisotropy);
+    if (mData.volumeAnisotropy != (float16_t)clampedAnisotropy)
     {
-        if (!Material::setTexture(slot, pTexture)) return false;
-
-        // Update additional metadata about texture usage.
-        switch (slot)
-        {
-        case TextureSlot::BaseColor:
-            if (pTexture)
-            {
-                // Assume the texture is non-constant and has full alpha range.
-                // This may be changed later by optimizeTexture().
-                mAlphaRange = float2(0.f, 1.f);
-                mIsTexturedBaseColorConstant = mIsTexturedAlphaConstant = false;
-            }
-            updateAlphaMode();
-            updateDeltaSpecularFlag();
-            break;
-        case TextureSlot::Specular:
-            updateDeltaSpecularFlag();
-            break;
-        case TextureSlot::Normal:
-            updateNormalMapType();
-            break;
-        case TextureSlot::Emissive:
-            updateEmissiveFlag();
-            break;
-        case TextureSlot::Displacement:
-            mDisplacementMapChanged = true;
-            markUpdates(UpdateFlags::DisplacementChanged);
-            break;
-        default:
-            break;
-        }
-
-        return true;
+        mData.volumeAnisotropy = (float16_t)clampedAnisotropy;
+        markUpdates(UpdateFlags::DataChanged);
     }
+}
 
-    void BasicMaterial::optimizeTexture(const TextureSlot slot, const TextureAnalyzer::Result& texInfo, TextureOptimizationStats& stats)
-    {
-        FALCOR_ASSERT(getTexture(slot) != nullptr);
-        TextureChannelFlags channelMask = getTextureSlotInfo(slot).mask;
+bool BasicMaterial::isEqual(const ref<Material>& pOther) const
+{
+    auto other = dynamic_ref_cast<BasicMaterial>(pOther);
+    if (!other)
+        return false;
 
-        switch (slot)
-        {
-        case TextureSlot::BaseColor:
-        {
-            bool previouslyOpaque = isOpaque();
+    return (*this) == (*other);
+}
 
-            auto pBaseColor = getBaseColorTexture();
-            bool hasAlpha = isAlphaSupported() && pBaseColor && doesFormatHaveAlpha(pBaseColor->getFormat());
-            bool isColorConstant = texInfo.isConstant(TextureChannelFlags::RGB);
-            bool isAlphaConstant = texInfo.isConstant(TextureChannelFlags::Alpha);
+bool BasicMaterial::operator==(const BasicMaterial& other) const
+{
+    if (!isBaseEqual(other))
+        return false;
 
-            // Update the alpha range.
-            if (hasAlpha) mAlphaRange = float2(texInfo.minValue.a, texInfo.maxValue.a);
-
-            // Update base color parameter and texture.
-            float4 baseColor = getBaseColor();
-            if (isColorConstant)
-            {
-                baseColor = float4(texInfo.value.xyz(), baseColor.a);
-                mIsTexturedBaseColorConstant = true;
-            }
-            if (hasAlpha && isAlphaConstant)
-            {
-                baseColor = float4(baseColor.xyz(), texInfo.value.a);
-                mIsTexturedAlphaConstant = true;
-            }
-            setBaseColor(baseColor);
-
-            if (isColorConstant && (!hasAlpha || isAlphaConstant))
-            {
-                clearTexture(Material::TextureSlot::BaseColor);
-                stats.texturesRemoved[(size_t)slot]++;
-            }
-            else if (isColorConstant)
-            {
-                // We don't have a way to specify constant base color with non-constant alpha since they share a texture slot.
-                // Count number of cases and issue a perf warning later instead.
-                stats.constantBaseColor++;
-            }
-
-            updateAlphaMode();
-
-            if (!previouslyOpaque && isOpaque()) stats.disabledAlpha++;
-
-            break;
-        }
-        case TextureSlot::Specular:
-        {
-            if (texInfo.isConstant(channelMask))
-            {
-                clearTexture(Material::TextureSlot::Specular);
-                setSpecularParams(texInfo.value);
-                stats.texturesRemoved[(size_t)slot]++;
-            }
-            break;
-        }
-        case TextureSlot::Emissive:
-        {
-            if (texInfo.isConstant(channelMask))
-            {
-                clearTexture(Material::TextureSlot::Emissive);
-                setEmissiveColor(texInfo.value.xyz());
-                stats.texturesRemoved[(size_t)slot]++;
-            }
-            break;
-        }
-        case TextureSlot::Normal:
-        {
-            // Determine which channels of the normal map are used.
-            switch (getNormalMapType())
-            {
-            case NormalMapType::RG:
-                channelMask = TextureChannelFlags::Red | TextureChannelFlags::Green;
-                break;
-            case NormalMapType::RGB:
-                channelMask = TextureChannelFlags::RGB;
-                break;
-            default:
-                logWarning("BasicMaterial::optimizeTexture() - Unsupported normal map mode");
-                channelMask = TextureChannelFlags::RGBA;
-                break;
-            }
-
-            if (texInfo.isConstant(channelMask))
-            {
-                // We don't have a way to specify constant normal map value.
-                // Count number of cases and issue a perf warning later instead.
-                stats.constantNormalMaps++;
-            }
-            break;
-        }
-        case TextureSlot::Transmission:
-        {
-            if (texInfo.isConstant(channelMask))
-            {
-                clearTexture(Material::TextureSlot::Transmission);
-                setTransmissionColor(texInfo.value.xyz());
-                stats.texturesRemoved[(size_t)slot]++;
-            }
-            break;
-        }
-        case TextureSlot::Displacement:
-        {
-            // Nothing to do here, displacement texture is prepared when calling prepareDisplacementMap().
-            break;
-        }
-        default:
-            FALCOR_THROW("'slot' refers to unexpected texture slot {}", (uint32_t)slot);
-        }
-    }
-
-    bool BasicMaterial::isAlphaSupported() const
-    {
-        return getTextureSlotInfo(TextureSlot::BaseColor).hasChannel(TextureChannelFlags::Alpha);
-    }
-
-    void BasicMaterial::prepareDisplacementMapForRendering()
-    {
-        if (auto pDisplacementMap = getDisplacementMap(); pDisplacementMap && mDisplacementMapChanged)
-        {
-            RenderContext* pRenderContext = mpDevice->getRenderContext();
-
-            // Creates RGBA texture with MIP pyramid containing average, min, max values.
-            Falcor::ResourceFormat oldFormat = pDisplacementMap->getFormat();
-
-            // Replace texture with a 4 component one if necessary.
-            if (getFormatChannelCount(oldFormat) < 4)
-            {
-                Falcor::ResourceFormat newFormat = ResourceFormat::RGBA16Float;
-                ResourceBindFlags bf = pDisplacementMap->getBindFlags() | ResourceBindFlags::UnorderedAccess | ResourceBindFlags::RenderTarget;
-                ref<Texture> newDisplacementTex = mpDevice->createTexture2D(pDisplacementMap->getWidth(), pDisplacementMap->getHeight(), newFormat, pDisplacementMap->getArraySize(), Resource::kMaxPossible, nullptr, bf);
-
-                // Copy base level.
-                uint32_t arraySize = pDisplacementMap->getArraySize();
-                for (uint32_t a = 0; a < arraySize; a++)
-                {
-                    auto srv = pDisplacementMap->getSRV(0, 1, a, 1);
-                    auto rtv = newDisplacementTex->getRTV(0, a, 1);
-                    const TextureReductionMode redModes[] = { TextureReductionMode::Standard, TextureReductionMode::Standard, TextureReductionMode::Standard, TextureReductionMode::Standard };
-                    const float4 componentsTransform[] = { float4(1.0f, 0.0f, 0.0f, 0.0f), float4(1.0f, 0.0f, 0.0f, 0.0f), float4(1.0f, 0.0f, 0.0f, 0.0f), float4(1.0f, 0.0f, 0.0f, 0.0f) };
-                    pRenderContext->blit(srv, rtv, RenderContext::kMaxRect, RenderContext::kMaxRect, TextureFilteringMode::Linear, redModes, componentsTransform);
-                }
-
-                pDisplacementMap = newDisplacementTex;
-                setDisplacementMap(newDisplacementTex);
-            }
-
-            // Build min/max MIPS.
-            pDisplacementMap->generateMips(pRenderContext, true);
-        }
-        mDisplacementMapChanged = false;
-    }
-
-    void BasicMaterial::setDisplacementScale(float scale)
-    {
-        if (mData.displacementScale != scale)
-        {
-            mData.displacementScale = scale;
-            markUpdates(UpdateFlags::DataChanged | UpdateFlags::DisplacementChanged);
-        }
-    }
-
-    void BasicMaterial::setDisplacementOffset(float offset)
-    {
-        if (mData.displacementOffset != offset)
-        {
-            mData.displacementOffset = offset;
-            markUpdates(UpdateFlags::DataChanged | UpdateFlags::DisplacementChanged);
-        }
-    }
-
-    void BasicMaterial::setBaseColor(const float4& color)
-    {
-        if (any(mData.baseColor != (float16_t4)color))
-        {
-            mData.baseColor = (float16_t4)color;
-            markUpdates(UpdateFlags::DataChanged);
-            updateAlphaMode();
-            updateDeltaSpecularFlag();
-        }
-    }
-
-    void BasicMaterial::setSpecularParams(const float4& color)
-    {
-        if (any(mData.specular != (float16_t4)color))
-        {
-            mData.specular = (float16_t4)color;
-            markUpdates(UpdateFlags::DataChanged);
-            updateDeltaSpecularFlag();
-        }
-    }
-
-    void BasicMaterial::setTransmissionColor(const float3& transmissionColor)
-    {
-        if (any(mData.transmission != (float16_t3)transmissionColor))
-        {
-            mData.transmission = (float16_t3)transmissionColor;
-            markUpdates(UpdateFlags::DataChanged);
-        }
-    }
-
-    void BasicMaterial::setDiffuseTransmission(float diffuseTransmission)
-    {
-        if (mData.diffuseTransmission != (float16_t)diffuseTransmission)
-        {
-            mData.diffuseTransmission = (float16_t)diffuseTransmission;
-            markUpdates(UpdateFlags::DataChanged);
-            updateDeltaSpecularFlag();
-        }
-    }
-
-    void BasicMaterial::setSpecularTransmission(float specularTransmission)
-    {
-        if (mData.specularTransmission != (float16_t)specularTransmission)
-        {
-            mData.specularTransmission = (float16_t)specularTransmission;
-            markUpdates(UpdateFlags::DataChanged);
-            updateDeltaSpecularFlag();
-        }
-    }
-
-    void BasicMaterial::setVolumeAbsorption(const float3& volumeAbsorption)
-    {
-        if (any(mData.volumeAbsorption != (float16_t3)volumeAbsorption))
-        {
-            mData.volumeAbsorption = (float16_t3)volumeAbsorption;
-            markUpdates(UpdateFlags::DataChanged);
-        }
-    }
-
-    void BasicMaterial::setVolumeScattering(const float3& volumeScattering)
-    {
-        if (any(mData.volumeScattering != (float16_t3)volumeScattering))
-        {
-            mData.volumeScattering = (float16_t3)volumeScattering;
-            markUpdates(UpdateFlags::DataChanged);
-        }
-    }
-
-    void BasicMaterial::setVolumeAnisotropy(float volumeAnisotropy)
-    {
-        auto clampedAnisotropy = math::clamp(volumeAnisotropy, -kMaxVolumeAnisotropy, kMaxVolumeAnisotropy);
-        if (mData.volumeAnisotropy != (float16_t)clampedAnisotropy)
-        {
-            mData.volumeAnisotropy = (float16_t)clampedAnisotropy;
-            markUpdates(UpdateFlags::DataChanged);
-        }
-    }
-
-    bool BasicMaterial::isEqual(const ref<Material>& pOther) const
-    {
-        auto other = dynamic_ref_cast<BasicMaterial>(pOther);
-        if (!other) return false;
-
-        return (*this) == (*other);
-    }
-
-    bool BasicMaterial::operator==(const BasicMaterial& other) const
-    {
-        if (!isBaseEqual(other)) return false;
-
-#define compare_field(_a) if (mData._a != other.mData._a) return false
-#define compare_vec_field(_a) if (any(mData._a != other.mData._a)) return false
-        compare_field(flags);
-        compare_field(displacementScale);
-        compare_field(displacementOffset);
-        compare_vec_field(baseColor);
-        compare_vec_field(specular);
-        compare_vec_field(emissive);
-        compare_field(emissiveFactor);
-        compare_field(diffuseTransmission);
-        compare_field(specularTransmission);
-        compare_vec_field(transmission);
-        compare_vec_field(volumeAbsorption);
-        compare_field(volumeAnisotropy);
-        compare_vec_field(volumeScattering);
+#define compare_field(_a)           \
+    if (mData._a != other.mData._a) \
+    return false
+#define compare_vec_field(_a)            \
+    if (any(mData._a != other.mData._a)) \
+    return false
+    compare_field(flags);
+    compare_field(displacementScale);
+    compare_field(displacementOffset);
+    compare_vec_field(baseColor);
+    compare_vec_field(specular);
+    compare_vec_field(emissive);
+    compare_field(emissiveFactor);
+    compare_field(diffuseTransmission);
+    compare_field(specularTransmission);
+    compare_vec_field(transmission);
+    compare_vec_field(volumeAbsorption);
+    compare_field(volumeAnisotropy);
+    compare_vec_field(volumeScattering);
 #undef compare_field
 #undef compare_vec_field
 
-        // Compare the sampler descs directly to identify functional differences.
-        if (mpDefaultSampler->getDesc() != other.mpDefaultSampler->getDesc()) return false;
-        if (mpDisplacementMinSampler->getDesc() != other.mpDisplacementMinSampler->getDesc()) return false;
-        if (mpDisplacementMaxSampler->getDesc() != other.mpDisplacementMaxSampler->getDesc()) return false;
+    // Compare the sampler descs directly to identify functional differences.
+    if (mpDefaultSampler->getDesc() != other.mpDefaultSampler->getDesc())
+        return false;
+    if (mpDisplacementMinSampler->getDesc() != other.mpDisplacementMinSampler->getDesc())
+        return false;
+    if (mpDisplacementMaxSampler->getDesc() != other.mpDisplacementMaxSampler->getDesc())
+        return false;
 
-        return true;
+    return true;
+}
+
+void BasicMaterial::updateAlphaMode()
+{
+    if (!isAlphaSupported())
+    {
+        FALCOR_ASSERT(getAlphaMode() == AlphaMode::Opaque);
+        return;
     }
 
-    void BasicMaterial::updateAlphaMode()
+    // Set alpha range to the constant alpha value if non-textured.
+    bool hasAlpha = getBaseColorTexture() && doesFormatHaveAlpha(getBaseColorTexture()->getFormat());
+    float alpha = ((float4)mData.baseColor).a;
+    if (!hasAlpha)
+        mAlphaRange = float2(alpha);
+
+    // Decide if we need to run the alpha test.
+    // This is derived from the current alpha threshold and conservative alpha range.
+    // If the test will never fail we disable it. This optimization assumes basic alpha thresholding.
+    // We could also optimize for the case of the test always failing by adding a 'Transparent' mode.
+    // This is however expected to be rare and probably not worth the runtime cost of an extra branch.
+    // TODO: Check if optimizing for always-fail is worth it.
+    // TODO: Update the logic if other alpha modes are added.
+    bool useAlpha = mAlphaRange.x < getAlphaThreshold();
+    setAlphaMode(useAlpha ? AlphaMode::Mask : AlphaMode::Opaque);
+}
+
+void BasicMaterial::updateNormalMapType()
+{
+    NormalMapType type = detectNormalMapType(getNormalMap());
+    if (mData.getNormalMapType() != type)
     {
-        if (!isAlphaSupported())
-        {
-            FALCOR_ASSERT(getAlphaMode() == AlphaMode::Opaque);
-            return;
-        }
-
-        // Set alpha range to the constant alpha value if non-textured.
-        bool hasAlpha = getBaseColorTexture() && doesFormatHaveAlpha(getBaseColorTexture()->getFormat());
-        float alpha = ((float4)mData.baseColor).a;
-        if (!hasAlpha) mAlphaRange = float2(alpha);
-
-        // Decide if we need to run the alpha test.
-        // This is derived from the current alpha threshold and conservative alpha range.
-        // If the test will never fail we disable it. This optimization assumes basic alpha thresholding.
-        // We could also optimize for the case of the test always failing by adding a 'Transparent' mode.
-        // This is however expected to be rare and probably not worth the runtime cost of an extra branch.
-        // TODO: Check if optimizing for always-fail is worth it.
-        // TODO: Update the logic if other alpha modes are added.
-        bool useAlpha = mAlphaRange.x < getAlphaThreshold();
-        setAlphaMode(useAlpha ? AlphaMode::Mask : AlphaMode::Opaque);
-    }
-
-    void BasicMaterial::updateNormalMapType()
-    {
-        NormalMapType type = detectNormalMapType(getNormalMap());
-        if (mData.getNormalMapType() != type)
-        {
-            mData.setNormalMapType(type);
-            markUpdates(UpdateFlags::DataChanged);
-        }
-    }
-
-    void BasicMaterial::updateEmissiveFlag()
-    {
-        bool isEmissive = false;
-        if (mData.emissiveFactor > 0.f)
-        {
-            isEmissive = hasTextureSlotData(Material::TextureSlot::Emissive) || any(mData.emissive != float3(0.f));
-        }
-        if (mHeader.isEmissive() != isEmissive)
-        {
-            mHeader.setEmissive(isEmissive);
-            markUpdates(UpdateFlags::DataChanged | UpdateFlags::EmissiveChanged);
-        }
-    }
-
-    void BasicMaterial::adjustDoubleSidedFlag()
-    {
-        bool doubleSided = isDoubleSided();
-
-        // Make double sided if diffuse or specular transmission is used.
-        // Note this convention will eventually change to allow single-sided transmissive materials.
-        if ((float)mData.diffuseTransmission > 0.f || (float)mData.specularTransmission > 0.f) doubleSided = true;
-
-        // Make double sided if displaced since backfacing surfaces can become frontfacing.
-        if (isDisplaced()) doubleSided = true;
-
-        setDoubleSided(doubleSided);
-    }
-
-    FALCOR_SCRIPT_BINDING(BasicMaterial)
-    {
-        FALCOR_SCRIPT_BINDING_DEPENDENCY(Material)
-
-        pybind11::class_<BasicMaterial, Material, ref<BasicMaterial>> material(m, "BasicMaterial");
-        material.def_property("baseColor", &BasicMaterial::getBaseColor, &BasicMaterial::setBaseColor);
-        material.def_property("specularParams", &BasicMaterial::getSpecularParams, &BasicMaterial::setSpecularParams);
-        material.def_property("transmissionColor", &BasicMaterial::getTransmissionColor, &BasicMaterial::setTransmissionColor);
-        material.def_property("diffuseTransmission", &BasicMaterial::getDiffuseTransmission, &BasicMaterial::setDiffuseTransmission);
-        material.def_property("specularTransmission", &BasicMaterial::getSpecularTransmission, &BasicMaterial::setSpecularTransmission);
-        material.def_property("volumeAbsorption", &BasicMaterial::getVolumeAbsorption, &BasicMaterial::setVolumeAbsorption);
-        material.def_property("volumeScattering", &BasicMaterial::getVolumeScattering, &BasicMaterial::setVolumeScattering);
-        material.def_property("volumeAnisotropy", &BasicMaterial::getVolumeAnisotropy, &BasicMaterial::setVolumeAnisotropy);
-        material.def_property("indexOfRefraction", &BasicMaterial::getIndexOfRefraction, &BasicMaterial::setIndexOfRefraction);
-        material.def_property("displacementScale", &BasicMaterial::getDisplacementScale, &BasicMaterial::setDisplacementScale);
-        material.def_property("displacementOffset", &BasicMaterial::getDisplacementOffset, &BasicMaterial::setDisplacementOffset);
+        mData.setNormalMapType(type);
+        markUpdates(UpdateFlags::DataChanged);
     }
 }
+
+void BasicMaterial::updateEmissiveFlag()
+{
+    bool isEmissive = false;
+    if (mData.emissiveFactor > 0.f)
+    {
+        isEmissive = hasTextureSlotData(Material::TextureSlot::Emissive) || any(mData.emissive != float3(0.f));
+    }
+    if (mHeader.isEmissive() != isEmissive)
+    {
+        mHeader.setEmissive(isEmissive);
+        markUpdates(UpdateFlags::DataChanged | UpdateFlags::EmissiveChanged);
+    }
+}
+
+void BasicMaterial::adjustDoubleSidedFlag()
+{
+    bool doubleSided = isDoubleSided();
+
+    // Make double sided if diffuse or specular transmission is used.
+    // Note this convention will eventually change to allow single-sided transmissive materials.
+    if ((float)mData.diffuseTransmission > 0.f || (float)mData.specularTransmission > 0.f)
+        doubleSided = true;
+
+    // Make double sided if displaced since backfacing surfaces can become frontfacing.
+    if (isDisplaced())
+        doubleSided = true;
+
+    setDoubleSided(doubleSided);
+}
+
+FALCOR_SCRIPT_BINDING(BasicMaterial)
+{
+    FALCOR_SCRIPT_BINDING_DEPENDENCY(Material)
+
+    pybind11::class_<BasicMaterial, Material, ref<BasicMaterial>> material(m, "BasicMaterial");
+    material.def_property("baseColor", &BasicMaterial::getBaseColor, &BasicMaterial::setBaseColor);
+    material.def_property("specularParams", &BasicMaterial::getSpecularParams, &BasicMaterial::setSpecularParams);
+    material.def_property("transmissionColor", &BasicMaterial::getTransmissionColor, &BasicMaterial::setTransmissionColor);
+    material.def_property("diffuseTransmission", &BasicMaterial::getDiffuseTransmission, &BasicMaterial::setDiffuseTransmission);
+    material.def_property("specularTransmission", &BasicMaterial::getSpecularTransmission, &BasicMaterial::setSpecularTransmission);
+    material.def_property("volumeAbsorption", &BasicMaterial::getVolumeAbsorption, &BasicMaterial::setVolumeAbsorption);
+    material.def_property("volumeScattering", &BasicMaterial::getVolumeScattering, &BasicMaterial::setVolumeScattering);
+    material.def_property("volumeAnisotropy", &BasicMaterial::getVolumeAnisotropy, &BasicMaterial::setVolumeAnisotropy);
+    material.def_property("indexOfRefraction", &BasicMaterial::getIndexOfRefraction, &BasicMaterial::setIndexOfRefraction);
+    material.def_property("displacementScale", &BasicMaterial::getDisplacementScale, &BasicMaterial::setDisplacementScale);
+    material.def_property("displacementOffset", &BasicMaterial::getDisplacementOffset, &BasicMaterial::setDisplacementOffset);
+}
+} // namespace Falcor

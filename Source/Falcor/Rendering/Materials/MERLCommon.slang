@@ -28,7 +28,7 @@
 #include "Utils/Math/MathConstants.slangh"
 
 /** MERL functions shared between materials using the MERL database.
-*/
+ */
 struct MERLCommon
 {
     /** Evaluate the MERL BRDF in the local frame.
@@ -49,7 +49,6 @@ struct MERLCommon
 
         return f * wo.z;
     }
-
 
     // Internal helpers
 
@@ -80,7 +79,7 @@ struct MERLCommon
     }
 
     /** Rotate vector along axis.
-    */
+     */
     static float3 rotateVector(const float3 v, const float3 axis, const float angle)
     {
         float c = cos(angle);
@@ -96,10 +95,11 @@ struct MERLCommon
     }
 
     /** Map thetaH to index. This is a non-linear mapping.
-    */
+     */
     static uint getThetaHIndex(float thetaH)
     {
-        if (thetaH <= 0.f) return 0;
+        if (thetaH <= 0.f)
+            return 0;
 
         // Map thetaH in [0, pi/2] to idx in [0, 89].
         int idx = (int)(sqrt(thetaH * (float)M_2_PI) * kBRDFSamplingResThetaH);
@@ -107,7 +107,7 @@ struct MERLCommon
     }
 
     /** Map thetaD to index. This is a linear mapping.
-    */
+     */
     static uint getThetaDIndex(float thetaD)
     {
         // Map thetaD in [0, pi/2] to idx in [0, 89].
@@ -116,11 +116,12 @@ struct MERLCommon
     }
 
     /** Map phiD to index. This is a linear mapping.
-    */
+     */
     static uint getPhiDIndex(float phiD)
     {
         // Because of reciprocity, the BRDF is unchanged under phiD -> phiD + M_PI.
-        if (phiD < 0.f) phiD += (float)M_PI;
+        if (phiD < 0.f)
+            phiD += (float)M_PI;
 
         // Map phiD in [0, pi] to idx in [0, 179].
         int idx = (int)(phiD * (float)M_1_PI * (kBRDFSamplingResPhiD / 2));

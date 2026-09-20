@@ -64,6 +64,7 @@
 #include "Helpers.h"
 #include "LoopSubdivide.h"
 #include "EnvMapConverter.h"
+#include "TextureAlphaMerge.h"
 #include "Core/Error.h"
 #include "Core/API/Device.h"
 #include "Utils/Settings/Settings.h"
@@ -211,6 +212,11 @@ struct BuilderContext
 {
     BasicScene& scene;
     SceneBuilder& builder;
+    TextureAlphaMerge& alphaMerge;
+    // Maps from material and alpha texture to a material with the alpha already baked in
+    std::map<std::pair<ref<Material>, ref<Texture>>, ref<Material>> materialAlpha2Material;
+    // Maps from RGB + Alpha textures to a merged RGBA texture
+    std::map<std::pair<ref<Texture>, ref<Texture>>, ref<Texture>> rgbAlpha2rgba;
 
     std::map<std::string, FloatTexture> floatTextures;
     std::map<std::string, SpectrumTexture> spectrumTextures;
@@ -586,6 +592,69 @@ float3 getConductorSpecularAlbedo(
     return fresnelDieletricConductor(eta, k, 1.f);
 }
 
+/// Combine the RGB from rgbTexture with alphaTexture to create RGBA.
+/// If there is no rgbTexture, use the rgbColor as a constant.
+Falcor::ref<Texture> addAlphaTexture(BuilderContext& ctx, Falcor::ref<Texture> rgbTexture, Falcor::ref<Texture> alphaTexture)
+{
+    FALCOR_CHECK(rgbTexture, "Solid color fallback not yet implemented.");
+
+    if (!alphaTexture)
+        return rgbTexture;
+
+    if (auto it = ctx.rgbAlpha2rgba.find({rgbTexture, alphaTexture}); it != ctx.rgbAlpha2rgba.end())
+        return it->second;
+
+    auto result = ctx.alphaMerge.merge(rgbTexture, alphaTexture);
+    ctx.rgbAlpha2rgba[{rgbTexture, alphaTexture}] = result;
+    return result;
+}
+
+Falcor::ref<Falcor::Material> addAlphaToMaterial(
+    BuilderContext& ctx,
+    const ShapeSceneEntity& entity,
+    Falcor::ref<Falcor::Material> pMaterial,
+    const ParameterDictionary& params
+)
+{
+    std::optional<FloatTexture> alpha = getFloatTextureOrNull(ctx, params, "alpha");
+    // No alpha to add, we just use the same material.
+    if (!alpha)
+        return pMaterial;
+
+    // Cannot add, only standard material supports alpha for now.
+    auto standardMaterial = dynamic_ref_cast<StandardMaterial>(pMaterial);
+    if (!standardMaterial)
+        return pMaterial;
+
+    ref<Texture> alphaTexture;
+    if (const auto* pAlpha = std::get_if<Falcor::ref<Texture>>(&alpha->texture))
+        alphaTexture = *pAlpha;
+
+    if (!alphaTexture)
+    {
+        logWarning(entity.loc, "Alpha is not actually a texture, we do not have support for baking solid alpha");
+        return pMaterial;
+    }
+
+    if (auto it = ctx.materialAlpha2Material.find({pMaterial, alphaTexture}); it != ctx.materialAlpha2Material.end())
+        return it->second;
+
+    ref<Texture> rgbTexture = standardMaterial->getBaseColorTexture();
+    if (!rgbTexture)
+    {
+        logWarning(entity.loc, "RGB is not actually a texture, we do not have support for baking solid RGB");
+        return pMaterial;
+    }
+
+    ref<Texture> rgbaTexture = addAlphaTexture(ctx, rgbTexture, alphaTexture);
+
+    ref<StandardMaterial> clonedMaterial(new StandardMaterial(*standardMaterial));
+    clonedMaterial->setBaseColorTexture(rgbaTexture);
+    ctx.materialAlpha2Material[{pMaterial, alphaTexture}] = clonedMaterial;
+
+    return clonedMaterial;
+}
+
 Camera createCamera(BuilderContext& ctx, const CameraSceneEntity& entity)
 {
     auto warnUnsupported = [&]() { warnUnsupportedType(entity.loc, "Camera", entity.name); };
@@ -723,15 +792,26 @@ Light createLight(BuilderContext& ctx, const LightSceneEntity& entity)
         else if (!filename.empty())
         {
             auto path = ctx.resolver(filename);
-            auto pOctTexture = Falcor::Texture::createFromFile(ctx.builder.getDevice(), path, false, false);
+            auto pEnvTexture = Falcor::Texture::createFromFile(ctx.builder.getDevice(), path, false, false);
+            bool isOctTexture = pEnvTexture->getWidth() == pEnvTexture->getHeight();
             // TODO: Use equal-area octahedral parametrization when env map supports it.
             logWarning(
                 entity.loc,
                 "Environment map is converted from equal-area octahedral to lat-long parametrization. Exact results cannot be expected."
             );
-            EnvMapConverter envMapConverter(ctx.builder.getDevice());
-            auto pLatLongTexture = envMapConverter.convertEqualAreaOctToLatLong(ctx.builder.getDevice()->getRenderContext(), pOctTexture);
-            auto pEnvMap = Falcor::EnvMap::create(ctx.builder.getDevice(), pLatLongTexture);
+
+            ref<Falcor::EnvMap> pEnvMap;
+            if (isOctTexture)
+            {
+                EnvMapConverter envMapConverter(ctx.builder.getDevice());
+                auto pLatLongTexture = envMapConverter.convertEqualAreaOctToLatLong(ctx.builder.getDevice()->getRenderContext(), pEnvTexture);
+                pEnvMap = Falcor::EnvMap::create(ctx.builder.getDevice(), pLatLongTexture);
+            }
+            else
+            {
+                pEnvMap = Falcor::EnvMap::create(ctx.builder.getDevice(), pEnvTexture);
+            }
+
             pEnvMap->setIntensity(scale);
 
             float3 rotation;
@@ -1422,7 +1502,9 @@ Shape createShape(BuilderContext& ctx, const ShapeSceneEntity& entity)
     const auto& type = entity.name;
     const auto& params = entity.params;
 
-    warnUnsupportedParameters(params, {"alpha"});
+    // We support alpha only when StandardMaterial is used
+    if (ctx.usePBRTMaterials)
+        warnUnsupportedParameters(params, {"alpha"});
 
     Shape shape;
 
@@ -1640,7 +1722,7 @@ Shape createShape(BuilderContext& ctx, const ShapeSceneEntity& entity)
         shape.pTriangleMesh->setFrontFaceCW(!shape.pTriangleMesh->getFrontFaceCW());
 
     // Get the material.
-    shape.pMaterial = ctx.getMaterial(entity.materialRef);
+    shape.pMaterial = addAlphaToMaterial(ctx, entity, ctx.getMaterial(entity.materialRef), params);
 
     // Create area light.
     if (entity.lightIndex != -1)
@@ -1928,7 +2010,9 @@ void PBRTImporter::importScene(
         pbrt::parseFile(pbrtBuilder, path);
         timeReport.measure("Parsing pbrt scene");
 
-        pbrt::BuilderContext ctx{pbrtScene, builder};
+        TextureAlphaMerge textureAlphaMerge(builder.getDevice().get());
+
+        pbrt::BuilderContext ctx{pbrtScene, builder, textureAlphaMerge};
         ctx.usePBRTMaterials = builder.getSettings().getOption("PBRTImporter:usePBRTMaterials", false);
         pbrt::buildScene(ctx);
         timeReport.measure("Building pbrt scene");

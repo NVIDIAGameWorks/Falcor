@@ -66,37 +66,44 @@ struct TextureHandle
 #endif
 
     /** Set mode.
-    */
+     */
     SETTER_DECL void setMode(Mode mode) { packedData = PACK_BITS(kModeBits, kModeOffset, packedData, (uint)mode); }
 
     /** Get mode.
-    */
+     */
     Mode getMode() CONST_FUNCTION { return Mode(EXTRACT_BITS(kModeBits, kModeOffset, packedData)); }
 
     /** Set texture ID. This sets mode to Mode::Texture.
      */
-    SETTER_DECL void setTextureID(uint texID) { setMode(Mode::Texture); packedData = PACK_BITS(kTextureIDBits, 0, packedData, texID); }
+    SETTER_DECL void setTextureID(uint texID)
+    {
+        setMode(Mode::Texture);
+        packedData = PACK_BITS(kTextureIDBits, 0, packedData, texID);
+    }
 
     /** Get texture ID. This operation is only valid if mode is Mode::Texture.
-    */
+     */
     uint getTextureID() CONST_FUNCTION { return EXTRACT_BITS(kTextureIDBits, 0, packedData); }
 
     /** Set whether the texture uses udim or not.
      */
-    SETTER_DECL void setUdimEnabled(bool udimEnabled) { packedData = PACK_BITS(kUdimEnabledBits, kUdimEnabledOffset, packedData, udimEnabled ? 1 : 0); }
+    SETTER_DECL void setUdimEnabled(bool udimEnabled)
+    {
+        packedData = PACK_BITS(kUdimEnabledBits, kUdimEnabledOffset, packedData, udimEnabled ? 1 : 0);
+    }
 
     /** Set whether the texture uses udim or not.
      */
     bool getUdimEnabled() CONST_FUNCTION { return IS_BIT_SET(packedData, kUdimEnabledOffset); }
 
 #ifdef HOST_CODE
-    bool operator==(const TextureHandle& rhs) const { return packedData == rhs.packedData; }
-    bool operator!=(const TextureHandle& rhs) const { return packedData != rhs.packedData; }
+    bool operator ==(const TextureHandle& rhs) const { return packedData == rhs.packedData; }
+    bool operator !=(const TextureHandle& rhs) const { return packedData != rhs.packedData; }
 #endif
 };
 
 /** Struct storing information about a material texture.
-*/
+ */
 struct TextureInfo
 {
     uint width;

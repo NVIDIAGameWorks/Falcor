@@ -33,6 +33,7 @@ namespace Falcor
 
 static SceneBuilder* spActivePythonSceneBuilder;    // TODO: REMOVEGLOBAL
 static ref<Device> spActivePythonRenderGraphDevice; // TODO: REMOVEGLOBAL
+static AssetResolver* spActiveAssetResolver;        // TODO: REMOVEGLOBAL
 
 void setActivePythonSceneBuilder(SceneBuilder* pSceneBuilder)
 {
@@ -48,6 +49,8 @@ SceneBuilder& accessActivePythonSceneBuilder()
 
 AssetResolver& getActiveAssetResolver()
 {
+    if (spActiveAssetResolver)
+        return *spActiveAssetResolver;
     return spActivePythonSceneBuilder ? spActivePythonSceneBuilder->getAssetResolver() : AssetResolver::getDefaultResolver();
 }
 
@@ -66,6 +69,25 @@ ref<Device> accessActivePythonRenderGraphDevice()
     if (!spActivePythonRenderGraphDevice)
         FALCOR_THROW("This can only be called from a script executed in Mogwai or when loading a render graph file!");
     return spActivePythonRenderGraphDevice;
+}
+
+ref<Device> accessActivePythonSceneBuilderDevice()
+{
+    if (spActivePythonSceneBuilder)
+        return spActivePythonSceneBuilder->getDevice();
+    if (!spActivePythonRenderGraphDevice)
+        FALCOR_THROW("This can only be called in a Python scene building context!");
+    return spActivePythonRenderGraphDevice;
+}
+
+/// Allows overriding the asset resolver explicitly. This one always takes precedence.
+AssetResolver* getRawAssetResolver()
+{
+    return spActiveAssetResolver;
+}
+void setRawAssetResolver(AssetResolver* assetResolver)
+{
+    spActiveAssetResolver = assetResolver;
 }
 
 } // namespace Falcor

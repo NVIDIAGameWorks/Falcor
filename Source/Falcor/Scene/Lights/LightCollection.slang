@@ -45,13 +45,16 @@ struct LightCollection
     uint                                        meshCount;              ///< Total number of mesh lights.
 
     // These buffers are only valid if triangleCount > 0.
-    [root] StructuredBuffer<PackedEmissiveTriangle> triangleData;       ///< Per-triangle geometry data for emissive triangles.
+    [root] StructuredBuffer<PackedEmissiveTriangle> triangleData; ///< Per-triangle geometry data for emissive triangles.
+    [root] StructuredBuffer<PackedEmissiveTriangle> triangleDataPrev; ///< Per-triangle geometry data for emissive triangles.
 
     StructuredBuffer<uint>                      activeTriangles;        ///< Indices of all active (non-culled) emissive triangles. This is only valid if activeTriangleCount > 0.
-    StructuredBuffer<uint>                      triToActiveMapping;     ///< Mapping from triangle index to active triangle index. kInvalidIndex if triangle is not active.
+    StructuredBuffer<uint> triToActiveMapping;                          ///< Mapping from triangle index to active triangle index. kInvalidIndex if triangle is not active.
+    // WARNING: the current ReSTIR PT temporal resampling assumes flux doesn't change with time, otherwise bias will be introduced
     StructuredBuffer<EmissiveFlux>              fluxData;               ///< Per-triangle flux data for emissive triangles.
     StructuredBuffer<MeshLightData>             meshData;               ///< Per-mesh data for emissive meshes.
     StructuredBuffer<uint>                      perMeshInstanceOffset;  ///< Per-mesh instance offset into emissive triangles array, or kInvalidIndex if mesh has no emissive triangles.
+    StructuredBuffer<uint2>                     sceneMeshPrimIDList;    ///< Per-triangle lookup data for which scene mesh ID and primitive ID they are>
 
 
     static const uint kInvalidIndex = 0xffffffff;
@@ -75,9 +78,10 @@ struct LightCollection
         \param[in] triIdx Emissive triangle index.
         \return Emissive triangle data.
     */
-    EmissiveTriangle getTriangle(uint triIdx)
+    EmissiveTriangle getTriangle(uint triIdx, bool isPrevFrame = false)
     {
-        return triangleData[triIdx].unpack();
+        if (isPrevFrame) return triangleDataPrev[triIdx].unpack();
+        else return triangleData[triIdx].unpack();
     }
 
     /** Returns the average radiance for a given triangle.
@@ -101,6 +105,11 @@ struct LightCollection
         return offset != kInvalidIndex ? offset + primitiveIndex : kInvalidIndex;
     }
 
+    uint2 getSceneMeshPrimID(uint triIdx)
+    {
+        return sceneMeshPrimIDList[triIdx];
+    }
+
     /** Return active triangle index for a given triangle.
         \param[in] triIdx Emissive triangle index.
         \return Active triangle index, or kInvalidIndex if not an active triangle.
@@ -114,6 +123,8 @@ struct LightCollection
         \param[in] triIdx Emissive triangle index.
         \return Mesh light index.
     */
+
+    // WARNING: the current ReSTIR PT temporal resampling assumes light idx/mesh data doesn't change with time, otherwise bias will be introduced
     uint getLightIdx(uint triIdx)
     {
         return getTriangle(triIdx).lightIdx;

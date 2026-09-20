@@ -62,6 +62,7 @@ inline std::vector<std::filesystem::path> getInitialShaderDirectories()
     std::vector<std::filesystem::path> developmentDirectories = {
         // First we search in source folders.
         getProjectDirectory() / "Source" / "Falcor",
+        getProjectDirectory() / "Source" / "Modules",
         getProjectDirectory() / "Source",
         getProjectDirectory() / "Source" / "Tools" / "FalcorTest",
         // Then we search in deployment folder (necessary to pickup NVAPI and other third-party shaders).
@@ -106,7 +107,7 @@ bool isDevelopmentMode()
 
 bool isSamePath(const std::filesystem::path& lhs, const std::filesystem::path& rhs)
 {
-    return std::filesystem::weakly_canonical(lhs) == std::filesystem::weakly_canonical(rhs);
+    return std::filesystem::path(lhs).lexically_normal() == std::filesystem::path(rhs).lexically_normal();
 }
 
 std::filesystem::path findFileInDirectories(const std::filesystem::path& path, fstd::span<std::filesystem::path> directories)

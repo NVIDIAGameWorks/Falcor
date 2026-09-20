@@ -94,6 +94,7 @@ float evalMIS(float n0, float p0, float n1, float p1)
 
 [Differentiable]
 [PreferRecompute]
+[__NoSideEffect]
 ShadingData loadShadingData(SceneQueryAD sceneQuery, HitInfo hit, IntersectionAD isect, const float3 rayOrigin, const float3 rayDir)
 {
     VertexData v = {};
@@ -124,6 +125,7 @@ ShadingData loadShadingData(SceneQueryAD sceneQuery, HitInfo hit, IntersectionAD
 
 [Differentiable]
 [PreferRecompute]
+[__NoSideEffect]
 IMaterialInstance getDiffMaterialInstance(out DiffMaterialData diffData, const ShadingData sd, const ITextureSampler lod)
 {
     let material = gScene.materials.getMaterial(sd.materialID);
@@ -133,6 +135,7 @@ IMaterialInstance getDiffMaterialInstance(out DiffMaterialData diffData, const S
 
 [Differentiable]
 [PreferRecompute]
+[__NoSideEffect]
 bool generateScatterRay(
     SceneQueryAD sceneQuery,
     ShadingData sd,
@@ -174,6 +177,7 @@ bool generateScatterRay(
 // Generate a light sample on the emissive geometry.
 // Assume the area lights are static (we don't allow differentiation of dynamic area lights for now).
 [PreferRecompute]
+[__NoSideEffect]
 bool generateEmissiveSample(
     IntersectionAD isect,
     EmissiveLightSampler emissiveSampler,
@@ -208,6 +212,7 @@ bool generateEmissiveSample(
 
 [Differentiable]
 [PreferRecompute]
+[__NoSideEffect]
 void computeNEE(
     SceneQueryAD sceneQuery,
     ShadingData sd,
@@ -250,6 +255,7 @@ void computeNEE(
 
 [Differentiable]
 [PreferRecompute]
+[__NoSideEffect]
 void handleHit(
     SceneQueryAD sceneQuery,
     IntersectionAD isect,
@@ -262,7 +268,11 @@ void handleHit(
 {
     let lod = ExplicitLodTextureSampler(0.f);
 
-    TriangleHit triHit = { isect.instanceID, isect.triangleID, isect.barycentrics.y, isect.barycentrics.z };
+    TriangleHit triHit;
+    triHit.instanceID = isect.instanceID;
+    triHit.primitiveIndex = isect.triangleID;
+    triHit.barycentrics = detach(float2(isect.barycentrics.y, isect.barycentrics.z));
+
     HitInfo hit = HitInfo(triHit);
 
     // Load shading data.

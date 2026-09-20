@@ -265,18 +265,22 @@ static FIBITMAP* convertToRGBA16Float(FIBITMAP* pDib)
     const BYTE* src_bits = (BYTE*)FreeImage_GetBits(pDib);
     BYTE* dst_bits = (BYTE*)FreeImage_GetBits(pNew);
 
+    const size_t src_bytes_per_pixel = bpp / 8;
+
     for (uint32_t y = 0; y < height; y++)
     {
-        const FIRGBAF* src_pixel = (FIRGBAF*)src_bits;
-        FIRGBA16* dst_pixel = (tagFIRGBA16*)dst_bits;
+        FIRGBA16* dst_line = (tagFIRGBA16*)dst_bits;
 
         for (uint32_t x = 0; x < width; x++)
         {
+            // The stride on the src_pixel depends on the actual type (FIRRGBF or FIRRGBAF),
+            // so we have to cast on each pixel, rather than each line
+            const FIRGBAF& src_pixel = *(FIRGBAF*)(src_bits + x * src_bytes_per_pixel);
             // Convert pixels to float16_t directly, while adding a "dummy" alpha of 1.0 if source format doesn't have alpha.
-            dst_pixel[x].red = float16_t(src_pixel[x].red).toBits();
-            dst_pixel[x].green = float16_t(src_pixel[x].green).toBits();
-            dst_pixel[x].blue = float16_t(src_pixel[x].blue).toBits();
-            dst_pixel[x].alpha = float16_t(type == FIT_RGBAF ? src_pixel[x].alpha : 1.0f).toBits();
+            dst_line[x].red = float16_t(src_pixel.red).toBits();
+            dst_line[x].green = float16_t(src_pixel.green).toBits();
+            dst_line[x].blue = float16_t(src_pixel.blue).toBits();
+            dst_line[x].alpha = float16_t(type == FIT_RGBAF ? src_pixel.alpha : 1.0f).toBits();
         }
         src_bits += src_pitch;
         dst_bits += dst_pitch;
@@ -602,9 +606,6 @@ void Bitmap::saveImage(
     FALCOR_CHECK(fileFormat != FileFormat::DdsFile, "Cannot save DDS files. Use ImageIO instead.");
     if (is_set(exportFlags, ExportFlags::Uncompressed) && is_set(exportFlags, ExportFlags::Lossy))
         FALCOR_THROW("Incompatible flags: lossy cannot be combined with uncompressed.");
-    if (is_set(exportFlags, ExportFlags::ExrFloat16) &&
-        (!is_set(exportFlags, ExportFlags::Uncompressed) || fileFormat != FileFormat::ExrFile))
-        FALCOR_THROW("Incompatible flags: EXR float16 can only be set for uncompressed EXR files.");
 
     int flags = 0;
     FIBITMAP* pImage = nullptr;
@@ -630,6 +631,15 @@ void Bitmap::saveImage(
 
     if (fileFormat == Bitmap::FileFormat::PfmFile || fileFormat == Bitmap::FileFormat::ExrFile)
     {
+        // If the original data format is half float, we want EXR to store half floats.
+        // Otherwise, we let EXR store 32b floats, unless half floats have been explicitly requested.
+        if (getFormatType(resourceFormat) == FormatType::Float && getNumChannelBits(resourceFormat, 0) == 16)
+            exportFlags |= ExportFlags::ExrFloat16;
+
+        // FreeImage does not understand half floats. So even if we want to store half floats,
+        // we have to first upsample them to 32b floats, and then pass for FreeImage along with a flag
+        // to store them again as EXRs.
+        // The conversion also handles int/uint formats that are not supported by FreeImage.
         std::vector<float> floatData;
         if (isConvertibleToRGBA32Float(resourceFormat))
         {
@@ -685,12 +695,14 @@ void Bitmap::saveImage(
             if (is_set(exportFlags, ExportFlags::Uncompressed))
             {
                 flags |= EXR_NONE;
-                if (!is_set(exportFlags, ExportFlags::ExrFloat16))
-                    flags |= EXR_FLOAT;
             }
             else if (is_set(exportFlags, ExportFlags::Lossy))
             {
                 flags |= EXR_B44 | EXR_ZIP;
+            }
+            if (!is_set(exportFlags, ExportFlags::ExrFloat16))
+            {
+                flags |= EXR_FLOAT;
             }
         }
     }

@@ -63,7 +63,9 @@ extension MaterialSystem
         \param[in] hints Optional hints to control the behavior of the material instance. Combination of `MaterialInstanceHints` flags.
         \return A material instance.
     */
-    IMaterialInstance getMaterialInstance<L:ITextureSampler>(const ShadingData sd, L lod, const uint hints = (uint)MaterialInstanceHints::None)
+    IMaterialInstance getMaterialInstance<L : ITextureSampler>(
+        const ShadingData sd, L lod, const uint hints = (uint)MaterialInstanceHints::None
+    )
     {
         let material = getMaterial(sd.materialID);
         return material.setupMaterialInstance(this, sd, lod, hints);

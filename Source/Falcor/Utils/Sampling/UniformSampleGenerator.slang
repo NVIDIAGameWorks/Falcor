@@ -42,8 +42,10 @@ export struct UniformSampleGenerator : ISampleGenerator
 {
     struct Padded
     {
-        UniformSampleGenerator internal;
+        UniformSampleGenerator internal = {};
     }
+
+    __init() {}
 
     /**
      * Initializes the sample generator for a given pixel and sample number.
@@ -76,5 +78,5 @@ export struct UniformSampleGenerator : ISampleGenerator
     [mutating]
     uint next() { return nextRandom(rng); }
 
-    Xoshiro128StarStar rng;
+    Xoshiro128StarStar rng = {};
 };

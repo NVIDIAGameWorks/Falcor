@@ -231,6 +231,7 @@ void Resource::breakStrongReferenceToDevice()
 
 FALCOR_SCRIPT_BINDING(Resource)
 {
-    pybind11::class_<Resource, ref<Resource>>(m, "Resource");
+    pybind11::class_<Resource, ref<Resource>> resource(m, "Resource");
+    resource.def_property_readonly("device", &Resource::getDevice);
 }
 } // namespace Falcor

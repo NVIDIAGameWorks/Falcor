@@ -31,7 +31,7 @@
 
 #include <string>
 
-#define FALCOR_MAJOR_VERSION 8
+#define FALCOR_MAJOR_VERSION 9
 #define FALCOR_MINOR_VERSION 0
 
 namespace Falcor

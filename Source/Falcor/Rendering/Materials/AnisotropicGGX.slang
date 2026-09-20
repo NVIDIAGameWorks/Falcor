@@ -35,27 +35,21 @@ import Utils.Sampling.SampleGeneratorInterface;
 */
 struct AnisotropicGGX : IDifferentiable
 {
-    float2 alpha;
+    float2 alpha = {};
 
     [Differentiable]
-    __init(float2 alpha)
-    {
-        this.alpha = alpha;
-    }
+    __init() {}
+
+    [Differentiable]
+    __init(float2 alpha) { this.alpha = alpha; }
 
     /** A 'singular' distribution is one which would be more ideally treated as an
         ideal mirror. It can't be sampled reliably.
     */
-    bool isSingular()
-    {
-        return all(alpha < 1e-3f);
-    }
+    bool isSingular() { return all(alpha < 1e-3f); }
 
     [Differentiable]
-    float getIsotropicRoughness()
-    {
-        return max(alpha.x, alpha.y);
-    }
+    float getIsotropicRoughness() { return max(alpha.x, alpha.y); }
 
     /** Computes the Smith lambda function. This function is symmetric with respect to direction,
         i.e. smithLambda(v) = smithLambda(-v). The result returned is equivalent to assuming v.z > 0.
@@ -66,7 +60,8 @@ struct AnisotropicGGX : IDifferentiable
         float cosThetaSq = v.z * v.z;
         float sinThetaSq = max(1.0f - cosThetaSq, 0.0f);
         float tanThetaSq = sinThetaSq / cosThetaSq;
-        if (isinf(tanThetaSq)) return 0.0f;
+        if (isinf(tanThetaSq))
+            return 0.0f;
 
         float2 cosSinPhiSq = sinThetaSq == 0.0f ? float2(1.0f, 0.0f) : float2(v.x * v.x, v.y * v.y) / sinThetaSq;
         float alphaSq = dot(cosSinPhiSq, alpha * alpha);
@@ -78,10 +73,7 @@ struct AnisotropicGGX : IDifferentiable
         for multiple scattering on microfacets.
     */
     [Differentiable]
-    float G1(float3 w)
-    {
-        return 1.0f / (1.0f + smithLambda(w));
-    }
+    float G1(float3 w) { return 1.0f / (1.0f + smithLambda(w)); }
 
     /** Compute the bistatic Smith shadowing function for reflection.
         This will be off for refraction, where we would have to use the beta
@@ -89,23 +81,22 @@ struct AnisotropicGGX : IDifferentiable
         multiple scattering on microfacet dielectrics as well.
     */
     [Differentiable]
-    float G2(float3 wo, float3 wi)
-    {
-        return 1.0f / (1.0f + smithLambda(wo) + smithLambda(wi));
-    }
+    float G2(float3 wo, float3 wi) { return 1.0f / (1.0f + smithLambda(wo) + smithLambda(wi)); }
 
     /** Computes the normal distribution function, i.e. D(h)
-    */
+     */
     [Differentiable]
     float evalNDF(float3 h)
     {
         float cosThetaSq = h.z * h.z;
         float sinThetaSq = max(1.0f - cosThetaSq, 0.0f);
         float tanThetaSq = sinThetaSq / cosThetaSq;
-        if (isinf(tanThetaSq)) return 0.0f;
+        if (isinf(tanThetaSq))
+            return 0.0f;
 
         float cosThetaQu = cosThetaSq * cosThetaSq;
-        if (cosThetaQu < 1e-16f) return 0.0f;
+        if (cosThetaQu < 1e-16f)
+            return 0.0f;
 
         float2 cosSinPhiSq = sinThetaSq == 0.0f ? float2(1.0f, 0.0f) : float2(h.x * h.x, h.y * h.y) / sinThetaSq;
         float2 alphaSq = cosSinPhiSq / (alpha * alpha);
@@ -114,19 +105,17 @@ struct AnisotropicGGX : IDifferentiable
     }
 
     /** Computes the distribution of visible normals, i.e. D_wi(h)
-    */
+     */
     [Differentiable]
-    float evalVNDF(float3 w, float3 h)
-    {
-        return w.z == 0.0f ? 0.0f : (G1(w) * abs(dot(w, h)) * evalNDF(h)) / abs(w.z);
-    }
+    float evalVNDF(float3 w, float3 h) { return w.z == 0.0f ? 0.0f : (G1(w) * abs(dot(w, h)) * evalNDF(h)) / abs(w.z); }
 
     /** Samples the distribution of normals visible from direction w.
-    */
+     */
     float3 sample<S : ISampleGenerator>(float3 w, inout S sg)
     {
         float3 wh = normalize(float3(alpha.x * w.x, alpha.y * w.y, w.z));
-        if (wh.z < 0.0f) wh = -wh;
+        if (wh.z < 0.0f)
+            wh = -wh;
 
         float3 T1 = dot(wh.xy, wh.xy) > 0.0f ? normalize(float3(-wh.y, wh.x, 0.0f)) : float3(1.0f, 0.0f, 0.0f);
         float3 T2 = cross(wh, T1);
@@ -143,9 +132,6 @@ struct AnisotropicGGX : IDifferentiable
     }
 
     /** Returns the PDF of sampling normal h from VNDF(w)
-    */
-    float evalPDF(float3 w, float3 h)
-    {
-        return evalVNDF(w, h);
-    }
+     */
+    float evalPDF(float3 w, float3 h) { return evalVNDF(w, h); }
 };

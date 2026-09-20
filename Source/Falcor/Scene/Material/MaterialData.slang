@@ -39,7 +39,7 @@ __exported import TextureHandle;
 BEGIN_NAMESPACE_FALCOR
 
 /** This is a host/device structure for material header data for all material types (16B).
-*/
+ */
 struct MaterialHeader
 {
     uint4 packedData = {};
@@ -49,8 +49,9 @@ struct MaterialHeader
     static constexpr uint kLobeTypeBits = 8; // Only 6 bits needed if packing LobeType
     static constexpr uint kSamplerIDBits = 8;
     static constexpr uint kAlphaModeBits = 1;
+    static constexpr uint kBSDFIndexBits = 4;
     static constexpr uint kAlphaThresholdBits = 16; // Using float16_t format
-    static constexpr uint kIoRBits = 16; // Using float16_t format
+    static constexpr uint kIoRBits = 16;            // Using float16_t format
 
     // packedData.x bit layout
     static constexpr uint kMaterialTypeOffset = 0;
@@ -69,8 +70,9 @@ struct MaterialHeader
     static constexpr uint kSamplerIDOffset = kAlphaModeOffset + kAlphaModeBits;
     static constexpr uint kEnableLightProfileOffset = kSamplerIDOffset + kSamplerIDBits;
     static constexpr uint kDeltaSpecularFlagOffset = kEnableLightProfileOffset + 1;
+    static constexpr uint kBSDFIndexOffset = kDeltaSpecularFlagOffset + 1;
 
-    static constexpr uint kTotalHeaderBitsY = kDeltaSpecularFlagOffset + 1;
+    static constexpr uint kTotalHeaderBitsY = kBSDFIndexOffset + 1;
 
     // packedData.z bit layout
     static constexpr uint kIoROffset = 0;
@@ -81,32 +83,47 @@ struct MaterialHeader
     static constexpr uint kTotalHeaderBitsW = 0;
 
     /** Set material type.
-    */
-    SETTER_DECL void setMaterialType(MaterialType type) { packedData.x = PACK_BITS(kMaterialTypeBits, kMaterialTypeOffset, packedData.x, (uint)type); }
+     */
+    SETTER_DECL void setMaterialType(MaterialType type)
+    {
+        packedData.x = PACK_BITS(kMaterialTypeBits, kMaterialTypeOffset, packedData.x, (uint)type);
+    }
 
     /** Get material type.
-    */
-    MaterialType getMaterialType() CONST_FUNCTION { return MaterialType(EXTRACT_BITS(kMaterialTypeBits, kMaterialTypeOffset, packedData.x)); }
+     */
+    MaterialType getMaterialType() CONST_FUNCTION
+    {
+        return MaterialType(EXTRACT_BITS(kMaterialTypeBits, kMaterialTypeOffset, packedData.x));
+    }
 
     /** Set alpha testing mode.
-    */
+     */
     SETTER_DECL void setAlphaMode(AlphaMode mode) { packedData.y = PACK_BITS(kAlphaModeBits, kAlphaModeOffset, packedData.y, (uint)mode); }
 
     /** Get material type.
-    */
+     */
     AlphaMode getAlphaMode() CONST_FUNCTION { return AlphaMode(EXTRACT_BITS(kAlphaModeBits, kAlphaModeOffset, packedData.y)); }
 
     /** Set alpha threshold.
-    */
-    SETTER_DECL void setAlphaThreshold(float16_t alphaThreshold) { packedData.y = PACK_BITS_UNSAFE(kAlphaThresholdBits, kAlphaThresholdOffset, packedData.y, (uint)asuint16(alphaThreshold)); }
+     */
+    SETTER_DECL void setAlphaThreshold(float16_t alphaThreshold)
+    {
+        packedData.y = PACK_BITS_UNSAFE(kAlphaThresholdBits, kAlphaThresholdOffset, packedData.y, (uint)asuint16(alphaThreshold));
+    }
 
     /** Get alpha threshold.
-    */
-    float16_t getAlphaThreshold() CONST_FUNCTION { return asfloat16((uint16_t)EXTRACT_BITS(kAlphaThresholdBits, kAlphaThresholdOffset, packedData.y)); }
+     */
+    float16_t getAlphaThreshold() CONST_FUNCTION
+    {
+        return asfloat16((uint16_t)EXTRACT_BITS(kAlphaThresholdBits, kAlphaThresholdOffset, packedData.y));
+    }
 
     /** Set the nested priority used for nested dielectrics.
-    */
-    SETTER_DECL void setNestedPriority(uint32_t priority) { packedData.x = PACK_BITS(kNestedPriorityBits, kNestedPriorityOffset, packedData.x, priority); }
+     */
+    SETTER_DECL void setNestedPriority(uint32_t priority)
+    {
+        packedData.x = PACK_BITS(kNestedPriorityBits, kNestedPriorityOffset, packedData.x, priority);
+    }
 
     /** Get the nested priority used for nested dielectrics.
         \return Nested priority, with 0 reserved for the highest possible priority.
@@ -116,7 +133,10 @@ struct MaterialHeader
     /** Set active BSDF lobes.
         \param[in] activeLobes Bit mask of active lobes. See LobeType.
     */
-    SETTER_DECL void setActiveLobes(uint activeLobes) { packedData.x = PACK_BITS(kLobeTypeBits, kLobeTypeOffset, packedData.x, activeLobes); }
+    SETTER_DECL void setActiveLobes(uint activeLobes)
+    {
+        packedData.x = PACK_BITS(kLobeTypeBits, kLobeTypeOffset, packedData.x, activeLobes);
+    }
 
     /** Get active BSDF lobes.
         \return Bit mask of active lobes. See LobeType.
@@ -124,61 +144,84 @@ struct MaterialHeader
     uint getActiveLobes() CONST_FUNCTION { return EXTRACT_BITS(kLobeTypeBits, kLobeTypeOffset, packedData.x); }
 
     /** Set default texture sampler ID.
-    */
-    SETTER_DECL void setDefaultTextureSamplerID(uint samplerID) { packedData.y = PACK_BITS(kSamplerIDBits, kSamplerIDOffset, packedData.y, samplerID); }
+     */
+    SETTER_DECL void setDefaultTextureSamplerID(uint samplerID)
+    {
+        packedData.y = PACK_BITS(kSamplerIDBits, kSamplerIDOffset, packedData.y, samplerID);
+    }
 
     /** Get default texture sampler ID.
-    */
+     */
     uint getDefaultTextureSamplerID() CONST_FUNCTION { return EXTRACT_BITS(kSamplerIDBits, kSamplerIDOffset, packedData.y); }
 
     /** Set double-sided flag.
-    */
-    SETTER_DECL void setDoubleSided(bool doubleSided) { packedData.x = PACK_BITS(1, kDoubleSidedFlagOffset, packedData.x, doubleSided ? 1 : 0); }
+     */
+    SETTER_DECL void setDoubleSided(bool doubleSided)
+    {
+        packedData.x = PACK_BITS(1, kDoubleSidedFlagOffset, packedData.x, doubleSided ? 1 : 0);
+    }
 
     /** Get double-sided flag.
-    */
+     */
     bool isDoubleSided() CONST_FUNCTION { return packedData.x & (1u << kDoubleSidedFlagOffset); }
 
     /** Set thin surface flag.
-    */
-    SETTER_DECL void setThinSurface(bool thinSurface) { packedData.x = PACK_BITS(1, kThinSurfaceFlagOffset, packedData.x, thinSurface ? 1 : 0); }
+     */
+    SETTER_DECL void setThinSurface(bool thinSurface)
+    {
+        packedData.x = PACK_BITS(1, kThinSurfaceFlagOffset, packedData.x, thinSurface ? 1 : 0);
+    }
 
     /** Get thin surface flag.
-    */
+     */
     bool isThinSurface() CONST_FUNCTION { return packedData.x & (1u << kThinSurfaceFlagOffset); }
 
     /** Set emissive flag.
-    */
+     */
     SETTER_DECL void setEmissive(bool isEmissive) { packedData.x = PACK_BITS(1, kEmissiveFlagOffset, packedData.x, isEmissive ? 1 : 0); }
 
     /** Get emissive flag.
-    */
+     */
     bool isEmissive() CONST_FUNCTION { return packedData.x & (1u << kEmissiveFlagOffset); }
 
     /** Set basic material flag. This flag is an optimization to allow quick type checking.
-    */
-    SETTER_DECL void setIsBasicMaterial(bool isBasicMaterial) { packedData.x = PACK_BITS(1, kIsBasicMaterialFlagOffset, packedData.x, isBasicMaterial ? 1 : 0); }
+     */
+    SETTER_DECL void setIsBasicMaterial(bool isBasicMaterial)
+    {
+        packedData.x = PACK_BITS(1, kIsBasicMaterialFlagOffset, packedData.x, isBasicMaterial ? 1 : 0);
+    }
 
     /** Get basic material flag. This flag is an optimization to allow quick type checking.
-    */
+     */
     bool isBasicMaterial() CONST_FUNCTION { return packedData.x & (1u << kIsBasicMaterialFlagOffset); }
 
     /** Set light profile enable flag. // DEMO21
-    */
-    SETTER_DECL void setEnableLightProfile(bool enableLightProfile) { packedData.y = PACK_BITS(1, kEnableLightProfileOffset, packedData.y, enableLightProfile ? 1 : 0); }
+     */
+    SETTER_DECL void setEnableLightProfile(bool enableLightProfile)
+    {
+        packedData.y = PACK_BITS(1, kEnableLightProfileOffset, packedData.y, enableLightProfile ? 1 : 0);
+    }
 
     /** Get light profile enable flag.
-    */
+     */
     bool isLightProfileEnabled() CONST_FUNCTION { return packedData.y & (1u << kEnableLightProfileOffset); }
 
     /** Set delta specular flag. This flag is set if the material only has delta specular reflection/transmission (and can skip NEE).
-    */
-    SETTER_DECL void setDeltaSpecular(bool deltaSpecular) { packedData.y = PACK_BITS(1, kDeltaSpecularFlagOffset, packedData.y, deltaSpecular ? 1 : 0); }
+     */
+    SETTER_DECL void setDeltaSpecular(bool deltaSpecular)
+    {
+        packedData.y = PACK_BITS(1, kDeltaSpecularFlagOffset, packedData.y, deltaSpecular ? 1 : 0);
+    }
 
     /** Get delta specular flag. This flag is set if the material only has delta specular reflection/transmission (and can skip NEE).
-    */
+     */
     bool isDeltaSpecular() CONST_FUNCTION { return packedData.y & (1u << kDeltaSpecularFlagOffset); }
 
+    // -1 means all BSDFs, therefore, an uninitialized field represents ALL
+    SETTER_DECL void setBSDFIndex(int BSDFIndex) { packedData.y = PACK_BITS(kBSDFIndexBits, kBSDFIndexOffset, packedData.y, BSDFIndex + 1); }
+
+    int getBSDFIndex() CONST_FUNCTION { return int(EXTRACT_BITS(kBSDFIndexBits, kBSDFIndexOffset, packedData.y)) - 1; }
+    
     /// Set index of refraction.
     SETTER_DECL void setIoR(float16_t ior) { packedData.z = PACK_BITS_UNSAFE(kIoRBits, kIoROffset, packedData.z, (uint)asuint16(ior)); }
 
@@ -192,8 +235,8 @@ struct MaterialHeader
     TextureHandle getAlphaTextureHandle() CONST_FUNCTION { return TextureHandle(packedData.w); }
 
 #ifdef HOST_CODE
-    friend bool operator==(const MaterialHeader& lhs, const MaterialHeader& rhs);
-    friend bool operator!=(const MaterialHeader& lhs, const MaterialHeader& rhs) { return !(lhs == rhs); }
+    friend bool operator ==(const MaterialHeader& lhs, const MaterialHeader& rhs);
+    friend bool operator !=(const MaterialHeader& lhs, const MaterialHeader& rhs) { return !(lhs == rhs); }
 #endif
 };
 
@@ -213,7 +256,7 @@ struct MaterialPayload
 */
 struct MaterialDataBlob
 {
-    MaterialHeader header; // 16B
+    MaterialHeader header;   // 16B
     MaterialPayload payload; // 112B
 };
 

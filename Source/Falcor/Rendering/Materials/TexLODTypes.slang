@@ -27,7 +27,7 @@
  **************************************************************************/
 
 /** Enums for texture level-of-detail -- see TexLODHelpers.slang
-*/
+ */
 
 #pragma once
 #include "Utils/HostDeviceShared.slangh"
@@ -45,12 +45,15 @@ enum class TexLODMode : uint32_t
     Stochastic = 3,
 };
 
-FALCOR_ENUM_INFO(TexLODMode, {
-    { TexLODMode::Mip0, "Mip0" },
-    { TexLODMode::RayCones, "RayCones" },
-    { TexLODMode::RayDiffs, "RayDiffs" },
-    { TexLODMode::Stochastic, "Stochastic" },
-});
+FALCOR_ENUM_INFO(
+    TexLODMode,
+    {
+        { TexLODMode::Mip0, "Mip0" },
+        { TexLODMode::RayCones, "RayCones" },
+        { TexLODMode::RayDiffs, "RayDiffs" },
+        { TexLODMode::Stochastic, "Stochastic" },
+    }
+);
 FALCOR_ENUM_REGISTER(TexLODMode);
 
 /** This enum is shared between CPU/GPU.
@@ -64,10 +67,13 @@ enum class RayConeMode : uint32_t
     Unified = 1,
 };
 
-FALCOR_ENUM_INFO(RayConeMode, {
-    { RayConeMode::Combo, "Combo" },
-    { RayConeMode::Unified, "Unified" },
-});
+FALCOR_ENUM_INFO(
+    RayConeMode,
+    {
+        { RayConeMode::Combo, "Combo" },
+        { RayConeMode::Unified, "Unified" },
+    }
+);
 FALCOR_ENUM_REGISTER(RayConeMode);
 
 END_NAMESPACE_FALCOR

@@ -40,9 +40,9 @@ __exported import Rendering.Materials.IBSDF;
  */
 struct DielectricPlateBSDF : IBSDF
 {
-    AnisotropicGGX D;       ///< Reflection roughness
-    AnisotropicGGX DInside; ///< Tranmission roughness
-    float eta;              ///< IOR
+    AnisotropicGGX D = {};       ///< Reflection roughness
+    AnisotropicGGX DInside = {}; ///< Tranmission roughness
+    float eta = {};              ///< IOR
 
     float3 eval<S : ISampleGenerator>(const float3 wiLocal, const float3 woLocal, inout S sg, BSDFContext bc)
     {
@@ -206,7 +206,7 @@ struct DielectricPlateBSDF : IBSDF
 
     RoughnessInformation getRoughnessInformation(const float3 wi)
     {
-        RoughnessInformation r;
+        RoughnessInformation r = {};
         r.roughnessBSDFNotation = D.alpha;
         return r;
     }

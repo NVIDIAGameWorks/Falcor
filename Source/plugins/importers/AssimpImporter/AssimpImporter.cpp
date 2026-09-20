@@ -827,7 +827,8 @@ ref<Material> createMaterial(
     ImporterData& data,
     const aiMaterial* pAiMaterial,
     const std::filesystem::path& searchPath,
-    ImportMode importMode
+    ImportMode importMode,
+    const std::map<std::string, std::string>& materialToShortName
 )
 {
     aiString name;
@@ -835,6 +836,36 @@ ref<Material> createMaterial(
 
     // Parse the name
     std::string nameStr = std::string(name.C_Str());
+    // Resolve a replacement material by name. If the mapping cannot be resolved,
+    // report the problem and fall back to importing the Assimp material.
+    if (!materialToShortName.empty() && !nameStr.empty())
+    {
+        if (auto it = materialToShortName.find(nameStr); it != materialToShortName.end())
+        {
+            const std::string& replacementName = it->second;
+            if (replacementName.empty())
+            {
+                logWarning(
+                    "Empty replacement material name for source material '{}'. Using the Assimp material instead.", nameStr
+                );
+            }
+            else
+            {
+                ref<Material> pReplacement = data.builder.getMaterial(replacementName);
+                if (pReplacement)
+                {
+                    return pReplacement;
+                }
+
+                logError(
+                    "Replacement material '{}' for source material '{}' was not found. Using the Assimp material instead.",
+                    replacementName,
+                    nameStr
+                );
+            }
+        }
+    }
+
     if (nameStr.empty())
     {
         logWarning("AssimpImporter: Material with no name found -> renaming to 'unnamed'.");
@@ -970,12 +1001,17 @@ ref<Material> createMaterial(
     return pMaterial;
 }
 
-void createAllMaterials(ImporterData& data, const std::filesystem::path& searchPath, ImportMode importMode)
+void createAllMaterials(
+    ImporterData& data,
+    const std::filesystem::path& searchPath,
+    ImportMode importMode,
+    const std::map<std::string, std::string>& materialToShortName
+)
 {
     for (uint32_t i = 0; i < data.pScene->mNumMaterials; i++)
     {
         const aiMaterial* pAiMaterial = data.pScene->mMaterials[i];
-        data.materialMap[i] = createMaterial(data, pAiMaterial, searchPath, importMode);
+        data.materialMap[i] = createMaterial(data, pAiMaterial, searchPath, importMode, materialToShortName);
     }
 }
 
@@ -1106,7 +1142,13 @@ void dumpAssimpData(ImporterData& data)
     logInfo(out);
 }
 
-void importInternal(const void* buffer, size_t byteSize, const std::filesystem::path& path, SceneBuilder& builder)
+void importInternal(
+    const void* buffer,
+    size_t byteSize,
+    const std::filesystem::path& path,
+    SceneBuilder& builder,
+    const std::map<std::string, std::string>& materialToShortName
+)
 {
     TimeReport timeReport;
 
@@ -1168,7 +1210,7 @@ void importInternal(const void* buffer, size_t byteSize, const std::filesystem::
 
     // dumpAssimpData(data);
 
-    createAllMaterials(data, searchPath, importMode);
+    createAllMaterials(data, searchPath, importMode, materialToShortName);
     timeReport.measure("Creating materials");
 
     createSceneGraph(data);
@@ -1203,7 +1245,7 @@ void AssimpImporter::importScene(
     const std::map<std::string, std::string>& materialToShortName
 )
 {
-    importInternal(nullptr, 0, path, builder);
+    importInternal(nullptr, 0, path, builder, materialToShortName);
 }
 
 void AssimpImporter::importSceneFromMemory(
@@ -1214,7 +1256,7 @@ void AssimpImporter::importSceneFromMemory(
     const std::map<std::string, std::string>& materialToShortName
 )
 {
-    importInternal(buffer, byteSize, {}, builder);
+    importInternal(buffer, byteSize, {}, builder, materialToShortName);
 }
 
 extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registry)

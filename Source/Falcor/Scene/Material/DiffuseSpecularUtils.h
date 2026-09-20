@@ -32,12 +32,12 @@
 
 namespace Falcor
 {
-    struct DiffuseSpecularData;
+struct DiffuseSpecularData;
 
-    class DiffuseSpecularUtils
-    {
-    public:
-        static bool loadJSONData(const std::filesystem::path& path, DiffuseSpecularData& data);
-        static bool renderUI(Gui::Widgets& widget, DiffuseSpecularData& data);
-    };
-}
+class DiffuseSpecularUtils
+{
+public:
+    static bool loadJSONData(const std::filesystem::path& path, DiffuseSpecularData& data);
+    static bool renderUI(Gui::Widgets& widget, DiffuseSpecularData& data);
+};
+} // namespace Falcor

@@ -78,17 +78,11 @@ struct Microfacet
     /** A 'singular' distribution is one which would be more ideally treated as an
         ideal mirror. It can't be sampled reliably.
     */
-    bool isSingular()
-    {
-        return all(alpha < 1e-3f);
-    }
+    bool isSingular() { return all(alpha < 1e-3f); }
 
     /** Returns the isotropic roughness, i.e. the maximum along one of the tangent directions.
-        */
-    float getIsotropicRoughness()
-    {
-        return max(alpha.x, alpha.y);
-    }
+     */
+    float getIsotropicRoughness() { return max(alpha.x, alpha.y); }
 
     /** Evaluates the NDF (D) for a given microfacet normal.
         This returns the density of potentially active microfacets (those for which the microfacet normal matches
@@ -128,10 +122,7 @@ struct Microfacet
         \param[in] wm Microfacet normal in local space, in the positive hemisphere.
         \return D(wm) * dot(wm, n).
     */
-    float evalPdfFull(float3 wm)
-    {
-        return evalD(wm) * wm.z;
-    }
+    float evalPdfFull(float3 wm) { return evalD(wm) * wm.z; }
 
     /** Evaluates the PDF of sampling the visible NDF, see also `sampleVisible`.
 
@@ -139,10 +130,7 @@ struct Microfacet
         \param[in] wm Microfacet normal in local space, in the positive hemisphere.
         \return D_wi(wm) = dot(wm, wi) * D(wm) / sigma(-wi).
     */
-    float evalPdfVisible(float3 wi, float3 wm)
-    {
-        return max(0.0f, dot(wm, wi)) * evalD(wm) / evalSigma(-wi);
-    }
+    float evalPdfVisible(float3 wi, float3 wm) { return max(0.0f, dot(wm, wi)) * evalD(wm) / evalSigma(-wi); }
 
     /** Samples a microfacet normal proportionally to D(wm) * dot(wm, n).
 
@@ -203,10 +191,7 @@ struct Microfacet
 
         \param[in] w Evaluated direction, in local space.
     */
-    float evalG1(float3 w)
-    {
-        return abs(w.z) / evalSigma(-sign(w.z) * w);
-    }
+    float evalG1(float3 w) { return abs(w.z) / evalSigma(-sign(w.z) * w); }
 
     /** Evaluates the separable form of the Smith shadowing-masking function.
 
@@ -216,10 +201,7 @@ struct Microfacet
         \param[in] wo Outgoing direction in local space.
         \return G2_separable(wi, wo).
     */
-    float evalG2Separable(float3 wi, float3 wo)
-    {
-        return evalG1(wi) * evalG1(wo);
-    }
+    float evalG2Separable(float3 wi, float3 wo) { return evalG1(wi) * evalG1(wo); }
 
     /** Evaluates the height-correlated form of the Smith shadowing-masking function.
 

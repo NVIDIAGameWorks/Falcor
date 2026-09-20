@@ -33,7 +33,7 @@ import Utils.Math.MathHelpers;
 import Params;
 
 /** Compute derivatives at primary triangle hit.
-*/
+ */
 void computeDerivativesAtPrimaryTriangleHit(const TriangleHit hit, uint2 pixel, uint2 frameDim, out float2 ddx, out float2 ddy)
 {
     // Get world space position
@@ -52,11 +52,27 @@ void computeDerivativesAtPrimaryTriangleHit(const TriangleHit hit, uint2 pixel, 
     const float4x4 worldMat = gScene.getWorldMatrix(hit.instanceID);
     const float3x3 worldInvTransposeMat = gScene.getInverseTransposeWorldMatrix(hit.instanceID);
     const uint3 vertexIndices = gScene.getIndices(hit.instanceID, hit.primitiveIndex);
-    StaticVertexData vertices[3] = { gScene.getVertex(vertexIndices[0]), gScene.getVertex(vertexIndices[1]), gScene.getVertex(vertexIndices[2]) };
+    StaticVertexData vertices[3] = {
+        gScene.getVertex(vertexIndices[0]), gScene.getVertex(vertexIndices[1]), gScene.getVertex(vertexIndices[2])
+    };
     float2 dBarydx, dBarydy;
     float3 unnormalizedN, normals[3];
 
-    prepareRayDiffAtHitPoint(v, vertices, hit.getBarycentricWeights(), rayDir, worldMat, worldInvTransposeMat, rd, unnormalizedN, normals, dBarydx, dBarydy, ddx, ddy);
+    prepareRayDiffAtHitPoint(
+        v,
+        vertices,
+        hit.getBarycentricWeights(),
+        rayDir,
+        worldMat,
+        worldInvTransposeMat,
+        rd,
+        unnormalizedN,
+        normals,
+        dBarydx,
+        dBarydy,
+        ddx,
+        ddy
+    );
 }
 
 /** Setup vertex data based on hit point.
@@ -108,16 +124,18 @@ VertexData loadVertexData(const HitInfo hit, const float3 rayOrigin, const float
 }
 
 /** Determine hints to use when creating the material instance.
-*/
+ */
 uint getMaterialInstanceHints(const HitInfo hit, const bool isPrimary)
 {
     uint hints = 0;
     if (hit.getType() == HitType::Triangle || hit.getType() == HitType::DisplacedTriangle)
     {
 #if GBUFFER_ADJUST_SHADING_NORMALS
-        if (kAdjustShadingNormals || isPrimary) hints |= (uint)MaterialInstanceHints::AdjustShadingNormal;
+        if (kAdjustShadingNormals || isPrimary)
+            hints |= (uint)MaterialInstanceHints::AdjustShadingNormal;
 #else
-        if (kAdjustShadingNormals && !isPrimary) hints |= (uint)MaterialInstanceHints::AdjustShadingNormal;
+        if (kAdjustShadingNormals && !isPrimary)
+            hints |= (uint)MaterialInstanceHints::AdjustShadingNormal;
 #endif
     }
     return hints;

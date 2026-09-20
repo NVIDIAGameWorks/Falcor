@@ -35,8 +35,8 @@ struct EnvMap
     Texture2D       envMap;         ///< Environment map texture.
     SamplerState    envSampler;     ///< Environment map texture sampler.
 
-    EnvMapData      data;           ///< Environment map data.
-
+    EnvMapData      data; ///< Environment map data.
+    EnvMapData      prevData; ///< Environment map data (previous frame).
     /** Returns the dimensions of the env map texture.
     */
     uint2 getDimensions()
@@ -47,24 +47,24 @@ struct EnvMap
     }
 
     /** Evaluates the radiance at a given texel.
-    */
-    float3 evalTexel(uint2 coord)
+     */
+    float3 evalTexel(uint2 coord, bool isPrevFrame)
     {
-        return envMap[coord].rgb * getIntensity();
+        return envMap[coord].rgb * getIntensity(isPrevFrame);
     }
 
     /** Evaluates the radiance at a given uv coordinate.
-    */
-    float3 eval(float2 uv, float lod = 0.f)
+     */
+    float3 eval(float2 uv, float lod = 0.f, bool isPrevFrame = false)
     {
-        return envMap.SampleLevel(envSampler, uv, lod).rgb * getIntensity();
+        return envMap.SampleLevel(envSampler, uv, lod).rgb * getIntensity(isPrevFrame);
     }
 
     /** Evaluates the radiance coming from world space direction 'dir'.
-    */
-    float3 eval(float3 dir, float lod = 0.f)
+     */
+    float3 eval(float3 dir, float lod = 0.f, bool isPrevFrame = false)
     {
-        return eval(worldToUv(dir), lod);
+        return eval(worldToUv(dir, isPrevFrame), lod, isPrevFrame);
     }
 
     /** Transform direction in local space to uv coordinates.
@@ -82,39 +82,39 @@ struct EnvMap
     }
 
     /** Transform direction in world space to uv coordinates.
-    */
-    float2 worldToUv(float3 dir)
+     */
+    float2 worldToUv(float3 dir, bool isPrevFrame = false)
     {
-        return localToUv(toLocal(dir));
+        return localToUv(toLocal(dir, isPrevFrame));
     }
 
     /** Transform uv coordinates to direction in world space.
-    */
-    float3 uvToWorld(float2 uv)
+     */
+    float3 uvToWorld(float2 uv, bool isPrevFrame = false)
     {
-        return toWorld(uvToLocal(uv));
+        return toWorld(uvToLocal(uv), isPrevFrame);
     }
 
     /** Transform direction from local to world space.
-    */
-    float3 toWorld(float3 dir)
+     */
+    float3 toWorld(float3 dir, bool isPrevFrame = false)
     {
         // TODO: For identity transform we might want to skip this statically.
-        return mul((float3x3)data.transform, dir);
+        return mul((float3x3)(isPrevFrame ? prevData.transform : data.transform), dir);
     }
 
     /** Transform direction from world to local space.
-    */
-    float3 toLocal(float3 dir)
+     */
+    float3 toLocal(float3 dir, bool isPrevFrame = false)
     {
         // TODO: For identity transform we might want to skip this statically.
-        return mul((float3x3)data.invTransform, dir);
+        return mul((float3x3)(isPrevFrame ? prevData.invTransform : data.invTransform), dir);
     }
 
     /** Get the intensity scaling factor (including tint).
-    */
-    float3 getIntensity()
+     */
+    float3 getIntensity(bool isPrevFrame = false)
     {
-        return data.intensity * data.tint;
+        return isPrevFrame ? prevData.intensity * prevData.tint : data.intensity * data.tint;
     }
 };

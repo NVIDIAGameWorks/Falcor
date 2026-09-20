@@ -44,11 +44,13 @@ float computeOutsideIoR(const InteriorList interiorList, const uint materialID, 
     {
         // If exiting the currently highest priority material, look at the next element
         // on the stack to find out what is on the outside.
-        if (outsideMaterialID == materialID) outsideMaterialID = interiorList.getNextMaterialID();
+        if (outsideMaterialID == materialID)
+            outsideMaterialID = interiorList.getNextMaterialID();
     }
 
     // If no material, assume the default IoR for vacuum.
-    if (outsideMaterialID == InteriorList::kNoMaterial) return 1.f;
+    if (outsideMaterialID == InteriorList::kNoMaterial)
+        return 1.f;
 
     return gScene.materials.evalIoR(outsideMaterialID);
 }

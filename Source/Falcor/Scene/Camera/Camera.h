@@ -79,6 +79,10 @@ namespace Falcor
         */
         float getFocalLength() const { return mData.focalLength; }
 
+        /** Get whether the camera preserves frame height (true) or frame width (false).
+        */
+        bool getPreserveHeight() const { return mPreserveHeight; }
+
         /** Set the camera's film plane height in mm.
         */
         void setFrameHeight(float height) { mData.frameHeight = height; mPreserveHeight = true;  mDirty = true; }
@@ -301,6 +305,7 @@ namespace Falcor
         void calculateCameraParameters() const;
         mutable CameraData mData;
         CameraData mPrevData;
+        CameraData mPrevDataForBinding;
 
         struct
         {

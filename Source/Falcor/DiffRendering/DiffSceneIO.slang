@@ -67,6 +67,7 @@ struct DiffSceneIO
 
     [Differentiable]
     [PreferRecompute]
+    [__NoSideEffect]
     void fwd_loadVertexPositionsW(
         DifferentialPair<SceneGradientInfo> dpGradInfo,
         GeometryInstanceID instanceID,
@@ -150,6 +151,7 @@ struct DiffSceneIO
 
     [Differentiable]
     [PreferRecompute]
+    [__NoSideEffect]
     void fwd_loadVertexNormalsW(
         DifferentialPair<SceneGradientInfo> dpGradInfo,
         GeometryInstanceID instanceID,
@@ -213,6 +215,7 @@ struct DiffSceneIO
 
     [Differentiable]
     [PreferRecompute]
+    [__NoSideEffect]
     void fwd_loadVertexTangentsW(
         DifferentialPair<SceneGradientInfo> dpGradInfo,
         GeometryInstanceID instanceID,

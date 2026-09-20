@@ -73,17 +73,18 @@ void testScalarTypes()
     }
 
     // 16/32/64-bit integer
+    // NOTE: The original tests had asuint(int(..)) that triggers an assert in dxc. See https://github.com/shader-slang/slang/issues/6717
     {
         int16_t a = 30000;   // 0x00007530 -> 0x7530 (30000) in 16-bit.
         int16_t b = -200000; // 0xfffcf2c0 -> Truncated to 0xf2c0 (-3392) in 16-bit.
-        result[i++] = asuint((int)a);
-        result[i++] = asuint((int)b);
+        result[i++] = (uint)a;
+        result[i++] = (uint)b;
     }
     {
         int32_t a = 291123;
         int32_t b = -2000000000;
-        result[i++] = asuint(a);
-        result[i++] = asuint(b);
+        result[i++] = (uint)a;
+        result[i++] = (uint)b;
     }
     {
         // NOTE: Must use 'LL' suffix for signed 64-bit literals, otherwise interpreted as 32-bit.

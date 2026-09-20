@@ -48,6 +48,10 @@ namespace Falcor
     public:
         virtual ~Light() = default;
 
+        /** Create a clone of the light, with completely identical data.
+         */
+        virtual ref<Light> clone() const = 0;
+
         /** Set the light parameters into a shader variable. To use this you need to include/import 'ShaderCommon' inside your shader.
         */
         virtual void bindShaderData(const ShaderVar& var);
@@ -152,6 +156,10 @@ namespace Falcor
         PointLight(const std::string& name);
         ~PointLight() = default;
 
+        /** Create a clone of the light, with completely identical data.
+         */
+        ref<Light> clone() const override;
+
         /** Render UI elements for this light.
         */
         void renderUI(Gui::Widgets& widget) override;
@@ -209,6 +217,10 @@ namespace Falcor
         DirectionalLight(const std::string& name);
         ~DirectionalLight() = default;
 
+        /** Create a clone of the light, with completely identical data.
+         */
+        ref<Light> clone() const override;
+
         /** Render UI elements for this light.
         */
         void renderUI(Gui::Widgets& widget) override;
@@ -243,6 +255,10 @@ namespace Falcor
 
         DistantLight(const std::string& name);
         ~DistantLight() = default;
+
+        /** Create a clone of the light, with completely identical data.
+         */
+        ref<Light> clone() const override;
 
         /** Render UI elements for this light.
         */
@@ -331,6 +347,10 @@ namespace Falcor
         RectLight(const std::string& name) : AnalyticAreaLight(name, LightType::Rect) {}
         ~RectLight() = default;
 
+        /** Create a clone of the light, with completely identical data.
+         */
+        ref<Light> clone() const override;
+
     private:
         virtual void update() override;
     };
@@ -345,6 +365,10 @@ namespace Falcor
         DiscLight(const std::string& name) : AnalyticAreaLight(name, LightType::Disc) {}
         ~DiscLight() = default;
 
+        /** Create a clone of the light, with completely identical data.
+         */
+        ref<Light> clone() const override;
+
     private:
         virtual void update() override;
     };
@@ -358,6 +382,10 @@ namespace Falcor
 
         SphereLight(const std::string& name) : AnalyticAreaLight(name, LightType::Sphere) {}
         ~SphereLight() = default;
+
+        /** Create a clone of the light, with completely identical data.
+         */
+        ref<Light> clone() const override;
 
     private:
         virtual void update() override;

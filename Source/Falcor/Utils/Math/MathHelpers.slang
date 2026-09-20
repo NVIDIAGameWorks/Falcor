@@ -274,6 +274,17 @@ float2 sample_disk(float2 u)
     return p;
 }
 
+float2 inverse_sample_disk(float2 p)
+{
+    float2 u;
+    float r = sqrt(p.x * p.x + p.y * p.y);
+    float phi = r > 0.0f ? atan2(p.y / r, p.x / r) : 0.0f;
+    if (phi < 0) phi += M_2PI;
+    u.x = r * r;
+    u.y = phi / M_2PI;
+    return u;
+}
+
 /**
  * Uniform sampling of direction within a cone
  * @param[in] u Uniform random number in [0,1)^2.
@@ -442,6 +453,16 @@ float2 calcMotionVector(float2 pixelCrd, float4 prevPosH, float2 renderTargetDim
     Miscellaneous functions
 
 ******************************************************************************/
+
+/**
+ * log2 function clamped to a valid domain.
+ * @param[in] x value whose clamped log2 is to be computed.
+ * @return The range of lod values that can be returned is [-126, 127].
+ */
+float safeLog2(float x)
+{
+    return log2(clamp(x, FLT_MIN, FLT_MAX));
+}
 
 /**
  * Inverts a 2x2 matrix.

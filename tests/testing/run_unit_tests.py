@@ -27,7 +27,7 @@ def run_unit_tests(env: Environment, args):
     return p.returncode == 0
 
 def main():
-    default_config = find_most_recent_build_config()
+    default_config = find_most_recent_build_config(config.FALCOR_TEST_EXE)
 
     parser = argparse.ArgumentParser(description=__doc__, add_help=False)
     parser.add_argument('-h', '--help', action='store_true', help='Show this help message and exit')
@@ -62,6 +62,8 @@ def main():
     if env == None:
         print(f"\nFailed to load environment: {env_error}")
         sys.exit(1)
+
+    print(f"Running unit tests with config: {args.config}")
 
     # Run tests.
     success = run_unit_tests(env, passthrough_args)

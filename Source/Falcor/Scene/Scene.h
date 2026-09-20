@@ -465,7 +465,7 @@ namespace Falcor
 
         /** Returns true if there are active analytic lights and they should be used for lighting.
         */
-        bool useAnalyticLights() const;
+        bool useAnalyticLights() const override;
 
         /** Returns true if there are active emissive lights and they should be used for lighting.
         */
@@ -863,7 +863,7 @@ namespace Falcor
 
         /** Get a list of all active lights in the scene.
         */
-        const std::vector<ref<Light>>& getActiveAnalyticLights() const { return mActiveLights; }
+        const std::vector<ref<Light>>& getActiveAnalyticLights() const override { return mActiveLights; }
 
         /** Get the light collection representing all the mesh lights in the scene.
             The light collection is created lazily on the first call. It needs a render context.
@@ -943,7 +943,7 @@ namespace Falcor
 
         /** Render the scene using raytracing.
         */
-        void raytrace(RenderContext* pRenderContext, Program* pProgram, const ref<RtProgramVars>& pVars, uint3 dispatchDims);
+        void raytrace(RenderContext* pRenderContext, Program* pProgram, const ref<RtProgramVars>& pVars, uint3 dispatchDims) override;
 
         /** Render the UI.
         */
@@ -1041,7 +1041,7 @@ namespace Falcor
             \param[in] sceneVar Shader variable to set data into, usually the root var.
             \param[in] rayTypeCount Number of ray types in raygen program. Not needed for DXR 1.1.
         */
-        void bindShaderDataForRaytracing(RenderContext* pRenderContext, const ShaderVar& sceneVar, uint32_t rayTypeCount = 0);
+        void bindShaderDataForRaytracing(RenderContext* pRenderContext, const ShaderVar& sceneVar, uint32_t rayTypeCount = 0) override;
 
         /** Get the name of the mesh with the given ID.
         */
@@ -1174,6 +1174,10 @@ namespace Falcor
             \param[in] rayCount Number of ray types in the shader. Required to setup how instances index into the Shader Table.
         */
         void buildTlas(RenderContext* pRenderContext, uint32_t rayTypeCount, bool perMeshHitEntry);
+
+        /** Initializes cache for previous TLAS.
+         */
+        void initializePrevTlasCache(RenderContext* pRenderContext);
 
         /** Invalidates the TLAS cache.
         */
@@ -1376,6 +1380,7 @@ namespace Falcor
 
         std::unordered_map<uint32_t, TlasData> mTlasCache;  ///< Top Level Acceleration Structure for scene data cached per shader ray type count.
                                                             ///< Number of ray types in program affects Shader Table indexing.
+        std::unordered_map<uint32_t, TlasData> mPrevTlasCache; /// stores the previous Tlas Cache.
         ref<Buffer> mpTlasScratch;                          ///< Scratch buffer used for TLAS builds. Can be shared as long as instance desc count is the same, which for now it is.
         RtAccelerationStructurePrebuildInfo mTlasPrebuildInfo; ///< This can be reused as long as the number of instance descs doesn't change.
         uint32_t mTlasLastBuiltRayCount = 0;                ///< RayTypeCount of the last built TLAS, zero if there is none

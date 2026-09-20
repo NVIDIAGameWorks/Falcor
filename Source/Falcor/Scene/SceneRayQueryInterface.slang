@@ -43,7 +43,7 @@ interface ISceneRayQuery
         \param[in] instanceInclusionMask Includes/rejects geometry based on instance mask.
         \return Returns Hit info, only valid when there was a hit.
     */
-    HitInfo traceRay(const Ray ray, out float hitT, uint rayFlags = RAY_FLAG_NONE, uint instanceInclusionMask = 0xff);
+    HitInfo traceRay(const Ray ray, out float hitT, uint rayFlags = RAY_FLAG_NONE, uint instanceInclusionMask = 0xff, bool isPrevFrame = false);
 
     /** Trace a visibility ray against the scene.
         \param[in] ray Ray.
@@ -51,5 +51,5 @@ interface ISceneRayQuery
         \param[in] instanceInclusionMask Includes/rejects geometry based on instance mask.
         \return Returns true if the ray endpoints are mutually visible (i.e. the ray does NOT intersect the scene).
     */
-    bool traceVisibilityRay(const Ray ray, uint rayFlags = RAY_FLAG_NONE, uint instanceInclusionMask = 0xff);
+    bool traceVisibilityRay(const Ray ray, uint rayFlags = RAY_FLAG_NONE, uint instanceInclusionMask = 0xff, bool isPrevFrame = false);
 };

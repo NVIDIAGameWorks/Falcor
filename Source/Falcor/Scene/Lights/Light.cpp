@@ -171,6 +171,11 @@ namespace Falcor
         mPrevData = mData;
     }
 
+    ref<Light> PointLight::clone() const
+    {
+        return make_ref<PointLight>(*this);
+    }
+
     void PointLight::setWorldDirection(const float3& dir)
     {
         if (!(length(dir) > 0.f)) // NaNs propagate
@@ -239,6 +244,11 @@ namespace Falcor
         mPrevData = mData;
     }
 
+    ref<Light> DirectionalLight::clone() const
+    {
+        return make_ref<DirectionalLight>(*this);
+    }
+
     void DirectionalLight::renderUI(Gui::Widgets& widget)
     {
         Light::renderUI(widget);
@@ -274,6 +284,11 @@ namespace Falcor
         setAngle(0.5f * 0.53f * (float)M_PI / 180.f);   // Approximate sun half-angle
         update();
         mPrevData = mData;
+    }
+
+    ref<Light> DistantLight::clone() const
+    {
+        return make_ref<DistantLight>(*this);
     }
 
     void DistantLight::renderUI(Gui::Widgets& widget)
@@ -363,6 +378,11 @@ namespace Falcor
 
     // RectLight
 
+    ref<Light> RectLight::clone() const
+    {
+        return make_ref<RectLight>(*this);
+    }
+
     void RectLight::update()
     {
         AnalyticAreaLight::update();
@@ -373,6 +393,11 @@ namespace Falcor
     }
 
     // DiscLight
+
+    ref<Light> DiscLight::clone() const
+    {
+        return make_ref<DiscLight>(*this);
+    }
 
     void DiscLight::update()
     {
@@ -385,6 +410,11 @@ namespace Falcor
     }
 
     // SphereLight
+
+    ref<Light> SphereLight::clone() const
+    {
+        return make_ref<SphereLight>(*this);
+    }
 
     void SphereLight::update()
     {

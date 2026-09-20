@@ -35,14 +35,14 @@ __exported import Utils.Math.ShadingFrame;
 #define FALCOR_BACKFACE_BLACK 1
 
 /** Convert RGB to normal (unnormalized).
-*/
+ */
 float3 rgbToNormal(float3 rgb)
 {
     return rgb * 2.f - 1.f;
 }
 
 /** Convert RG to normal (unnormalized).
-*/
+ */
 float3 rgToNormal(float2 rg)
 {
     float3 n;
@@ -60,14 +60,16 @@ float getMetallic(float3 diffuse, float3 spec)
 {
     // This is based on the way that UE4 and Substance Painter 2 converts base+metallic+specular level to diffuse/spec colors
     // We don't have the specular level information, so the assumption is that it is equal to 0.5 (based on the UE4 documentation)
-    // Note that I'm using the luminance here instead of the actual colors. The reason is that there's no guaraentee that all RGB channels will end up with the same metallic value
+    // Note that I'm using the luminance here instead of the actual colors. The reason is that there's no guaraentee that all RGB channels
+    // will end up with the same metallic value
     float d = luminance(diffuse);
     float s = luminance(spec);
-    if (s == 0) return 0;
+    if (s == 0)
+        return 0;
     float a = 0.04;
     float b = s + d - 0.08;
     float c = 0.04 - s;
-    float root = sqrt(b*b - 0.16*c);
+    float root = sqrt(b * b - 0.16 * c);
     float m = (root - b) * 12.5;
     return m;
 }
@@ -155,17 +157,20 @@ void adjustShadingNormal(const ShadingData sd, inout ShadingFrame sf)
 bool isValidHemisphereReflection(const ShadingData sd, const ShadingFrame sf, const float3 wiLocal, const float3 woLocal, const float3 wo)
 {
     // Check that wi/wo are in the upper hemisphere around the shading normal.
-    if (min(wiLocal.z, woLocal.z) < kMinCosTheta) return false;
+    if (min(wiLocal.z, woLocal.z) < kMinCosTheta)
+        return false;
 
     // Check that wi/wo are on the same geometric side.
     bool wiTop = sd.frontFacing; // The flag is computed dot(wi, faceN) >= 0.f.
     bool woTop = dot(wo, sd.faceN) >= 0.f;
-    if (wiTop != woTop) return false;
+    if (wiTop != woTop)
+        return false;
 
 #if FALCOR_BACKFACE_BLACK
     // Additionally check that we're on the same geometric side as the shading normal.
     bool shadingTop = dot(sf.N, sd.faceN) >= 0.f;
-    if (wiTop != shadingTop) return false;
+    if (wiTop != shadingTop)
+        return false;
 #endif
 
     return true;
@@ -184,17 +189,20 @@ bool isValidHemisphereReflection(const ShadingData sd, const ShadingFrame sf, co
 bool isValidHemisphereTransmission(const ShadingData sd, const ShadingFrame sf, const float3 wiLocal, const float3 woLocal, const float3 wo)
 {
     // Check that wi/wo are in the upper/lower hemisphere around the shading normal.
-    if (min(wiLocal.z, -woLocal.z) < kMinCosTheta) return false;
+    if (min(wiLocal.z, -woLocal.z) < kMinCosTheta)
+        return false;
 
     // Check that wi/wo are on opposite geometric sides.
     bool wiTop = sd.frontFacing; // The flag is computed dot(wi, faceN) >= 0.f.
     bool woTop = dot(wo, sd.faceN) >= 0.f;
-    if (wiTop == woTop) return false;
+    if (wiTop == woTop)
+        return false;
 
 #if FALCOR_BACKFACE_BLACK
     // Additionally check that we're on the same geometric side as the shading normal.
     bool shadingTop = dot(sf.N, sd.faceN) >= 0.f;
-    if (wiTop != shadingTop) return false;
+    if (wiTop != shadingTop)
+        return false;
 #endif
 
     return true;
@@ -211,13 +219,21 @@ bool isValidHemisphereTransmission(const ShadingData sd, const ShadingFrame sf, 
     \param[in] fullSphere If true allow the full sphere of directions, otherwise wi in the lower hemisphere is rejected and back-faces are black.
     \return True if wi/wo represent valid vectors for reflection or transmission.
 */
-bool isValidHemisphereReflectionOrTransmission(const ShadingData sd, const ShadingFrame sf, const float3 wiLocal, const float3 woLocal, const float3 wo, const bool fullSphere = false)
+bool isValidHemisphereReflectionOrTransmission(
+    const ShadingData sd,
+    const ShadingFrame sf,
+    const float3 wiLocal,
+    const float3 woLocal,
+    const float3 wo,
+    const bool fullSphere = false
+)
 {
     const bool isTransmission = wiLocal.z * woLocal.z < 0.f;
 
     // Check that wi/wo are in the upper/lower hemisphere around the shading normal.
     float cosThetaI = fullSphere ? abs(wiLocal.z) : wiLocal.z;
-    if (min(cosThetaI, abs(woLocal.z)) < kMinCosTheta) return false;
+    if (min(cosThetaI, abs(woLocal.z)) < kMinCosTheta)
+        return false;
 
     // Check that wi/wo are on the same geometric side.
     bool wiTop = sd.frontFacing; // The flag is computed dot(wi, faceN) >= 0.f.
@@ -225,11 +241,13 @@ bool isValidHemisphereReflectionOrTransmission(const ShadingData sd, const Shadi
 
     if (isTransmission)
     {
-        if (wiTop == woTop) return false;
+        if (wiTop == woTop)
+            return false;
     }
     else // reflection
     {
-        if (wiTop != woTop) return false;
+        if (wiTop != woTop)
+            return false;
     }
 
 #if FALCOR_BACKFACE_BLACK
@@ -237,7 +255,8 @@ bool isValidHemisphereReflectionOrTransmission(const ShadingData sd, const Shadi
     {
         // Additionally check that we're on the same geometric side as the shading normal.
         bool shadingTop = dot(sf.N, sd.faceN) >= 0.f;
-        if (wiTop != shadingTop) return false;
+        if (wiTop != shadingTop)
+            return false;
     }
 #endif
 

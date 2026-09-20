@@ -32,6 +32,10 @@
     that copies the result to the output buffer.
 */
 
+#ifndef TYPE
+#define TYPE 0 // Define TYPE for tests that do not use it, to silence their warnings
+#endif
+
 #if TYPE == 0
 RWByteAddressBuffer buffer;
 #elif TYPE == 1

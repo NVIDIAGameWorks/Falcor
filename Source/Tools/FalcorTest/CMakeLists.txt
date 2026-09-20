@@ -61,8 +61,6 @@ target_sources(FalcorTest PRIVATE
     Tests/Sampling/AliasTableTests.cs.slang
     Tests/Sampling/LowDiscrepancyTests.cpp
     Tests/Sampling/LowDiscrepancyTests.cs.slang
-    Tests/Sampling/PointSetsTests.cpp
-    Tests/Sampling/PointSetsTests.cs.slang
     Tests/Sampling/PseudorandomTests.cpp
     Tests/Sampling/PseudorandomTests.cs.slang
     Tests/Sampling/SampleGeneratorTests.cpp

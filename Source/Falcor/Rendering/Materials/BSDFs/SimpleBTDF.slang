@@ -33,7 +33,9 @@ __exported import Rendering.Materials.IBSDF;
  */
 struct SimpleBTDF : IBSDF
 {
-    float3 transmittance; ///< Transmittance colour (i.e. tint)
+    float3 transmittance = {}; ///< Transmittance colour (i.e. tint)
+
+    __init() {}
 
     __init(float3 transmittance) { this.transmittance = transmittance; }
 
@@ -76,7 +78,7 @@ struct SimpleBTDF : IBSDF
 
     RoughnessInformation getRoughnessInformation(const float3 wi)
     {
-        RoughnessInformation r;
+        RoughnessInformation r = {};
         r.roughnessBSDFNotation = float2(0.f, 0.f);
         return r;
     }

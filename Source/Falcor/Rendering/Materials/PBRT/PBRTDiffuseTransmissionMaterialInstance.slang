@@ -37,7 +37,7 @@ import Utils.Math.MathHelpers;
 */
 struct PBRTDiffuseTransmissionMaterialInstance : MaterialInstanceBase, IMaterialInstance
 {
-    ShadingFrame sf;            ///< Shading frame in world space.
+    ShadingFrame sf; ///< Shading frame in world space.
     float3 albedoR;
     float3 albedoT;
 
@@ -46,7 +46,8 @@ struct PBRTDiffuseTransmissionMaterialInstance : MaterialInstanceBase, IMaterial
         float3 wiLocal = sf.toLocal(sd.V);
         float3 woLocal = sf.toLocal(wo);
 
-        if (!isValidHemisphereReflectionOrTransmission(sd, sf, wiLocal, woLocal, wo, true)) return float3(0.f);
+        if (!isValidHemisphereReflectionOrTransmission(sd, sf, wiLocal, woLocal, wo, true))
+            return float3(0.f);
 
         float3 albedo = (wiLocal.z * woLocal.z > 0.0f) ? albedoR : albedoT;
         return albedo * abs(woLocal.z) * M_1_PI;
@@ -62,11 +63,13 @@ struct PBRTDiffuseTransmissionMaterialInstance : MaterialInstanceBase, IMaterial
     {
         float3 wiLocal = sf.toLocal(sd.V);
         float3 woLocal = sample_cosine_hemisphere_concentric(sampleNext2D(sg), result.pdf);
-        if (wiLocal.z < 0.0f) woLocal = -woLocal;
+        if (wiLocal.z < 0.0f)
+            woLocal = -woLocal;
 
         float PR = luminance(albedoR);
         float PT = luminance(albedoT);
-        if (PR + PT == 0.0f) return false;
+        if (PR + PT == 0.0f)
+            return false;
         if (sampleNext1D(sg) < PT / (PR + PT))
         {
             woLocal = -woLocal;
@@ -82,7 +85,8 @@ struct PBRTDiffuseTransmissionMaterialInstance : MaterialInstanceBase, IMaterial
         }
         result.wo = sf.fromLocal(woLocal);
 
-        if (!isValidHemisphereReflectionOrTransmission(sd, sf, wiLocal, woLocal, result.wo, true)) return false;
+        if (!isValidHemisphereReflectionOrTransmission(sd, sf, wiLocal, woLocal, result.wo, true))
+            return false;
 
         return true;
     }
@@ -92,11 +96,13 @@ struct PBRTDiffuseTransmissionMaterialInstance : MaterialInstanceBase, IMaterial
         float3 wiLocal = sf.toLocal(sd.V);
         float3 woLocal = sf.toLocal(wo);
 
-        if (!isValidHemisphereReflectionOrTransmission(sd, sf, wiLocal, woLocal, wo, true)) return 0.f;
+        if (!isValidHemisphereReflectionOrTransmission(sd, sf, wiLocal, woLocal, wo, true))
+            return 0.f;
 
         float PR = luminance(albedoR);
         float PT = luminance(albedoT);
-        if (PR + PT == 0.0f) return 0.0f;
+        if (PR + PT == 0.0f)
+            return 0.0f;
         float P = (wiLocal.z * woLocal.z > 0.0f) ? PR / (PR + PT) : PT / (PR + PT);
 
         return P * abs(woLocal.z) * M_1_PI;
@@ -115,9 +121,6 @@ struct PBRTDiffuseTransmissionMaterialInstance : MaterialInstanceBase, IMaterial
         return p;
     }
 
-    uint getLobeTypes(const ShadingData sd)
-    {
-        return (uint)LobeType::DiffuseReflection | (uint)LobeType::DiffuseTransmission;
-    }
+    uint getLobeTypes(const ShadingData sd) { return (uint)LobeType::DiffuseReflection | (uint)LobeType::DiffuseTransmission; }
 
 };

@@ -118,6 +118,13 @@ bool Settings::addOptions(const std::filesystem::path& path)
     return true;
 }
 
+void Settings::addOption(std::string_view name, const nlohmann::json& value)
+{
+    nlohmann::json options;
+    options[name] = value;
+    addOptions(options);
+}
+
 void Settings::addFilteredAttributes(const pybind11::dict& attributes)
 {
     addFilteredAttributes(pyjson::to_json(attributes));

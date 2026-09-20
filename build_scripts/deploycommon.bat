@@ -29,30 +29,23 @@ robocopy %ExtDir%\python\ %OutDir% python*.dll /r:0 >nul
 robocopy %ExtDir%\python %OutDir%\pythondist /E /r:0 >nul
 robocopy %SlangDir%\bin %OutDir% *.dll /r:0 >nul
 robocopy %ExtDir%\pix\bin\x64 %OutDir% WinPixEventRuntime.dll /r:0 >nul
-robocopy %ExtDir%\dxcompiler\bin\x64 %OutDir% dxil.dll /r:0 >nul
-robocopy %ExtDir%\dxcompiler\bin\x64 %OutDir% dxcompiler.dll /r:0 >nul
 robocopy %ExtDir%\nvtt\ %OutDir% cudart64_110.dll /r:0 >nul
 robocopy %ExtDir%\nvtt\ %OutDir% nvtt30106.dll /r:0 >nul
-robocopy %ExtDir%\cuda\bin\ %OutDir% cudart*.dll /r:0 >nul
-robocopy %ExtDir%\cuda\bin\ %OutDir% nvrtc*.dll /r:0 >nul
-robocopy %ExtDir%\cuda\bin\ %OutDir% cublas*.dll /r:0 >nul
-robocopy %ExtDir%\cuda\bin\ %OutDir% curand*.dll /r:0 >nul
+
+rem Copy CUDA
+set CUDADir=%ExtDir%\cuda
+if exist %CUDADir% (
+    robocopy %CUDADir%\bin\ %OutDir% cudart*.dll /r:0 >nul
+    robocopy %CUDADir%\bin\ %OutDir% nvrtc*.dll /r:0 >nul
+    robocopy %CUDADir%\bin\ %OutDir% cublas*.dll /r:0 >nul
+    robocopy %CUDADir%\bin\ %OutDir% curand*.dll /r:0 >nul
+)
 
 rem Copy Aftermath
 set AftermathDir=%ExtDir%\aftermath
 if exist %AftermathDir% (
     copy /y %AftermathDir%\lib\x64\GFSDK_Aftermath_Lib.x64.dll %OutDir% >nul
     copy /y %AftermathDir%\lib\x64\llvm_7_0_1.dll %OutDir% >nul
-)
-
-rem Copy NVAPI
-set NvApiDir=%ExtDir%\nvapi
-set NvApiTargetDir=%OutDir%\shaders\nvapi
-if exist %NvApiDir% (
-    if not exist %NvApiTargetDir% mkdir %NvApiTargetDir% >nul
-    copy /y %NvApiDir%\nvHLSLExtns.h %NvApiTargetDir% >nul
-    copy /y %NvApiDir%\nvHLSLExtnsInternal.h %NvApiTargetDir% >nul
-    copy /y %NvApiDir%\nvShaderExtnEnums.h %NvApiTargetDir% >nul
 )
 
 rem Copy NRD
@@ -79,15 +72,6 @@ if exist %RtxdiSDKDir% (
     copy /y %RtxdiSDKDir%\RtxdiMath.hlsli %RtxdiSDKTargetDir% >nul
     copy /y %RtxdiSDKDir%\RtxdiParameters.h %RtxdiSDKTargetDir% >nul
     copy /y %RtxdiSDKDir%\RtxdiTypes.h %RtxdiSDKTargetDir% >nul
-)
-
-rem Copy Agility SDK Runtime
-set AgilitySDKDir=%ExtDir%\agility-sdk
-set AgilitySDKTargetDir=%OutDir%\D3D12
-if exist %AgilitySDKDir% (
-    if not exist %AgilitySDKTargetDir% mkdir %AgilitySDKTargetDir% >nul
-    copy /y %AgilitySDKDir%\build\native\bin\x64\D3D12Core.dll %AgilitySDKTargetDir% >nul
-    copy /y %AgilitySDKDir%\build\native\bin\x64\d3d12SDKLayers.dll %AgilitySDKTargetDir% >nul
 )
 
 rem Copy NanoVDB

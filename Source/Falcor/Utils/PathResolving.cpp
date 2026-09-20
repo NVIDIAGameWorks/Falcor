@@ -93,7 +93,7 @@ ResolvedPaths resolveSearchPaths(
                 result.resolved.insert(result.resolved.end(), standard.begin(), standard.end());
                 continue;
             }
-            std::filesystem::path path = std::filesystem::weakly_canonical(it2);
+            std::filesystem::path path = std::filesystem::path(it2).lexically_normal();
             if (path.is_absolute())
                 result.resolved.push_back(std::move(path));
             else
@@ -120,7 +120,7 @@ std::filesystem::path resolvePath(
     if (path.is_absolute())
     {
         if (fileChecker(path))
-            return std::filesystem::weakly_canonical(path);
+            return std::filesystem::path(path).lexically_normal();
         return std::filesystem::path();
     }
 
@@ -129,7 +129,7 @@ std::filesystem::path resolvePath(
     {
         std::filesystem::path result = currentWorkingDirectory / path;
         if (fileChecker(result))
-            return std::filesystem::weakly_canonical(result);
+            return std::filesystem::path(result).lexically_normal();
         return std::filesystem::path();
     }
 
@@ -138,7 +138,7 @@ std::filesystem::path resolvePath(
     {
         std::filesystem::path result = searchpath / path;
         if (fileChecker(result))
-            return std::filesystem::weakly_canonical(result);
+            return std::filesystem::path(result).lexically_normal();
     }
     return std::filesystem::path();
 }

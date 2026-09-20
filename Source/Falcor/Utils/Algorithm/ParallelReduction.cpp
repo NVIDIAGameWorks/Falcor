@@ -46,7 +46,9 @@ ParallelReduction::ParallelReduction(ref<Device> pDevice) : mpDevice(pDevice)
     mpVars = ProgramVars::create(mpDevice, mpInitialProgram.get());
 
     // Check assumptions on thread group sizes. The initial pass is a 2D dispatch, the final pass a 1D.
-    FALCOR_ASSERT(mpInitialProgram->getReflector()->getThreadGroupSize().z == 1);
+    FALCOR_ASSERT(
+        mpInitialProgram->getReflector()->getThreadGroupSize().y == 1 && mpInitialProgram->getReflector()->getThreadGroupSize().z == 1
+    );
     FALCOR_ASSERT(
         mpFinalProgram->getReflector()->getThreadGroupSize().y == 1 && mpFinalProgram->getReflector()->getThreadGroupSize().z == 1
     );
@@ -141,7 +143,8 @@ void ParallelReduction::execute(
     FALCOR_ASSERT(resolution.x > 0 && resolution.y > 0);
     FALCOR_ASSERT(elementSize > 0);
 
-    const uint2 numTiles = div_round_up(resolution, mpInitialProgram->getReflector()->getThreadGroupSize().xy());
+    const uint2 tileSize = {32, 32}; // Must match shader code.
+    const uint2 numTiles = div_round_up(resolution, tileSize);
     allocate(numTiles.x * numTiles.y, elementSize);
     FALCOR_ASSERT(mpBuffers[0]);
     FALCOR_ASSERT(mpBuffers[1]);
@@ -168,7 +171,7 @@ void ParallelReduction::execute(
         var["gResult"] = mpBuffers[0];
 
         mpState->setProgram(mpInitialProgram);
-        uint3 numGroups = div_round_up(uint3(resolution.x, resolution.y, 1), mpInitialProgram->getReflector()->getThreadGroupSize());
+        uint3 numGroups = {numTiles.x, numTiles.y, 1};
         pRenderContext->dispatch(mpState.get(), mpVars.get(), numGroups);
     }
 

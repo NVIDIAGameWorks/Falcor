@@ -35,6 +35,8 @@ const uint32_t kNumElems = 256;
 
 void test(GPUUnitTestContext& ctx, ShaderModel shaderModel)
 {
+    ASSERT(ctx.getDevice()->isShaderModelSupported(shaderModel));
+
     ctx.createProgram("Tests/Slang/ShaderModel.cs.slang", "main", DefineList(), SlangCompilerFlags::None, shaderModel);
     ctx.allocateStructuredBuffer("result", kNumElems);
     ctx.runProgram(kNumElems, 1, 1);
@@ -52,6 +54,8 @@ GPU_TEST(ShaderModel6_0)
     test(ctx, ShaderModel::SM6_0);
 }
 
+// Currently on NA branch the higher shader models aren't detected correctly
+#if FALCOR_WINDOWS
 GPU_TEST(ShaderModel6_1)
 {
     test(ctx, ShaderModel::SM6_1);
@@ -76,11 +80,28 @@ GPU_TEST(ShaderModel6_5)
 {
     test(ctx, ShaderModel::SM6_5);
 }
+#endif
 
 #if FALCOR_HAS_D3D12_AGILITY_SDK
 GPU_TEST(ShaderModel6_6, Device::Type::D3D12)
 {
     test(ctx, ShaderModel::SM6_6);
+}
+
+GPU_TEST(ShaderModel6_7, Device::Type::D3D12)
+{
+    test(ctx, ShaderModel::SM6_7);
+}
+
+GPU_TEST(ShaderModel6_8, Device::Type::D3D12)
+{
+    ctx.skip("SM6.8 is not supported on NA version of dxc");
+    test(ctx, ShaderModel::SM6_8);
+}
+
+GPU_TEST(ShaderModel6_9, Device::Type::D3D12, "Requires an updated driver.")
+{
+    test(ctx, ShaderModel::SM6_9);
 }
 #endif
 } // namespace Falcor

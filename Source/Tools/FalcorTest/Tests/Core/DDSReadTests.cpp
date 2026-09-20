@@ -71,7 +71,7 @@ void testDDS(GPUUnitTestContext& ctx, const std::string& testName, ResourceForma
     }
 
     // Read reference image.  If no reference image exists, the test will fail, and a reference image will be output.
-    std::filesystem::path refPath = getRuntimeDirectory() / fmt::format("data/tests/{}-ref.png", testName);
+    std::filesystem::path refPath = getRuntimeDirectory() / fmt::format("data/tests/{}-ref.exr", testName);
 
     ref<Texture> pPngTex;
     if (std::filesystem::exists(refPath))
@@ -109,7 +109,7 @@ void testDDS(GPUUnitTestContext& ctx, const std::string& testName, ResourceForma
     {
         // Create program to copy decompressed image so that we can save it as the reference
         ctx.createProgram("Tests/Core/DDSReadTests.cs.slang", "readback");
-        ctx.allocateStructuredBuffer("result", 4 * sizeof(uint32_t) * pDst->getWidth() * pDst->getHeight());
+        ctx.allocateStructuredBuffer("result", 4 * sizeof(float) * pDst->getWidth() * pDst->getHeight());
     }
 
     const uint2 dstDim(pDst->getWidth(), pDst->getHeight());
@@ -130,7 +130,8 @@ void testDDS(GPUUnitTestContext& ctx, const std::string& testName, ResourceForma
         analyzer.analyze(ctx.getRenderContext(), pDiffTex, 0, 0, pResultBuffer);
         TextureAnalyzer::Result result = pResultBuffer->getElement<TextureAnalyzer::Result>(0);
 
-        // Expect difference image to be uniform 0.
+        // Comparing the decompressed DDS with the previously stored EXR, that contains the same data in float,
+        // should yield the same result every time.
         EXPECT(result.isConstant(TextureChannelFlags::Red));
         EXPECT(result.isConstant(TextureChannelFlags::Green));
         EXPECT(result.isConstant(TextureChannelFlags::Blue));
@@ -144,25 +145,25 @@ void testDDS(GPUUnitTestContext& ctx, const std::string& testName, ResourceForma
     {
         // Save newly-created reference image
         std::vector<uint8_t> result = ctx.readBuffer<uint8_t>("result");
-        Bitmap::UniqueConstPtr resultBitmap(Bitmap::create(dstDim.x, dstDim.y, ResourceFormat::RGBA8Unorm, result.data()));
+        Bitmap::UniqueConstPtr resultBitmap(Bitmap::create(dstDim.x, dstDim.y, ResourceFormat::RGBA32Float, result.data()));
         Bitmap::saveImage(
             refPath,
             dstDim.x,
             dstDim.y,
-            Bitmap::FileFormat::PngFile,
-            Bitmap::ExportFlags::Uncompressed | Bitmap::ExportFlags::ExportAlpha,
-            ResourceFormat::RGBA8Unorm,
-            false,
+            Bitmap::FileFormat::ExrFile,
+            Bitmap::ExportFlags::ExportAlpha,
+            ResourceFormat::RGBA32Float,
+            true,
             result.data()
         );
     }
 }
 } // namespace
 
-#define DDS_TEST(x, f)                           \
-    GPU_TEST(x)                                  \
-    {                                            \
-        testDDS(ctx, std::string(#x), f, false); \
+#define DDS_TEST(x, f)                                                   \
+    GPU_TEST(x, "Disabled, no longer need to test texture compression.") \
+    {                                                                    \
+        testDDS(ctx, std::string(#x), f, false);                         \
     }
 
 DDS_TEST(BC1Unorm, ResourceFormat::BC1Unorm);
@@ -185,7 +186,7 @@ DDS_TEST(BC7UnormOdd, ResourceFormat::BC7Unorm);
 DDS_TEST(BC7UnormSrgb, ResourceFormat::BC7UnormSrgb);
 DDS_TEST(BC7UnormTiny, ResourceFormat::BC7Unorm);
 
-GPU_TEST(BC7UnormBroken)
+GPU_TEST(BC7UnormBroken, "Disabled, no longer need to test texture compression.")
 {
     testDDS(ctx, std::string("BC7UnormBroken"), ResourceFormat::BC7Unorm, true);
 }

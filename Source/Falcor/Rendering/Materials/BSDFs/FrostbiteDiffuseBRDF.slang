@@ -38,8 +38,8 @@ __exported import Rendering.Materials.IBSDF;
  */
 struct FrostbiteDiffuseBRDF : IBSDF, IDifferentiable
 {
-    float3 albedo;   ///< Diffuse albedo.
-    float roughness; ///< Roughness before remapping.
+    float3 albedo = {};   ///< Diffuse albedo.
+    float roughness = {}; ///< Roughness before remapping.
 
     [Differentiable]
     float3 eval<S : ISampleGenerator>(const float3 wi, const float3 wo, inout S sg, BSDFContext bc)
@@ -60,6 +60,9 @@ struct FrostbiteDiffuseBRDF : IBSDF, IDifferentiable
         BSDFContext bc
     )
     {
+#if PAD_RANDOM_NUMBERS
+        sampleNext1D(sg);
+#endif
         wo = sample_cosine_hemisphere_concentric(sampleNext2D(sg), pdf);
         lobeType = (uint)LobeType::DiffuseReflection;
 
@@ -107,7 +110,7 @@ struct FrostbiteDiffuseBRDF : IBSDF, IDifferentiable
 
     RoughnessInformation getRoughnessInformation(const float3 wi)
     {
-        RoughnessInformation r;
+        RoughnessInformation r = {};
         r.roughnessBSDFNotation = float2(0.5f, 0.5f);
         return r;
     }

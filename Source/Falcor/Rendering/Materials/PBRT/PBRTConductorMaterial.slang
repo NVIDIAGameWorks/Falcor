@@ -37,7 +37,12 @@ struct PBRTConductorMaterial : MaterialBase, IMaterial
 
     typedef PBRTConductorMaterialInstance MaterialInstance;
 
-    PBRTConductorMaterialInstance setupMaterialInstance(const MaterialSystem ms, const ShadingData sd, const ITextureSampler lod, const uint hints)
+    PBRTConductorMaterialInstance setupMaterialInstance(
+        const MaterialSystem ms,
+        const ShadingData sd,
+        const ITextureSampler lod,
+        const uint hints
+    )
     {
         SamplerState s = ms.getTextureSampler(header.getDefaultTextureSamplerID());
 
@@ -59,13 +64,19 @@ struct PBRTConductorMaterial : MaterialBase, IMaterial
             adjustShadingNormal(sd, sf);
         }
 
-        PBRTConductorMaterialInstance mi = {sf, {AnisotropicGGX(roughness), baseColor, transColor}};
+        PBRTConductorMaterialInstance mi = { sf, PBRTConductorBSDF( AnisotropicGGX(roughness), baseColor, transColor ) };
 
         return mi;
     }
 
     [Differentiable]
-    PBRTConductorMaterialInstance setupDiffMaterialInstance(out DiffMaterialData diffData, const MaterialSystem ms, const ShadingData sd, const ITextureSampler lod, const uint hints)
+    PBRTConductorMaterialInstance setupDiffMaterialInstance(
+        out DiffMaterialData diffData,
+        const MaterialSystem ms,
+        const ShadingData sd,
+        const ITextureSampler lod,
+        const uint hints
+    )
     {
         SamplerState s = ms.getTextureSampler(header.getDefaultTextureSamplerID());
 
@@ -96,7 +107,7 @@ struct PBRTConductorMaterial : MaterialBase, IMaterial
             no_diff adjustShadingNormal(sd, sf);
         }
 
-        PBRTConductorMaterialInstance mi = { sf, { AnisotropicGGX(roughness), baseColor, transColor } };
+        PBRTConductorMaterialInstance mi = { sf, no_diff PBRTConductorBSDF(AnisotropicGGX(roughness), baseColor, transColor) };
         diffData.sf = sf;
 
         uint offset = 0;

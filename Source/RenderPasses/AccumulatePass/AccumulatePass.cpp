@@ -138,14 +138,13 @@ void AccumulatePass::execute(RenderContext* pRenderContext, const RenderData& re
 
         // Reset accumulation upon all scene changes, except camera jitter and history changes.
         // TODO: Add UI options to select which changes should trigger reset
-        if (mpScene)
+        if (mUpdateFlags != IScene::UpdateFlags::None)
         {
-            auto sceneUpdates = mpScene->getUpdates();
-            if ((sceneUpdates & ~IScene::UpdateFlags::CameraPropertiesChanged) != IScene::UpdateFlags::None)
+            if ((mUpdateFlags & ~IScene::UpdateFlags::CameraPropertiesChanged) != IScene::UpdateFlags::None)
             {
                 reset();
             }
-            if (is_set(sceneUpdates, IScene::UpdateFlags::CameraPropertiesChanged))
+            if (is_set(mUpdateFlags, IScene::UpdateFlags::CameraPropertiesChanged))
             {
                 auto excluded = Camera::Changes::Jitter | Camera::Changes::History;
                 auto cameraChanges = mpScene->getCamera()->getChanges();
@@ -215,6 +214,8 @@ void AccumulatePass::execute(RenderContext* pRenderContext, const RenderData& re
         logWarning("AccumulatePass unsupported I/O configuration. The output will be cleared.");
         pRenderContext->clearUAV(pDst->getUAV().get(), uint4(0));
     }
+
+    mUpdateFlags = IScene::UpdateFlags::None;
 }
 
 void AccumulatePass::accumulate(RenderContext* pRenderContext, const ref<Texture>& pSrc, const ref<Texture>& pDst)
@@ -348,12 +349,21 @@ void AccumulatePass::renderUI(Gui::Widgets& widget)
     }
 }
 
-void AccumulatePass::setScene(RenderContext* pRenderContext, const ref<Scene>& pScene)
+void AccumulatePass::setIScene(RenderContext* pRenderContext, const ref<IScene>& pScene)
 {
-    mpScene = pScene;
+    mUpdateFlagsConnection = {};
+    mUpdateFlags = IScene::UpdateFlags::None;
+
+    mpScene = std::move(pScene);
+    mUpdateFlagsConnection = mpScene->getUpdateFlagsSignal().connect([&](IScene::UpdateFlags flags) { mUpdateFlags |= flags; });
 
     // Reset accumulation when the scene changes.
     reset();
+}
+
+void AccumulatePass::setScene(RenderContext* pRenderContext, const ref<Scene>& pScene)
+{
+    setIScene(pRenderContext, ref<IScene>(pScene));
 }
 
 void AccumulatePass::onHotReload(HotReloadFlags reloaded)

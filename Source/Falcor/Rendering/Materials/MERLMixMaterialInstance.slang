@@ -39,17 +39,24 @@ import Scene.Scene;
 #define SAMPLE_FITTED_BRDF 1
 
 /** Implementation of the BSDF for the measured MERLMix material.
-*/
+ */
 struct MERLMixMaterialInstance : MaterialInstanceBase, IMaterialInstance
 {
-    ShadingFrame sf;    ///< Shading frame in world space.
-    uint bufferID;      ///< Buffer ID in material system where BRDF data is stored.
-    uint byteOffset;    ///< Offset in bytes into BRDF data buffer.
-    float3 albedo;      ///< Approximate albedo.
+    ShadingFrame sf; ///< Shading frame in world space.
+    uint bufferID;   ///< Buffer ID in material system where BRDF data is stored.
+    uint byteOffset; ///< Offset in bytes into BRDF data buffer.
+    float3 albedo;   ///< Approximate albedo.
     uint brdfIndex;
     DiffuseSpecularBRDF fittedBrdf;
 
-    __init(const ShadingFrame sf, const uint bufferID, const uint byteOffset, const float3 albedo, const uint brdfIndex, const DiffuseSpecularData extraData)
+    __init(
+        const ShadingFrame sf,
+        const uint bufferID,
+        const uint byteOffset,
+        const float3 albedo,
+        const uint brdfIndex,
+        const DiffuseSpecularData extraData
+    )
     {
         this.sf = sf;
         this.bufferID = bufferID;
@@ -66,7 +73,8 @@ struct MERLMixMaterialInstance : MaterialInstanceBase, IMaterialInstance
         float3 wiLocal = sf.toLocal(sd.V);
         float3 woLocal = sf.toLocal(wo);
 
-        if (!isValidHemisphereReflection(sd, sf, wiLocal, woLocal, wo)) return float3(0.f);
+        if (!isValidHemisphereReflection(sd, sf, wiLocal, woLocal, wo))
+            return float3(0.f);
 
         return evalLocal(wiLocal, woLocal);
     }
@@ -82,14 +90,16 @@ struct MERLMixMaterialInstance : MaterialInstanceBase, IMaterialInstance
         float3 wiLocal = sf.toLocal(sd.V);
         float3 woLocal = {};
 #if SAMPLE_FITTED_BRDF
-        if (!fittedBrdf.sample(wiLocal, woLocal, result.pdf, result.weight, result.lobeType, sg, BSDFContext())) return false;
+        if (!fittedBrdf.sample(wiLocal, woLocal, result.pdf, result.weight, result.lobeType, sg, BSDFContext()))
+            return false;
 #else
         woLocal = sample_cosine_hemisphere_concentric(sampleNext2D(sg), result.pdf);
         result.lobeType = (uint)LobeType::DiffuseReflection;
 #endif
         result.wo = sf.fromLocal(woLocal);
 
-        if (!isValidHemisphereReflection(sd, sf, wiLocal, woLocal, result.wo) || result.pdf == 0.f) return false;
+        if (!isValidHemisphereReflection(sd, sf, wiLocal, woLocal, result.wo) || result.pdf == 0.f)
+            return false;
 
         result.weight = evalLocal(wiLocal, woLocal) / result.pdf;
 
@@ -101,7 +111,8 @@ struct MERLMixMaterialInstance : MaterialInstanceBase, IMaterialInstance
         float3 wiLocal = sf.toLocal(sd.V);
         float3 woLocal = sf.toLocal(wo);
 
-        if (!isValidHemisphereReflection(sd, sf, wiLocal, woLocal, wo)) return 0.f;
+        if (!isValidHemisphereReflection(sd, sf, wiLocal, woLocal, wo))
+            return 0.f;
 
 #if SAMPLE_FITTED_BRDF
         return fittedBrdf.evalPdf(wiLocal, woLocal, BSDFContext());
@@ -126,11 +137,7 @@ struct MERLMixMaterialInstance : MaterialInstanceBase, IMaterialInstance
         return p;
     }
 
-    uint getLobeTypes(const ShadingData sd)
-    {
-        return (uint)LobeType::DiffuseReflection | (uint)LobeType::SpecularReflection;
-    }
-
+    uint getLobeTypes(const ShadingData sd) { return (uint)LobeType::DiffuseReflection | (uint)LobeType::SpecularReflection; }
 
     // Internal helpers
 

@@ -69,6 +69,7 @@ float3 computeRayOrigin(float3 pos, float3 normal)
 
 [Differentiable]
 [PreferRecompute]
+[__NoSideEffect]
 DifferentialPair<float3> fwd_computeRayOrigin(DifferentialPair<float3> pos, DifferentialPair<float3> normal)
 {
     return DifferentialPair<float3>(computeRayOrigin(pos.p, normal.p), pos.d);
@@ -76,6 +77,7 @@ DifferentialPair<float3> fwd_computeRayOrigin(DifferentialPair<float3> pos, Diff
 
 [Differentiable]
 [PreferRecompute]
+[__NoSideEffect]
 void bwd_computeRayOrigin(inout DifferentialPair<float3> pos, inout DifferentialPair<float3> normal, float3.Differential dOut)
 {
     pos = diffPair(pos.p, dOut);
