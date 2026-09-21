@@ -13,7 +13,7 @@ The `Source/Falcor` folder contains the Falcor core framework. It is built as a 
 The `Source/Samples` folder contains the Falcor sample applications. Each application is using Falcor directly and demonstrates how to use some of the fundamental features and abstractions Falcor provides.
 
 ### Mogwai
-The `Source/Mogwai` folder contains the Mogwai application. It's the main application for using render graphs and provides some useful utilities. Some sample render graphs are located under its project folder: `Source/Mogwai/Data/`.
+The `Source/Mogwai` folder contains the Mogwai application. It's the main application for using render graphs and provides some useful utilities. Some sample render graphs are located under its project folder: `scripts/`.
 
 ### RenderPasses
 The `Source/RenderPasses` folder contains a number of components (shared libraries) that are used as the building blocks for creating render graphs. All render pass libraries are automatically built as dependencies of the `Mogwai` application.
@@ -29,7 +29,7 @@ The recommended workflow when prototyping or implementing rendering techniques i
 1. Build Falcor
 2. Run `Mogwai`
 3. Press `Ctrl+O`, or from the top menu bar, select `File` -> `Load Script`
-4. Select a Render Graph (.py file) in `Source/Mogwai/Data/`. Such as `ForwardRenderer.py`.
+4. Select a Render Graph (.py file) in `scripts/`. Such as `MinimalPathTracer.py`.
 5. Press `Ctrl+Shift+O`, or from the top menu bar, select `File` -> `Load Scene`.
 6. Select a scene or model, such as `media/Arcade/Arcade.pyscene`
 

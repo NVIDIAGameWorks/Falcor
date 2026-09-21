@@ -8,7 +8,7 @@
 
 1. Build Falcor
 2. Launch Mogwai
-3. The sample Path Tracer render graph file is located at `Source/Mogwai/Data/PathTracer.py`. There is also an alternative real-time denoised Path Tracer render graph at `Source/Mogwai/Data/PathTracerNRD.py`. You can load any one of them using any of the following methods:
+3. The sample Path Tracer render graph file is located at `scripts/PathTracer.py`. There is also an alternative real-time denoised Path Tracer render graph at `scripts/PathTracerNRD.py`. You can load any one of them using any of the following methods:
     - Press `Ctrl + O` (or click `Load Script` in the top menu bar), then navigate to `PathTracer.py` or `PathTracerNRD.py`.
     - Drag and drop  `PathTracer.py` or `PathTracerNRD.py` into the application window.
     - Load script at startup using the Mogwai `--script` command line option.

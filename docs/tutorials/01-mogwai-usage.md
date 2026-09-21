@@ -65,7 +65,7 @@ With Mogwai up and running, we'll proceed to loading something. You can load two
 ### Loading a Script (.py)
 Open the load script dialog by either going to `File -> Load Script` or hitting `Ctrl + O`. Navigate to the location of the script you wish to run and select it to load and run it. Alternatively, dragging-and-dropping a script into Mogwai will also work. Note that scripts intended for use with Mogwai must be written in Python. Full scripting documentation can be found [here](../usage/scripting.md).
 
-Here, we'll load the Forward Renderer, located at `Source/Mogwai/Data/ForwardRenderer.py`.
+Here, we'll load the Minimal Path Tracer, located at `scripts/MinimalPathTracer.py`.
 
 ### Loading a Scene
 Mogwai loads the scene specified by the script, if any. If the script did not load a scene or you want to load a different scene, open the load scene dialog by either going to `File` -> `Load Scene` or hitting `Ctrl + Shift + O`. Navigate to the location of the scene file you wish to load and select it. Alternatively, you can also drag-and-drop scene files into Mogwai.
