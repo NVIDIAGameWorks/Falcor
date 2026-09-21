@@ -48,9 +48,11 @@ BEGIN_NAMESPACE_FALCOR
 */
 struct GeometryInstanceID
 {
-    uint index;             ///< Global instance index. This is computed as InstanceID() + GeometryIndex().
+    uint index = 0;          ///< Global instance index. This is computed as InstanceID() + GeometryIndex().
 
 #ifndef HOST_CODE
+    __init() {}
+
     /** Construct a geometry instance ID.
         \param[in] instanceID The DXR InstanceID() system value.
         \param[in] geometryIndex The DXR GeometryIndex() system value.
@@ -58,6 +60,11 @@ struct GeometryInstanceID
     __init(uint instanceID, uint geometryIndex)
     {
         index = instanceID + geometryIndex;
+    }
+
+    __init(uint geometryInstaceID)
+    {
+        index = geometryInstaceID;
     }
 #endif
 };
@@ -471,6 +478,7 @@ struct RWSplitVertexBuffer
             return data[bufferIndex][elementIndex];
         }
 
+    [nonmutating]
         set {
             if (kBufferCount == 1)
             {

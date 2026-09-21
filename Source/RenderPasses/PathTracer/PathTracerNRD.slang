@@ -32,8 +32,14 @@ import LoadShadingData;
 import PathTracer;
 import NRDHelpers;
 
+// Screen-space motion vector buffers owned by ReSTIR PT (`mpDeltaReflectionMotionVectors` /
+// `mpDeltaTransmissionMotionVectors`). Bound at the trace pass root-var so they can be written
+// independently of the NRD guide buffers;
+RWTexture2D<float2> deltaReflectionMotionVectors;
+RWTexture2D<float2> deltaTransmissionMotionVectors;
+
 /** Extends the PathTracer with variants of handleHit() to trace NRD guide paths.
-*/
+ */
 extension PathTracer
 {
     /** Handle hit on delta reflection materials.
@@ -56,7 +62,21 @@ extension PathTracer
         ShadingData sd = loadShadingData(path.hit, path.origin, path.dir);
 
         // Reject false hits in nested dielectrics.
-        if (!handleNestedDielectrics(sd, path)) return;
+        if (!handleNestedDielectrics(sd, path))
+        {
+            float3 originOffset = sd.posW - path.origin;
+
+            float4x4 originOffsetMat = float4x4(
+                1.f, 0.f, 0.f, originOffset.x,
+                0.f, 1.f, 0.f, originOffset.y,
+                0.f, 0.f, 1.f, originOffset.z,
+                0.f, 0.f, 0.f, 1.f
+            );
+
+            path.imageXform = mul(path.imageXform, originOffsetMat);
+
+            return;
+        }
 
         // Create texture sampler.
         let lod = createTextureSampler(path, isPrimaryHit);
@@ -65,6 +85,12 @@ extension PathTracer
         let hints = getMaterialInstanceHints(path.hit, isPrimaryHit);
         let mi = gScene.materials.getMaterialInstance(sd, lod, hints);
         let bsdfProperties = mi.getProperties(sd);
+#if USE_RESTIRPT // allow computing specmvec for non-delta surface for ReSTIR PT tempora reuse
+        bool isSmooth = bsdfProperties.roughness <= restirpt.specularMotionVectorRoughnessThreshold;
+#else
+        bool isSmooth = bsdfProperties.roughness == 0.f;
+#endif        
+        uint smoothMask = uint(isSmooth) * uint(LobeType::All);
 
         // Query BSDF lobes.
         const uint lobeTypes = mi.getLobeTypes(sd);
@@ -75,10 +101,19 @@ extension PathTracer
         if (isPrimaryHit)
         {
             // Terminate without the write-out if the path doesn't start as delta reflection.
-            bool hasDeltaReflectionLobe = ((lobeTypes & (uint)LobeType::DeltaReflection) != 0);
+            bool hasDeltaReflectionLobe = ((lobeTypes & (uint)LobeType::DeltaReflection) != 0) || ((lobeTypes & (uint)LobeType::SpecularReflection) != 0) && isSmooth;
             if (!hasDeltaReflectionLobe)
             {
-                writeNRDDeltaReflectionGuideBuffers(outputNRD, kUseNRDDemodulation, pixel, 0.f, 0.f, viewDir, 0.f, kNRDInvalidPathLength, kNRDInvalidPathLength);
+                if (kOutputNRDAdditionalData)
+                {
+                    writeNRDDeltaReflectionGuideBuffers(
+                        outputNRD, kUseNRDDemodulation, pixel, 0.f, 0.f, viewDir, 0.f, kNRDInvalidPathLength, kNRDInvalidPathLength
+                    );
+                }
+                if (kOutputDeltaMotionVectors)
+                {
+                    deltaReflectionMotionVectors[pixel] = 0.f;
+                }
                 path.terminate();
                 return;
             }
@@ -90,17 +125,20 @@ extension PathTracer
             path.pdf += primaryHitDist;
 
             // Set the active lobes only to delta reflection on the first bounce.
-            sd.mtl.setActiveLobes((uint)LobeType::DeltaReflection);
+            sd.mtl.setActiveLobes((uint)LobeType::DeltaReflection | smoothMask & (uint)LobeType::SpecularReflection);
         }
         else
         {
+            // disable soft roughness for delta for ReSTIR specmvec because it conflicts with NRD denoiser output
+            if (kOutputNRDData && path.isDeltaReflectionPrimaryHit()) isSmooth = bsdfProperties.roughness == 0.f;
+
             // Use path's radiance field to accumulate emission along the path since the radiance is not used for denoiser guide paths.
             // No need for accumulating emission at the primary hit since the primary hit emission is coming from GBuffer.
             path.L += path.thp * bsdfProperties.emission;
 
             // Terminate after scatter ray on last vertex has been processed or non-delta lobe exists.
             const bool lastVertex = hasFinishedSurfaceBounces(path);
-            const bool hasNonDeltaLobes = (lobeTypes & (uint)LobeType::NonDelta) != 0;
+            const bool hasNonDeltaLobes = (lobeTypes & (uint)LobeType::NonDelta) != 0 && !isSmooth || (lobeTypes & (uint)LobeType::Diffuse);
             const bool isEmissive = any(bsdfProperties.emission > 0.f);
 
             if (lastVertex || hasNonDeltaLobes || isEmissive)
@@ -109,7 +147,28 @@ extension PathTracer
                 const float3 reflectance = getMaterialReflectanceForDeltaPaths(materialType, hasDeltaLobes, sd, bsdfProperties);
                 const float primaryHitDist = path.pdf;
                 const float hitDist = float(path.sceneLength) - primaryHitDist;
-                writeNRDDeltaReflectionGuideBuffers(outputNRD, kUseNRDDemodulation, pixel, reflectance, emission, bsdfProperties.guideNormal, bsdfProperties.roughness, float(path.sceneLength), hitDist);
+                if (kOutputNRDAdditionalData)
+                {
+                    writeNRDDeltaReflectionGuideBuffers(
+                        outputNRD,
+                        kUseNRDDemodulation,
+                        pixel,
+                        reflectance,
+                        emission,
+                        bsdfProperties.guideNormal,
+                        bsdfProperties.roughness,
+                        float(path.sceneLength),
+                        hitDist
+                    );
+                }
+                if (kOutputDeltaMotionVectors)
+                {
+                    const HitInfo primaryHit = unpackHitInfo(vbuffer[pixel]);
+                    // Place the current path origin at the terminal hit so calcImageMotionVector can project it.
+                    path.origin = sd.posW;
+                    float2 imageMotionVector = calcImageMotionVector(path, params.frameDim, primaryHit);
+                    deltaReflectionMotionVectors[pixel] = imageMotionVector;
+                }
 
                 path.terminate();
                 return;
@@ -120,11 +179,14 @@ extension PathTracer
             // Stable guide buffers are a necessity.
             if (bsdfProperties.isTransmissive && all(bsdfProperties.specularReflectionAlbedo <= bsdfProperties.specularTransmissionAlbedo))
             {
-                sd.mtl.setActiveLobes((uint)LobeType::DeltaTransmission);
+                // if total internal reflection happens just choose reflection
+                if (isDeltaReflectionAllowedAlongDeltaTransmissionPath(sd))
+                    sd.mtl.setActiveLobes((uint)LobeType::DeltaReflection | smoothMask & (uint)LobeType::SpecularReflection);
+                else sd.mtl.setActiveLobes((uint)LobeType::DeltaTransmission | smoothMask & (uint)LobeType::SpecularTransmission);
             }
             else
             {
-                sd.mtl.setActiveLobes((uint)LobeType::DeltaReflection);
+                sd.mtl.setActiveLobes((uint)LobeType::DeltaReflection | smoothMask & (uint)LobeType::SpecularReflection);
             }
         }
 
@@ -141,7 +203,16 @@ extension PathTracer
 
         if (!valid)
         {
-            writeNRDDeltaReflectionGuideBuffers(outputNRD, kUseNRDDemodulation, pixel, 0.f, 0.f, viewDir, 0.f, kNRDInvalidPathLength, kNRDInvalidPathLength);
+            if (kOutputNRDAdditionalData)
+            {
+                writeNRDDeltaReflectionGuideBuffers(
+                    outputNRD, kUseNRDDemodulation, pixel, 0.f, 0.f, viewDir, 0.f, kNRDInvalidPathLength, kNRDInvalidPathLength
+                );
+            }
+            if (kOutputDeltaMotionVectors)
+            {
+                deltaReflectionMotionVectors[pixel] = 0.f;
+            }
             path.terminate();
             return;
         }
@@ -165,12 +236,51 @@ extension PathTracer
                 const float3 reflectance = getMaterialReflectanceForDeltaPaths(materialType, hasDeltaLobes, sd, bsdfProperties);
                 const float primaryHitDist = path.pdf;
                 const float hitDist = float(path.sceneLength) - primaryHitDist;
-                writeNRDDeltaReflectionGuideBuffers(outputNRD, kUseNRDDemodulation, pixel, reflectance, emission, bsdfProperties.guideNormal, bsdfProperties.roughness, float(path.sceneLength), hitDist);
+                if (kOutputNRDAdditionalData)
+                {
+                    writeNRDDeltaReflectionGuideBuffers(
+                        outputNRD,
+                        kUseNRDDemodulation,
+                        pixel,
+                        reflectance,
+                        emission,
+                        bsdfProperties.guideNormal,
+                        bsdfProperties.roughness,
+                        float(path.sceneLength),
+                        hitDist
+                    );
+                }
+                if (kOutputDeltaMotionVectors)
+                {
+                    const HitInfo primaryHit = unpackHitInfo(vbuffer[pixel]);
+                    // Place the current path origin at the terminal hit so calcImageMotionVector can project it.
+                    path.origin = sd.posW;
+                    float2 imageMotionVector = calcImageMotionVector(path, params.frameDim, primaryHit);
+                    deltaReflectionMotionVectors[pixel] = imageMotionVector;
+                }
 
                 path.terminate();
                 return;
             }
         }
+
+        // Accumulate the image-space xform for this bounce.
+        // This is used later to compute a virtual-image motion vector.
+        // We assume flat reflectors/refractors 
+        float3 originOffset = sd.posW - path.origin;
+        float4x4 T;
+        if (path.isTransmission())
+        {
+            float insideIoR = gScene.materials.evalIoR(sd.materialID);
+            float rcpEta = sd.frontFacing ? (insideIoR / sd.IoR) : (sd.IoR / insideIoR);
+            // For refractive (double sided) materials bsdfProperties.guideNormal always points in the same direction as the view vector.
+            T = getRefractionXform(path.origin, viewDir, bsdfProperties.guideNormal, rcpEta, originOffset);
+        }
+        else
+        {
+            T = getReflectionXform(path.origin, viewDir, bsdfProperties.guideNormal, originOffset);
+        }
+        path.imageXform = mul(path.imageXform, T);
     }
 
     /** Handle hit on delta transmission materials.
@@ -193,7 +303,21 @@ extension PathTracer
         ShadingData sd = loadShadingData(path.hit, path.origin, path.dir);
 
         // Reject false hits in nested dielectrics.
-        if (!handleNestedDielectrics(sd, path)) return;
+        if (!handleNestedDielectrics(sd, path))
+        {
+            float3 originOffset = sd.posW - path.origin;
+
+            float4x4 originOffsetMat = float4x4(
+                1.f, 0.f, 0.f, originOffset.x,
+                0.f, 1.f, 0.f, originOffset.y,
+                0.f, 0.f, 1.f, originOffset.z,
+                0.f, 0.f, 0.f, 1.f
+            );
+
+            path.imageXform = mul(path.imageXform, originOffsetMat);
+
+            return;
+        }
 
         // Create texture sampler.
         let lod = createTextureSampler(path, isPrimaryHit);
@@ -205,11 +329,30 @@ extension PathTracer
 
         const uint lobeTypes = mi.getLobeTypes(sd);
 
+#if USE_RESTIRPT // allow computing specmvec for non-delta surface for ReSTIR PT tempora reuse
+        bool isSmooth = bsdfProperties.roughness <= restirpt.specularMotionVectorRoughnessThreshold;
+        // disable soft roughness for delta for ReSTIR specmvec because it conflicts with NRD denoiser output
+        if (kOutputNRDData && path.isDeltaOnlyPath()) isSmooth = bsdfProperties.roughness == 0.f;
+#else
+        bool isSmooth = bsdfProperties.roughness == 0.f;
+#endif
+
+        uint smoothMask = uint(isSmooth) * uint(LobeType::All);
+
         // Terminate without the write-out if the path doesn't start as delta transmission.
         const bool hasDeltaTransmissionLobe = ((lobeTypes & (uint)LobeType::DeltaTransmission) != 0);
         if (isPrimaryHit && !hasDeltaTransmissionLobe)
         {
-            writeNRDDeltaTransmissionGuideBuffers(outputNRD, kUseNRDDemodulation, pixel, 0.f, 0.f, viewDir, 0.f, kNRDInvalidPathLength, 0.f);
+            if (kOutputNRDAdditionalData)
+            {
+                writeNRDDeltaTransmissionGuideBuffers(
+                    outputNRD, kUseNRDDemodulation, pixel, 0.f, 0.f, viewDir, 0.f, kNRDInvalidPathLength, 0.f
+                );
+            }
+            if (kOutputDeltaMotionVectors)
+            {
+                deltaTransmissionMotionVectors[pixel] = 0.f;
+            }
             path.terminate();
             return;
         }
@@ -245,7 +388,28 @@ extension PathTracer
         if (lastVertex || semiOpaque)
         {
             float3 emission = path.L;
-            writeNRDDeltaTransmissionGuideBuffers(outputNRD, kUseNRDDemodulation, pixel, getMaterialReflectanceForDeltaPaths(materialType, hasDeltaLobes, sd, bsdfProperties), emission, bsdfProperties.guideNormal, bsdfProperties.roughness, float(path.sceneLength), sd.posW);
+            if (kOutputNRDAdditionalData)
+            {
+                writeNRDDeltaTransmissionGuideBuffers(
+                    outputNRD,
+                    kUseNRDDemodulation,
+                    pixel,
+                    getMaterialReflectanceForDeltaPaths(materialType, hasDeltaLobes, sd, bsdfProperties),
+                    emission,
+                    bsdfProperties.guideNormal,
+                    bsdfProperties.roughness,
+                    float(path.sceneLength),
+                    sd.posW
+                );
+            }
+            if (kOutputDeltaMotionVectors)
+            {
+                const HitInfo primaryHit = unpackHitInfo(vbuffer[pixel]);
+                // Place the current path origin at the terminal hit so calcImageMotionVector can project it.
+                path.origin = sd.posW;
+                float2 imageMotionVector = calcImageMotionVector(path, params.frameDim, primaryHit);
+                deltaTransmissionMotionVectors[pixel] = imageMotionVector;
+            }
 
             path.terminate();
             return;
@@ -255,7 +419,7 @@ extension PathTracer
         path.origin = sd.computeRayOrigin();
 
         // Set the active lobes only to delta transmission.
-        sd.mtl.setActiveLobes((uint)LobeType::DeltaTransmission);
+        sd.mtl.setActiveLobes((uint)LobeType::DeltaTransmission | smoothMask & (uint)LobeType::SpecularTransmission);
 
         // Generate the next path segment or terminate.
         bool valid = generateScatterRay(sd, mi, path);
@@ -263,17 +427,56 @@ extension PathTracer
         // Delta transmission was not possible, fallback to delta reflection if it's allowed.
         if (!valid && isDeltaReflectionAllowedAlongDeltaTransmissionPath(sd))
         {
-            sd.mtl.setActiveLobes((uint)LobeType::DeltaTransmission | (uint)LobeType::DeltaReflection);
+            sd.mtl.setActiveLobes( (uint)LobeType::DeltaTransmission | (uint)LobeType::DeltaReflection | smoothMask & (uint)LobeType::SpecularTransmission | smoothMask & (uint)LobeType::SpecularReflection );
             valid = generateScatterRay(sd, mi, path);
         }
 
         if (!valid)
         {
             float3 emission = path.L;
-            writeNRDDeltaTransmissionGuideBuffers(outputNRD, kUseNRDDemodulation, pixel, getMaterialReflectanceForDeltaPaths(materialType, hasDeltaLobes, sd, bsdfProperties), emission, bsdfProperties.guideNormal, bsdfProperties.roughness, float(path.sceneLength), sd.posW);
+            if (kOutputNRDAdditionalData)
+            {
+                writeNRDDeltaTransmissionGuideBuffers(
+                    outputNRD,
+                    kUseNRDDemodulation,
+                    pixel,
+                    getMaterialReflectanceForDeltaPaths(materialType, hasDeltaLobes, sd, bsdfProperties),
+                    emission,
+                    bsdfProperties.guideNormal,
+                    bsdfProperties.roughness,
+                    float(path.sceneLength),
+                    sd.posW
+                );
+            }
+            if (kOutputDeltaMotionVectors)
+            {
+                const HitInfo primaryHit = unpackHitInfo(vbuffer[pixel]);
+                // Place the current path origin at the terminal hit so calcImageMotionVector can project it.
+                path.origin = sd.posW;
+                float2 imageMotionVector = calcImageMotionVector(path, params.frameDim, primaryHit);
+                deltaTransmissionMotionVectors[pixel] = imageMotionVector;
+            }
 
             path.terminate();
             return;
         }
+
+        // Accumulate the image-space xform for this bounce.
+        // This is used later to compute a virtual-image motion vector for the denoiser.
+        // We assume flat reflectors/refractors
+        float3 originOffset = sd.posW - path.origin;
+        float4x4 T;
+        if (path.isTransmission())
+        {
+            float insideIoR = gScene.materials.evalIoR(sd.materialID);
+            float rcpEta = sd.frontFacing ? (insideIoR / sd.IoR) : (sd.IoR / insideIoR);
+            // For refractive (double sided) materials bsdfProperties.guideNormal always points in the same direction as the view vector.
+            T = getRefractionXform(path.origin, viewDir, bsdfProperties.guideNormal, rcpEta, originOffset);
+        }
+        else
+        {
+            T = getReflectionXform(path.origin, viewDir, bsdfProperties.guideNormal, originOffset);
+        }
+        path.imageXform = mul(path.imageXform, T);
     }
 }

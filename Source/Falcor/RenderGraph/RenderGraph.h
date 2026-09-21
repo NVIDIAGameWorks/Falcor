@@ -378,7 +378,6 @@ private:
     std::unique_ptr<RenderGraphExe> mpExe;           ///< Helper for allocating resources and executing the graph.
     RenderGraphCompiler::Dependencies mCompilerDeps; ///< Data needed by the graph compiler.
     bool mRecompile = false; ///< Set to true to trigger a recompilation after any graph changes (topology/scene/size/passes/etc.)
-
     friend class RenderGraphUI;
     friend class RenderGraphExporter;
     friend class RenderGraphCompiler;

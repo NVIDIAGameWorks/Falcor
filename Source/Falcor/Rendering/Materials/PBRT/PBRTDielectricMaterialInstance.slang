@@ -33,14 +33,15 @@ import Utils.Debug.PixelDebug;
 
 struct PBRTDielectricBSDF : IBSDF
 {
-    AnisotropicGGX D;
-    float eta;
+    AnisotropicGGX D = {};
+    float eta = {};
 
     float3 eval<S : ISampleGenerator>(const float3 wiLocal, const float3 woLocal, inout S sg, BSDFContext bc)
     {
         const float relEta = bc.iorT / bc.iorI;
 
-        if (D.isSingular() || relEta == 1.0f || wiLocal.z * woLocal.z == 0) return float3(0.0f);
+        if (D.isSingular() || relEta == 1.0f || wiLocal.z * woLocal.z == 0)
+            return float3(0.0f);
 
         bool reflect = wiLocal.z * woLocal.z > 0.0f;
         const float relEtaInverse = 1.f / relEta;
@@ -48,14 +49,24 @@ struct PBRTDielectricBSDF : IBSDF
         h *= sign(h.z);
         float wiDotH = dot(wiLocal, h);
         float woDotH = dot(woLocal, h);
-        if (wiDotH * wiLocal.z < 0.0f || woDotH * woLocal.z < 0.0f) return float3(0.0f);
+        if (wiDotH * wiLocal.z < 0.0f || woDotH * woLocal.z < 0.0f)
+            return float3(0.0f);
         float F = evalFresnelDielectric(relEtaInverse, abs(wiDotH));
 
         return reflect ? D.G2(woLocal, wiLocal) * D.evalNDF(h) * F / (4.0f * abs(wiLocal.z))
-                       : D.G2(woLocal, wiLocal) * D.evalNDF(h) * (1.0f - F) * abs(wiDotH * woDotH / (sqr(woDotH + wiDotH / relEta) * abs(wiLocal.z)));
+                       : D.G2(woLocal, wiLocal) * D.evalNDF(h) * (1.0f - F) *
+                             abs(wiDotH * woDotH / (sqr(woDotH + wiDotH / relEta) * abs(wiLocal.z)));
     }
 
-    bool sample<S : ISampleGenerator>(float3 wiLocal, out float3 wo, out float pdf, out float3 weight, out uint lobeType, inout S sg, BSDFContext bc)
+    bool sample<S : ISampleGenerator>(
+        float3 wiLocal,
+        out float3 wo,
+        out float pdf,
+        out float3 weight,
+        out uint lobeType,
+        inout S sg,
+        BSDFContext bc
+    )
     {
         wo = {};
         pdf = {};
@@ -93,10 +104,11 @@ struct PBRTDielectricBSDF : IBSDF
             if (sampleNext1D(sg) < F)
             {
                 float3 woLocal = reflect(-wiLocal, h);
-                if (wiLocal.z * woLocal.z < 0.0f) return false;
+                if (wiLocal.z * woLocal.z < 0.0f)
+                    return false;
 
                 wo = woLocal;
-                weight = D.G2(woLocal, wiLocal)/D.G1(wiLocal);
+                weight = D.G2(woLocal, wiLocal) / D.G1(wiLocal);
                 lobeType = (uint)LobeType::SpecularReflection;
                 pdf = F * D.evalPDF(wiLocal, h) / (4.0f * abs(wiDotH));
             }
@@ -104,10 +116,11 @@ struct PBRTDielectricBSDF : IBSDF
             {
                 float3 woLocal = refract(-wiLocal, sign(wiLocal.z) * h, relEtaInverse);
                 float woDotH = dot(h, woLocal);
-                if (wiLocal.z * woLocal.z > 0.0f) return false;
+                if (wiLocal.z * woLocal.z > 0.0f)
+                    return false;
 
                 wo = woLocal;
-                weight = D.G2(woLocal, wiLocal)/D.G1(wiLocal);
+                weight = D.G2(woLocal, wiLocal) / D.G1(wiLocal);
                 lobeType = (uint)LobeType::SpecularTransmission;
                 pdf = (1.0f - F) * D.evalPDF(wiLocal, h) * abs(woDotH) / sqr(woDotH + wiDotH / relEta);
             }
@@ -119,14 +132,16 @@ struct PBRTDielectricBSDF : IBSDF
     {
         const float relEta = bc.iorT / bc.iorI;
         const float relEtaInverse = 1.f / relEta;
-        if (D.isSingular() || relEta == 1.0f || wiLocal.z * woLocal.z == 0) return 0.0f;
+        if (D.isSingular() || relEta == 1.0f || wiLocal.z * woLocal.z == 0)
+            return 0.0f;
 
         bool reflect = wiLocal.z * woLocal.z > 0.0f;
         float3 h = reflect ? normalize(wiLocal + woLocal) : normalize(wiLocal / relEta + woLocal);
         h *= sign(h.z);
         float wiDotH = dot(wiLocal, h);
         float woDotH = dot(woLocal, h);
-        if (wiDotH * wiLocal.z < 0.0f || woDotH * woLocal.z < 0.0f) return 0.0f;
+        if (wiDotH * wiLocal.z < 0.0f || woDotH * woLocal.z < 0.0f)
+            return 0.0f;
         float F = evalFresnelDielectric(relEtaInverse, abs(wiDotH));
 
         return reflect ? F * D.evalPDF(wiLocal, h) / (4.0f * abs(wiDotH))
@@ -148,15 +163,12 @@ struct PBRTDielectricBSDF : IBSDF
 
     RoughnessInformation getRoughnessInformation(const float3 wi)
     {
-        RoughnessInformation r;
+        RoughnessInformation r = {};
         r.roughnessBSDFNotation = D.alpha;
         return r;
     }
 
-    float getEta()
-    {
-        return eta;
-    }
+    float getEta() { return eta; }
 };
 
 /** PBRT dielectric material instance.
@@ -165,7 +177,7 @@ struct PBRTDielectricBSDF : IBSDF
 */
 struct PBRTDielectricMaterialInstance : MaterialInstanceBase, IMaterialInstance
 {
-    ShadingFrame sf;            ///< Shading frame in world space.
+    ShadingFrame sf; ///< Shading frame in world space.
     PBRTDielectricBSDF bsdf;
 
     float3 eval<S : ISampleGenerator>(const ShadingData sd, const float3 wo, inout S sg)
@@ -173,9 +185,10 @@ struct PBRTDielectricMaterialInstance : MaterialInstanceBase, IMaterialInstance
         float3 wiLocal = sf.toLocal(sd.V);
         float3 woLocal = sf.toLocal(wo);
 
-        if (!isValidHemisphereReflectionOrTransmission(sd, sf, wiLocal, woLocal, wo, true)) return float3(0.f);
+        if (!isValidHemisphereReflectionOrTransmission(sd, sf, wiLocal, woLocal, wo, true))
+            return float3(0.f);
 
-        BSDFContext bc = sd.frontFacing? BSDFContext(sd.IoR, bsdf.getEta()) : BSDFContext(bsdf.getEta(), sd.IoR);
+        BSDFContext bc = sd.frontFacing ? BSDFContext(sd.IoR, bsdf.getEta()) : BSDFContext(bsdf.getEta(), sd.IoR);
         return bsdf.eval(wiLocal, woLocal, sg, bc);
     }
 
@@ -190,12 +203,13 @@ struct PBRTDielectricMaterialInstance : MaterialInstanceBase, IMaterialInstance
         float3 wiLocal = sf.toLocal(sd.V);
         float3 woLocal = {};
 
-        BSDFContext bc = sd.frontFacing? BSDFContext(sd.IoR, bsdf.getEta()) : BSDFContext(bsdf.getEta(), sd.IoR);
+        BSDFContext bc = sd.frontFacing ? BSDFContext(sd.IoR, bsdf.getEta()) : BSDFContext(bsdf.getEta(), sd.IoR);
         if (!bsdf.sample(wiLocal, woLocal, result.pdf, result.weight, result.lobeType, sg, bc))
             return false;
         result.wo = sf.fromLocal(woLocal);
 
-        if (!isValidHemisphereReflectionOrTransmission(sd, sf, wiLocal, woLocal, result.wo, true)) return false;
+        if (!isValidHemisphereReflectionOrTransmission(sd, sf, wiLocal, woLocal, result.wo, true))
+            return false;
 
         return true;
     }
@@ -205,9 +219,10 @@ struct PBRTDielectricMaterialInstance : MaterialInstanceBase, IMaterialInstance
         float3 wiLocal = sf.toLocal(sd.V);
         float3 woLocal = sf.toLocal(wo);
 
-        if (!isValidHemisphereReflectionOrTransmission(sd, sf, wiLocal, woLocal, wo, true)) return 0.f;
+        if (!isValidHemisphereReflectionOrTransmission(sd, sf, wiLocal, woLocal, wo, true))
+            return 0.f;
 
-        BSDFContext bc = sd.frontFacing? BSDFContext(sd.IoR, bsdf.getEta()) : BSDFContext(bsdf.getEta(), sd.IoR);
+        BSDFContext bc = sd.frontFacing ? BSDFContext(sd.IoR, bsdf.getEta()) : BSDFContext(bsdf.getEta(), sd.IoR);
         return bsdf.evalPdf(wiLocal, woLocal, bc);
     }
 
@@ -223,6 +238,16 @@ struct PBRTDielectricMaterialInstance : MaterialInstanceBase, IMaterialInstance
         p.flags |= (uint)BSDFProperties::Flags::IsTransmissive;
 
         return p;
+    }
+
+    bool supportSimpleRoughnessThreshold()
+    {
+        return true; // single specular
+    }
+
+    bool isSampleRough(const ShadingData sd, int sampledBSDFIndex, float samplePdf, float roughnessThreshold)
+    {
+        return getProperties(sd).roughness > roughnessThreshold;
     }
 
     uint getLobeTypes(const ShadingData sd)

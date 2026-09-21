@@ -260,11 +260,20 @@ bool samplePointLight(const float3 shadingPosW, const LightData light, out Analy
 bool sampleLight<S : ISampleGenerator>(const float3 shadingPosW, const LightData light, inout S sg, out AnalyticLightSample ls)
 {
     // Sample the light based on its type: point, directional, or area.
-    switch (light.type)
+#if PAD_RANDOM_NUMBERS
+    sampleNext1D(sg);
+#endif
+    switch (LightType(light.type))
     {
     case LightType::Point:
+#if PAD_RANDOM_NUMBERS
+        sampleNext2D(sg);
+#endif
         return samplePointLight(shadingPosW, light, ls);
     case LightType::Directional:
+#if PAD_RANDOM_NUMBERS
+        sampleNext2D(sg);
+#endif
         return sampleDirectionalLight(shadingPosW, light, ls);
     case LightType::Rect:
         return sampleRectAreaLight(shadingPosW, light, sampleNext2D(sg), ls);
@@ -291,7 +300,7 @@ bool evalLightApproximate(const float3 shadingPosW, const LightData light, out A
 {
     ls = {};
 
-    switch (light.type)
+    switch (LightType(light.type))
     {
     case LightType::Point:
         return samplePointLight(shadingPosW, light, ls);

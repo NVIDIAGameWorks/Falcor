@@ -3,6 +3,7 @@
 
 # Test output folder.
 /tests/data/
+/test-results/
 
 # Media folders.
 /media
@@ -31,3 +32,7 @@
 *.tlog
 *.bak
 *.swp
+
+token.txt
+
+customjob.yml

@@ -32,6 +32,7 @@ import Utils.Math.MathHelpers;
 struct Camera
 {
     CameraData data;
+    CameraData prevData;
 
     float3 getPosition() { return data.posW; }
     float4x4 getViewProj() { return data.viewProjMat; }
@@ -45,15 +46,25 @@ struct Camera
     */
     Ray computeRayPinhole(uint2 pixel, uint2 frameDim, bool applyJitter = true)
     {
+        return computeRayPinhole(data, pixel, frameDim, applyJitter);
+    }
+
+    Ray computeRayPinholePrevFrame(uint2 pixel, uint2 frameDim, bool applyJitter = true)
+    {
+        return computeRayPinhole(prevData, pixel, frameDim, applyJitter);
+    }
+
+    Ray computeRayPinhole(const CameraData camData, uint2 pixel, uint2 frameDim, bool applyJitter = true)
+    {
         Ray ray;
 
         // Compute the normalized ray direction assuming a pinhole camera.
-        ray.origin = data.posW;
+        ray.origin = camData.posW;
         ray.dir = normalize(computeNonNormalizedRayDirPinhole(pixel, frameDim, applyJitter));
 
-        float invCos = 1.f / dot(normalize(data.cameraW), ray.dir);
-        ray.tMin = data.nearZ * invCos;
-        ray.tMax = data.farZ * invCos;
+        float invCos = 1.f / dot(normalize(camData.cameraW), ray.dir);
+        ray.tMin = camData.nearZ * invCos;
+        ray.tMax = camData.farZ * invCos;
 
         return ray;
     }
@@ -85,26 +96,51 @@ struct Camera
         \param[in] u Uniform 2D sample.
         \return Returns the camera ray.
     */
-    Ray computeRayThinlens(uint2 pixel, uint2 frameDim, float2 u)
+    Ray computeRayThinlens(uint2 pixel, uint2 frameDim, float2 u, bool applyJitter = true)
+    {
+        float2 u0 = float2(0.5f, 0.5f);
+        if (applyJitter) u0 += frameDim * float2(-data.jitterX, data.jitterY);
+        return computeRayGeneral(data, pixel, frameDim, u0, u);
+    }
+
+    Ray computeRayThinlensPrevFrame(uint2 pixel, uint2 frameDim, float2 u, bool applyJitter = true)
+    {
+        float2 u0 = float2(0.5f, 0.5f);
+        if (applyJitter) u0 += frameDim * float2(-prevData.jitterX, prevData.jitterY);
+        return computeRayGeneral(prevData, pixel, frameDim, u0, u);
+    }
+
+    // u0 is subpixel uv and u1 is lens uv
+    Ray computeRayThinlensSubPixelRandom(float2 pixel, uint2 frameDim, float2 u0, float2 u1)
+    {
+        return computeRayGeneral(data, pixel, frameDim, u0, u1);
+    }
+
+    Ray computeRayThinlensSubPixelRandomPrevFrame(float2 pixel, uint2 frameDim, float2 u0, float2 u1)
+    {
+        return computeRayGeneral(prevData, pixel, frameDim, u0, u1);
+    }
+
+    Ray computeRayGeneral(const CameraData camData, float2 pixel, uint2 frameDim, float2 u0, float2 u1)
     {
         Ray ray;
 
         // Sample position in screen space in [0,1] with origin at the top-left corner.
         // The camera jitter offsets the sample by +-0.5 pixels from the pixel center.
-        float2 p = (pixel + float2(0.5f, 0.5f)) / frameDim + float2(-data.jitterX, data.jitterY);
+        float2 p = float2(pixel + u0) / frameDim;
         float2 ndc = float2(2, -2) * p + float2(-1, 1);
 
         // Compute the normalized ray direction assuming a thin-lens camera.
-        ray.origin = data.posW;
-        ray.dir = ndc.x * data.cameraU + ndc.y * data.cameraV + data.cameraW;
-        float2 apertureSample = sample_disk(u); // Sample lies in the unit disk [-1,1]^2
+        ray.origin = camData.posW;
+        ray.dir = ndc.x * camData.cameraU + ndc.y * camData.cameraV + camData.cameraW;
+        float2 apertureSample = sample_disk(u1); // Sample lies in the unit disk [-1,1]^2
         float3 rayTarget = ray.origin + ray.dir;
-        ray.origin += data.apertureRadius * (apertureSample.x * normalize(data.cameraU) + apertureSample.y * normalize(data.cameraV));
+        ray.origin += camData.apertureRadius * (apertureSample.x * normalize(camData.cameraU) + apertureSample.y * normalize(camData.cameraV));
         ray.dir = normalize(rayTarget - ray.origin);
 
-        float invCos = 1.f / dot(normalize(data.cameraW), ray.dir);
-        ray.tMin = data.nearZ * invCos;
-        ray.tMax = data.farZ * invCos;
+        float invCos = 1.f / dot(normalize(camData.cameraW), ray.dir);
+        ray.tMin = camData.nearZ * invCos;
+        ray.tMax = camData.farZ * invCos;
 
         return ray;
     }

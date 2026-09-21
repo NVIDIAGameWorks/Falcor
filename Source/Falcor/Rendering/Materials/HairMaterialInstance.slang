@@ -42,7 +42,7 @@ import Utils.Math.MathHelpers;
 */
 struct HairMaterialInstance : MaterialInstanceBase, IMaterialInstance
 {
-    ShadingFrame sf;    ///< Shading frame in world space.
+    ShadingFrame sf; ///< Shading frame in world space.
     HairChiang16Data data;
 
     __init(const ShadingFrame sf, const HairChiang16Data data)

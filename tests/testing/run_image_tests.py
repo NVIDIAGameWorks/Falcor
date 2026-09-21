@@ -144,6 +144,9 @@ class Test:
         # Get timeout.
         self.timeout = self.header.get('timeout', config.DEFAULT_TIMEOUT)
 
+        # Get extra command line args
+        self.extra_args = self.header.get('extra_args', [])
+
     def __repr__(self):
         return f'Test(name={self.name},script_file={self.script_file})'
 
@@ -214,6 +217,8 @@ class Test:
             '--headless',
             '--precise'
         ]
+        for arg in self.extra_args:
+            args.append(arg)
         rerun_env = {}
         rerun_env["cwd"] = str(cwd)
         rerun_env["args"] = args[1:]
@@ -364,30 +369,70 @@ def generate_ref(env: Environment, test: Test, ref_dir: Path, process_controller
         print(f'  {test.name:<60} : STARTED')
     test.process_controller = process_controller
     start_time = time.time()
+    report = {
+        'name': test.name,
+        'ref_dir': str(ref_dir / test.test_dir),
+    }
     result, messages, rerun_env = test.generate_images(ref_dir, env.mogwai_exe, False, env.temp_dir)
     elapsed_time = time.time() - start_time
+    report['messages'] = messages
+    report['duration'] = elapsed_time
+    report['rerun_env'] = rerun_env
+
+    # Write JSON report.
+    report_dir = ref_dir / test.test_dir
+    report_dir.mkdir(parents=True, exist_ok=True)
+    report_file = report_dir / 'report.json'
+    with open(report_file, 'w') as f:
+        json.dump(report, f, indent=4)
+
     return {"name": test.name, "elapsed_time": elapsed_time, "result": result, "messages": messages, "rerun_env": rerun_env}
 
+def publish_ref_dir(staging_ref_dir: Path, ref_dir: Path):
+    '''
+    Publishes staged reference images to the active reference directory.
+    Existing references are kept until the staged directory is complete.
+    '''
+    backup_ref_dir = ref_dir.with_name(f'{ref_dir.name}.bak.{os.getpid()}')
+
+    if backup_ref_dir.exists():
+        shutil.rmtree(backup_ref_dir, ignore_errors=True)
+
+    try:
+        if ref_dir.exists():
+            ref_dir.rename(backup_ref_dir)
+        staging_ref_dir.rename(ref_dir)
+    except Exception:
+        if not ref_dir.exists() and backup_ref_dir.exists():
+            backup_ref_dir.rename(ref_dir)
+        raise
+    finally:
+        if backup_ref_dir.exists():
+            shutil.rmtree(backup_ref_dir, ignore_errors=True)
 
 def generate_refs(env: Environment, tests: list[Test], ref_dir, process_controller):
     '''
     Computes references for a set of tests and stores them into ref_dir.
     '''
+    ref_dir = Path(ref_dir)
+    staging_ref_dir = ref_dir.with_name(f'{ref_dir.name}.tmp.{os.getpid()}')
+
     print(f'Reference directory: {ref_dir}')
+    print(f'Staging reference directory: {staging_ref_dir}')
     print(f'Generating references for {len(tests)} tests on {process_controller.thread_count} processes')
     if process_controller.thread_count > 1:
         print(colored('Test timings (both indidivual and total) are unreliable when running tests in parallel.', 'red'))
 
-    # Remove existing references.
-    if ref_dir.exists():
-        shutil.rmtree(ref_dir, ignore_errors=True)
+    if staging_ref_dir.exists():
+        shutil.rmtree(staging_ref_dir, ignore_errors=True)
+    staging_ref_dir.mkdir(parents=True, exist_ok=True)
 
     success = True
-    total_elapsed_time = 0
+    run_start_time = time.time()
 
     try:
         with concurrent.futures.ThreadPoolExecutor(process_controller.thread_count) as executor:
-            futures = {executor.submit(generate_ref, env, test, ref_dir, process_controller) for test in tests}
+            futures = {executor.submit(generate_ref, env, test, staging_ref_dir, process_controller) for test in tests}
             try:
                 for future in concurrent.futures.as_completed(futures):
                     run_result   = future.result()
@@ -411,12 +456,25 @@ def generate_refs(env: Environment, tests: list[Test], ref_dir, process_controll
                 process_controller.interrupt_and_exit()
                 raise
     except KeyboardInterrupt:
+        shutil.rmtree(staging_ref_dir, ignore_errors=True)
         return False
 
+    total_elapsed_time = time.time() - run_start_time
     status = colored('PASSED', 'green') if success else colored('FAILED', 'red')
     print(f'\nGenerating references {status} ({total_elapsed_time:.1f} s).')
     if process_controller.thread_count > 1:
         print(colored('Test timings (both indidivual and total) are unreliable when running tests in parallel.','red'))
+
+    if success:
+        print(f'Publishing reference images to {ref_dir}')
+        try:
+            publish_ref_dir(staging_ref_dir, ref_dir)
+        except Exception as e:
+            print(colored(f'Failed to publish reference images: {e}', 'red'))
+            shutil.rmtree(staging_ref_dir, ignore_errors=True)
+            return False
+    else:
+        shutil.rmtree(staging_ref_dir, ignore_errors=True)
 
     return success
 
@@ -432,7 +490,7 @@ def run_test(env: Environment, test: Test, run_only: bool, compare_only: bool, r
     elapsed_time = time.time() - start_time
 
     if result != Test.Result.SKIPPED:
-        messages.append(f'View test at: http://{env.hostname}:8080/{env.vcs_root}/{build_id}/{test.name}')
+        messages.append(f'View test at: http://{env.ipaddress}:8080/{env.vcs_root}/{build_id}/{test.name}')
 
     return {"name": test.name, "elapsed_time": elapsed_time, "result": result, "messages": messages}
 
@@ -615,6 +673,7 @@ def main():
     additional_group.add_argument('--pull-refs', action='store_true', help='Pull reference images from remote before running tests')
     additional_group.add_argument('--push-refs', action='store_true', help='Push reference images to remote after generating them')
     additional_group.add_argument('--build-id', action='store', help='TeamCity build ID', default='unknown')
+    additional_group.add_argument('--init-missing-refs', action='store_true', help='Generate reference images if the reference directory is missing before running tests')
 
     args = parser.parse_args()
 
@@ -677,27 +736,34 @@ def main():
 
         # Give some instructions on how to acquire reference images if not available.
         if not args.run_only and not ref_dir.exists():
-            print(ref_dir)
-            print(colored(f'\n!!! Reference images for "{args.ref_branch}" branch are not available !!!', 'red'))
-            print('')
-            print(f'You have the following options:')
-            print('')
-            print(f'  1. Checkout "{args.ref_branch}" branch and generate reference images using:')
-            print('')
-            print(f'       run_image_tests --gen-refs')
-            print('')
-            print(f'  2. Use references from a different branch using:')
-            print('')
-            print(f'       run_image_tests --ref-branch BRANCH')
-            print('')
-            sys.exit(1)
+            if args.init_missing_refs and not args.compare_only:
+                print(colored(f'\nReference images for "{args.ref_branch}" branch are not available. Generating them now.', 'yellow'))
+                result = generate_refs(env, tests, ref_dir, process_controller)
+                if not result:
+                    shutil.rmtree(env.temp_dir, ignore_errors=True)
+                    sys.exit(1)
+            else:
+                print(ref_dir)
+                print(colored(f'\n!!! Reference images for "{args.ref_branch}" branch are not available !!!', 'red'))
+                print('')
+                print(f'You have the following options:')
+                print('')
+                print(f'  1. Checkout "{args.ref_branch}" branch and generate reference images using:')
+                print('')
+                print(f'       run_image_tests --gen-refs')
+                print('')
+                print(f'  2. Use references from a different branch using:')
+                print('')
+                print(f'       run_image_tests --ref-branch BRANCH')
+                print('')
+                sys.exit(1)
 
         # Run tests.
         result = run_tests(env, tests, args.run_only, args.compare_only, ref_dir, result_dir, args.tolerance, args.xml_report, process_controller, args.build_id)
         shutil.rmtree(env.temp_dir, ignore_errors=True)
 
         # Print out url to test viewer
-        print(f"View test results at: http://{env.hostname}:8080/{env.vcs_root}/{args.build_id}")
+        print(f"View test results at: http://{env.ipaddress}:8080/{env.vcs_root}/{args.build_id}")
 
         # Exit with error if failed
         if not result:

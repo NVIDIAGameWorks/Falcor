@@ -315,19 +315,19 @@ namespace Falcor
 
         auto createSphere = [] (float radius, float voxelSize, float blendRange)
         {
-            return Grid::createSphere(accessActivePythonSceneBuilder().getDevice(), radius, voxelSize, blendRange);
+            return Grid::createSphere(accessActivePythonSceneBuilderDevice(), radius, voxelSize, blendRange);
         };
         grid.def_static("createSphere", createSphere, "radius"_a, "voxelSize"_a, "blendRange"_a = 3.f); // PYTHONDEPRECATED
 
         auto createBox = [] (float width, float height, float depth, float voxelSize, float blendRange)
         {
-            return Grid::createBox(accessActivePythonSceneBuilder().getDevice(), width, height, depth, voxelSize, blendRange);
+            return Grid::createBox(accessActivePythonSceneBuilderDevice(), width, height, depth, voxelSize, blendRange);
         };
         grid.def_static("createBox", createBox, "width"_a, "height"_a, "depth"_a, "voxelSize"_a, "blendRange"_a = 3.f); // PYTHONDEPRECATED
 
         auto createFromFile = [] (const std::filesystem::path& path, const std::string& gridname)
         {
-            return Grid::createFromFile(accessActivePythonSceneBuilder().getDevice(), getActiveAssetResolver().resolvePath(path), gridname);
+            return Grid::createFromFile(accessActivePythonSceneBuilderDevice(), getActiveAssetResolver().resolvePath(path), gridname);
         };
         grid.def_static("createFromFile", createFromFile, "path"_a, "gridname"_a); // PYTHONDEPRECATED
     }

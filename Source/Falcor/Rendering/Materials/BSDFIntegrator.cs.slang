@@ -34,21 +34,23 @@ import Utils.Sampling.UniformSampleGenerator;
 /** Utility for integrating an isotropic BSDF over the hemisphere.
 
     The code assumes thread group size 1024 and wave size 32.
-    The execution is arranged in groups of 32x32 threads over the 2D integration grid.
+    The execution is arranged as 32x32 tiles over the 2D integration grid.
+    The threads in each thread group are mapped in scanline order to locations in the tile.
     The third dimension is the grid index (= which incident direction to use).
     The result is reduced to one value per thread group before writing out.
 */
 struct BSDFIntegrator
 {
-    uint2 gridSize;                             ///< Size of integration grid over the hemisphere.
-    uint gridCount;                             ///< Integration grid count. One incident direction per grid.
-    uint resultCount;                           ///< Number of intermediate results per grid.
-    uint materialID;                            ///< Material ID in the scene.
-    StructuredBuffer<float> cosThetas;          ///< Cosine theta of incident directions.
-    RWStructuredBuffer<float3> results;         ///< Intermediate results. One value per thread group.
-    RWStructuredBuffer<float3> finalResults;    ///< Final results. One value per grid.
+    uint2 gridSize;                          ///< Size of integration grid over the hemisphere.
+    uint gridCount;                          ///< Integration grid count. One incident direction per grid.
+    uint resultCount;                        ///< Number of intermediate results per grid.
+    uint materialID;                         ///< Material ID in the scene.
+    StructuredBuffer<float> cosThetas;       ///< Cosine theta of incident directions.
+    RWStructuredBuffer<float3> results;      ///< Intermediate results. One value per thread group.
+    RWStructuredBuffer<float3> finalResults; ///< Final results. One value per grid.
 
     static const uint2 kSampleCount = { 8, 8 }; ///< Number of stratified samples per grid cell.
+    static const uint2 kTileSize = { 32, 32 };
 
     static const uint kWaveSize = 32;
     static groupshared float3 sharedResult[1024 / kWaveSize]; // Note Slang requires static when declaring groupshared inside struct.
@@ -56,9 +58,13 @@ struct BSDFIntegrator
     /** Integrate BSDF over the hemisphere.
         The function is executed with one thread per grid cell, and the result reduced to a single value per thread group.
     */
-    void executeIntegration(const uint2 threadID, const uint groupThreadIdx, const uint3 groupID)
+    void executeIntegration(const uint groupThreadIdx, const uint3 groupID)
     {
-        if (groupID.z >= gridCount) return;
+        if (groupID.z >= gridCount)
+            return;
+
+        // Map thread to 2D location in integration grid.
+        const uint2 gridID = groupID.xy * kTileSize + uint2(groupThreadIdx % kTileSize.x, groupThreadIdx / kTileSize.x);
 
         // Setup shading data struct.
         ShadingData sd = {};
@@ -83,14 +89,14 @@ struct BSDFIntegrator
         // The samples are currently placed at the center of each strata.
         float3 value = {};
 
-        UniformSampleGenerator sg = UniformSampleGenerator(threadID, 0);
+        UniformSampleGenerator sg = UniformSampleGenerator(gridID, 0);
         for (uint sy = 0; sy < kSampleCount.y; sy++)
         {
             for (uint sx = 0; sx < kSampleCount.x; sx++)
             {
                 // Compute sample position in [0,1]^2 and map to hemisphere.
                 float2 offset = (float2(sx, sy) + 0.5f) * (1.f / kSampleCount);
-                float2 u = (float2(threadID) + offset) / gridSize;
+                float2 u = (float2(gridID) + offset) / gridSize;
 
                 float pdf = 0.f;
                 float3 wo = sample_cosine_hemisphere_concentric(u, pdf);
@@ -111,19 +117,22 @@ struct BSDFIntegrator
         value = WaveActiveSum(value);
         if (WaveIsFirstLane())
         {
-            sharedResult[groupThreadIdx / kWaveSize] = value;
+            const uint warpId = groupThreadIdx / kWaveSize;
+            sharedResult[warpId] = value;
         }
         GroupMemoryBarrierWithGroupSync();
     }
 
     /** Reduce result over thread group and write to memory.
-    */
+     */
     void reduceGroup(float3 value, const uint groupThreadIdx, const uint3 groupID, const uint kGroupSize = 1024)
     {
+        const uint warpCount = kGroupSize / kWaveSize;
+
         reduceWarpToShared(value, groupThreadIdx);
 
         // First warp in group accumulates values from shared memory.
-        if (groupThreadIdx < (kGroupSize / kWaveSize))
+        if (groupThreadIdx < warpCount)
         {
             value = sharedResult[groupThreadIdx];
             value = WaveActiveSum(value);
@@ -131,7 +140,7 @@ struct BSDFIntegrator
             // First thread in group stores result to global memory.
             if (groupThreadIdx == 0)
             {
-                uint groupIdx = (gridSize.x / 32 /* group width */) * groupID.y + groupID.x;
+                uint groupIdx = (gridSize.x / kTileSize.x) * groupID.y + groupID.x;
                 uint dstIdx = resultCount * groupID.z + groupIdx;
 
                 results[dstIdx] = value * (1.f / kGroupSize);
@@ -140,10 +149,13 @@ struct BSDFIntegrator
     }
 
     /** Reduce results buffer to a single final value per grid.
-    */
+     */
     void executeFinal(const uint groupThreadIdx, const uint gridIdx, const uint kGroupSize = 256)
     {
-        if (gridIdx >= gridCount) return;
+        if (gridIdx >= gridCount)
+            return;
+
+        const uint warpCount = kGroupSize / kWaveSize;
 
         uint srcIdx = resultCount * gridIdx + groupThreadIdx;
         float3 value = results[srcIdx];
@@ -151,7 +163,7 @@ struct BSDFIntegrator
         reduceWarpToShared(value, groupThreadIdx);
 
         // First warp in group accumulates values from shared memory.
-        if (groupThreadIdx < (kGroupSize / kWaveSize))
+        if (groupThreadIdx < warpCount)
         {
             value = sharedResult[groupThreadIdx];
             value = WaveActiveSum(value);
@@ -168,15 +180,15 @@ struct BSDFIntegrator
 ParameterBlock<BSDFIntegrator> gIntegrator;
 
 //[WaveSize(32)]
-[numthreads(32, 32, 1)]
-void mainIntegration(uint3 threadID : SV_DispatchThreadID, uint groupThreadIdx : SV_GroupIndex, uint3 groupID : SV_GroupID)
+[numthreads(1024, 1, 1)]
+void mainIntegration(uint groupThreadIdx: SV_GroupIndex, uint3 groupID: SV_GroupID)
 {
-    gIntegrator.executeIntegration(threadID.xy, groupThreadIdx, groupID);
+    gIntegrator.executeIntegration(groupThreadIdx, groupID);
 }
 
 //[WaveSize(32)]
 [numthreads(256, 1, 1)]
-void mainFinal(uint3 threadID : SV_DispatchThreadID)
+void mainFinal(uint3 threadID: SV_DispatchThreadID)
 {
     gIntegrator.executeFinal(threadID.x, threadID.y);
 }

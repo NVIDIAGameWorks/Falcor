@@ -58,18 +58,21 @@ static const float kMinGGXAlpha = 0.0064f;
  */
 struct StandardBSDFData : IDifferentiable
 {
-    float3 diffuse;                     ///< Diffuse albedo.
-    float3 specular;                    ///< Specular albedo.
-    float roughness;                    ///< This is the original roughness, before remapping.
-    float metallic;                     ///< Metallic parameter, blends between dielectric and conducting BSDFs.
-    float eta;                          ///< Relative index of refraction (incident IoR / transmissive IoR).
-    float3 transmission;                ///< Transmission color.
-    float diffuseTransmission;          ///< Diffuse transmission, blends between diffuse reflection and transmission lobes.
-    float specularTransmission;         ///< Specular transmission, blends between opaque dielectric BRDF and specular transmissive BSDF.
-    float3 volumeScattering;            ///< Volume scattering parameters from the volume.
-    float volumeAnsiotropy;             ///< Mean cosine of the volumetric phase function.
-    bool hasEntryPointVolumeProperties; ///< Flag that specifies from where sigmaA is taken from (volume or surface).
-    bool hasSigmaSGreaterZero;          ///< Flag that indicates if we have to do albedo conversion
+    float3 diffuse = {};             ///< Diffuse albedo.
+    float3 specular = {};            ///< Specular albedo.
+    float roughness = {};            ///< This is the original roughness, before remapping.
+    float metallic = {};             ///< Metallic parameter, blends between dielectric and conducting BSDFs.
+    float eta = {};                  ///< Relative index of refraction (incident IoR / transmissive IoR).
+    float3 transmission = {};        ///< Transmission color.
+    float diffuseTransmission = {};  ///< Diffuse transmission, blends between diffuse reflection and transmission lobes.
+    float specularTransmission = {}; ///< Specular transmission, blends between opaque dielectric BRDF and specular transmissive BSDF.
+    float3 volumeScattering = {};    ///< Volume scattering parameters from the volume.
+    float volumeAnsiotropy = {};     ///< Mean cosine of the volumetric phase function.
+    bool hasEntryPointVolumeProperties = {}; ///< Flag that specifies from where sigmaA is taken from (volume or surface).
+    bool hasSigmaSGreaterZero = {};          ///< Flag that indicates if we have to do albedo conversion
+
+    [Differentiable]
+    __init() {}
 
     [Differentiable]
     __init(const DiffMaterialData diffData)
@@ -95,25 +98,27 @@ struct StandardBSDFData : IDifferentiable
 struct StandardBSDF : IBSDF, IDifferentiable
 {
 #if DiffuseBrdf == DiffuseBrdfLambert
-    LambertDiffuseBRDF diffuseReflection;
+    LambertDiffuseBRDF diffuseReflection = {};
 #elif DiffuseBrdf == DiffuseBrdfDisney
-    DisneyDiffuseBRDF diffuseReflection;
+    DisneyDiffuseBRDF diffuseReflection = {};
 #elif DiffuseBrdf == DiffuseBrdfFrostbite
-    FrostbiteDiffuseBRDF diffuseReflection;
+    FrostbiteDiffuseBRDF diffuseReflection = {};
 #endif
-    LambertDiffuseBTDF diffuseTransmission;
+    LambertDiffuseBTDF diffuseTransmission = {};
 
-    SpecularMicrofacetBRDF specularReflection;
-    SpecularMicrofacetBSDF specularTransmission;
+    SpecularMicrofacetBRDF specularReflection = {};
+    SpecularMicrofacetBSDF specularTransmission = {};
 
-    float diffTrans; ///< Mix between diffuse BRDF and diffuse BTDF.
-    float specTrans; ///< Mix between dielectric BRDF and specular BSDF.
+    float diffTrans = {}; ///< Mix between diffuse BRDF and diffuse BTDF.
+    float specTrans = {}; ///< Mix between dielectric BRDF and specular BSDF.
 
     // No need to differentiate probabilities.
-    no_diff float pDiffuseReflection;    ///< Probability for sampling the diffuse BRDF.
-    no_diff float pDiffuseTransmission;  ///< Probability for sampling the diffuse BTDF.
-    no_diff float pSpecularReflection;   ///< Probability for sampling the specular BRDF.
-    no_diff float pSpecularTransmission; ///< Probability for sampling the specular BSDF.
+    no_diff float pDiffuseReflection = {};    ///< Probability for sampling the diffuse BRDF.
+    no_diff float pDiffuseTransmission = {};  ///< Probability for sampling the diffuse BTDF.
+    no_diff float pSpecularReflection = {};   ///< Probability for sampling the specular BRDF.
+    no_diff float pSpecularTransmission = {}; ///< Probability for sampling the specular BSDF.
+
+    int BSDFIndex;
 
     /**
      * Initialize a new instance.
@@ -124,6 +129,9 @@ struct StandardBSDF : IBSDF, IDifferentiable
     [Differentiable]
     __init(const float3 wi, const MaterialHeader mtl, const StandardBSDFData data)
     {
+        // For ReSTIR PT
+        BSDFIndex = mtl.getBSDFIndex();
+
         // TODO: Currently specular reflection and transmission lobes are not properly separated.
         // This leads to incorrect behaviour if only the specular reflection or transmission lobe is selected.
         // Things work fine as long as both or none are selected.
@@ -227,14 +235,18 @@ struct StandardBSDF : IBSDF, IDifferentiable
     [Differentiable]
     float3 eval<S : ISampleGenerator>(const float3 wi, const float3 wo, inout S sg, BSDFContext bc)
     {
+        uint mask;
+        if (BSDFIndex == -1) mask = 0xf; // by default, compute pdf for all lobes
+        else mask = 1 << BSDFIndex;
+
         float3 result = 0.f;
-        if (pDiffuseReflection > 0.f)
+        if (pDiffuseReflection > 0.f && (mask & 0x1))
             result += (1.f - specTrans) * (1.f - diffTrans) * diffuseReflection.eval(wi, wo, sg, bc);
-        if (pDiffuseTransmission > 0.f)
+        if (pDiffuseTransmission > 0.f && (mask & 0x2))
             result += (1.f - specTrans) * diffTrans * diffuseTransmission.eval(wi, wo, sg, bc);
-        if (pSpecularReflection > 0.f)
+        if (pSpecularReflection > 0.f && (mask & 0x4))
             result += (1.f - specTrans) * specularReflection.eval(wi, wo, sg, bc);
-        if (pSpecularTransmission > 0.f)
+        if (pSpecularTransmission > 0.f && (mask & 0x8))
             result += specTrans * (specularTransmission.eval(wi, wo, sg, bc));
         return result;
     }
@@ -249,11 +261,27 @@ struct StandardBSDF : IBSDF, IDifferentiable
         BSDFContext bc
     )
     {
+        uint BSDFIndex;
+        return sample(wi, wo, pdf, weight, lobeType, BSDFIndex, sg, bc);
+    }
+
+    bool sample<S : ISampleGenerator>(
+        const float3 wi,
+        out float3 wo,
+        out float pdf,
+        out float3 weight,
+        out uint lobeType,
+        out uint BSDFIndex,
+        inout S sg,
+        BSDFContext bc
+    )
+    {
         // Default initialization to avoid divergence at returns.
         wo = {};
         weight = {};
         pdf = 0.f;
         lobeType = (uint)LobeType::DiffuseReflection;
+        BSDFIndex = 0;
 
         bool valid = false;
         float uSelect = sampleNext1D(sg);
@@ -271,6 +299,7 @@ struct StandardBSDF : IBSDF, IDifferentiable
                 pdf += pSpecularReflection * specularReflection.evalPdf(wi, wo, bc);
             if (pSpecularTransmission > 0.f)
                 pdf += pSpecularTransmission * specularTransmission.evalPdf(wi, wo, bc);
+            BSDFIndex = 0;
         }
         else if (uSelect < pDiffuseReflection + pDiffuseTransmission)
         {
@@ -281,7 +310,8 @@ struct StandardBSDF : IBSDF, IDifferentiable
             // if (pDiffuseReflection > 0.f) pdf += pDiffuseReflection * diffuseReflection.evalPdf(wi, wo, bc);
             // if (pSpecularReflection > 0.f) pdf += pSpecularReflection * specularReflection.evalPdf(wi, wo, bc);
             if (pSpecularTransmission > 0.f)
-                pdf += pSpecularTransmission * specularTransmission.evalPdf(wi, wo, bc);
+            pdf += pSpecularTransmission * specularTransmission.evalPdf(wi, wo, bc);
+            BSDFIndex = 1;
         }
         else if (uSelect < pDiffuseReflection + pDiffuseTransmission + pSpecularReflection)
         {
@@ -294,6 +324,7 @@ struct StandardBSDF : IBSDF, IDifferentiable
             // if (pDiffuseTransmission > 0.f) pdf += pDiffuseTransmission * diffuseTransmission.evalPdf(wi, wo, bc);
             if (pSpecularTransmission > 0.f)
                 pdf += pSpecularTransmission * specularTransmission.evalPdf(wi, wo, bc);
+            BSDFIndex = 2;
         }
         else if (pSpecularTransmission > 0.f)
         {
@@ -307,6 +338,7 @@ struct StandardBSDF : IBSDF, IDifferentiable
                 pdf += pDiffuseTransmission * diffuseTransmission.evalPdf(wi, wo, bc);
             if (pSpecularReflection > 0.f)
                 pdf += pSpecularReflection * specularReflection.evalPdf(wi, wo, bc);
+            BSDFIndex = 3;
         }
 
         return valid;
@@ -315,13 +347,16 @@ struct StandardBSDF : IBSDF, IDifferentiable
     float evalPdf(const float3 wi, const float3 wo, BSDFContext bc)
     {
         float pdf = 0.f;
-        if (pDiffuseReflection > 0.f)
+        uint mask;
+        if (BSDFIndex == -1) mask = 0xf; // by default, compute pdf for all lobes
+        else mask = 1 << BSDFIndex;
+        if (pDiffuseReflection > 0.f && (mask & 0x1))
             pdf += pDiffuseReflection * diffuseReflection.evalPdf(wi, wo, bc);
-        if (pDiffuseTransmission > 0.f)
+        if (pDiffuseTransmission > 0.f && (mask & 0x2))
             pdf += pDiffuseTransmission * diffuseTransmission.evalPdf(wi, wo, bc);
-        if (pSpecularReflection > 0.f)
+        if (pSpecularReflection > 0.f && (mask & 0x4))
             pdf += pSpecularReflection * specularReflection.evalPdf(wi, wo, bc);
-        if (pSpecularTransmission > 0.f)
+        if (pSpecularTransmission > 0.f && (mask & 0x8))
             pdf += pSpecularTransmission * specularTransmission.evalPdf(wi, wo, bc);
         return pdf;
     }
@@ -346,9 +381,20 @@ struct StandardBSDF : IBSDF, IDifferentiable
 
     RoughnessInformation getRoughnessInformation(const float3 wi)
     {
-        RoughnessInformation r;
+        RoughnessInformation r = {};
         float alpha = specularReflection.alpha;
         r.roughnessBSDFNotation = float2(alpha < kMinGGXAlpha ? 0.f : alpha);
         return r;
+    }
+
+    float2 getReflectionMotionVectorProbabilities(const float3 wi)
+    {
+        float F = 0.f;
+        if (pSpecularTransmission > 0.f)
+        {
+            float cosThetaT;
+            F = evalFresnelDielectric(specularTransmission.eta, wi.z, cosThetaT);
+        }
+        return float2(pDiffuseReflection, pSpecularReflection + pSpecularTransmission * F);
     }
 };

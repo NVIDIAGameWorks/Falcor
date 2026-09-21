@@ -36,7 +36,12 @@ struct PBRTCoatedConductorMaterial : MaterialBase, IMaterial
 
     typedef PBRTCoatedConductorMaterialInstance MaterialInstance;
 
-    PBRTCoatedConductorMaterialInstance setupMaterialInstance(const MaterialSystem ms, const ShadingData sd, const ITextureSampler lod, const uint hints)
+    PBRTCoatedConductorMaterialInstance setupMaterialInstance(
+        const MaterialSystem ms,
+        const ShadingData sd,
+        const ITextureSampler lod,
+        const uint hints
+    )
     {
         SamplerState s = ms.getTextureSampler(header.getDefaultTextureSamplerID());
 
@@ -61,13 +66,21 @@ struct PBRTCoatedConductorMaterial : MaterialBase, IMaterial
             adjustShadingNormal(sd, sf);
         }
 
-        PBRTCoatedConductorMaterialInstance mi = {sf, AnisotropicGGX(roughnesses.rg), AnisotropicGGX(roughnesses.ba), eta, baseColor, transColor, 32};
+        PBRTCoatedConductorMaterialInstance mi = {
+            sf, AnisotropicGGX(roughnesses.rg), AnisotropicGGX(roughnesses.ba), eta, baseColor, transColor, 32
+        };
 
         return mi;
     }
 
     [Differentiable]
-    PBRTCoatedConductorMaterialInstance setupDiffMaterialInstance(out DiffMaterialData diffData, const MaterialSystem ms, const ShadingData sd, const ITextureSampler lod, const uint hints)
+    PBRTCoatedConductorMaterialInstance setupDiffMaterialInstance(
+        out DiffMaterialData diffData,
+        const MaterialSystem ms,
+        const ShadingData sd,
+        const ITextureSampler lod,
+        const uint hints
+    )
     {
         diffData = DiffMaterialData();
         return no_diff setupMaterialInstance(ms, sd, lod, hints);

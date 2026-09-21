@@ -621,17 +621,30 @@ using GPUUnitTestContext = unittest::GPUUnitTestContext;
 // clang-format on
 
 /**
- * Macro definitions for the GPU unit testing framework. Note that they
- * are all a single statement (including any additional << printed
- * values).  Thus, it's perfectly fine to write code like:
+ * Macro definitions for the GPU unit testing framework.
+ * All are in the form of
+ * if (!cond)
+ *    generateMessages(...)
  *
- * if (foo)  // look, no braces
- *     EXPECT_EQ(x, y);
+ * As such, it shortcircuits both _MSG and << user inputs when the test passes,
+ * avoiding constructing the string just to throw it away.
+ *
+ * Beware, you cannot use the pattern of:
+ * if (cont)
+ *    EXPECT()
+ * else
+ *    EXPECT()
+ *
+ * as the else will tie to the if inside the conditional.
  */
-#define EXPECT_TRUE_MSG(expression, msg) FTEST_TEST_BOOLEAN(#expression, bool(expression), true, msg, FTEST_EXPECT_RESULT)
-#define EXPECT_FALSE_MSG(expression, msg) FTEST_TEST_BOOLEAN(#expression, bool(expression), false, msg, FTEST_EXPECT_RESULT)
-#define ASSERT_TRUE_MSG(expression, msg) FTEST_TEST_BOOLEAN(#expression, bool(expression), true, msg, FTEST_ASSERT_RESULT)
-#define ASSERT_FALSE_MSG(expression, msg) FTEST_TEST_BOOLEAN(#expression, bool(expression), false, msg, FTEST_ASSERT_RESULT)
+#define FTEST_TEST_BOOLEAN_SHORTCIRCUIT(valueStr, value, expected, userFailMsg, isAssert) \
+    if (value != expected) \
+        FTEST_TEST_BOOLEAN(valueStr, value, expected, userFailMsg, isAssert)
+
+#define EXPECT_TRUE_MSG(expression, msg) FTEST_TEST_BOOLEAN_SHORTCIRCUIT(#expression, bool(expression), true, msg, FTEST_EXPECT_RESULT)
+#define EXPECT_FALSE_MSG(expression, msg) FTEST_TEST_BOOLEAN_SHORTCIRCUIT(#expression, bool(expression), false, msg, FTEST_EXPECT_RESULT)
+#define ASSERT_TRUE_MSG(expression, msg) FTEST_TEST_BOOLEAN_SHORTCIRCUIT(#expression, bool(expression), true, msg, FTEST_ASSERT_RESULT)
+#define ASSERT_FALSE_MSG(expression, msg) FTEST_TEST_BOOLEAN_SHORTCIRCUIT(#expression, bool(expression), false, msg, FTEST_ASSERT_RESULT)
 
 #define EXPECT_TRUE(expression) EXPECT_TRUE_MSG(expression, "")
 #define EXPECT_FALSE(expression) EXPECT_FALSE_MSG(expression, "")
@@ -643,19 +656,23 @@ using GPUUnitTestContext = unittest::GPUUnitTestContext;
 #define EXPECT_MSG(expression, msg) EXPECT_TRUE_MSG(expression, msg)
 #define ASSERT_MSG(expression, msg) ASSERT_TRUE_MSG(expression, msg)
 
-#define EXPECT_EQ_MSG(lhs, rhs, msg) FTEST_TEST_BINARY(CmpHelperEQ, lhs, rhs, msg, FTEST_EXPECT_RESULT)
-#define EXPECT_NE_MSG(lhs, rhs, msg) FTEST_TEST_BINARY(CmpHelperNE, lhs, rhs, msg, FTEST_EXPECT_RESULT)
-#define EXPECT_LE_MSG(lhs, rhs, msg) FTEST_TEST_BINARY(CmpHelperLE, lhs, rhs, msg, FTEST_EXPECT_RESULT)
-#define EXPECT_GE_MSG(lhs, rhs, msg) FTEST_TEST_BINARY(CmpHelperGE, lhs, rhs, msg, FTEST_EXPECT_RESULT)
-#define EXPECT_LT_MSG(lhs, rhs, msg) FTEST_TEST_BINARY(CmpHelperLT, lhs, rhs, msg, FTEST_EXPECT_RESULT)
-#define EXPECT_GT_MSG(lhs, rhs, msg) FTEST_TEST_BINARY(CmpHelperGT, lhs, rhs, msg, FTEST_EXPECT_RESULT)
+#define FTEST_TEST_BINARY_SHORTCIRCUIT(opHelper, lhs, rhs, userFailMsg, asserts) \
+    if (!unittest:: opHelper ::compare(lhs, rhs)) \
+        FTEST_TEST_BINARY(opHelper, lhs, rhs, userFailMsg, asserts)
 
-#define ASSERT_EQ_MSG(lhs, rhs, msg) FTEST_TEST_BINARY(CmpHelperEQ, lhs, rhs, msg, FTEST_ASSERT_RESULT)
-#define ASSERT_NE_MSG(lhs, rhs, msg) FTEST_TEST_BINARY(CmpHelperNE, lhs, rhs, msg, FTEST_ASSERT_RESULT)
-#define ASSERT_LE_MSG(lhs, rhs, msg) FTEST_TEST_BINARY(CmpHelperLE, lhs, rhs, msg, FTEST_ASSERT_RESULT)
-#define ASSERT_GE_MSG(lhs, rhs, msg) FTEST_TEST_BINARY(CmpHelperGE, lhs, rhs, msg, FTEST_ASSERT_RESULT)
-#define ASSERT_LT_MSG(lhs, rhs, msg) FTEST_TEST_BINARY(CmpHelperLT, lhs, rhs, msg, FTEST_ASSERT_RESULT)
-#define ASSERT_GT_MSG(lhs, rhs, msg) FTEST_TEST_BINARY(CmpHelperGT, lhs, rhs, msg, FTEST_ASSERT_RESULT)
+#define EXPECT_EQ_MSG(lhs, rhs, msg) FTEST_TEST_BINARY_SHORTCIRCUIT(CmpHelperEQ, lhs, rhs, msg, FTEST_EXPECT_RESULT)
+#define EXPECT_NE_MSG(lhs, rhs, msg) FTEST_TEST_BINARY_SHORTCIRCUIT(CmpHelperNE, lhs, rhs, msg, FTEST_EXPECT_RESULT)
+#define EXPECT_LE_MSG(lhs, rhs, msg) FTEST_TEST_BINARY_SHORTCIRCUIT(CmpHelperLE, lhs, rhs, msg, FTEST_EXPECT_RESULT)
+#define EXPECT_GE_MSG(lhs, rhs, msg) FTEST_TEST_BINARY_SHORTCIRCUIT(CmpHelperGE, lhs, rhs, msg, FTEST_EXPECT_RESULT)
+#define EXPECT_LT_MSG(lhs, rhs, msg) FTEST_TEST_BINARY_SHORTCIRCUIT(CmpHelperLT, lhs, rhs, msg, FTEST_EXPECT_RESULT)
+#define EXPECT_GT_MSG(lhs, rhs, msg) FTEST_TEST_BINARY_SHORTCIRCUIT(CmpHelperGT, lhs, rhs, msg, FTEST_EXPECT_RESULT)
+
+#define ASSERT_EQ_MSG(lhs, rhs, msg) FTEST_TEST_BINARY_SHORTCIRCUIT(CmpHelperEQ, lhs, rhs, msg, FTEST_ASSERT_RESULT)
+#define ASSERT_NE_MSG(lhs, rhs, msg) FTEST_TEST_BINARY_SHORTCIRCUIT(CmpHelperNE, lhs, rhs, msg, FTEST_ASSERT_RESULT)
+#define ASSERT_LE_MSG(lhs, rhs, msg) FTEST_TEST_BINARY_SHORTCIRCUIT(CmpHelperLE, lhs, rhs, msg, FTEST_ASSERT_RESULT)
+#define ASSERT_GE_MSG(lhs, rhs, msg) FTEST_TEST_BINARY_SHORTCIRCUIT(CmpHelperGE, lhs, rhs, msg, FTEST_ASSERT_RESULT)
+#define ASSERT_LT_MSG(lhs, rhs, msg) FTEST_TEST_BINARY_SHORTCIRCUIT(CmpHelperLT, lhs, rhs, msg, FTEST_ASSERT_RESULT)
+#define ASSERT_GT_MSG(lhs, rhs, msg) FTEST_TEST_BINARY_SHORTCIRCUIT(CmpHelperGT, lhs, rhs, msg, FTEST_ASSERT_RESULT)
 
 #define EXPECT_EQ(lhs, rhs) EXPECT_EQ_MSG(lhs, rhs, "")
 #define EXPECT_NE(lhs, rhs) EXPECT_NE_MSG(lhs, rhs, "")

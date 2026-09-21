@@ -10,7 +10,7 @@ on:
 jobs:
   windows-vs2022:
     name: Windows VS2022
-    runs-on: windows-latest
+    runs-on: windows-2022
     strategy:
       matrix:
         include:
@@ -18,7 +18,7 @@ jobs:
           - config: Debug
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v7
         with:
           submodules: recursive
       - name: Setup MSVC
@@ -34,7 +34,7 @@ jobs:
         shell: cmd
   windows-ninja-msvc:
     name: Windows Ninja/MSVC
-    runs-on: windows-latest
+    runs-on: windows-2022
     env:
       CMAKE_EXE: tools\.packman\cmake\bin\cmake.exe
       CMAKE_BUILD_PRESET: windows-ninja-msvc
@@ -45,7 +45,7 @@ jobs:
           - config: Debug
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v7
         with:
           submodules: recursive
       - name: Setup MSVC
@@ -74,7 +74,7 @@ jobs:
           - config: Debug
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v7
         with:
           submodules: recursive
       - name: Setup system dependencies

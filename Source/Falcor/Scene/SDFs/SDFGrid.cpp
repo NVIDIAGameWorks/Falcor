@@ -480,14 +480,14 @@ namespace Falcor
                     compressed = pybind11::cast<bool>(value);
                 }
             }
-            return static_ref_cast<SDFGrid>(SDFSBS::create(accessActivePythonSceneBuilder().getDevice(), brickWidth, compressed, defaultGridWidth));
+            return static_ref_cast<SDFGrid>(SDFSBS::create(accessActivePythonSceneBuilderDevice(), brickWidth, compressed, defaultGridWidth));
         };
 
         pybind11::class_<SDFGrid, ref<SDFGrid>> sdfGrid(m, "SDFGrid");
-        sdfGrid.def_static("createNDGrid", [](float narrowBandThickness) { return static_ref_cast<SDFGrid>(NDSDFGrid::create(accessActivePythonSceneBuilder().getDevice(), narrowBandThickness)); }, "narrowBandThickness"_a); // PYTHONDEPRECATED
-        sdfGrid.def_static("createSVS", [](){ return static_ref_cast<SDFGrid>(SDFSVS::create(accessActivePythonSceneBuilder().getDevice())); }); // PYTHONDEPRECATED
+        sdfGrid.def_static("createNDGrid", [](float narrowBandThickness) { return static_ref_cast<SDFGrid>(NDSDFGrid::create(accessActivePythonSceneBuilderDevice(), narrowBandThickness)); }, "narrowBandThickness"_a); // PYTHONDEPRECATED
+        sdfGrid.def_static("createSVS", [](){ return static_ref_cast<SDFGrid>(SDFSVS::create(accessActivePythonSceneBuilderDevice())); }); // PYTHONDEPRECATED
         sdfGrid.def_static("createSBS", createSBS); // PYTHONDEPRECATED
-        sdfGrid.def_static("createSVO", [](){ return static_ref_cast<SDFGrid>(SDFSVO::create(accessActivePythonSceneBuilder().getDevice())); }); // PYTHONDEPRECATED
+        sdfGrid.def_static("createSVO", [](){ return static_ref_cast<SDFGrid>(SDFSVO::create(accessActivePythonSceneBuilderDevice())); }); // PYTHONDEPRECATED
         sdfGrid.def("loadValuesFromFile",
             [](SDFGrid& self, const std::filesystem::path& path) { return self.loadValuesFromFile(getActiveAssetResolver().resolvePath(path)); },
             "path"_a

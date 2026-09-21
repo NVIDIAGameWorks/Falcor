@@ -83,9 +83,6 @@ public:
         if (attribute.is_null())
             return {};
 
-        if (!detail::TypeChecker<T>::validType(attribute))
-            throw detail::TypeError("Attribute's type does not match the requested type.");
-
         if constexpr (std::is_arithmetic_v<T>)
         {
             if (attribute.is_boolean())

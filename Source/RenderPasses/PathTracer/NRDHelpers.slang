@@ -35,7 +35,136 @@ import Scene.ShadingData;
 import Utils.Math.MathHelpers;
 import PathState;
 
-void setNRDPrimaryHitEmission(NRDBuffers outputNRD, const bool useNRDDemodulation, const PathState path, const uint2 pixel, const bool isPrimaryHit, const float3 emission)
+/** Generate an orthonormal basis that tries to align tangent with the view vector.
+    \param[in] v Unit view vector.
+    \param[in] n Unit normal vector.
+    \param[out] t Unit tangent vector.
+    \param[out] b Unit bitangent vector.
+*/
+void buildOrthonormalBasis(float3 v, float3 n, out float3 t, out float3 b)
+{
+    static const float kEpsilon = 1.e-6f;
+
+    t = abs(1.f + dot(n, v)) < kEpsilon ? float3(n.z, -n.x, n.y) : v;
+    t -= n * dot(n, t);
+    t = normalize(t);
+    b = cross(n, t);
+}
+
+/** Wrap the xform so it operates in local coordinate system aligned with the view vector and normal.
+    \param[in] p World position of a point on a plane.
+    \param[in] v Unit view vector.
+    \param[in] n Unit normal vector.
+    \param[in] L Local-space xform.
+    \return T Wrapped world-space xform.
+*/
+float4x4 wrapInLocalXform(float3 p, float3 v, float3 n, float4x4 L)
+{
+    float3 t1, t2;
+    buildOrthonormalBasis(v, n, t1, t2);
+
+    float3x3 R = float3x3(
+        t1.x, t2.x, n.x,
+        t1.y, t2.y, n.y,
+        t1.z, t2.z, n.z
+    );
+
+    // LocalToWorld xform.
+    float4x4 P = float4x4(
+        float4(R[0], p.x),
+        float4(R[1], p.y),
+        float4(R[2], p.z),
+        float4(0.f, 0.f, 0.f, 1.f)
+    );
+
+    float3x3 invR = transpose(R);
+    float3 t = -mul(invR, p);
+    // WorldToLocal xform.
+    float4x4 invP = float4x4(
+        float4(invR[0], t.x),
+        float4(invR[1], t.y),
+        float4(invR[2], t.z),
+        float4(0.f, 0.f, 0.f, 1.f)
+    );
+
+    float4x4 T = mul(L, invP);
+    T = mul(P, T);
+    return T;
+}
+
+/** Generate a reflection xform assuming a flat (zero curvature) reflector.
+    \param[in] p World position of a point on the reflecting plane.
+    \param[in] v Unit view vector.
+    \param[in] n Unit normal vector.
+    \param[in] originOffset Offset applied to the ray origin after reflection.
+    \return Reflection xform in world space.
+*/
+float4x4 getReflectionXform(float3 p, float3 v, float3 n, float3 originOffset)
+{
+    // Planar reflection xform (mirror along local z).
+    float4x4 L = float4x4(
+        1.f, 0.f, 0.f, 0.f,
+        0.f, 1.f, 0.f, 0.f,
+        0.f, 0.f, -1.f, 0.f,
+        0.f, 0.f, 0.f, 1.f
+    );
+
+    float4x4 originOffsetMat = float4x4(
+        1.f, 0.f, 0.f, originOffset.x,
+        0.f, 1.f, 0.f, originOffset.y,
+        0.f, 0.f, 1.f, originOffset.z,
+        0.f, 0.f, 0.f, 1.f
+    );
+
+    return mul(originOffsetMat, wrapInLocalXform(p, v, n, L));
+}
+
+/** Generate a refraction xform assuming a flat (zero curvature) refractor.
+    \param[in] p World position of a point on the refracting plane.
+    \param[in] v Unit view vector.
+    \param[in] n Unit normal vector (assuming that dot(v, n) >= 0).
+    \param[in] ior Relative index of refraction (transmissive IoR / incident IoR).
+    \param[in] originOffset Offset applied to the ray origin after refraction.
+    \return Refraction xform in world space.
+*/
+float4x4 getRefractionXform(float3 p, float3 v, float3 n, float ior, float3 originOffset)
+{
+    const float cos_i = dot(v, n);
+    // sint = sini / ior
+    // 1 - cost^2 = (1 - cosi^2) / ior^2
+    // 1 - (1 - cosi^2) / ior^2 = cost^2
+    const float tmp = mad(mad(cos_i, -cos_i, 1.f), -1.f / (ior * ior), 1.f);
+    const float cos_t = sqrt(max(0.f, tmp));
+
+    const float l1 = cos_t == 0.f ? 1.f : cos_i;
+    const float l2 = cos_t == 0.f ? -1.f : (cos_t * ior);
+
+    // Planar refraction xform.
+    float4x4 L = float4x4(
+        1.f, 0.f, 0.f, 0.f,
+        0.f, 1.f, 0.f, 0.f,
+        0.f, 0.f, l1 / l2, 0.f,
+        0.f, 0.f, 0.f, 1.f
+    );
+
+    float4x4 originOffsetMat = float4x4(
+        1.f, 0.f, 0.f, originOffset.x,
+        0.f, 1.f, 0.f, originOffset.y,
+        0.f, 0.f, 1.f, originOffset.z,
+        0.f, 0.f, 0.f, 1.f
+    );
+
+    return mul(originOffsetMat, wrapInLocalXform(p, v, n, L));
+}
+
+void setNRDPrimaryHitEmission(
+    NRDBuffers outputNRD,
+    const bool useNRDDemodulation,
+    const PathState path,
+    const uint2 pixel,
+    const bool isPrimaryHit,
+    const float3 emission
+)
 {
     if (isPrimaryHit && path.getSampleIdx() == 0)
     {
@@ -52,7 +181,15 @@ void setNRDPrimaryHitEmission(NRDBuffers outputNRD, const bool useNRDDemodulatio
     }
 }
 
-void setNRDPrimaryHitReflectance(NRDBuffers outputNRD, const bool useNRDDemodulation, const PathState path, const uint2 pixel, const bool isPrimaryHit, const ShadingData sd, const BSDFProperties bsdfProperties)
+void setNRDPrimaryHitReflectance(
+    NRDBuffers outputNRD,
+    const bool useNRDDemodulation,
+    const PathState path,
+    const uint2 pixel,
+    const bool isPrimaryHit,
+    const ShadingData sd,
+    const BSDFProperties bsdfProperties
+)
 {
     if (isPrimaryHit && path.getSampleIdx() == 0)
     {
@@ -60,7 +197,8 @@ void setNRDPrimaryHitReflectance(NRDBuffers outputNRD, const bool useNRDDemodula
         if (useNRDDemodulation)
         {
             // Use sum of reflection/transmission albedo as they are denoised together.
-            const float3 diffuseReflectance = max(kNRDMinReflectance, bsdfProperties.diffuseReflectionAlbedo + bsdfProperties.diffuseTransmissionAlbedo);
+            const float3 diffuseReflectance =
+                max(kNRDMinReflectance, bsdfProperties.diffuseReflectionAlbedo + bsdfProperties.diffuseTransmissionAlbedo);
             outputNRD.primaryHitDiffuseReflectance[pixel] = float4(diffuseReflectance, 1.f);
 
             // We use an approximate shading model with a single specular lobe.
@@ -87,7 +225,13 @@ void setNRDSampleHitDist(NRDBuffers outputNRD, const PathState path, const uint 
     }
 }
 
-void setNRDPrimaryHitSeparatedRadiance(NRDBuffers outputNRD, const bool useNRDDemodulation, const PathState path, const bool isPrimaryHit, const uint outSampleIdx)
+void setNRDPrimaryHitSeparatedRadiance(
+    NRDBuffers outputNRD,
+    const bool useNRDDemodulation,
+    const PathState path,
+    const bool isPrimaryHit,
+    const uint outSampleIdx
+)
 {
     if (isPrimaryHit)
     {
@@ -102,7 +246,15 @@ void setNRDPrimaryHitSeparatedRadiance(NRDBuffers outputNRD, const bool useNRDDe
     }
 }
 
-void setNRDSampleEmission(NRDBuffers outputNRD, const bool useNRDDemodulation, const PathState path, const uint outSampleIdx, const bool isPrimaryHit, const float3 emission, const bool wasDeltaOnlyPathBeforeScattering)
+void setNRDSampleEmission(
+    NRDBuffers outputNRD,
+    const bool useNRDDemodulation,
+    const PathState path,
+    const uint outSampleIdx,
+    const bool isPrimaryHit,
+    const float3 emission,
+    const bool wasDeltaOnlyPathBeforeScattering
+)
 {
     if (useNRDDemodulation)
     {
@@ -129,7 +281,17 @@ void setNRDSampleEmission(NRDBuffers outputNRD, const bool useNRDDemodulation, c
     }
 }
 
-void setNRDSampleReflectance(NRDBuffers outputNRD, const bool useNRDDemodulation, const PathState path, const uint outSampleIdx, const bool isPrimaryHit, const ShadingData sd, const BSDFProperties bsdfProperties, const uint lobeTypes, const bool wasDeltaOnlyPathBeforeScattering)
+void setNRDSampleReflectance(
+    NRDBuffers outputNRD,
+    const bool useNRDDemodulation,
+    const PathState path,
+    const uint outSampleIdx,
+    const bool isPrimaryHit,
+    const ShadingData sd,
+    const BSDFProperties bsdfProperties,
+    const uint lobeTypes,
+    const bool wasDeltaOnlyPathBeforeScattering
+)
 {
     // Demodulate reflectance.
     if (useNRDDemodulation)
@@ -143,7 +305,8 @@ void setNRDSampleReflectance(NRDBuffers outputNRD, const bool useNRDDemodulation
             if (path.isDiffusePrimaryHit())
             {
                 // Use sum of reflection/transmission albedo as they are denoised together.
-                const float3 diffuseReflectance = max(kNRDMinReflectance, bsdfProperties.diffuseReflectionAlbedo + bsdfProperties.diffuseTransmissionAlbedo);
+                const float3 diffuseReflectance =
+                    max(kNRDMinReflectance, bsdfProperties.diffuseReflectionAlbedo + bsdfProperties.diffuseTransmissionAlbedo);
                 outputNRD.sampleReflectance[outSampleIdx] = float4(diffuseReflectance, 1.f);
             }
             else if (path.isSpecularPrimaryHit())
@@ -188,7 +351,17 @@ void setNRDSampleReflectance(NRDBuffers outputNRD, const bool useNRDDemodulation
 /** Write out delta reflection guide buffers.
     Executed only for guide paths.
 */
-void writeNRDDeltaReflectionGuideBuffers(NRDBuffers outputNRD, const bool useNRDDemodulation, const uint2 pixelPos, float3 reflectance, float3 emission, float3 normal, float roughness, float pathLength, float hitDist)
+void writeNRDDeltaReflectionGuideBuffers(
+    NRDBuffers outputNRD,
+    const bool useNRDDemodulation,
+    const uint2 pixelPos,
+    float3 reflectance,
+    float3 emission,
+    float3 normal,
+    float roughness,
+    float pathLength,
+    float hitDist
+)
 {
     emission = useNRDDemodulation ? emission : 0.f;
     reflectance = useNRDDemodulation ? max(kNRDMinReflectance, reflectance) : 1.f;
@@ -208,7 +381,17 @@ void writeNRDDeltaReflectionGuideBuffers(NRDBuffers outputNRD, const bool useNRD
 /** Write out delta transmission guide buffers.
     Executed only for guide paths.
 */
-void writeNRDDeltaTransmissionGuideBuffers(NRDBuffers outputNRD, const bool useNRDDemodulation, const uint2 pixelPos, float3 reflectance, float3 emission, float3 normal, float roughness, float pathLength, float3 posW)
+void writeNRDDeltaTransmissionGuideBuffers(
+    NRDBuffers outputNRD,
+    const bool useNRDDemodulation,
+    const uint2 pixelPos,
+    float3 reflectance,
+    float3 emission,
+    float3 normal,
+    float roughness,
+    float pathLength,
+    float3 posW
+)
 {
     emission = useNRDDemodulation ? emission : 0.f;
     reflectance = useNRDDemodulation ? max(kNRDMinReflectance, reflectance) : 1.f;
@@ -224,3 +407,36 @@ void writeNRDDeltaTransmissionGuideBuffers(NRDBuffers outputNRD, const bool useN
     outputNRD.deltaTransmissionPathLength[pixelPos] = pathLength;
     outputNRD.deltaTransmissionPosW[pixelPos] = float4(posW, 0.f);
 }
+
+float2 calcImageMotionVector(const PathState path, const uint2 frameDim, const HitInfo primaryHit)
+{
+    // Transform the last vertex's previous-frame world position into the virtual-image space of the
+    // primary hit using the accumulated reflection/refraction transforms along the delta path.
+    float3 prevPosW = gScene.getPrevPosW(path.hit);
+    float4 prevImagePosW = mul(path.imageXform, float4(prevPosW, 1.f));
+    prevImagePosW /= prevImagePosW.w;
+
+    // Do the same for the current position.
+    float3 currPosW = path.origin;
+    float4 currImagePosW = mul(path.imageXform, float4(currPosW, 1.f));
+    currImagePosW /= currImagePosW.w;
+
+    float4 currPosH = mul(gScene.camera.data.viewProjMatNoJitter, float4(currImagePosW.xyz, 1.f));
+    float2 currCrd = currPosH.xy / currPosH.w;
+#ifdef FALCOR_FLIP_Y
+    currCrd *= float2(0.5, 0.5);
+#else
+    currCrd *= float2(0.5, -0.5);
+#endif
+    currCrd += 0.5f;
+
+    float2 pixelPos = currCrd * frameDim;
+
+    // Compute motion vector in screen space.
+    float4 prevPosH = mul(gScene.camera.data.prevViewProjMatNoJitter, float4(prevImagePosW.xyz, 1.f));
+    // The motion vector already contains no jitter with the current computation.
+    float2 imageMotionVector = calcMotionVector(pixelPos, prevPosH, frameDim);
+
+    return imageMotionVector;
+}
+

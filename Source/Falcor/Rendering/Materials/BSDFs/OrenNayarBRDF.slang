@@ -36,8 +36,10 @@ __exported import Rendering.Materials.IBSDF;
  */
 struct OrenNayarBRDF : IBSDF
 {
-    float3 albedo;   ///< Diffuse albedo.
-    float roughness; ///< Rougness
+    float3 albedo = {};   ///< Diffuse albedo.
+    float roughness = {}; ///< Rougness
+
+    __init() {}
 
     __init(float3 albedo, float roughness)
     {
@@ -121,7 +123,7 @@ struct OrenNayarBRDF : IBSDF
 
     RoughnessInformation getRoughnessInformation(const float3 wi)
     {
-        RoughnessInformation r;
+        RoughnessInformation r = {};
         r.roughnessBSDFNotation = float2(0.5f, 0.5f);
         return r;
     }

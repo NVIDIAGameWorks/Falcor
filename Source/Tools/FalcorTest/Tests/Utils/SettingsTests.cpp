@@ -155,9 +155,9 @@ CPU_TEST(Settings_OptionsTypes)
     EXPECT_EQ(result[0], validTuple[0]);
     EXPECT_EQ(result[1], validTuple[1]);
 
-    EXPECT_THROW_AS(options.get("string", int(3)), Falcor::Settings::TypeError);
-    EXPECT_THROW_AS(options.get("int", std::string("test")), Falcor::Settings::TypeError);
-    EXPECT_THROW_AS(options.get("int[2]", float(0.f)), Falcor::Settings::TypeError);
+    EXPECT_THROW_AS(options.get("string", int(3)), nlohmann::json::type_error);
+    EXPECT_THROW_AS(options.get("int", std::string("test")), nlohmann::json::type_error);
+    EXPECT_THROW_AS(options.get("int[2]", float(0.f)), nlohmann::json::type_error);
 }
 
 CPU_TEST(Settings_OptionsOverride)
@@ -339,7 +339,7 @@ CPU_TEST(Settings_UpdatePathsColon)
         pyDict["standardsearchpath:media"] = C_DRIVE "/media";
         settings.addOptions(pyDict);
         ASSERT_EQ(settings.getSearchDirectories("media").size(), 1);
-        EXPECT_EQ(settings.getSearchDirectories("media")[0], std::filesystem::weakly_canonical(C_DRIVE "/media"));
+        EXPECT_EQ(settings.getSearchDirectories("media")[0], std::filesystem::path(C_DRIVE "/media").lexically_normal());
     }
 
     {
@@ -347,7 +347,7 @@ CPU_TEST(Settings_UpdatePathsColon)
         pyDict["standardsearchpath:media"] = C_DRIVE "/media/different";
         settings.addOptions(pyDict);
         ASSERT_EQ(settings.getSearchDirectories("media").size(), 1);
-        EXPECT_EQ(settings.getSearchDirectories("media")[0], std::filesystem::weakly_canonical(C_DRIVE "/media/different"));
+        EXPECT_EQ(settings.getSearchDirectories("media")[0], std::filesystem::path(C_DRIVE "/media/different").lexically_normal());
     }
 
     {
@@ -355,8 +355,8 @@ CPU_TEST(Settings_UpdatePathsColon)
         pyDict["standardsearchpath:media"] = "&;" C_DRIVE "/media/two";
         settings.addOptions(pyDict);
         ASSERT_EQ(settings.getSearchDirectories("media").size(), 2);
-        EXPECT_EQ(settings.getSearchDirectories("media")[0], std::filesystem::weakly_canonical(C_DRIVE "/media/different"));
-        EXPECT_EQ(settings.getSearchDirectories("media")[1], std::filesystem::weakly_canonical(C_DRIVE "/media/two"));
+        EXPECT_EQ(settings.getSearchDirectories("media")[0], std::filesystem::path(C_DRIVE "/media/different").lexically_normal());
+        EXPECT_EQ(settings.getSearchDirectories("media")[1], std::filesystem::path(C_DRIVE "/media/two").lexically_normal());
     }
 
     {
@@ -364,7 +364,7 @@ CPU_TEST(Settings_UpdatePathsColon)
         pyDict["searchpath:media"] = "&;" C_DRIVE "/media/three";
         settings.addOptions(pyDict);
         ASSERT_EQ(settings.getSearchDirectories("media").size(), 1);
-        EXPECT_EQ(settings.getSearchDirectories("media")[0], std::filesystem::weakly_canonical(C_DRIVE "/media/three"));
+        EXPECT_EQ(settings.getSearchDirectories("media")[0], std::filesystem::path(C_DRIVE "/media/three").lexically_normal());
     }
 
     {
@@ -372,10 +372,10 @@ CPU_TEST(Settings_UpdatePathsColon)
         pyDict["searchpath:media"] = "&;@;" C_DRIVE "/media/four";
         settings.addOptions(pyDict);
         ASSERT_EQ(settings.getSearchDirectories("media").size(), 4);
-        EXPECT_EQ(settings.getSearchDirectories("media")[0], std::filesystem::weakly_canonical(C_DRIVE "/media/three"));
-        EXPECT_EQ(settings.getSearchDirectories("media")[1], std::filesystem::weakly_canonical(C_DRIVE "/media/different"));
-        EXPECT_EQ(settings.getSearchDirectories("media")[2], std::filesystem::weakly_canonical(C_DRIVE "/media/two"));
-        EXPECT_EQ(settings.getSearchDirectories("media")[3], std::filesystem::weakly_canonical(C_DRIVE "/media/four"));
+        EXPECT_EQ(settings.getSearchDirectories("media")[0], std::filesystem::path(C_DRIVE "/media/three").lexically_normal());
+        EXPECT_EQ(settings.getSearchDirectories("media")[1], std::filesystem::path(C_DRIVE "/media/different").lexically_normal());
+        EXPECT_EQ(settings.getSearchDirectories("media")[2], std::filesystem::path(C_DRIVE "/media/two").lexically_normal());
+        EXPECT_EQ(settings.getSearchDirectories("media")[3], std::filesystem::path(C_DRIVE "/media/four").lexically_normal());
     }
 }
 
@@ -388,7 +388,7 @@ CPU_TEST(Settings_UpdatePathsSeparate)
         pyDict["standardsearchpath"]["media"] = C_DRIVE "/media";
         settings.addOptions(pyDict);
         ASSERT_EQ(settings.getSearchDirectories("media").size(), 1);
-        EXPECT_EQ(settings.getSearchDirectories("media")[0], std::filesystem::weakly_canonical(C_DRIVE "/media"));
+        EXPECT_EQ(settings.getSearchDirectories("media")[0], std::filesystem::path(C_DRIVE "/media").lexically_normal());
     }
 
     {
@@ -397,7 +397,7 @@ CPU_TEST(Settings_UpdatePathsSeparate)
         pyDict["standardsearchpath"]["media"] = C_DRIVE "/media/different";
         settings.addOptions(pyDict);
         ASSERT_EQ(settings.getSearchDirectories("media").size(), 1);
-        EXPECT_EQ(settings.getSearchDirectories("media")[0], std::filesystem::weakly_canonical(C_DRIVE "/media/different"));
+        EXPECT_EQ(settings.getSearchDirectories("media")[0], std::filesystem::path(C_DRIVE "/media/different").lexically_normal());
     }
 
     {
@@ -406,8 +406,8 @@ CPU_TEST(Settings_UpdatePathsSeparate)
         pyDict["standardsearchpath"]["media"] = "&;" C_DRIVE "/media/two";
         settings.addOptions(pyDict);
         ASSERT_EQ(settings.getSearchDirectories("media").size(), 2);
-        EXPECT_EQ(settings.getSearchDirectories("media")[0], std::filesystem::weakly_canonical(C_DRIVE "/media/different"));
-        EXPECT_EQ(settings.getSearchDirectories("media")[1], std::filesystem::weakly_canonical(C_DRIVE "/media/two"));
+        EXPECT_EQ(settings.getSearchDirectories("media")[0], std::filesystem::path(C_DRIVE "/media/different").lexically_normal());
+        EXPECT_EQ(settings.getSearchDirectories("media")[1], std::filesystem::path(C_DRIVE "/media/two").lexically_normal());
     }
 
     {
@@ -416,7 +416,7 @@ CPU_TEST(Settings_UpdatePathsSeparate)
         pyDict["searchpath"]["media"] = "&;" C_DRIVE "/media/three";
         settings.addOptions(pyDict);
         ASSERT_EQ(settings.getSearchDirectories("media").size(), 1);
-        EXPECT_EQ(settings.getSearchDirectories("media")[0], std::filesystem::weakly_canonical(C_DRIVE "/media/three"));
+        EXPECT_EQ(settings.getSearchDirectories("media")[0], std::filesystem::path(C_DRIVE "/media/three").lexically_normal());
     }
 
     {
@@ -425,10 +425,10 @@ CPU_TEST(Settings_UpdatePathsSeparate)
         pyDict["searchpath"]["media"] = "&;@;" C_DRIVE "/media/four";
         settings.addOptions(pyDict);
         ASSERT_EQ(settings.getSearchDirectories("media").size(), 4);
-        EXPECT_EQ(settings.getSearchDirectories("media")[0], std::filesystem::weakly_canonical(C_DRIVE "/media/three"));
-        EXPECT_EQ(settings.getSearchDirectories("media")[1], std::filesystem::weakly_canonical(C_DRIVE "/media/different"));
-        EXPECT_EQ(settings.getSearchDirectories("media")[2], std::filesystem::weakly_canonical(C_DRIVE "/media/two"));
-        EXPECT_EQ(settings.getSearchDirectories("media")[3], std::filesystem::weakly_canonical(C_DRIVE "/media/four"));
+        EXPECT_EQ(settings.getSearchDirectories("media")[0], std::filesystem::path(C_DRIVE "/media/three").lexically_normal());
+        EXPECT_EQ(settings.getSearchDirectories("media")[1], std::filesystem::path(C_DRIVE "/media/different").lexically_normal());
+        EXPECT_EQ(settings.getSearchDirectories("media")[2], std::filesystem::path(C_DRIVE "/media/two").lexically_normal());
+        EXPECT_EQ(settings.getSearchDirectories("media")[3], std::filesystem::path(C_DRIVE "/media/four").lexically_normal());
     }
 }
 } // namespace Falcor

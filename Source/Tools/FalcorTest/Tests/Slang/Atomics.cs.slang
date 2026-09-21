@@ -39,12 +39,12 @@ void testBufferAddF16(uint3 threadID: SV_DispatchThreadID)
     uint y = x ^ 0x80008000; // Flip signs
 
     // This should work on both D3D12 and Vulkan.
-    // NOTE: The SPIR-V backend is required for RWByteAddressBuffer.InterlockedAddF16() on Vulkan!
+    // NOTE: This has to be InterlockedAddF16Emulated due to changes in the Slang API.
     float16_t origVal;
-    resultBuf.InterlockedAddF16(0, asfloat16((uint16_t)x), origVal);
-    resultBuf.InterlockedAddF16(2, asfloat16((uint16_t)(x >> 16)), origVal);
-    resultBuf.InterlockedAddF16(4, asfloat16((uint16_t)y), origVal);
-    resultBuf.InterlockedAddF16(6, asfloat16((uint16_t)(y >> 16)), origVal);
+    resultBuf.InterlockedAddF16Emulated(0, asfloat16((uint16_t)x), origVal);
+    resultBuf.InterlockedAddF16Emulated(2, asfloat16((uint16_t)(x >> 16)), origVal);
+    resultBuf.InterlockedAddF16Emulated(4, asfloat16((uint16_t)y), origVal);
+    resultBuf.InterlockedAddF16Emulated(6, asfloat16((uint16_t)(y >> 16)), origVal);
 }
 
 [numthreads(256, 1, 1)]
@@ -54,7 +54,6 @@ void testBufferAddF16_2(uint3 threadID: SV_DispatchThreadID)
     uint y = x ^ 0x80008000; // Flip signs
 
     // This should work on both D3D12 and Vulkan.
-    // NOTE: The SPIR-V backend is required for RWByteAddressBuffer._NvInterlockedAddFp16x2() on Vulkan!
     resultBuf._NvInterlockedAddFp16x2(0, x);
     resultBuf._NvInterlockedAddFp16x2(4, y);
 }
@@ -75,7 +74,6 @@ void testTextureAddF32(uint3 threadID: SV_DispatchThreadID)
     float x = data[threadID.x];
 
     // This should work on both D3D12 and Vulkan.
-    // NOTE: The SPIR-V backend is required for RWTexture2D.InterlockedAddF32() on Vulkan!
     resultTex.InterlockedAddF32(uint2(0, 0), x);
     resultTex.InterlockedAddF32(uint2(1, 0), -x);
 }

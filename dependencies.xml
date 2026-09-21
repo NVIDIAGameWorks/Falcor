@@ -22,7 +22,7 @@
     </dependency>
     <remote name="github-slang" type="https" packageLocation="github.com/shader-slang/slang/releases/download/v${version}/slang-${version}-${platform}.zip"/>
     <dependency name="slang" linkPath="external/packman/slang">
-        <package name="slang" version="2024.1.34" remotes="github-slang" platforms="windows-x86_64 linux-x86_64"/>
+        <package name="slang" version="2025.13.2" remotes="github-slang" platforms="windows-x86_64 linux-x86_64"/>
     </dependency>
     <dependency name="pix" linkPath="external/packman/pix">
         <package name="WinPixEventRuntime" version="1.0.190604001" platforms="windows-x86_64" />
@@ -32,12 +32,6 @@
     </dependency>
     <dependency name="nanovdb" linkPath="external/packman/nanovdb">
         <package name="nanovdb" version="32.3.3-37-${platform}-release" platforms="windows-x86_64 linux-x86_64" />
-    </dependency>
-    <dependency name="dxcompiler" linkPath="external/packman/dxcompiler">
-        <package name="dxcompiler" version="1.7.2207" platforms="windows-x86_64" />
-    </dependency>
-    <dependency name="agility-sdk" linkPath="external/packman/agility-sdk">
-        <package name="agility-sdk" version="1.4.10" platforms="windows-x86_64"/>
     </dependency>
     <dependency name="nvtt" linkPath="external/packman/nvtt">
         <package name="nvtt" version="3.1.6-${platform}" platforms="windows-x86_64 linux-x86_64" />
@@ -55,8 +49,5 @@
     </dependency>
     <dependency name="nrd" linkPath="external/packman/nrd">
         <package name="nrd" version="3.1.0-falcor-windows-x86_64" platforms="windows-x86_64" />
-    </dependency>
-    <dependency name="dlss" linkPath="external/packman/dlss">
-        <package name="dlss" version="3.5.0" platforms="windows-x86_64 linux-x86_64" />
     </dependency>
 </project>

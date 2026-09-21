@@ -46,7 +46,7 @@ namespace Falcor
         // Check if light collection has changed.
         if (mLightCollectionUpdateFlags != ILightCollection::UpdateFlags::None)
         {
-            mNeedsRebuild = true;
+            //mNeedsRebuild = true; // because current lightCollection doesn't support light intensity/color change, we don't need to rebuild
             mLightCollectionUpdateFlags = ILightCollection::UpdateFlags::None;
         }
 

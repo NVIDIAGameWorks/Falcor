@@ -58,9 +58,9 @@ struct ClothMaterial : MaterialBase, IMaterial
         float F0 = f * f;
 
         brdf.diffuseColor = baseColor;
-        brdf.subsurfaceColor = float3(0.5f);    // TODO: Add material parameter for this.
-        brdf.roughness = spec.g;                // TODO: Linear or squared roughness?
-        brdf.f0 = float3(F0);                   // TODO: What's appropriate here?
+        brdf.subsurfaceColor = float3(0.5f); // TODO: Add material parameter for this.
+        brdf.roughness = spec.g;             // TODO: Linear or squared roughness?
+        brdf.f0 = float3(F0);                // TODO: What's appropriate here?
 
 #if defined(SCENE_DIFFUSE_ALBEDO_MULTIPLIER)
         // DEMO21
@@ -87,7 +87,13 @@ struct ClothMaterial : MaterialBase, IMaterial
     }
 
     [Differentiable]
-    ClothMaterialInstance setupDiffMaterialInstance(out DiffMaterialData diffData, const MaterialSystem ms, const ShadingData sd, const ITextureSampler lod, const uint hints)
+    ClothMaterialInstance setupDiffMaterialInstance(
+        out DiffMaterialData diffData,
+        const MaterialSystem ms,
+        const ShadingData sd,
+        const ITextureSampler lod,
+        const uint hints
+    )
     {
         diffData = DiffMaterialData();
         return no_diff setupMaterialInstance(ms, sd, lod, hints);

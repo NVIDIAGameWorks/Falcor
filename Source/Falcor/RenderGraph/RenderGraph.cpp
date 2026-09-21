@@ -113,7 +113,7 @@ void RenderGraph::setScene(const ref<Scene>& pScene)
     if (mpScene == pScene)
         return;
 
-    // @skallweit: check that scene resides on the same GPU device
+        // @skallweit: check that scene resides on the same GPU device
 
     mpScene = pScene;
     for (auto& it : mNodeData)
@@ -445,6 +445,7 @@ void RenderGraph::execute(RenderContext* pRenderContext)
     std::string log;
     if (!compile(pRenderContext, log))
         FALCOR_THROW("Failed to compile render graph:\n{}", log);
+
 
     FALCOR_ASSERT(mpExe);
     RenderGraphExe::Context c{

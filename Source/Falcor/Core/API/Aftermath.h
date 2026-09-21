@@ -40,6 +40,7 @@
 
 #include "Core/Macros.h"
 
+#include <cstdint>
 #include <string_view>
 
 namespace Falcor

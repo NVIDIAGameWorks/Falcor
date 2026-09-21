@@ -48,24 +48,25 @@ BEGIN_NAMESPACE_FALCOR
 struct BasicMaterialData
 {
     // MaterialHeader (16B) is stored just before this struct in memory.
-    uint        flags                   = 0;                ///< Material flags and packed sampler IDs. See accessors below.
-    float       emissiveFactor          = 1.f;              ///< Multiplication factor for the emissive color to control light intensity. Range [0,inf).
+    uint flags = 0;             ///< Material flags and packed sampler IDs. See accessors below.
+    float emissiveFactor = 1.f; ///< Multiplication factor for the emissive color to control light intensity. Range [0,inf).
 
-    float16_t4  baseColor               = float16_t4(1.h);  ///< Material base color (RGB) and opacity (A).
-    float16_t4  specular                = float16_t4(0.h);  ///< Material specular channel encoding occlusion (R), roughness (G), metallic (B) in the default MetalRough mode. In SpecGloss mode specular color (RGB) and glossiness (A).
+    float16_t4 baseColor = float16_t4(1.h); ///< Material base color (RGB) and opacity (A).
+    float16_t4 specular = float16_t4(0.h); ///< Material specular channel encoding occlusion (R), roughness (G), metallic (B) in the default
+                                           ///< MetalRough mode. In SpecGloss mode specular color (RGB) and glossiness (A).
 
-    float3      emissive                = float3(0.f);      ///< Emissive color (RGB).
-    float16_t   specularTransmission    = 0.h;              ///< Specular transmission. Range [0,1].
-    float16_t3  transmission            = float16_t3(1.h);  ///< Transmission color.
-    float16_t   diffuseTransmission     = 0.h;              ///< Diffuse transmission. Range [0,1].
+    float3 emissive = float3(0.f);             ///< Emissive color (RGB).
+    float16_t specularTransmission = 0.h;      ///< Specular transmission. Range [0,1].
+    float16_t3 transmission = float16_t3(1.h); ///< Transmission color.
+    float16_t diffuseTransmission = 0.h;       ///< Diffuse transmission. Range [0,1].
 
-    float16_t3  volumeScattering        = float16_t3(0.h);  ///< Volume scattering coefficient. Range [0,inf).
-    float16_t   _pad0                   = 0.h;
-    float16_t3  volumeAbsorption        = float16_t3(0.h);  ///< Volume absorption coefficient. Range [0,inf).
-    float16_t   volumeAnisotropy        = 0.h;              ///< Volume phase function anisotropy (g). Range [-1,1].
+    float16_t3 volumeScattering = float16_t3(0.h); ///< Volume scattering coefficient. Range [0,inf).
+    float16_t _pad0 = 0.h;
+    float16_t3 volumeAbsorption = float16_t3(0.h); ///< Volume absorption coefficient. Range [0,inf).
+    float16_t volumeAnisotropy = 0.h;              ///< Volume phase function anisotropy (g). Range [-1,1].
 
-    float       displacementScale       = 0.f;              ///< Displacement scale value.
-    float       displacementOffset      = 0.f;              ///< Displacement offset value.
+    float displacementScale = 0.f;  ///< Displacement scale value.
+    float displacementOffset = 0.f; ///< Displacement offset value.
 
     // Texture handles (4B each).
     TextureHandle texBaseColor;
@@ -88,31 +89,46 @@ struct BasicMaterialData
     static constexpr uint kTotalFlagsBits = kMaxSamplerIDOffset + MaterialHeader::kSamplerIDBits;
 
     /** Set shading model. This is only used for the standard material.
-    */
+     */
     SETTER_DECL void setShadingModel(ShadingModel model) { flags = PACK_BITS(kShadingModelBits, kShadingModelOffset, flags, (uint)model); }
 
     /** Get shading model. This is only used for the standard material.
-    */
+     */
     ShadingModel getShadingModel() CONST_FUNCTION { return ShadingModel(EXTRACT_BITS(kShadingModelBits, kShadingModelOffset, flags)); }
 
     /** Set normal map type.
-    */
-    SETTER_DECL void setNormalMapType(NormalMapType type) { flags = PACK_BITS(kNormalMapTypeBits, kNormalMapTypeOffset, flags, (uint)type); }
+     */
+    SETTER_DECL void setNormalMapType(NormalMapType type)
+    {
+        flags = PACK_BITS(kNormalMapTypeBits, kNormalMapTypeOffset, flags, (uint)type);
+    }
 
     /** Get normal map type.
-    */
+     */
     NormalMapType getNormalMapType() CONST_FUNCTION { return NormalMapType(EXTRACT_BITS(kNormalMapTypeBits, kNormalMapTypeOffset, flags)); }
 
-    SETTER_DECL void setHasEntryPointVolumeProperties(bool poe) { flags = PACK_BITS(kEntryPointVolumePropertiesBits, kEntryPointVolumePropertiesOffset, flags, (uint)poe); }
-    bool getHasEntryPointVolumeProperties() CONST_FUNCTION { return bool(EXTRACT_BITS(kEntryPointVolumePropertiesBits, kEntryPointVolumePropertiesOffset, flags)); }
+    SETTER_DECL void setHasEntryPointVolumeProperties(bool poe)
+    {
+        flags = PACK_BITS(kEntryPointVolumePropertiesBits, kEntryPointVolumePropertiesOffset, flags, (uint)poe);
+    }
+    bool getHasEntryPointVolumeProperties() CONST_FUNCTION
+    {
+        return bool(EXTRACT_BITS(kEntryPointVolumePropertiesBits, kEntryPointVolumePropertiesOffset, flags));
+    }
 
     /** Set displacement map min/max sampler ID.
-    */
-    SETTER_DECL void setDisplacementMinSamplerID(uint samplerID) { flags = PACK_BITS(MaterialHeader::kSamplerIDBits, kMinSamplerIDOffset, flags, samplerID); }
-    SETTER_DECL void setDisplacementMaxSamplerID(uint samplerID) { flags = PACK_BITS(MaterialHeader::kSamplerIDBits, kMaxSamplerIDOffset, flags, samplerID); }
+     */
+    SETTER_DECL void setDisplacementMinSamplerID(uint samplerID)
+    {
+        flags = PACK_BITS(MaterialHeader::kSamplerIDBits, kMinSamplerIDOffset, flags, samplerID);
+    }
+    SETTER_DECL void setDisplacementMaxSamplerID(uint samplerID)
+    {
+        flags = PACK_BITS(MaterialHeader::kSamplerIDBits, kMaxSamplerIDOffset, flags, samplerID);
+    }
 
     /** Get displacement map min/max sampler ID.
-    */
+     */
     uint getDisplacementMinSamplerID() CONST_FUNCTION { return EXTRACT_BITS(MaterialHeader::kSamplerIDBits, kMinSamplerIDOffset, flags); }
     uint getDisplacementMaxSamplerID() CONST_FUNCTION { return EXTRACT_BITS(MaterialHeader::kSamplerIDBits, kMaxSamplerIDOffset, flags); }
 };

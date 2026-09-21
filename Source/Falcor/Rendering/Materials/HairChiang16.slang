@@ -35,19 +35,19 @@ __exported import Rendering.Materials.IBSDF;
 
 // Enable explicitly computing sampling weights using eval(wo, wi) / evalPdf(wo, wi).
 // This is for testing only, as many terms of the equation cancel out allowing to save on computation.
-#define USE_BCSDF_IMPORTANCE_SAMPLING   1
+#define USE_BCSDF_IMPORTANCE_SAMPLING 1
 
 /** BSDF parameters for the hair BSDF.
     These are needed for initializing a `HairChiang16` instance.
 */
 struct HairChiang16Data
 {
-    float3 baseColor;               ///< Base color.
+    float3 baseColor; ///< Base color.
     float betaM;
     float betaN;
     float alpha;
-    float IoR;                      ///< Index of refraction of the medium "behind" the surface.
-    float eta;                      ///< Relative index of refraction (incident IoR / transmissive IoR).
+    float IoR; ///< Index of refraction of the medium "behind" the surface.
+    float eta; ///< Relative index of refraction (incident IoR / transmissive IoR).
 }
 
 /** Hair BCSDF from "A Practical and Controllable Hair and Fur Model for Production Path Tracing", Chiang et al. 2016.
@@ -71,7 +71,8 @@ struct HairChiang16 : IBSDF
     float s;
     float sin2kAlpha[3], cos2kAlpha[3];
 
-    [mutating] void precompute()
+    [mutating]
+    void precompute()
     {
         gammaI = asin(clamp(h, -1.f, 1.f));
 
@@ -80,7 +81,8 @@ struct HairChiang16 : IBSDF
         v[1] = 0.25f * v[0];
         v[2] = 4 * v[0];
         [unroll]
-        for (uint p = 3; p <= kMaxScatterEvents; p++) v[p] = v[2];
+        for (uint p = 3; p <= kMaxScatterEvents; p++)
+            v[p] = v[2];
 
         // Compute azimuthal logistic scale factor
         s = kSqrtPiOver8 * (0.265f * betaN + 1.194f * betaN * betaN + 5.372f * pow(betaN, 22.f));
@@ -110,7 +112,7 @@ struct HairChiang16 : IBSDF
         eta = data.eta;
 
         // Compute offset h azimuthally with the unit circle cross section.
-        float3 wiProj = normalize(sd.V - dot(sd.V, sd.frame.T) * sd.frame.T);   // Project wi to the (B, N) plane.
+        float3 wiProj = normalize(sd.V - dot(sd.V, sd.frame.T) * sd.frame.T); // Project wi to the (B, N) plane.
         float3 wiProjPerp = cross(wiProj, sd.frame.T);
         h = dot(sd.frame.N, wiProjPerp);
 
@@ -182,7 +184,15 @@ struct HairChiang16 : IBSDF
         return result;
     }
 
-    bool sample<S : ISampleGenerator>(const float3 wi, out float3 wo, out float pdf, out float3 weight, out uint lobeType, inout S sg, BSDFContext bc)
+    bool sample<S : ISampleGenerator>(
+        const float3 wi,
+        out float3 wo,
+        out float pdf,
+        out float3 weight,
+        out uint lobeType,
+        inout S sg,
+        BSDFContext bc
+    )
     {
 #if !USE_BCSDF_IMPORTANCE_SAMPLING
         wo = sample_sphere(sampleNext2D(sg));
@@ -221,7 +231,8 @@ struct HairChiang16 : IBSDF
                 p = i + 1;
                 vp = v[i + 1];
             }
-            else done = true;
+            else
+                done = true;
         }
 
         float sinThetaIp, cosThetaIp;
@@ -387,14 +398,11 @@ struct HairChiang16 : IBSDF
         return AlbedoContributions(1.f, 0.f, 0.f, 0.f);
     }
 
-    float3 getIorAsReflectance()
-    {
-        return float3(1.f);
-    }
+    float3 getIorAsReflectance() { return float3(1.f); }
 
     RoughnessInformation getRoughnessInformation(const float3 wi)
     {
-        RoughnessInformation r;
+        RoughnessInformation r = {};
         r.roughnessBSDFNotation = float2(0.5f);
         return r;
     }
@@ -402,7 +410,7 @@ struct HairChiang16 : IBSDF
     // private
 
     /** Attenuation function Ap.
-    */
+     */
     void Ap(float cosThetaI, float3 T, out float3 ap[kMaxScatterEvents + 1])
     {
         float cosGammaI = sqrt(max(0.f, 1.f - h * h));
@@ -412,14 +420,15 @@ struct HairChiang16 : IBSDF
         ap[0] = float3(f);
         ap[1] = T * (1 - f) * (1 - f);
         [unroll]
-        for (uint p = 2; p < kMaxScatterEvents; p++) ap[p] = ap[p - 1] * T * f;
+        for (uint p = 2; p < kMaxScatterEvents; p++)
+            ap[p] = ap[p - 1] * T * f;
 
         // Compute attenuation term accounting for remaining orders of scattering.
         ap[kMaxScatterEvents] = ap[kMaxScatterEvents - 1] * T * f / (float3(1.f) - T * f);
     }
 
     /** Compute a discrete pdf for sampling Ap (which BCSDF lobe).
-    */
+     */
     void computeApPdf(float cosThetaI, out float apPdf[kMaxScatterEvents + 1])
     {
         float sinThetaI = sqrt(max(0.f, 1.f - cosThetaI * cosThetaI));
@@ -450,7 +459,8 @@ struct HairChiang16 : IBSDF
 
         float invSumY = 1.f / sumY;
         [unroll]
-        for (uint p = 0; p <= kMaxScatterEvents; p++) apPdf[p] *= invSumY;
+        for (uint p = 0; p <= kMaxScatterEvents; p++)
+            apPdf[p] *= invSumY;
     }
 };
 
@@ -459,7 +469,7 @@ struct HairChiang16 : IBSDF
 *******************************************************************/
 
 /** Longitudinal scattering function Mp.
-*/
+ */
 float Mp(float cosThetaI, float cosThetaO, float sinThetaI, float sinThetaO, float v)
 {
     float a = cosThetaI * cosThetaO / v;
@@ -478,7 +488,8 @@ float I0(float x)
     [unroll]
     for (uint i = 0; i < 10; i++)
     {
-        if (i > 1) ifact *= i;
+        if (i > 1)
+            ifact *= i;
         val += x2i / (ifact * ifact * i4);
         x2i *= x * x;
         i4 *= 4;
@@ -499,15 +510,17 @@ float logI0(float x)
 }
 
 /** Azimuthal scattering function Np.
-*/
+ */
 float Np(float phi, int p, float s, float gammaI, float gammaT)
 {
     float dphi = phi - phiFunction(p, gammaI, gammaT);
 
     // Remap dphi to [-pi, pi].
     dphi = fmod(dphi, M_2PI);
-    if (dphi > M_PI) dphi -= M_2PI;
-    if (dphi < -M_PI) dphi += M_2PI;
+    if (dphi > M_PI)
+        dphi -= M_2PI;
+    if (dphi < -M_PI)
+        dphi += M_2PI;
 
     return trimmedLogistic(dphi, s, -M_PI, M_PI);
 }
@@ -542,7 +555,7 @@ float sampleTrimmedLogistic(float u, float s, float a, float b)
 }
 
 /** Mapping from color to sigmaA.
-*/
+ */
 float3 sigmaAFromColor(float3 color, float betaN)
 {
     float tmp = 5.969f - 0.215f * betaN + 2.532f * betaN * betaN - 10.73f * pow(betaN, 3) + 5.574f * pow(betaN, 4) + 0.245f * pow(betaN, 5);

@@ -70,9 +70,9 @@ groupshared DataType gIntermediateCache[32 /* = 1024 / 32 */];
 groupshared DataType gIntermediateCache[64 /* = 1024 / 32 * 2 */];
 #endif
 
-DataType loadTexture(uint2 pixelCoords)
+DataType loadTexture(uint2 pixel)
 {
-    DataType value = gInput[pixelCoords];
+    DataType value = gInput[pixel];
 #if FORMAT_CHANNELS < 4
     // The default value for missing components is (0,0,0,1). Reset last component to zero for consistency.
     value.w = 0.f;
@@ -83,22 +83,22 @@ DataType loadTexture(uint2 pixelCoords)
 /**
  * Performs reduction within a thread group and writes single result to the results buffer at 'dstIdx'.
  */
-void reduceSum(DataType value, uint dstIdx, uint groupThreadIdx)
+void reduceSum(DataType value, const uint dstIdx, const uint warpId)
 {
-    // Add all elements within warp. Store result to shared memory.
+    // Add all elements within warp. First thread in warp stores result to shared memory.
     {
         value = WaveActiveSum(value);
         if (WaveIsFirstLane())
-            gIntermediateCache[groupThreadIdx / 32] = value;
+            gIntermediateCache[warpId] = value;
     }
     GroupMemoryBarrierWithGroupSync();
 
-    // Add all elements produced by the warps.
-    if (groupThreadIdx < 32)
+    // First warp adds all elements produced by the warps.
+    if (warpId == 0)
     {
-        value = gIntermediateCache[groupThreadIdx];
+        value = gIntermediateCache[WaveGetLaneIndex()];
         value = WaveActiveSum(value);
-        if (groupThreadIdx == 0)
+        if (WaveIsFirstLane())
             gResult[dstIdx] = value;
     }
 }
@@ -106,28 +106,28 @@ void reduceSum(DataType value, uint dstIdx, uint groupThreadIdx)
 /**
  * Take the min/max of all elements within a thread group and writes single result to the results buffer at 'dstIdx'.
  */
-void reduceMinMax(DataType minValue, DataType maxValue, uint dstIdx, uint groupThreadIdx)
+void reduceMinMax(DataType minValue, DataType maxValue, const uint dstIdx, const uint warpId)
 {
-    // Add all elements within warp. Store result to shared memory.
+    // Add all elements within warp. First thread in warp stores result to shared memory.
     {
         minValue = WaveActiveMin(minValue);
         maxValue = WaveActiveMax(maxValue);
         if (WaveIsFirstLane())
         {
-            gIntermediateCache[(groupThreadIdx / 32) * 2] = minValue;
-            gIntermediateCache[(groupThreadIdx / 32) * 2 + 1] = maxValue;
+            gIntermediateCache[warpId * 2] = minValue;
+            gIntermediateCache[warpId * 2 + 1] = maxValue;
         }
     }
     GroupMemoryBarrierWithGroupSync();
 
-    // Take the min/max of all elements produced by the warps.
-    if (groupThreadIdx < 32)
+    // First warp takes the min/max of all elements produced by the warps.
+    if (warpId == 0)
     {
-        minValue = gIntermediateCache[groupThreadIdx * 2];
-        maxValue = gIntermediateCache[groupThreadIdx * 2 + 1];
+        minValue = gIntermediateCache[WaveGetLaneIndex() * 2];
+        maxValue = gIntermediateCache[WaveGetLaneIndex() * 2 + 1];
         minValue = WaveActiveMin(minValue);
         maxValue = WaveActiveMax(maxValue);
-        if (groupThreadIdx == 0)
+        if (WaveIsFirstLane())
         {
             gResult[dstIdx * 2] = minValue;
             gResult[dstIdx * 2 + 1] = maxValue;
@@ -135,40 +135,51 @@ void reduceMinMax(DataType minValue, DataType maxValue, uint dstIdx, uint groupT
     }
 }
 
-[numthreads(32, 32, 1)]
+/**
+ * The first pass loads values from a 2D texture and does an initial reduction.
+ * The dispatch is arranged as 32x32 tiles over the texture.
+ * The threads in each thread group are mapped in scanline order to pixels in the tile.
+ */
+[numthreads(1024, 1, 1)]
 void initialPass(uint3 globalThreadId: SV_DispatchThreadID, uint groupThreadIdx: SV_GroupIndex, uint3 groupId: SV_GroupID)
 {
-    const uint2 pixelCoords = globalThreadId.xy;
     const uint tileIdx = groupId.y * gNumTiles.x + groupId.x;
+    const uint warpId = groupThreadIdx / 32; // Assuming warps are assigned consecutively to the threads in the group in a 1D dispatch.
+    const uint2 pixel = groupId.xy * uint2(32, 32) + uint2(groupThreadIdx.x % 32, warpId);
 
 #if REDUCTION_TYPE == REDUCTION_TYPE_SUM
     // Load input from texture in tiles of 32x32 pixels.
     DataType value = 0;
-    if (all(pixelCoords < gResolution))
-        value = loadTexture(pixelCoords);
+    if (all(pixel < gResolution))
+        value = loadTexture(pixel);
 
-    reduceSum(value, tileIdx, groupThreadIdx);
+    reduceSum(value, tileIdx, warpId);
 #elif REDUCTION_TYPE == REDUCTION_TYPE_MINMAX
     // Load input from texture in tiles of 32x32 pixels.
     DataType minValue = kMaxValue;
     DataType maxValue = kMinValue;
-    if (all(pixelCoords < gResolution))
-        minValue = maxValue = loadTexture(pixelCoords);
+    if (all(pixel < gResolution))
+        minValue = maxValue = loadTexture(pixel);
 
-    reduceMinMax(minValue, maxValue, tileIdx, groupThreadIdx);
+    reduceMinMax(minValue, maxValue, tileIdx, warpId);
 #endif
 }
 
+/**
+ * The second pass performs further reduction to compute a single value.
+ */
 [numthreads(1024, 1, 1)]
 void finalPass(uint3 globalThreadId: SV_DispatchThreadID, uint groupThreadIdx: SV_GroupIndex, uint3 groupId: SV_GroupID)
 {
+    const uint warpId = groupThreadIdx / 32; // Assuming warps are assigned consecutively to the threads in the group in a 1D dispatch.
+
 #if REDUCTION_TYPE == REDUCTION_TYPE_SUM
     // Load input from buffer written in previous pass.
     DataType value = 0;
     if (globalThreadId.x < gElems)
         value = gInputBuffer[globalThreadId.x];
 
-    reduceSum(value, groupId.x, groupThreadIdx);
+    reduceSum(value, groupId.x, warpId);
 #elif REDUCTION_TYPE == REDUCTION_TYPE_MINMAX
     // Load input from buffer written in previous pass.
     DataType minValue = kMaxValue;
@@ -179,6 +190,6 @@ void finalPass(uint3 globalThreadId: SV_DispatchThreadID, uint groupThreadIdx: S
         maxValue = gInputBuffer[globalThreadId.x * 2 + 1];
     }
 
-    reduceMinMax(minValue, maxValue, groupId.x, groupThreadIdx);
+    reduceMinMax(minValue, maxValue, groupId.x, warpId);
 #endif
 }

@@ -72,7 +72,7 @@ struct LightBVHSampler : IEmissiveLightSampler
         \param[out] ls Light sample. Only valid if true is returned.
         \return True if a sample was generated, false otherwise.
     */
-    bool sampleLight<S : ISampleGenerator>(const float3 posW, const float3 normalW, const bool upperHemisphere, inout S sg, out TriangleLightSample ls)
+    bool sampleLight<S : ISampleGenerator>(const float3 posW, const float3 normalW, const bool upperHemisphere, inout S sg, out TriangleLightSample ls, bool isPrevFrame=false)
     {
         ls = {};
 
@@ -82,11 +82,20 @@ struct LightBVHSampler : IEmissiveLightSampler
         uint triangleIndex;
         float trianglePdf;
         float uLight = sampleNext1D(sg);
-        if (!sampleLightViaBVH(posW, normalW, upperHemisphere, uLight, trianglePdf, triangleIndex)) return false;
+        if (!sampleLightViaBVH(posW, normalW, upperHemisphere, uLight, trianglePdf, triangleIndex))
+        {
+#if PAD_RANDOM_NUMBERS
+            sampleNext3D(sg);
+#endif
+            return false;
+        }
 
         // Sample a point on the triangle uniformly.
         float2 u = sampleNext2D(sg);
-        if (!sampleTriangle(posW, triangleIndex, u, ls)) return false;
+#if PAD_RANDOM_NUMBERS
+        sampleNext1D(sg);
+#endif
+        if (!sampleTriangle(posW, triangleIndex, u, ls, isPrevFrame)) return false;
 
         // The final probability density is the product of the sampling probabilities.
         ls.pdf *= trianglePdf;
@@ -109,7 +118,7 @@ struct LightBVHSampler : IEmissiveLightSampler
 
         // Evaluate PDF using the BVH.
         // Load the triangle bitmask as 2x32 bits instead of uint64_t due to driver bug.
-        // TODO: Change buffer to uint64_t format and remove this workaround when http://nvbugs/2817745 is fixed.
+        // TODO: Change buffer to uint64_t format once the driver issue is fixed.
         //uint64_t bitmask = _lightBVH.triangleBitmasks[hit.triangleIndex];
         uint2 tmp = _lightBVH.triangleBitmasks[triangleIndex];
         uint64_t bitmask = ((uint64_t)tmp.y << 32) | tmp.x;

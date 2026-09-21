@@ -37,6 +37,7 @@
 #include "Utils/Timing/TimeReport.h"
 #include "Utils/Settings/Settings.h"
 
+
 #include <args.hxx>
 
 #include <filesystem>
@@ -564,6 +565,7 @@ namespace Mogwai
         }
     }
 
+
     void Renderer::unloadScene()
     {
         setScene(nullptr);
@@ -571,10 +573,15 @@ namespace Mogwai
 
     void Renderer::setScene(const ref<Scene>& pScene)
     {
+        mUpdateFlagsConnection = {};
+        mUpdateFlags = IScene::UpdateFlags::None;
+
         mpScene = pScene;
 
         if (mpScene)
         {
+            mUpdateFlagsConnection = mpScene->getUpdateFlagsSignal().connect([&](IScene::UpdateFlags flags) { mUpdateFlags |= flags; });
+
             const auto& pFbo = getTargetFbo();
             float ratio = float(pFbo->getWidth()) / float(pFbo->getHeight());
             mpScene->setCameraAspectRatio(ratio);
@@ -597,6 +604,7 @@ namespace Mogwai
         }
         getGlobalClock().setTime(0);
     }
+
 
     ref<Scene> Renderer::getScene() const
     {
@@ -700,14 +708,17 @@ namespace Mogwai
             // Update scene and camera.
             if (mpScene)
             {
-                auto sceneUpdates = mpScene->update(pRenderContext, getGlobalClock().getTime());
+                mUpdateFlags = IScene::UpdateFlags::None;
+                mpScene->update(pRenderContext, getGlobalClock().getTime());
 
                 // Accumulate scene update flags for each graph.
                 // The update flags are passed to the active graph, or accumulated until a graph becomes active to avoid missing updates.
                 for (auto& g : mGraphs)
                 {
-                    g.sceneUpdates |= sceneUpdates;
+                    g.sceneUpdates |= mUpdateFlags;
                 }
+
+                mUpdateFlags = IScene::UpdateFlags::None;
             }
 
             executeActiveGraph(pRenderContext);
@@ -818,6 +829,33 @@ namespace Mogwai
             if (mGraphs[i].pGraph->getName() == name) return i;
         };
         return -1;
+    }
+
+    void Renderer::addOption(std::string_view name, nlohmann::json value)
+    {
+        getSettings().addOption(name, value);
+    }
+
+    void Renderer::addOptions(const nlohmann::json& value)
+    {
+        getSettings().addOptions(value);
+        onOptionsChange();
+    }
+
+    void Renderer::addFilteredAttributes(const nlohmann::json& attributes)
+    {
+        getSettings().addFilteredAttributes(attributes);
+    }
+
+    void Renderer::clearOptions()
+    {
+        getSettings().clearOptions();
+        onOptionsChange();
+    }
+
+    void Renderer::clearFilteredAttributes()
+    {
+        getSettings().clearFilteredAttributes();
     }
 
     std::string Renderer::getVersionString()

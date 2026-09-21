@@ -99,11 +99,10 @@ CPU_TEST(PathResolving_ResolveEnvVar)
     EXPECT_EQ(test, "_Value1Value2_");
 };
 
-// We use comparison with weakly_canonical paths to resolve all possible permissible differences in paths,
+// We use comparison with lexically_normal() paths to resolve all possible permissible differences in paths,
 // such as capital/lowercase letters or backwards/forwards slashes. Just straight path comparison does a string
 // comparison, so C:\Media != c:\media, while std::filesystem::equivalent requires the target of the path to actually
-// exist on the file system. weakly_canonical will resolve the existing part of the path to what exists on the filesystem,
-// and the non-existing remainder of the path into a standardized path form.
+// exist on the file system. lexically_normal() will resolve the path into a standardized path form.
 
 CPU_TEST(PathResolving_Basic)
 {
@@ -116,42 +115,42 @@ CPU_TEST(PathResolving_Basic)
     result = resolveSearchPaths(current, update, standard);
     ASSERT_EQ(result.invalid.size(), 0);
     ASSERT_EQ(result.resolved.size(), 2);
-    EXPECT_EQ(result.resolved[0], std::filesystem::weakly_canonical(C_DRIVE "/update/path/one"));
-    EXPECT_EQ(result.resolved[1], std::filesystem::weakly_canonical(D_DRIVE "/update/path/two"));
+    EXPECT_EQ(result.resolved[0], std::filesystem::path(C_DRIVE "/update/path/one").lexically_normal());
+    EXPECT_EQ(result.resolved[1], std::filesystem::path(D_DRIVE "/update/path/two").lexically_normal());
 
     update = {C_DRIVE "/update/path/one;" D_DRIVE "/update/path/two"};
     result = resolveSearchPaths(current, update, standard);
     ASSERT_EQ(result.invalid.size(), 0);
     ASSERT_EQ(result.resolved.size(), 2);
-    EXPECT_EQ(result.resolved[0], std::filesystem::weakly_canonical(C_DRIVE "/update/path/one"));
-    EXPECT_EQ(result.resolved[1], std::filesystem::weakly_canonical(D_DRIVE "/update/path/two"));
+    EXPECT_EQ(result.resolved[0], std::filesystem::path(C_DRIVE "/update/path/one").lexically_normal());
+    EXPECT_EQ(result.resolved[1], std::filesystem::path(D_DRIVE "/update/path/two").lexically_normal());
 
     update = {C_DRIVE "/update/path/one;&;" D_DRIVE "/update/path/two;@;"};
     result = resolveSearchPaths(current, update, standard);
     ASSERT_EQ(result.invalid.size(), 0);
     ASSERT_EQ(result.resolved.size(), 4);
-    EXPECT_EQ(result.resolved[0], std::filesystem::weakly_canonical(C_DRIVE "/update/path/one"));
-    EXPECT_EQ(result.resolved[1], std::filesystem::weakly_canonical(C_DRIVE "/current/path"));
-    EXPECT_EQ(result.resolved[2], std::filesystem::weakly_canonical(D_DRIVE "/update/path/two"));
-    EXPECT_EQ(result.resolved[3], std::filesystem::weakly_canonical(C_DRIVE "/standard/path"));
+    EXPECT_EQ(result.resolved[0], std::filesystem::path(C_DRIVE "/update/path/one").lexically_normal());
+    EXPECT_EQ(result.resolved[1], std::filesystem::path(C_DRIVE "/current/path").lexically_normal());
+    EXPECT_EQ(result.resolved[2], std::filesystem::path(D_DRIVE "/update/path/two").lexically_normal());
+    EXPECT_EQ(result.resolved[3], std::filesystem::path(C_DRIVE "/standard/path").lexically_normal());
 
     update = {C_DRIVE "/update/path/one;&", D_DRIVE "/update/path/two;@;"};
     result = resolveSearchPaths(current, update, standard);
     ASSERT_EQ(result.invalid.size(), 0);
     ASSERT_EQ(result.resolved.size(), 4);
-    EXPECT_EQ(result.resolved[0], std::filesystem::weakly_canonical(C_DRIVE "/update/path/one"));
-    EXPECT_EQ(result.resolved[1], std::filesystem::weakly_canonical(C_DRIVE "/current/path"));
-    EXPECT_EQ(result.resolved[2], std::filesystem::weakly_canonical(D_DRIVE "/update/path/two"));
-    EXPECT_EQ(result.resolved[3], std::filesystem::weakly_canonical(C_DRIVE "/standard/path"));
+    EXPECT_EQ(result.resolved[0], std::filesystem::path(C_DRIVE "/update/path/one").lexically_normal());
+    EXPECT_EQ(result.resolved[1], std::filesystem::path(C_DRIVE "/current/path").lexically_normal());
+    EXPECT_EQ(result.resolved[2], std::filesystem::path(D_DRIVE "/update/path/two").lexically_normal());
+    EXPECT_EQ(result.resolved[3], std::filesystem::path(C_DRIVE "/standard/path").lexically_normal());
 
     update = {"update/path/one;&;" D_DRIVE "/update/path/two;@;"};
     result = resolveSearchPaths(current, update, standard);
     ASSERT_EQ(result.invalid.size(), 1);
     EXPECT_EQ(result.invalid[0], "update/path/one");
     ASSERT_EQ(result.resolved.size(), 3);
-    EXPECT_EQ(result.resolved[0], std::filesystem::weakly_canonical(C_DRIVE "/current/path"));
-    EXPECT_EQ(result.resolved[1], std::filesystem::weakly_canonical(D_DRIVE "/update/path/two"));
-    EXPECT_EQ(result.resolved[2], std::filesystem::weakly_canonical(C_DRIVE "/standard/path"));
+    EXPECT_EQ(result.resolved[0], std::filesystem::path(C_DRIVE "/current/path").lexically_normal());
+    EXPECT_EQ(result.resolved[1], std::filesystem::path(D_DRIVE "/update/path/two").lexically_normal());
+    EXPECT_EQ(result.resolved[2], std::filesystem::path(C_DRIVE "/standard/path").lexically_normal());
 
     update = {"update/path/one;&;:/update/path/two;@;"};
     result = resolveSearchPaths(current, update, standard);
@@ -159,8 +158,8 @@ CPU_TEST(PathResolving_Basic)
     EXPECT_EQ(result.invalid[0], "update/path/one");
     EXPECT_EQ(result.invalid[1], ":/update/path/two");
     ASSERT_EQ(result.resolved.size(), 2);
-    EXPECT_EQ(result.resolved[0], std::filesystem::weakly_canonical(C_DRIVE "/current/path"));
-    EXPECT_EQ(result.resolved[1], std::filesystem::weakly_canonical(C_DRIVE "/standard/path"));
+    EXPECT_EQ(result.resolved[0], std::filesystem::path(C_DRIVE "/current/path").lexically_normal());
+    EXPECT_EQ(result.resolved[1], std::filesystem::path(C_DRIVE "/standard/path").lexically_normal());
 }
 
 CPU_TEST(PathResolving_EnvVar)
@@ -183,26 +182,26 @@ CPU_TEST(PathResolving_EnvVar)
     result = resolveSearchPaths(current, update, standard, proxyResolver);
     ASSERT_EQ(result.invalid.size(), 0);
     ASSERT_EQ(result.resolved.size(), 2);
-    EXPECT_EQ(result.resolved[0], std::filesystem::weakly_canonical(C_DRIVE "/Project/Media"));
-    EXPECT_EQ(result.resolved[1], std::filesystem::weakly_canonical(C_DRIVE "/Users/jdoe/.falcor/media"));
+    EXPECT_EQ(result.resolved[0], std::filesystem::path(C_DRIVE "/Project/Media").lexically_normal());
+    EXPECT_EQ(result.resolved[1], std::filesystem::path(C_DRIVE "/Users/jdoe/.falcor/media").lexically_normal());
 }
 
 CPU_TEST(PathResolving_resolvePath)
 {
     auto fileChecker = [](const std::filesystem::path& path)
     {
-        auto canonical = std::filesystem::weakly_canonical(path);
-        if (canonical == std::filesystem::weakly_canonical(C_DRIVE "/Users/jdoe/settings.ini"))
+        auto canonical = path.lexically_normal();
+        if (canonical == std::filesystem::path(C_DRIVE "/Users/jdoe/settings.ini").lexically_normal())
             return true;
-        if (canonical == std::filesystem::weakly_canonical(D_DRIVE "/Project/Media/cornellbox.obj"))
+        if (canonical == std::filesystem::path(D_DRIVE "/Project/Media/cornellbox.obj").lexically_normal())
             return true;
-        if (canonical == std::filesystem::weakly_canonical(D_DRIVE "/Project/Geometry/cornellbox.usd"))
+        if (canonical == std::filesystem::path(D_DRIVE "/Project/Geometry/cornellbox.usd").lexically_normal())
             return true;
-        if (canonical == std::filesystem::weakly_canonical(E_DRIVE "/Textures/checkers.exr"))
+        if (canonical == std::filesystem::path(E_DRIVE "/Textures/checkers.exr").lexically_normal())
             return true;
-        if (canonical == std::filesystem::weakly_canonical(D_DRIVE "/Project/Media/test.txt"))
+        if (canonical == std::filesystem::path(D_DRIVE "/Project/Media/test.txt").lexically_normal())
             return true;
-        if (canonical == std::filesystem::weakly_canonical(E_DRIVE "/Textures/test.txt"))
+        if (canonical == std::filesystem::path(E_DRIVE "/Textures/test.txt").lexically_normal())
             return true;
         return false;
     };
@@ -212,19 +211,19 @@ CPU_TEST(PathResolving_resolvePath)
     std::filesystem::path result;
 
     result = resolvePath(searchPaths, cwd, "../Media/cornellbox.obj", fileChecker);
-    EXPECT_EQ(result, std::filesystem::weakly_canonical(D_DRIVE "/Project/Media/cornellbox.obj"));
+    EXPECT_EQ(result, std::filesystem::path(D_DRIVE "/Project/Media/cornellbox.obj").lexically_normal());
 
     result = resolvePath(searchPaths, cwd, "cornellbox.obj", fileChecker);
-    EXPECT_EQ(result, std::filesystem::weakly_canonical(D_DRIVE "/Project/Media/cornellbox.obj"));
+    EXPECT_EQ(result, std::filesystem::path(D_DRIVE "/Project/Media/cornellbox.obj").lexically_normal());
 
     result = resolvePath(searchPaths, cwd, "test.txt", fileChecker);
-    EXPECT_EQ(result, std::filesystem::weakly_canonical(D_DRIVE "/Project/Media/test.txt"));
+    EXPECT_EQ(result, std::filesystem::path(D_DRIVE "/Project/Media/test.txt").lexically_normal());
 
     result = resolvePath(searchPaths, cwd, "checkers.exr", fileChecker);
-    EXPECT_EQ(result, std::filesystem::weakly_canonical(E_DRIVE "/Textures/checkers.exr"));
+    EXPECT_EQ(result, std::filesystem::path(E_DRIVE "/Textures/checkers.exr").lexically_normal());
 
     result = resolvePath(searchPaths, cwd, C_DRIVE "/Users/jdoe/settings.ini", fileChecker);
-    EXPECT_EQ(result, std::filesystem::weakly_canonical(C_DRIVE "/Users/jdoe/settings.ini"));
+    EXPECT_EQ(result, std::filesystem::path(C_DRIVE "/Users/jdoe/settings.ini").lexically_normal());
 
     result = resolvePath(searchPaths, cwd, "./checkers.exr", fileChecker);
     EXPECT(result.empty());
@@ -233,7 +232,7 @@ CPU_TEST(PathResolving_resolvePath)
     EXPECT(result.empty());
 
     result = resolvePath(searchPaths, cwd, "./cornellbox.usd", fileChecker);
-    EXPECT_EQ(result, std::filesystem::weakly_canonical(D_DRIVE "/Project/Geometry/cornellbox.usd"));
+    EXPECT_EQ(result, std::filesystem::path(D_DRIVE "/Project/Geometry/cornellbox.usd").lexically_normal());
 
     result = resolvePath(searchPaths, cwd, "cornellbox.usd", fileChecker);
     EXPECT(result.empty());

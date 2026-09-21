@@ -56,3 +56,6 @@ static const bool kUseNRDDemodulation = USE_NRD_DEMODULATION;
 static const uint kColorFormat = COLOR_FORMAT;
 static const uint kMISHeuristic = MIS_HEURISTIC;
 static const float kMISPowerExponent = MIS_POWER_EXPONENT;
+static const bool kUseReSTIRPT = USE_RESTIRPT;
+static const bool kUseLightTileRIS = USE_LIGHT_TILE_RIS;
+static const bool kOutputDeltaMotionVectors = OUTPUT_DELTA_MOTION_VECTORS;

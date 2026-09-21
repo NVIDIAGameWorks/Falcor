@@ -38,17 +38,41 @@ import Rendering.Volumes.PhaseFunction;
 import Scene.Material.VolumeProperties;
 
 /** Describes a BSDF sample.
-*/
+ */
 struct BSDFSample
 {
-    float3  wo;             ///< Sampled direction in world space (normalized).
-    float   pdf;            ///< pdf with respect to solid angle for the sampled direction (wo).
-    float3  weight;         ///< Sample weight f(wi, wo) * dot(wo, n) / pdf(wo).
-    uint    lobeType;       ///< Sampled lobeType. This is a combination of LobeType flags (see LobeType.slang).
+    float3 wo = {};     ///< Sampled direction in world space (normalized).
+    float pdf = {};     ///< pdf with respect to solid angle for the sampled direction (wo).
+    float3 weight = {}; ///< Sample weight f(wi, wo) * dot(wo, n) / pdf(wo).
+    uint lobeTypeAndBSDFIndex = {}; ///< Lower 16 bits store Sampled lobeType. This is a combination of LobeType flags (see LobeType.slang).
+                                    /// The upper 16 bits of lobeTypeAndBSDFIndex store the BSDF index for materials that support BSDF indexing.
 
-    bool isLobe(LobeType type)
+    bool isLobe(LobeType type) { return (lobeTypeAndBSDFIndex & uint(type)) != 0; }
+
+    property lobeType : uint
     {
-        return (lobeType & uint(type)) != 0;
+        get
+        {
+            return lobeTypeAndBSDFIndex & 0xFFFF;
+        }
+
+        set
+        {
+            lobeTypeAndBSDFIndex = (lobeTypeAndBSDFIndex & 0xFFFF0000) | (newValue & 0x0000FFFF);
+        }
+    }
+
+    property BSDFIndex : uint
+    {
+        get
+        {
+            return lobeTypeAndBSDFIndex >> 16;
+        }
+
+        set
+        {
+            lobeTypeAndBSDFIndex = (lobeTypeAndBSDFIndex & 0x0000FFFF) | (newValue << 16);
+        }
     }
 };
 
@@ -60,22 +84,27 @@ struct BSDFSample
 */
 struct BSDFProperties
 {
-    float3  emission;                       ///< Radiance emitted in the incident direction (wi).
-    float   roughness;                      ///< Surface roughness on a perceptually linear scale, where 0.0 = perfectly smooth and 1.0 = maximum roughness.
-    float3  guideNormal;                    ///< Representative shading normal in world space that includes effects of normal mapping. Useful as guide for denoisers.
-    uint    flags;                          ///< Flags storing additional properties.
+    float3 emission = {}; ///< Radiance emitted in the incident direction (wi).
+    float roughness = {}; ///< Surface roughness on a perceptually linear scale, where 0.0 = perfectly smooth and 1.0 = maximum roughness.
+    float3 guideNormal = {}; ///< Representative shading normal in world space that includes effects of normal mapping. Useful as guide for
+                             ///< denoisers.
+    uint flags = {};         ///< Flags storing additional properties.
 
     // Approximate directional-hemispherical reflectance/transmittance of the BSDF (black-sky albedo).
     // The exact values are given by the integrals of the BSDF over wo given an incident direction wi.
     // The terms are separated into diffuse and non-diffuse components. Due to energy conservation, the sum is expected to be <= 1.0.
-    float3  diffuseReflectionAlbedo;        ///< Directional-hemispherical diffuse reflectance. This is the ratio of total energy diffusely reflected to the energy incident along wi.
-    float3  diffuseTransmissionAlbedo;      ///< Directional-hemispherical diffuse transmittance. This is the ratio of total energy diffusely transmitted to the energy incident along wi.
-    float3  specularReflectionAlbedo;       ///< Directional-hemispherical specular reflectance. This is the ratio of total energy non-diffusely reflected to the energy incident along wi.
-    float3  specularTransmissionAlbedo;     ///< Directional-hemispherical specular transmittance. This is the ratio of total energy non-diffusely transmitted to the energy incident along wi.
+    float3 diffuseReflectionAlbedo = {};   ///< Directional-hemispherical diffuse reflectance. This is the ratio of total energy diffusely
+                                           ///< reflected to the energy incident along wi.
+    float3 diffuseTransmissionAlbedo = {}; ///< Directional-hemispherical diffuse transmittance. This is the ratio of total energy diffusely
+                                           ///< transmitted to the energy incident along wi.
+    float3 specularReflectionAlbedo = {};  ///< Directional-hemispherical specular reflectance. This is the ratio of total energy
+                                           ///< non-diffusely reflected to the energy incident along wi.
+    float3 specularTransmissionAlbedo = {}; ///< Directional-hemispherical specular transmittance. This is the ratio of total energy
+                                            ///< non-diffusely transmitted to the energy incident along wi.
 
     // Approximate specular reflectance. This is the color of specular reflection.
     // The diffuse reflectance is approximated as a Lambertian given by the diffuse albedo above.
-    float3  specularReflectance;            ///< Specular reflectance at normal incidence (F0). This is in the range [0,1].
+    float3 specularReflectance = {}; ///< Specular reflectance at normal incidence (F0). This is in the range [0,1].
 
     enum Flags : uint
     {
@@ -84,7 +113,10 @@ struct BSDFProperties
 
     property isTransmissive : bool
     {
-        get { return (flags & (uint)Flags::IsTransmissive) != 0; }
+        get
+        {
+            return (flags & (uint)Flags::IsTransmissive) != 0;
+        }
     }
 };
 
@@ -168,6 +200,32 @@ interface IMaterialInstance
     */
     BSDFProperties getProperties(const ShadingData sd);
 
+    /** Compute the probabilities of using diffuse and specular reflection motion vectors.
+        the two probabilities should sum <= 1, if the sum is < 1, there is probability for specular refraction motion vector
+        \param[in] sd Shading data.
+        \return returns a float2, storing the probability for the diffuse reflection mvec and specular reflection mvec, respectively
+    */
+    float2 getReflectionMotionVectorProbabilities(const ShadingData sd);
+
+    /** Return whether the material can use a simple roughness value (with the help of BSDF-indexing) in the reconnection criteria.
+        \return True if the material supports simple roughness threshold, false otherwise
+    */
+    bool supportSimpleRoughnessThreshold();
+
+    /** Return whether the material instance supports BSDF indexing.
+        \return True if the material supports BSDF indexing, false otherwise
+    */
+    bool supportBSDFIndexing();
+
+    /** Determine whether a vertex is considered rough based on the BSDF sample.
+        \param[in] sd Shading data.
+        \param[in] sampledBSDFIndex BSDF index of the sample. Not looked at if BSDF indexing not supported
+        \param[in] samplePdf PDF of the sample. Can be used to approximate roughness by 1.f/pdf^2
+        \param[in] roughnessThreshold roughness threshold specified.
+        \return True if the vertex is considered rough based on the sample, false otherwise
+    */
+    bool isSampleRough(const ShadingData sd, int sampledBSDFIndex, float samplePdf, float roughnessThreshold);
+
     /** Return the set of available BSDF lobes.
         \param[in] sd Shading data.
         \return A combination of LobeType flags (see LobeType.slang).
@@ -189,10 +247,27 @@ interface IMaterialInstance
 [open]
 struct MaterialInstanceBase
 {
-    bool hasVolumeProperties()
+    float2 getReflectionMotionVectorProbabilities(const ShadingData sd)
+    {
+        return float2(1.f, 0.f);
+    }
+
+    bool supportSimpleRoughnessThreshold()
     {
         return false;
     }
+
+    bool supportBSDFIndexing()
+    {
+        return false;
+    }
+
+    bool isSampleRough(const ShadingData sd, int sampledBSDFIndex, float samplePdf, float roughnessThreshold)
+    {
+        return samplePdf <= 1.f / (roughnessThreshold * roughnessThreshold);
+    }
+
+    bool hasVolumeProperties() { return false; }
 
     VolumeProperties getVolumeProperties()
     {
@@ -201,7 +276,5 @@ struct MaterialInstanceBase
         result.sigmaS = 0.f;
         result.phaseFunction = NullPhaseFunction();
         return result;
-
     }
 }
-

@@ -71,46 +71,6 @@ inline nlohmann::json flattenDictionary(const nlohmann::json& dict)
     return flattened;
 }
 
-template<typename T, std::enable_if_t<std::is_arithmetic_v<T>, bool> = true>
-inline bool isType(const nlohmann::json& json)
-{
-    return json.is_number() || json.is_boolean();
-}
-
-template<typename T, std::enable_if_t<std::is_same_v<T, std::string>, bool> = true>
-inline bool isType(const nlohmann::json& json)
-{
-    return json.is_string();
-}
-
-template<typename T, typename U, size_t N, std::enable_if_t<std::is_same_v<T, std::array<U, N>>, bool> = true>
-inline bool isType(const nlohmann::json& json)
-{
-    if (!json.is_array())
-        return false;
-    if (json.size() != N)
-        return false;
-    for (size_t i = 0; i < N; ++i)
-        if (!isType<U>(json[i]))
-            return false;
-    return true;
-}
-
-// The "gccfix" parameter is used to avoid "explicit specialization in non-namespace scope" in gcc.
-// See https://gcc.gnu.org/bugzilla/show_bug.cgi?id=85282
-template<typename T, typename gccfix = void>
-struct TypeChecker
-{
-    static bool validType(const nlohmann::json& json) { return isType<T>(json); }
-};
-
-template<typename U, size_t N, typename gccfix>
-struct TypeChecker<std::array<U, N>, gccfix>
-{
-    using ArrayType = std::array<U, N>;
-    static bool validType(const nlohmann::json& json) { return isType<ArrayType, U, N>(json); }
-};
-
 class TypeError : public std::runtime_error
 {
 public:

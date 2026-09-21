@@ -70,7 +70,7 @@ FILE* openLogFile()
     }
 
     // If we got here, we couldn't create a log file
-    FALCOR_UNREACHABLE();
+    FALCOR_THROW("Failed to create a log file: {}", sLogFilePath);
     return pFile;
 }
 

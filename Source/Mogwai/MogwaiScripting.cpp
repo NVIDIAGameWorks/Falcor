@@ -32,8 +32,10 @@
 #include "Utils/Scripting/Scripting.h"
 #include "Utils/Scripting/ScriptWriter.h"
 #include "Utils/Settings/Settings.h"
+
 #include <fstream>
 #include <pybind11/pybind11.h>
+#include <pybind11_json/pybind11_json.hpp>
 
 namespace Mogwai
 {
@@ -205,25 +207,24 @@ namespace Mogwai
 
         renderer.def("addOptions", [](Renderer* r, pybind11::dict d = {})
         {
-            r->getSettings().addOptions(d);
-            r->onOptionsChange();
+            r->addOptions(pyjson::to_json(d));
         }, "dict"_a = pybind11::dict());
         renderer.def("addFilteredAttributes", [](Renderer* r, pybind11::dict d = {})
         {
-            r->getSettings().addFilteredAttributes(d);
+            r->addFilteredAttributes(pyjson::to_json(d));
         }, "dict"_a = pybind11::dict());
         renderer.def("addFilteredAttributes", [](Renderer* r, pybind11::list l = pybind11::list{0})
         {
-            r->getSettings().addFilteredAttributes(l);
+            r->addFilteredAttributes(pyjson::to_json(l));
         }, "list"_a = pybind11::list());
         renderer.def("clearOptions", [](Renderer* r)
         {
-            r->getSettings().clearOptions();
-            r->onOptionsChange();
+            r->clearOptions();
         });
         renderer.def("clearFilteredAttributes", [](Renderer* r)
         {
-            r->getSettings().clearFilteredAttributes();
+            r->clearFilteredAttributes();
         });
+
     }
 }

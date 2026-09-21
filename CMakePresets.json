@@ -173,6 +173,12 @@
             "configuration": "Release"
         },
         {
+            "name": "windows-ninja-msvc-relwithdebinfo",
+            "displayName": "RelWithDebInfo",
+            "configurePreset": "windows-ninja-msvc",
+            "configuration": "RelWithDebInfo"
+        },
+        {
             "name": "windows-ninja-msvc-debug",
             "displayName": "Debug",
             "configurePreset": "windows-ninja-msvc",
@@ -183,6 +189,12 @@
             "displayName": "Release",
             "configurePreset": "windows-ninja-msvc-ci",
             "configuration": "Release"
+        },
+        {
+            "name": "windows-ninja-msvc-ci-relwithdebinfo",
+            "displayName": "RelWithDebInfo",
+            "configurePreset": "windows-ninja-msvc-ci",
+            "configuration": "RelWithDebInfo"
         },
         {
             "name": "windows-ninja-msvc-ci-debug",
@@ -197,6 +209,12 @@
             "configuration": "Release"
         },
         {
+            "name": "linux-clang-relwithdebinfo",
+            "displayName": "RelWithDebInfo",
+            "configurePreset": "linux-clang",
+            "configuration": "RelWithDebInfo"
+        },
+        {
             "name": "linux-clang-debug",
             "displayName": "Debug",
             "configurePreset": "linux-clang",
@@ -207,6 +225,12 @@
             "displayName": "Release",
             "configurePreset": "linux-clang-ci",
             "configuration": "Release"
+        },
+        {
+            "name": "linux-clang-ci-relwithdebinfo",
+            "displayName": "RelWithDebInfo",
+            "configurePreset": "linux-clang-ci",
+            "configuration": "RelWithDebInfo"
         },
         {
             "name": "linux-clang-ci-debug",
@@ -221,6 +245,12 @@
             "configuration": "Release"
         },
         {
+            "name": "linux-gcc-relwithdebinfo",
+            "displayName": "RelWithDebInfo",
+            "configurePreset": "linux-gcc",
+            "configuration": "RelWithDebInfo"
+        },
+        {
             "name": "linux-gcc-debug",
             "displayName": "Debug",
             "configurePreset": "linux-gcc",
@@ -231,6 +261,12 @@
             "displayName": "Release",
             "configurePreset": "linux-gcc-ci",
             "configuration": "Release"
+        },
+        {
+            "name": "linux-gcc-ci-relwithdebinfo",
+            "displayName": "RelWithDebInfo",
+            "configurePreset": "linux-gcc-ci",
+            "configuration": "RelWithDebInfo"
         },
         {
             "name": "linux-gcc-ci-debug",

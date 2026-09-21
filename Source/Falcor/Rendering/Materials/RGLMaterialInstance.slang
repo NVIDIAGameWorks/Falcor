@@ -34,14 +34,14 @@ import Utils.Math.MathHelpers;
 import Scene.Scene;
 
 /** Implementation of the BSDF for the measured RGL material.
-*/
+ */
 struct RGLMaterialInstance : MaterialInstanceBase, IMaterialInstance
 {
-    ShadingFrame sf;            ///< Shading frame in world space.
+    ShadingFrame sf; ///< Shading frame in world space.
     float2 slice;
     float sigma;
-    uint2 ndfVndfSize;          ///< Packed size of NDF and last two dimensions of VNDF LUT (first two match lumiSize).
-    uint2 lumiSize;             ///< Packed size of luminance LUT. Dimensions identical to RGB LUT.
+    uint2 ndfVndfSize; ///< Packed size of NDF and last two dimensions of VNDF LUT (first two match lumiSize).
+    uint2 lumiSize;    ///< Packed size of luminance LUT. Dimensions identical to RGB LUT.
     uint ndfBufID;
     uint vndfBufID;
     uint lumiBufID;
@@ -50,7 +50,7 @@ struct RGLMaterialInstance : MaterialInstanceBase, IMaterialInstance
     uint lumiMarginalBufID;
     uint vndfConditionalBufID;
     uint lumiConditionalBufID;
-    float3 albedo;              ///< Approximate albedo, only to satisfy getProperties.
+    float3 albedo; ///< Approximate albedo, only to satisfy getProperties.
 
     __init(const ShadingFrame sf, const float2 slice, const float sigma, const float3 albedo, const RGLMaterialData data)
     {
@@ -75,20 +75,22 @@ struct RGLMaterialInstance : MaterialInstanceBase, IMaterialInstance
         float3 wiLocal = sf.toLocal(sd.V);
         float3 woLocal = sf.toLocal(wo);
 
-        if (!isValidHemisphereReflection(sd, sf, wiLocal, woLocal, wo)) return float3(0.f);
+        if (!isValidHemisphereReflection(sd, sf, wiLocal, woLocal, wo))
+            return float3(0.f);
 
         uint4 ndfsSize = unpackSize(ndfVndfSize);
         uint4 lumiSize = unpackSize(this.lumiSize);
         uint4 vndfSize = uint4(lumiSize.xy, ndfsSize.zw);
         let ndf = Brick2D.fromManagedBuffers(ndfsSize.xy, ndfBufID);
-        let rgb = Brick4D.fromManagedBuffers(lumiSize   , rgbBufID);
+        let rgb = Brick4D.fromManagedBuffers(lumiSize, rgbBufID);
         let vndf = InterpolatedDistribution2D.fromManagedBuffers(vndfSize, vndfMarginalBufID, vndfConditionalBufID, vndfBufID);
         let lumi = InterpolatedDistribution2D.fromManagedBuffers(lumiSize, lumiMarginalBufID, lumiConditionalBufID, lumiBufID);
 
         float3 h = normalize(wiLocal + woLocal);
         float2 sphericalI = toSpherical(wiLocal);
         float2 sphericalH = toSpherical(h);
-        if (lumiSize.x == 1) sphericalH.y -= sphericalI.y; // Isotropic case
+        if (lumiSize.x == 1)
+            sphericalH.y -= sphericalI.y; // Isotropic case
         float2 unitH = sphericalToUnit(sphericalH);
 
         unitH.y = frac(unitH.y);
@@ -118,7 +120,7 @@ struct RGLMaterialInstance : MaterialInstanceBase, IMaterialInstance
         uint4 lumiSize = unpackSize(this.lumiSize);
         uint4 vndfSize = uint4(lumiSize.xy, ndfsSize.zw);
         let ndf = Brick2D.fromManagedBuffers(ndfsSize.xy, ndfBufID);
-        let rgb = Brick4D.fromManagedBuffers(lumiSize   , rgbBufID);
+        let rgb = Brick4D.fromManagedBuffers(lumiSize, rgbBufID);
         let vndf = InterpolatedDistribution2D.fromManagedBuffers(vndfSize, vndfMarginalBufID, vndfConditionalBufID, vndfBufID);
         let lumi = InterpolatedDistribution2D.fromManagedBuffers(lumiSize, lumiMarginalBufID, lumiConditionalBufID, lumiBufID);
 
@@ -149,8 +151,10 @@ struct RGLMaterialInstance : MaterialInstanceBase, IMaterialInstance
 
         result.wo = sf.fromLocal(woLocal);
 
-        if (jacobian == 0.0f || pdf == 0.0f) return false;
-        if (!isValidHemisphereReflection(sd, sf, wiLocal, woLocal, result.wo)) return false;
+        if (jacobian == 0.0f || pdf == 0.0f)
+            return false;
+        if (!isValidHemisphereReflection(sd, sf, wiLocal, woLocal, result.wo))
+            return false;
 
         result.pdf = pdf;
         result.weight = f / pdf;
@@ -164,7 +168,8 @@ struct RGLMaterialInstance : MaterialInstanceBase, IMaterialInstance
         float3 wiLocal = sf.toLocal(sd.V);
         float3 woLocal = sf.toLocal(wo);
 
-        if (!isValidHemisphereReflection(sd, sf, wiLocal, woLocal, wo)) return 0.f;
+        if (!isValidHemisphereReflection(sd, sf, wiLocal, woLocal, wo))
+            return 0.f;
 
         uint4 ndfsSize = unpackSize(ndfVndfSize);
         uint4 lumiSize = unpackSize(this.lumiSize);
@@ -192,7 +197,8 @@ struct RGLMaterialInstance : MaterialInstanceBase, IMaterialInstance
         float jacobian = max(2.0f * M_PI * M_PI * unitH.x * length(h.xy), 1e-6f) * 4.0f * dot(wiLocal, h);
         float pdf = vndfPdf * lumiPdf / jacobian;
 
-        if (jacobian == 0.0f) return 0.0f;
+        if (jacobian == 0.0f)
+            return 0.0f;
 
         return pdf;
     }

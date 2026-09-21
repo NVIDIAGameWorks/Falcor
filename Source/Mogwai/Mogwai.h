@@ -158,6 +158,10 @@ namespace Mogwai
         };
 
         ref<Scene> mpScene;
+        sigs::Connection                mUpdateFlagsConnection; ///< Connection to the UpdateFlags signal.
+        /// SceneUpdateFlags accumulated since last `beginFrame()`
+        IScene::UpdateFlags             mUpdateFlags = IScene::UpdateFlags::None;
+
 
         void addGraph(const ref<RenderGraph>& pGraph);
         void setActiveGraph(const ref<RenderGraph>& pGraph);
@@ -185,6 +189,12 @@ namespace Mogwai
         void unmarkOutput(const std::string& name);
         void markOutput(const std::string& name);
         size_t findGraph(const std::string_view name);
+
+        void addOption(std::string_view name, nlohmann::json value);
+        void addOptions(const nlohmann::json& value);
+        void addFilteredAttributes(const nlohmann::json& attributes);
+        void clearOptions();
+        void clearFilteredAttributes();
 
         AppData mAppData;
 

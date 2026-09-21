@@ -67,8 +67,13 @@ public:
         FALCOR_ASSERT_LT(mNextMaterialTypeID, 1u << MaterialHeader::kMaterialTypeBits);
         if (mNextMaterialTypeID >= (1u << MaterialHeader::kMaterialTypeBits))
         {
-            FALCOR_THROW("Registered material {} would receive MaterialType {}, exceeding the maximum limit {} (given by MaterialHeader::kMaterialTypeBits)",
-                typeName, mNextMaterialTypeID, (1u << MaterialHeader::kMaterialTypeBits));
+            FALCOR_THROW(
+                "Registered material {} would receive MaterialType {}, exceeding the maximum limit {} (given by "
+                "MaterialHeader::kMaterialTypeBits)",
+                typeName,
+                mNextMaterialTypeID,
+                (1u << MaterialHeader::kMaterialTypeBits)
+            );
         }
 
         MaterialType type = MaterialType(mNextMaterialTypeID++);
@@ -112,19 +117,19 @@ private:
     {
         // Register names for all built-in material types.
         mMaterialType2Name = {
-            { MaterialType::Unknown, "Unknown" },
-            { MaterialType::Standard, "Standard" },
-            { MaterialType::Cloth, "Cloth" },
-            { MaterialType::Hair, "Hair" },
-            { MaterialType::MERL, "MERL" },
-            { MaterialType::MERLMix, "MERLMix" },
-            { MaterialType::PBRTDiffuse, "PBRTDiffuse" },
-            { MaterialType::PBRTDiffuseTransmission, "PBRTDiffuseTransmission" },
-            { MaterialType::PBRTConductor, "PBRTConductor" },
-            { MaterialType::PBRTDielectric, "PBRTDielectric" },
-            { MaterialType::PBRTCoatedConductor, "PBRTCoatedConductor" },
-            { MaterialType::PBRTCoatedDiffuse, "PBRTCoatedDiffuse" },
-            { MaterialType::RGL, "RGL" },
+            {MaterialType::Unknown, "Unknown"},
+            {MaterialType::Standard, "Standard"},
+            {MaterialType::Cloth, "Cloth"},
+            {MaterialType::Hair, "Hair"},
+            {MaterialType::MERL, "MERL"},
+            {MaterialType::MERLMix, "MERLMix"},
+            {MaterialType::PBRTDiffuse, "PBRTDiffuse"},
+            {MaterialType::PBRTDiffuseTransmission, "PBRTDiffuseTransmission"},
+            {MaterialType::PBRTConductor, "PBRTConductor"},
+            {MaterialType::PBRTDielectric, "PBRTDielectric"},
+            {MaterialType::PBRTCoatedConductor, "PBRTCoatedConductor"},
+            {MaterialType::PBRTCoatedDiffuse, "PBRTCoatedDiffuse"},
+            {MaterialType::RGL, "RGL"},
         };
 
         for (const auto& [type, name] : mMaterialType2Name)
@@ -134,13 +139,14 @@ private:
         FALCOR_CHECK(mMaterialType2Name.size() == mMaterialName2Type.size(), "Material type names must be unique.");
     }
 
-    mutable std::mutex mMaterialTypeNameMutex; ///< Mutex to registering new material types
-    uint32_t mNextMaterialTypeID { uint32_t(MaterialType::BuiltinCount) + 1 }; ///< Holds id of the next free material type, used when creating material types dynamically
-    std::map<MaterialType, std::string> mMaterialType2Name; ///< Map for to_string names
+    mutable std::mutex mMaterialTypeNameMutex;                              ///< Mutex to registering new material types
+    uint32_t mNextMaterialTypeID{uint32_t(MaterialType::BuiltinCount) + 1}; ///< Holds id of the next free material type, used when creating
+                                                                            ///< material types dynamically
+    std::map<MaterialType, std::string> mMaterialType2Name;                 ///< Map for to_string names
     std::map<std::string, MaterialType> mMaterialName2Type; ///< Map from name to type for deduplication when creating material types.
 };
 
-}
+} // namespace
 
 MaterialType registerMaterialType(std::string typeName)
 {

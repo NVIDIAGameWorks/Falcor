@@ -150,6 +150,8 @@ struct ScatterRayData
     /// Per-ray state for the sample generator (up to 16B).
     SampleGenerator sg;
 
+    __init() {}
+
     /**
      * Initializes ray payload with default parameters.
      */

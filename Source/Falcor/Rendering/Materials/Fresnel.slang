@@ -122,12 +122,11 @@ float evalFresnelConductor(float eta, float k, float cosThetaI)
     float sinThetaIQu = sinThetaISq * sinThetaISq;
 
     float innerTerm = eta * eta - k * k - sinThetaISq;
-    float aSqPlusBSq = sqrt(max(innerTerm*innerTerm + 4.0f * eta * eta * k * k, 0.0f));
+    float aSqPlusBSq = sqrt(max(innerTerm * innerTerm + 4.0f * eta * eta * k * k, 0.0f));
     float a = sqrt(max((aSqPlusBSq + innerTerm) * 0.5f, 0.0f));
 
-    float Rs = ((aSqPlusBSq + cosThetaISq) - (2.0f * a * cosThetaI))/
-               ((aSqPlusBSq + cosThetaISq) + (2.0f * a * cosThetaI));
-    float Rp = ((cosThetaISq * aSqPlusBSq + sinThetaIQu) - (2.0f * a * cosThetaI * sinThetaISq))/
+    float Rs = ((aSqPlusBSq + cosThetaISq) - (2.0f * a * cosThetaI)) / ((aSqPlusBSq + cosThetaISq) + (2.0f * a * cosThetaI));
+    float Rp = ((cosThetaISq * aSqPlusBSq + sinThetaIQu) - (2.0f * a * cosThetaI * sinThetaISq)) /
                ((cosThetaISq * aSqPlusBSq + sinThetaIQu) + (2.0f * a * cosThetaI * sinThetaISq));
 
     return 0.5f * (Rs + Rs * Rp);
@@ -163,4 +162,3 @@ float reflectanceToIOR(float3 reflectance)
 
     return (-iorI - 2.f * iorI * sqrt(r) - iorI * r) / (r - 1.f);
 }
-

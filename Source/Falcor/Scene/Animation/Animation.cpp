@@ -27,7 +27,6 @@
  **************************************************************************/
 #include "Animation.h"
 #include "AnimationController.h"
-#include "Utils/ObjectIDPython.h"
 #include "Utils/Math/Common.h"
 #include "Utils/Scripting/ScriptBindings.h"
 #include "Scene/Transform.h"

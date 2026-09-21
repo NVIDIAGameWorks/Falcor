@@ -40,91 +40,67 @@
 
 struct InteriorList
 {
-    static const uint kNoMaterial           = 0xffffffff;
+    static const uint kNoMaterial = 0xffffffff;
 
-    static const uint kMaterialBits         = 28;
-    static const uint kNestedPriorityBits   = 4;
+    static const uint kMaterialBits = 28;
+    static const uint kNestedPriorityBits = 4;
 
-    static const uint kMaterialOffset       = 0;
+    static const uint kMaterialOffset = 0;
     static const uint kNestedPriorityOffset = kMaterialOffset + kMaterialBits;
 
-    static const uint kMaterialMask         = ((1 << kMaterialBits) - 1) << kMaterialOffset;
-    static const uint kNestedPriorityMask   = ((1 << kNestedPriorityBits) - 1) << kNestedPriorityOffset;
+    static const uint kMaterialMask = ((1 << kMaterialBits) - 1) << kMaterialOffset;
+    static const uint kNestedPriorityMask = ((1 << kNestedPriorityBits) - 1) << kNestedPriorityOffset;
 
-    static const uint kMaxNestedPriority    = ((1 << kNestedPriorityBits) - 1);
+    static const uint kMaxNestedPriority = ((1 << kNestedPriorityBits) - 1);
 
-    uint slots[INTERIOR_LIST_SLOT_COUNT];
+    uint slots[INTERIOR_LIST_SLOT_COUNT] = {};
 
     /** Make an active material slot given the material and priority.
         \param[in] materialID Material ID.
         \param[in] nestedPriority Nested priority, 0 is reserved for empty slots.
         \return Returns the encoded slot.
     */
-    uint makeSlot(uint materialID, uint nestedPriority)
-    {
-        return (nestedPriority << kNestedPriorityOffset) | (materialID & kMaterialMask);
-    }
+    uint makeSlot(uint materialID, uint nestedPriority) { return (nestedPriority << kNestedPriorityOffset) | (materialID & kMaterialMask); }
 
     /** Check if a slot is active.
         \param[in] slot Slot value.
         \return Returns true if slot is active.
     */
-    bool isSlotActive(uint slot)
-    {
-        return slot != 0;
-    }
+    bool isSlotActive(uint slot) { return slot != 0; }
 
     /** Check if the interior list is empty.
         \return Returns true if interior list is empty, false otherwise.
     */
-    bool isEmpty()
-    {
-        return !isSlotActive(slots[0]);
-    }
+    bool isEmpty() { return !isSlotActive(slots[0]); }
 
     /** Get the nested priority from a slot.
         \param[in] slot Slot value.
         \param Returns the nested priority or 0 for empty slots.
     */
-    uint getSlotNestedPriority(uint slot)
-    {
-        return slot >> kNestedPriorityOffset;
-    }
+    uint getSlotNestedPriority(uint slot) { return slot >> kNestedPriorityOffset; }
 
     /** Get the material ID from a slot.
         \param[in] slot Slot value.
         \return Returns the material ID or 0 for empty slots.
     */
-    uint getSlotMaterialID(uint slot)
-    {
-        return slot & kMaterialMask;
-    }
+    uint getSlotMaterialID(uint slot) { return slot & kMaterialMask; }
 
     /** Return current highest nested priority on interior list.
         Because the interior list is sorted by nested priority and empty slots have priority 0,
         we can simple fetch the first slot.
         \return Returns the highest nested priority on the interior list.
     */
-    uint getTopNestedPriority()
-    {
-        return getSlotNestedPriority(slots[0]);
-    }
+    uint getTopNestedPriority() { return getSlotNestedPriority(slots[0]); }
 
     /** Return the material ID with the highest priority on the interior list.
         \return Returns the material ID or kNoMaterial if interior list is empty.
     */
-    uint getTopMaterialID()
-    {
-        return isSlotActive(slots[0]) ? getSlotMaterialID(slots[0]) : kNoMaterial;
-    }
+    uint getTopMaterialID() { return isSlotActive(slots[0]) ? getSlotMaterialID(slots[0]) : kNoMaterial; }
 
     /** Return the material ID with the 2nd highest priority on the interior list.
         \return Returns the material ID or kNoMaterial if interior list is empty.
     */
-    uint getNextMaterialID()
-    {
-        return isSlotActive(slots[1]) ? getSlotMaterialID(slots[1]) : kNoMaterial;
-    }
+    uint getNextMaterialID() { return isSlotActive(slots[1]) ? getSlotMaterialID(slots[1]) : kNoMaterial; }
 
     /** Check if an intersection with a given surface is a true intersection.
         True intersection occurs if nested priority of intersected mesh is equal or higher
@@ -145,13 +121,15 @@ struct InteriorList
         \param[in] nestedPriority Nested priority of intersected surface, with 0 reserved for the highest possible priority.
         \param[in] entering True if material is entered, false if material is left.
     */
-    [mutating] void handleIntersection(uint materialID, uint nestedPriority, bool entering)
+    [mutating]
+    void handleIntersection(uint materialID, uint nestedPriority, bool entering)
     {
         // Remap priority 0 to the highest priority to allow sorting by high->low priority,
         // and as internally 0 is reserved for empty slots.
-        if (nestedPriority == 0) nestedPriority = kMaxNestedPriority;
+        if (nestedPriority == 0)
+            nestedPriority = kMaxNestedPriority;
 
-        // The following loop is manually unrolled below to avoid stack allocation.
+            // The following loop is manually unrolled below to avoid stack allocation.
 #if 0
         for (uint slotIndex = 0; slotIndex < INTERIOR_LIST_SLOT_COUNT; ++slotIndex)
         {
@@ -221,16 +199,17 @@ struct InteriorList
     }
 
     /** Sort the interior list by priority.
-    */
-    [mutating] void sortSlots()
+     */
+    [mutating]
+    void sortSlots()
     {
-#define CSWAP(_a, _b)               \
-        if (slots[_a] < slots[_b])  \
-        {                           \
-            uint tmp = slots[_a];   \
-            slots[_a] = slots[_b];  \
-            slots[_b] = tmp;        \
-        }
+#define CSWAP(_a, _b)          \
+    if (slots[_a] < slots[_b]) \
+    {                          \
+        uint tmp = slots[_a];  \
+        slots[_a] = slots[_b]; \
+        slots[_b] = tmp;       \
+    }
 
         // sorting networks: http://pages.ripco.net/~jgamble/nw.html
 #if INTERIOR_LIST_SLOT_COUNT == 2

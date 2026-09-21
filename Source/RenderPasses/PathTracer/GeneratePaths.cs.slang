@@ -28,14 +28,19 @@
 import Utils.Attributes;
 import Utils.Color.ColorHelpers;
 import Rendering.RTXDI.RTXDI;
+import Scene.RaytracingInline;
 import RenderPasses.Shared.Denoising.NRDBuffers;
 import RenderPasses.Shared.Denoising.NRDConstants;
 import LoadShadingData;
 import NRDHelpers;
 import PathTracer;
+import PathTracerUtils;
 import PathState;
 import ColorType;
 import Params;
+#if USE_RESTIRPT
+import ReSTIRPathTracing.ReSTIRPT;
+#endif
 
 // Shared memory variables.
 // TODO: Can we declare these inside PathGenerator?
@@ -65,18 +70,21 @@ groupshared uint gSamplesOffset[8 /* kWarpCount */];
 struct PathGenerator
 {
     // Resources
-    PathTracerParams params;                        ///< Runtime parameters.
+    PathTracerParams params; ///< Runtime parameters.
+#if USE_RESTIRPT
+    ReSTIRPT restirpt;
+#endif
 
-    Texture2D<PackedHitInfo> vbuffer;               ///< Fullscreen V-buffer for the primary hits.
-    Texture2D<float3> viewDir;                      ///< Optional view direction. Only valid when kUseViewDir == true.
-    Texture2D<uint> sampleCount;                    ///< Optional input sample count buffer. Only valid when kSamplesPerPixel == 0.
-    RWTexture2D<uint> sampleOffset;                 ///< Output offset into per-sample buffers. Only valid when kSamplesPerPixel == 0.
+    RWTexture2D<PackedHitInfo> vbuffer; ///< Fullscreen V-buffer for the primary hits (RW for film/lens retracing).
+    Texture2D<float3> viewDir;        ///< Optional view direction. Only valid when kUseViewDir == true.
+    Texture2D<uint> sampleCount;      ///< Optional input sample count buffer. Only valid when kSamplesPerPixel == 0.
+    RWTexture2D<uint> sampleOffset;   ///< Output offset into per-sample buffers. Only valid when kSamplesPerPixel == 0.
 
-    RWStructuredBuffer<ColorType> sampleColor;      ///< Output per-sample color if kSamplesPerPixel != 1.
-    RWStructuredBuffer<GuideData> sampleGuideData;  ///< Output per-sample guide data.
-    NRDBuffers outputNRD;                           ///< Output NRD data.
+    RWStructuredBuffer<ColorType> sampleColor;     ///< Output per-sample color if kSamplesPerPixel != 1.
+    RWStructuredBuffer<GuideData> sampleGuideData; ///< Output per-sample guide data.
+    NRDBuffers outputNRD;                          ///< Output NRD data.
 
-    RWTexture2D<float4> outputColor;                ///< Output color buffer if kSamplesPerPixel == 1.
+    RWTexture2D<float4> outputColor; ///< Output color buffer if kSamplesPerPixel == 1.
 
     // Render settings that depend on the scene.
     // TODO: Move into scene defines.
@@ -94,8 +102,9 @@ struct PathGenerator
     {
         // Map thread to pixel based on Morton order within tile.
         // The tiles themselves are enumerated in scanline order on screen.
-        const uint2 tileOffset = tileID << kScreenTileBits; // Tile offset in pixels.
-        const uint2 pixel = deinterleave_8bit(threadIdx) + tileOffset; // Assumes 16x16 tile or smaller. A host-side assert checks this assumption.
+        const uint2 tileOffset = tileID << kScreenTileBits;            // Tile offset in pixels.
+        const uint2 pixel = deinterleave_8bit(threadIdx) + tileOffset; // Assumes 16x16 tile or smaller. A host-side assert checks this
+                                                                       // assumption.
 
         // Process each pixel.
         // If we don't hit any surface then the background will be evaluated and written out directly.
@@ -111,12 +120,32 @@ struct PathGenerator
             // TODO: We may want to use a nearest sampler to allow the texture to be of arbitrary dimension.
             spp = kSamplesPerPixel > 0 ? kSamplesPerPixel : min(sampleCount[pixel], kMaxSamplesPerPixel);
 
-            // Compute the primary ray.
-            cameraRay = gScene.camera.computeRayPinhole(pixel, params.frameDim);
-            if (kUseViewDir) cameraRay.dir = -viewDir[pixel];
+            HitInfo hit = {};
 
-            // Load the primary hit from the V-buffer.
-            const HitInfo hit = unpackHitInfo(vbuffer[pixel]);
+#if USE_RESTIRPT
+            if (kUseReSTIRPT && restirpt.kUseAreaReservoirs)
+            {
+                uint maxSpp = kSamplesPerPixel > 0 ? kSamplesPerPixel : kMaxSamplesPerPixel;
+                maxSpp = restirpt.sgCount();
+                SampleGenerator sg = SampleGenerator(pixel, params.seed * maxSpp);
+                float4 filmLensSample = float4(sampleNext2D(sg), sampleNext2D(sg));
+                cameraRay = gScene.camera.computeRayThinlensSubPixelRandom(pixel, params.frameDim, filmLensSample.xy, filmLensSample.zw);
+                SceneRayQuery<kUseAlphaTest> sceneRayQuery;
+                float hitT;
+                hit = sceneRayQuery.traceRay(cameraRay, hitT);
+                vbuffer[pixel] = hit.data;
+            }
+            else
+#endif
+            {
+                // Compute the primary ray.
+                cameraRay = gScene.camera.computeRayPinhole(pixel, params.frameDim);
+                if (kUseViewDir)
+                    cameraRay.dir = -viewDir[pixel];
+
+                // Load the primary hit from the V-buffer.
+                hit = unpackHitInfo(vbuffer[pixel]);
+            }
             hitSurface = hit.isValid();
 
             // Prepare per-pixel surface data for RTXDI.
@@ -141,10 +170,18 @@ struct PathGenerator
                     {
                         // RTXDI uses a simple material model with only diffuse and specular reflection lobes.
                         // We query the BSDF for the diffuse albedo and specular reflectance.
-                        gRTXDI.setSurfaceData(pixel, sd.computeRayOrigin(), bsdfProperties.guideNormal, bsdfProperties.diffuseReflectionAlbedo, bsdfProperties.specularReflectance, bsdfProperties.roughness);
+                        gRTXDI.setSurfaceData(
+                            pixel,
+                            sd.computeRayOrigin(),
+                            bsdfProperties.guideNormal,
+                            bsdfProperties.diffuseReflectionAlbedo,
+                            bsdfProperties.specularReflectance,
+                            bsdfProperties.roughness
+                        );
                     }
                 }
-                if (!validSurface) gRTXDI.setInvalidSurfaceData(pixel);
+                if (!validSurface)
+                    gRTXDI.setInvalidSurfaceData(pixel);
             }
         }
 
@@ -215,17 +252,23 @@ struct PathGenerator
 
         // Write color and denoising guide data for all samples in pixel.
         // For the special case of fixed 1 spp we write the color directly to the output texture.
-        if (kSamplesPerPixel == 1)
-        {
-            outputColor[pixel] = float4(color, 1.f);
-        }
+#if USE_RESTIRPT
+        if (!kUseReSTIRPT || !restirpt.kUseAreaReservoirs)
+#endif
+            if (kSamplesPerPixel == 1)
+            {
+                outputColor[pixel] = float4(color, 1.f);
+            }
 
         for (uint i = 0; i < spp; i++)
         {
-            if (kSamplesPerPixel != 1)
-            {
-                sampleColor[outIdx + i].set(color);
-            }
+#if USE_RESTIRPT
+            if (!kUseReSTIRPT || !restirpt.kUseAreaReservoirs)
+#endif
+                if (kSamplesPerPixel != 1)
+                {
+                    sampleColor[outIdx + i].set(color);
+                }
 
             if (kOutputGuideData)
             {
@@ -250,9 +293,19 @@ struct PathGenerator
 
         if (kOutputNRDAdditionalData)
         {
-            writeNRDDeltaReflectionGuideBuffers(outputNRD, kUseNRDDemodulation, pixel, 0.f, 0.f, -dir, 0.f, kNRDInvalidPathLength, kNRDInvalidPathLength);
+            writeNRDDeltaReflectionGuideBuffers(
+                outputNRD, kUseNRDDemodulation, pixel, 0.f, 0.f, -dir, 0.f, kNRDInvalidPathLength, kNRDInvalidPathLength
+            );
             writeNRDDeltaTransmissionGuideBuffers(outputNRD, kUseNRDDemodulation, pixel, 0.f, 0.f, -dir, 0.f, kNRDInvalidPathLength, 0.f);
         }
+
+#if USE_RESTIRPT
+        if (kUseReSTIRPT && !restirpt.kUseAreaReservoirs)
+        {
+            restirpt.pathReservoirs[outIdx].weight = 0;
+            restirpt.pathReservoirs[outIdx].integrand = 0;
+        }
+#endif
     }
 };
 
@@ -263,9 +316,7 @@ cbuffer CB
 
 // TODO: Replace by compile-time uint2 constant when it works in Slang.
 [numthreads(256 /* kScreenTileDim.x * kScreenTileDim.y */, 1, 1)]
-void main(
-    uint3 groupID : SV_GroupID,
-    uint3 groupThreadID : SV_GroupThreadID)
+void main(uint3 groupID: SV_GroupID, uint3 groupThreadID: SV_GroupThreadID)
 {
     gPathGenerator.execute(groupID.xy, groupThreadID.x);
 }

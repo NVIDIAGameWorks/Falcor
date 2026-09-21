@@ -39,7 +39,7 @@ void main(uint3 thrdId: SV_DispatchThreadID)
 {
     uint bufIdx = thrdId.x + thrdId.y * gStride;
 
-    float3 normal = (gInTex[thrdId.xy].xyz - 0.5f) * 2.0f;
+    float3 normal = gInTex[thrdId.xy].xyz;
     if (length(normal) > 0.01)
     {
         normal = mul(gViewIT, float4(normal, 0.0f)).xyz;

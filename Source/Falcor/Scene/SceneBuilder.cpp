@@ -36,7 +36,6 @@
 #include "Utils/Timing/TimeReport.h"
 #include "Utils/Scripting/ScriptBindings.h"
 #include "Utils/Math/MathHelpers.h"
-#include "Utils/ObjectIDPython.h"
 #include "Utils/NumericRange.h"
 #include <mikktspace.h>
 #include <filesystem>
@@ -2931,6 +2930,19 @@ namespace Falcor
     {
         using namespace pybind11::literals;
 
+
+        FALCOR_SCRIPT_BINDING_DEPENDENCY(NodeID)
+        FALCOR_SCRIPT_BINDING_DEPENDENCY(MeshID)
+        FALCOR_SCRIPT_BINDING_DEPENDENCY(CurveID)
+        FALCOR_SCRIPT_BINDING_DEPENDENCY(CurveOrMeshID)
+        FALCOR_SCRIPT_BINDING_DEPENDENCY(SdfDescID)
+        FALCOR_SCRIPT_BINDING_DEPENDENCY(SdfGridID)
+        FALCOR_SCRIPT_BINDING_DEPENDENCY(MaterialID)
+        FALCOR_SCRIPT_BINDING_DEPENDENCY(LightID)
+        FALCOR_SCRIPT_BINDING_DEPENDENCY(CameraID)
+        FALCOR_SCRIPT_BINDING_DEPENDENCY(VolumeID)
+        FALCOR_SCRIPT_BINDING_DEPENDENCY(GlobalGeometryID)
+
         FALCOR_SCRIPT_BINDING_DEPENDENCY(Scene)
         FALCOR_SCRIPT_BINDING_DEPENDENCY(TriangleMesh)
         FALCOR_SCRIPT_BINDING_DEPENDENCY(Material)
@@ -2986,8 +2998,8 @@ namespace Falcor
         sceneBuilder.def("getMaterial", &SceneBuilder::getMaterial, "name"_a);
         sceneBuilder.def("loadMaterialTexture", &SceneBuilder::loadMaterialTexture, "material"_a, "slot"_a, "path"_a);
         sceneBuilder.def("waitForMaterialTextureLoading", &SceneBuilder::waitForMaterialTextureLoading);
-        sceneBuilder.def("addGridVolume", &SceneBuilder::addGridVolume, "gridVolume"_a, "nodeID"_a = NodeID::kInvalidID);
-        sceneBuilder.def("addVolume", &SceneBuilder::addGridVolume, "gridVolume"_a, "nodeID"_a = NodeID::kInvalidID); // PYTHONDEPRECATED
+        sceneBuilder.def("addGridVolume", &SceneBuilder::addGridVolume, "gridVolume"_a, "nodeID"_a = NodeID());
+        sceneBuilder.def("addVolume", &SceneBuilder::addGridVolume, "gridVolume"_a, "nodeID"_a = NodeID()); // PYTHONDEPRECATED
         sceneBuilder.def("getGridVolume", &SceneBuilder::getGridVolume, "name"_a);
         sceneBuilder.def("getVolume", &SceneBuilder::getGridVolume, "name"_a); // PYTHONDEPRECATED
         sceneBuilder.def("addLight", &SceneBuilder::addLight, "light"_a);
@@ -3003,8 +3015,17 @@ namespace Falcor
             node.transform = transform.getMatrix();
             node.parent = parent;
             return pSceneBuilder->addNode(node);
-        }, "name"_a, "transform"_a = Transform(), "parent"_a = NodeID::kInvalidID);
+        }, "name"_a, "transform"_a = Transform(), "parent"_a = NodeID());
         sceneBuilder.def("addMeshInstance", &SceneBuilder::addMeshInstance);
+        sceneBuilder.def(
+            "addMeshInstance",
+            [](SceneBuilder& builder, MeshID meshID, NodeID nodeID)
+            {
+                builder.addMeshInstance(nodeID, meshID);
+            },
+            "meshID"_a,
+            "nodeID"_a
+        );        
         sceneBuilder.def("addSDFGridInstance", &SceneBuilder::addSDFGridInstance);
         sceneBuilder.def("addCustomPrimitive", &SceneBuilder::addCustomPrimitive);
 

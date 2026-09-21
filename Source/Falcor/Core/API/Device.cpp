@@ -391,6 +391,10 @@ inline Device::SupportedFeatures querySupportedFeatures(gfx::IDevice* pDevice)
         result |= Device::SupportedFeatures::WaveOperations;
     }
 
+    if (pDevice->hasFeature("cooperative-vector"))
+    {
+        result |= Device::SupportedFeatures::CoopVector;
+    }
 
     return result;
 }
@@ -403,6 +407,8 @@ inline ShaderModel querySupportedShaderModel(gfx::IDevice* pDevice)
         ShaderModel level;
     };
     const SMLevel levels[] = {
+        {"sm_6_9", ShaderModel::SM6_9},
+        {"sm_6_8", ShaderModel::SM6_8},
         {"sm_6_7", ShaderModel::SM6_7},
         {"sm_6_6", ShaderModel::SM6_6},
         {"sm_6_5", ShaderModel::SM6_5},
@@ -449,6 +455,12 @@ Device::Device(const Desc& desc) : mDesc(desc)
     if (mDesc.type == Type::Vulkan)
         FALCOR_THROW("Vulkan device not supported.");
 #endif
+
+    if (mDesc.type == Type::Vulkan && mDesc.enableDebugLayer)
+    {
+        mDesc.enableDebugLayer = false;
+        logWarning("Vulkan debug layer is not supported in Falcor. Disabling it.");
+    }
 
     gfx::IDevice::Desc gfxDesc = {};
     gfxDesc.deviceType = getGfxDeviceType(mDesc.type);
@@ -498,8 +510,7 @@ Device::Device(const Desc& desc) : mDesc(desc)
 
     // Setup debug layer.
     FALCOR_GFX_CALL(gfxSetDebugCallback(&gGFXDebugCallBack));
-    if (mDesc.enableDebugLayer)
-        gfx::gfxEnableDebugLayer();
+    gfx::gfxEnableDebugLayer(mDesc.enableDebugLayer);
 
     // Get list of available GPUs.
     const auto gpus = getGPUs(mDesc.type);
@@ -550,12 +561,14 @@ Device::Device(const Desc& desc) : mDesc(desc)
 #endif
 
 #if FALCOR_NVAPI_AVAILABLE
-    // Explicitly check for SER support via NVAPI.
-    // Slang currently relies on NVAPI to implement the SER API but cannot check it's availibility
-    // due to not being shipped with NVAPI for licensing reasons.
     if (getType() == Type::D3D12)
     {
         ID3D12Device* pD3D12Device = getNativeHandle().as<ID3D12Device*>();
+
+        // Explicitly check for SER support via NVAPI.
+        // Slang currently relies on NVAPI to implement the SER API but cannot check it's availibility
+        // due to not being shipped with NVAPI for licensing reasons.
+
         // First check for avalibility of SER API (HitObject).
         bool supportSER = false;
         NvAPI_Status ret = NvAPI_D3D12_IsNvShaderExtnOpCodeSupported(pD3D12Device, NV_EXTN_OP_HIT_OBJECT_REORDER_THREAD, &supportSER);
@@ -569,6 +582,38 @@ Device::Device(const Desc& desc) : mDesc(desc)
         );
         if (ret == NVAPI_OK && reorderingCaps == NVAPI_D3D12_RAYTRACING_THREAD_REORDERING_CAP_STANDARD)
             mSupportedFeatures |= SupportedFeatures::RaytracingReordering;
+
+#if FALCOR_ENABLE_COOP_VECTOR_D3D12
+        // Check for CoopVector support via NVAPI.
+        bool supportsCoopVector = false;
+        NvU32 propertyCount = 0;
+        ret = NvAPI_D3D12_GetPhysicalDeviceCooperativeVectorProperties(pD3D12Device, &propertyCount, NULL);
+        FALCOR_CHECK(ret == NVAPI_OK, "Failed to query CoopVector properties via NVAPI.");
+
+        if (propertyCount > 0)
+        {
+            std::vector<NVAPI_COOPERATIVE_VECTOR_PROPERTIES> properties(propertyCount);
+            ret = NvAPI_D3D12_GetPhysicalDeviceCooperativeVectorProperties(pD3D12Device, &propertyCount, properties.data());
+            FALCOR_CHECK(ret == NVAPI_OK, "Failed to query CoopVector properties via NVAPI.");
+
+            for (NvU32 i = 0; i < propertyCount; i++)
+            {
+                const auto& props = properties[i];
+                FALCOR_CHECK(props.version == NVAPI_COOPERATIVE_VECTOR_PROPERTIES_VER, "CoopVector properties version mismatch.");
+
+                // Check for FP16 support.
+                if (props.inputType == NVAPI_COOPERATIVE_VECTOR_COMPONENT_TYPE_FLOAT16 &&
+                    props.inputInterpretation == NVAPI_COOPERATIVE_VECTOR_COMPONENT_TYPE_FLOAT16 &&
+                    props.biasInterpretation == NVAPI_COOPERATIVE_VECTOR_COMPONENT_TYPE_FLOAT16 &&
+                    props.matrixInterpretation == NVAPI_COOPERATIVE_VECTOR_COMPONENT_TYPE_FLOAT16 &&
+                    props.resultType == NVAPI_COOPERATIVE_VECTOR_COMPONENT_TYPE_FLOAT16 && props.transpose == true)
+                    supportsCoopVector = true;
+            }
+
+            if (supportsCoopVector)
+                mSupportedFeatures |= Device::SupportedFeatures::CoopVector;
+        }
+#endif
     }
 #endif
     if (getType() == Type::Vulkan)

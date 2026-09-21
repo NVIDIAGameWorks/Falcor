@@ -33,12 +33,12 @@
 struct SDFGridHitData
 {
 #if SCENE_SDF_GRID_IMPLEMENTATION == SCENE_SDF_GRID_IMPLEMENTATION_NDSDF
-    uint lod;
+    uint lod = 0;
 #elif SCENE_SDF_GRID_IMPLEMENTATION == SCENE_SDF_GRID_IMPLEMENTATION_SVS || SCENE_SDF_GRID_IMPLEMENTATION == SCENE_SDF_GRID_IMPLEMENTATION_SBS
-    uint primitiveID;
+    uint primitiveID = 0;
 #elif SCENE_SDF_GRID_IMPLEMENTATION == SCENE_SDF_GRID_IMPLEMENTATION_SVO
-    uint svoIndex;
+    uint svoIndex = 0;
 #endif
 
-    float hitT;
+    float hitT = 0.f;
 };

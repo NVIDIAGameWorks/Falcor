@@ -41,7 +41,7 @@
 
 struct LCG
 {
-    uint state;
+    uint state = {};
 };
 
 /**

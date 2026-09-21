@@ -83,9 +83,12 @@ TriangleHit getCandidateTriangleHit<let Flags : int>(RayQuery<Flags> rayQuery)
 
 
 // TODO: Pass UseAlphaTest as a template argument.
-HitInfo traceSceneRayImpl<let Flags : int>(const bool useAlphaTest, inout RayQuery<Flags> rayQuery, const Ray ray, out float hitT, uint rayFlags, uint instanceInclusionMask)
+HitInfo traceSceneRayImpl<let Flags : int>(const bool useAlphaTest, inout RayQuery<Flags> rayQuery, const Ray ray, out float hitT, uint rayFlags, uint instanceInclusionMask, bool isPrevFrame)
 {
-    rayQuery.TraceRayInline(gScene.rtAccel, rayFlags, instanceInclusionMask, ray.toRayDesc());
+    if (isPrevFrame)
+        rayQuery.TraceRayInline(gScene.rtAccelPrev, rayFlags, instanceInclusionMask, ray.toRayDesc());
+    else
+        rayQuery.TraceRayInline(gScene.rtAccel, rayFlags, instanceInclusionMask, ray.toRayDesc());
 
     CurveIntersector::Attribs curveCommittedAttribs;
     DisplacedTriangleMeshIntersector::Attribs displacedTriangleMeshCommittedAttribs;
@@ -225,7 +228,7 @@ HitInfo traceSceneRayImpl<let Flags : int>(const bool useAlphaTest, inout RayQue
 }
 
 [__NoSideEffect] // Required for the performance of reverse-mode auto-diff.
-HitInfo traceSceneRay<let UseAlphaTest : int>(const Ray ray, out float hitT, uint rayFlags, uint instanceInclusionMask)
+HitInfo traceSceneRay<let UseAlphaTest : int>(const Ray ray, out float hitT, uint rayFlags, uint instanceInclusionMask, bool isPrevFrame)
 {
     // TODO: Use a constant expression to derive static ray flags.
 
@@ -236,7 +239,7 @@ HitInfo traceSceneRay<let UseAlphaTest : int>(const Ray ray, out float hitT, uin
 #else
         RayQuery<RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES> rayQuery;
 #endif
-        return traceSceneRayImpl(true, rayQuery, ray, hitT, rayFlags, instanceInclusionMask);
+        return traceSceneRayImpl(true, rayQuery, ray, hitT, rayFlags, instanceInclusionMask, isPrevFrame);
     }
     else
     {
@@ -245,14 +248,17 @@ HitInfo traceSceneRay<let UseAlphaTest : int>(const Ray ray, out float hitT, uin
 #else
         RayQuery<RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES | RAY_FLAG_FORCE_OPAQUE> rayQuery;
 #endif
-        return traceSceneRayImpl(false, rayQuery, ray, hitT, rayFlags, instanceInclusionMask);
+        return traceSceneRayImpl(false, rayQuery, ray, hitT, rayFlags, instanceInclusionMask, isPrevFrame);
     }
 }
 
 [__NoSideEffect] // Required for the performance of reverse-mode auto-diff.
-bool traceSceneVisibilityRayImpl<let Flags : int>(const bool useAlphaTest, inout RayQuery<Flags> rayQuery, const Ray ray, uint rayFlags, uint instanceInclusionMask)
+bool traceSceneVisibilityRayImpl<let Flags : int>(const bool useAlphaTest, inout RayQuery<Flags> rayQuery, const Ray ray, uint rayFlags, uint instanceInclusionMask, bool isPrevFrame)
 {
-    rayQuery.TraceRayInline(gScene.rtAccel, rayFlags, instanceInclusionMask, ray.toRayDesc());
+    if (isPrevFrame)
+        rayQuery.TraceRayInline(gScene.rtAccelPrev, rayFlags, instanceInclusionMask, ray.toRayDesc());
+    else
+        rayQuery.TraceRayInline(gScene.rtAccel, rayFlags, instanceInclusionMask, ray.toRayDesc());
 
     while (rayQuery.Proceed())
     {
@@ -322,7 +328,7 @@ bool traceSceneVisibilityRayImpl<let Flags : int>(const bool useAlphaTest, inout
     return rayQuery.CommittedStatus() == COMMITTED_NOTHING;
 }
 
-bool traceSceneVisibilityRay<let UseAlphaTest : int>(const Ray ray, uint rayFlags, uint instanceInclusionMask)
+bool traceSceneVisibilityRay<let UseAlphaTest : int>(const Ray ray, uint rayFlags, uint instanceInclusionMask, bool isPrevFrame)
 {
     // TODO: Use a constant expression to derive static ray flags.
 
@@ -333,7 +339,7 @@ bool traceSceneVisibilityRay<let UseAlphaTest : int>(const Ray ray, uint rayFlag
 #else
         RayQuery<RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH> rayQuery;
 #endif
-        return traceSceneVisibilityRayImpl(true, rayQuery, ray, rayFlags, instanceInclusionMask);
+        return traceSceneVisibilityRayImpl(true, rayQuery, ray, rayFlags, instanceInclusionMask, isPrevFrame);
     }
     else
     {
@@ -342,7 +348,7 @@ bool traceSceneVisibilityRay<let UseAlphaTest : int>(const Ray ray, uint rayFlag
 #else
         RayQuery<RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES | RAY_FLAG_FORCE_OPAQUE | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH> rayQuery;
 #endif
-        return traceSceneVisibilityRayImpl(false, rayQuery, ray, rayFlags, instanceInclusionMask);
+        return traceSceneVisibilityRayImpl(false, rayQuery, ray, rayFlags, instanceInclusionMask, isPrevFrame);
     }
 }
 
@@ -350,13 +356,13 @@ bool traceSceneVisibilityRay<let UseAlphaTest : int>(const Ray ray, uint rayFlag
 */
 struct SceneRayQuery<let UseAlphaTest : int> : ISceneRayQuery
 {
-    HitInfo traceRay(const Ray ray, out float hitT, uint rayFlags = RAY_FLAG_NONE, uint instanceInclusionMask = 0xff)
+    HitInfo traceRay(const Ray ray, out float hitT, uint rayFlags = RAY_FLAG_NONE, uint instanceInclusionMask = 0xff, bool isPrevFrame=false)
     {
-        return traceSceneRay<UseAlphaTest>(ray, hitT, rayFlags, instanceInclusionMask);
+        return traceSceneRay<UseAlphaTest>(ray, hitT, rayFlags, instanceInclusionMask, isPrevFrame);
     }
 
-    bool traceVisibilityRay(const Ray ray, uint rayFlags = RAY_FLAG_NONE, uint instanceInclusionMask = 0xff)
+    bool traceVisibilityRay(const Ray ray, uint rayFlags = RAY_FLAG_NONE, uint instanceInclusionMask = 0xff, bool isPrevFrame = false)
     {
-        return traceSceneVisibilityRay<UseAlphaTest>(ray, rayFlags, instanceInclusionMask);
+        return traceSceneVisibilityRay<UseAlphaTest>(ray, rayFlags, instanceInclusionMask, isPrevFrame);
     }
 }

@@ -42,7 +42,7 @@ Texture2D<int4> gTexture;
 #error "Invalid format"
 #endif
 
-static const uint kColorMap = _COLOR_MAP;
+static const ColorMap kColorMap = ColorMap(_COLOR_MAP);
 static const uint kChannel = _CHANNEL;
 
 cbuffer StaticCB

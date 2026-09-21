@@ -203,6 +203,10 @@ void GBufferRaster::execute(RenderContext* pRenderContext, const RenderData& ren
             desc.addShaderModules(mpScene->getShaderModules());
             desc.addShaderLibrary(kGBufferPassProgramFile).vsEntry("vsMain").psEntry("psMain");
             desc.addTypeConformances(mpScene->getTypeConformances());
+            if (mpDevice->getType() == Device::Type::D3D12)
+                desc.addCompilerArguments({"-Xdxc", "-disable-payload-qualifiers"}); // TODO WAR: Dxc requires that all fields carry payload access qualifiers.
+            if (mpDevice->getType() == Device::Type::D3D12 && mpDevice->isFeatureSupported(Device::SupportedFeatures::CoopVector))
+                desc.setShaderModel(ShaderModel::SM6_9); // Required for CoopVector on D3D12 devices
 
             mGBufferPass.pProgram = Program::create(mpDevice, desc, mpScene->getSceneDefines());
             mGBufferPass.pState->setProgram(mGBufferPass.pProgram);

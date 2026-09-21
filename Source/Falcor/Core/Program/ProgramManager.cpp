@@ -105,6 +105,7 @@ ProgramManager::ProgramManager(Device* pDevice) : mpDevice(pDevice)
     // Set global shader defines
     DefineList globalDefines = {
         {"FALCOR_NVAPI_AVAILABLE", (FALCOR_NVAPI_AVAILABLE && mpDevice->getType() == Device::Type::D3D12) ? "1" : "0"},
+        {"FALCOR_COOP_VECTOR_AVAILABLE", mpDevice->isFeatureSupported(Device::SupportedFeatures::CoopVector) ? "1" : "0"},
 #if FALCOR_NVAPI_AVAILABLE
         {"NV_SHADER_EXTN_SLOT", "u999"},
         {"__SHADER_TARGET_MAJOR", std::to_string(getShaderModelMajorVersion(mpDevice->getSupportedShaderModel()))},
@@ -676,15 +677,6 @@ SlangCompileRequest* ProgramManager::createSlangCompileRequest(const Program& pr
 
     targetDesc.forceGLSLScalarBufferLayout = true;
 
-    if (getEnvironmentVariable("FALCOR_USE_SLANG_SPIRV_BACKEND") == "1" || program.mDesc.useSPIRVBackend)
-    {
-        targetDesc.flags |= SLANG_TARGET_FLAG_GENERATE_SPIRV_DIRECTLY;
-    }
-    else
-    {
-        targetDesc.flags &= ~SLANG_TARGET_FLAG_GENERATE_SPIRV_DIRECTLY;
-    }
-
     const char* targetMacroName;
 
     // Pick the right target based on the current graphics API
@@ -732,7 +724,7 @@ SlangCompileRequest* ProgramManager::createSlangCompileRequest(const Program& pr
     // Setup additional compiler options.
     std::vector<slang::CompilerOptionEntry> compilerOptionEntries;
     auto addIntOption = [&compilerOptionEntries](slang::CompilerOptionName name, int value) {
-        compilerOptionEntries.push_back({name, {slang::CompilerOptionValueKind::Int, 1, value, nullptr, nullptr}});
+        compilerOptionEntries.push_back({name, {slang::CompilerOptionValueKind::Int, value, 0, nullptr, nullptr}});
     };
     auto addStringOption = [&compilerOptionEntries](slang::CompilerOptionName name, const char* value) {
         compilerOptionEntries.push_back({name, {slang::CompilerOptionValueKind::String, 0, 0, value, nullptr}});
@@ -743,7 +735,14 @@ SlangCompileRequest* ProgramManager::createSlangCompileRequest(const Program& pr
     // Column major option can be useful when compiling external shader sources that don't depend
     // on anything Falcor.
     bool useColumnMajor = is_set(compilerFlags, SlangCompilerFlags::MatrixLayoutColumnMajor);
-    addIntOption(useColumnMajor ? slang::CompilerOptionName::MatrixLayoutColumn : slang::CompilerOptionName::MatrixLayoutRow, 1);
+    sessionDesc.defaultMatrixLayoutMode = useColumnMajor ? SLANG_MATRIX_LAYOUT_COLUMN_MAJOR : SLANG_MATRIX_LAYOUT_ROW_MAJOR;
+    // TODO: Controlling matrix layout using options doesn't work. Slang seems to ignore them.
+    // addIntOption(useColumnMajor ? slang::CompilerOptionName::MatrixLayoutColumn : slang::CompilerOptionName::MatrixLayoutRow, 1);
+
+    if (getEnvironmentVariable("FALCOR_USE_SLANG_SPIRV_BACKEND") == "1" || program.mDesc.useSPIRVBackend)
+        addIntOption(slang::CompilerOptionName::EmitSpirvDirectly, 1);
+    else
+        addIntOption(slang::CompilerOptionName::EmitSpirvViaGLSL, 1);
 
     // New versions of slang default to short-circuiting for logical and/or operators.
     // Facor is still written with the assumption that these operators do not short-circuit.

@@ -38,14 +38,14 @@ struct SurfaceData
 {
     // The following fields are stored in PackedSurfaceData.
 
-    float3 position;        ///< Position in world-space.
-    float viewDepth;        ///< Distance from viewer to surface (negative for invalid surface).
-    uint packedNormal;      ///< Packed surface normal in world-space (octahedral mapping).
-    uint packedWeights;     ///< Packed diffuse/specular reflectance and roughness.
+    float3 position = {};    ///< Position in world-space.
+    float viewDepth = -1.f;  ///< Distance from viewer to surface (negative for invalid surface).
+    uint packedNormal = {};  ///< Packed surface normal in world-space (octahedral mapping).
+    uint packedWeights = {}; ///< Packed diffuse/specular reflectance and roughness.
 
     // The following fields are *NOT* stored in PackedSurfaceData.
 
-    float3 viewDir;         ///< Direction to the viewer in world-space.
+    float3 viewDir = {};         ///< Direction to the viewer in world-space.
 
     // True if surface data is valid.
     property bool valid
@@ -88,13 +88,7 @@ struct SurfaceData
         set { packedWeights = (packedWeights & ~0xff000000) | (packUnorm8(newValue) << 24); }
     }
 
-    /** Initialize an invalid surface.
-    */
-    __init()
-    {
-        this = {};
-        viewDepth = -1.f;
-    }
+    __init() {}
 
     /** Initialize a surface.
         \param[in] packed Packed surface data.

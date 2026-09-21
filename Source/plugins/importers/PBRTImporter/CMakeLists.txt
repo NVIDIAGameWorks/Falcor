@@ -14,6 +14,9 @@ target_sources(PBRTImporter PRIVATE
     Parser.h
     PBRTImporter.cpp
     PBRTImporter.h
+    TextureAlphaMerge.3d.slang
+    TextureAlphaMerge.cpp
+    TextureAlphaMerge.h
     Types.h
 )
 

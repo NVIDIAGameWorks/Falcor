@@ -46,13 +46,13 @@ static const float kMinCosTheta = 1e-6f;
 */
 
 /** Albedo is split into four components. They have to sum up to 1.0.
-*/
+ */
 struct AlbedoContributions
 {
-    float3  reflection;     ///< Energy reflected into upper hemisphere
-    float3  absorptionR;    ///< Energy absorbed upper hemisphere
-    float3  transmission;   ///< Energy transmitted into upper hemisphere
-    float3  absorptionT;    ///< Energy absorbed lower hemisphere
+    float3 reflection;   ///< Energy reflected into upper hemisphere
+    float3 absorptionR;  ///< Energy absorbed upper hemisphere
+    float3 transmission; ///< Energy transmitted into upper hemisphere
+    float3 absorptionT;  ///< Energy absorbed lower hemisphere
 
     __init(float3 r, float3 ar, float3 t, float3 at)
     {
@@ -65,9 +65,9 @@ struct AlbedoContributions
 
 struct BSDFContext
 {
-    float iorI;                  ///< IOR from incidence medium
-    float iorT;                  ///< IOR trom transmission medium
-    bool inited;                 ///< Flag to indicate if the struct was initialized
+    float iorI;  ///< IOR from incidence medium
+    float iorT;  ///< IOR trom transmission medium
+    bool inited; ///< Flag to indicate if the struct was initialized
 
     __init(float iorI_, float iorT_)
     {
@@ -84,34 +84,26 @@ struct BSDFContext
     }
 }
 
-AlbedoContributions operator+(const AlbedoContributions a, const AlbedoContributions b)
+AlbedoContributions operator +(const AlbedoContributions a, const AlbedoContributions b)
 {
     return AlbedoContributions(
-        a.reflection + b.reflection,
-        a.absorptionR + b.absorptionR,
-        a.transmission + b.transmission,
-        a.absorptionT + b.absorptionT );
+        a.reflection + b.reflection, a.absorptionR + b.absorptionR, a.transmission + b.transmission, a.absorptionT + b.absorptionT
+    );
 }
 
 AlbedoContributions operator*(const AlbedoContributions a, const AlbedoContributions b)
 {
     return AlbedoContributions(
-        a.reflection * b.reflection,
-        a.absorptionR * b.absorptionR,
-        a.transmission * b.transmission,
-        a.absorptionT * b.absorptionT);
+        a.reflection * b.reflection, a.absorptionR * b.absorptionR, a.transmission * b.transmission, a.absorptionT * b.absorptionT
+    );
 }
 
 AlbedoContributions operator*(const float f, const AlbedoContributions b)
 {
-    return AlbedoContributions(
-        f * b.reflection,
-        f * b.absorptionR,
-        f * b.transmission,
-        f * b.absorptionT);
+    return AlbedoContributions(f * b.reflection, f * b.absorptionR, f * b.transmission, f * b.absorptionT);
 }
 
-AlbedoContributions operator+=(AlbedoContributions a, const AlbedoContributions b)
+AlbedoContributions operator +=(AlbedoContributions a, const AlbedoContributions b)
 {
     a.reflection += b.reflection;
     a.absorptionR += b.absorptionR;
@@ -123,8 +115,8 @@ AlbedoContributions operator+=(AlbedoContributions a, const AlbedoContributions 
 
 struct RoughnessInformation
 {
-    float2  roughnessBSDFNotation;     ///< This is the (mostly meaningless) non-universal roughness of the BSDF
-    float3  scratch;
+    float2 roughnessBSDFNotation; ///< This is the (mostly meaningless) non-universal roughness of the BSDF
+    float3 scratch;
 
     __init()
     {
@@ -153,7 +145,15 @@ interface IBSDF
         \param[in,out] sg Sample generator.
         \return Returns true if successful.
     */
-    bool sample<S : ISampleGenerator>(const float3 wi, out float3 wo, out float pdf, out float3 weight, out uint lobeType, inout S sg, BSDFContext bc);
+    bool sample<S : ISampleGenerator>(
+        const float3 wi,
+        out float3 wo,
+        out float pdf,
+        out float3 weight,
+        out uint lobeType,
+        inout S sg,
+        BSDFContext bc
+    );
 
     /** Evaluates the directional pdf for sampling outgoing direction wo.
         \param[in] wi Incident direction.

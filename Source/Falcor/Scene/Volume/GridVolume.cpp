@@ -398,7 +398,7 @@ namespace Falcor
         volume.def_property("emissionTemperature", &GridVolume::getEmissionTemperature, &GridVolume::setEmissionTemperature);
         auto create = [] (const std::string& name)
         {
-            return GridVolume::create(accessActivePythonSceneBuilder().getDevice(), name);
+            return GridVolume::create(accessActivePythonSceneBuilderDevice(), name);
         };
         volume.def(pybind11::init(create), "name"_a); // PYTHONDEPRECATED
         volume.def("loadGrid",

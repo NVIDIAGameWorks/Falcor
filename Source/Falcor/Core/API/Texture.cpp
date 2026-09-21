@@ -48,8 +48,6 @@ namespace Falcor
 {
 namespace
 {
-static constexpr bool kTopDown = true; // Memory layout when loading from file
-
 gfx::IResource::Type getGfxResourceType(Texture::Type type)
 {
     switch (type)
@@ -272,17 +270,25 @@ ref<Texture> Texture::createMippedFromFiles(
     mips.reserve(paths.size());
     size_t combinedSize = 0;
     std::filesystem::path fullPathMip0;
+    const bool topDown = is_set(importFlags, Bitmap::ImportFlags::FlipVertical) ? false : true;
 
     for (const auto& path : paths)
     {
         Bitmap::UniqueConstPtr pBitmap;
         if (hasExtension(path, "dds"))
         {
-            pBitmap = ImageIO::loadBitmapFromDDS(path);
+            if (!topDown)
+            {
+                logWarning("Error when loading ''. DDS loader requires top-down layout.", path);
+            }
+            else
+            {
+                pBitmap = ImageIO::loadBitmapFromDDS(path);
+            }
         }
         else
         {
-            pBitmap = Bitmap::createFromFile(path, kTopDown, importFlags);
+            pBitmap = Bitmap::createFromFile(path, topDown, importFlags);
         }
         if (!pBitmap)
         {
@@ -376,9 +382,15 @@ ref<Texture> Texture::createFromFile(
         return nullptr;
     }
 
+    const bool topDown = is_set(importFlags, Bitmap::ImportFlags::FlipVertical) ? false : true;
     ref<Texture> pTex;
     if (hasExtension(path, "dds"))
     {
+        if (!topDown)
+        {
+            logWarning("Error when loading ''. DDS loader requires top-down layout.", path);
+            return nullptr;
+        }
         try
         {
             pTex = ImageIO::loadTextureFromDDS(pDevice, path, loadAsSrgb);
@@ -390,7 +402,7 @@ ref<Texture> Texture::createFromFile(
     }
     else
     {
-        Bitmap::UniqueConstPtr pBitmap = Bitmap::createFromFile(path, kTopDown, importFlags);
+        Bitmap::UniqueConstPtr pBitmap = Bitmap::createFromFile(path, topDown, importFlags);
         if (pBitmap)
         {
             ResourceFormat texFormat = pBitmap->getFormat();
@@ -824,6 +836,8 @@ inline void texture_from_numpy(Texture& self, pybind11::ndarray<pybind11::numpy>
     FALCOR_CHECK(dataSize == subresourceSize, "numpy array is doesn't match the subresource size ({} != {})", dataSize, subresourceSize);
 
     self.setSubresourceBlob(subresource, data.data(), dataSize);
+    // Submit while the caller-owned ndarray data is still alive.
+    self.getDevice()->getRenderContext()->submit(false);
 }
 
 FALCOR_SCRIPT_BINDING(Texture)

@@ -40,33 +40,40 @@ import Params;
 struct ResolvePass
 {
     // Resources
-    PathTracerParams params;                                ///< Runtime parameters.
+    PathTracerParams params; ///< Runtime parameters.
 
-    StructuredBuffer<ColorType>   sampleColor;              ///< Input per-sample color if kSamplesPerPixel != 1.
-    StructuredBuffer<GuideData>   sampleGuideData;          ///< Input per-sample guide data. Only valid if kOutputGuideData == true.
-    StructuredBuffer<NRDRadiance> sampleNRDRadiance;        ///< Input per-sample NRD radiance data. Only valid if kOutputNRDData == true.
-    StructuredBuffer<float>       sampleNRDHitDist;         ///< Input per-sample NRD hit distance data. Only valid if kOutputNRDData == true.
-    StructuredBuffer<float4>      sampleNRDEmission;        ///< Input per-sample NRD emission data. Only valid if kOutputNRDData == true.
-    StructuredBuffer<float4>      sampleNRDReflectance;     ///< Input per-sample NRD reflectance data. Only valid if kOutputNRDData == true.
+    StructuredBuffer<ColorType> sampleColor;         ///< Input per-sample color if kSamplesPerPixel != 1.
+    StructuredBuffer<GuideData> sampleGuideData;     ///< Input per-sample guide data. Only valid if kOutputGuideData == true.
+    StructuredBuffer<NRDRadiance> sampleNRDRadiance; ///< Input per-sample NRD radiance data. Only valid if kOutputNRDData == true.
+    StructuredBuffer<float> sampleNRDHitDist;        ///< Input per-sample NRD hit distance data. Only valid if kOutputNRDData == true.
+    StructuredBuffer<float4> sampleNRDEmission;      ///< Input per-sample NRD emission data. Only valid if kOutputNRDData == true.
+    StructuredBuffer<float4> sampleNRDReflectance;   ///< Input per-sample NRD reflectance data. Only valid if kOutputNRDData == true.
 
-    StructuredBuffer<float4> sampleNRDPrimaryHitNeeOnDelta; ///< Output per-sample NEE on paths classified as delta, from delta+diffuse materials. Only valid if kOutputNRDData == true.
-    Texture2D<float4> primaryHitDiffuseReflectance;         ///< Output per-pixel primary hit diffuse reflectance. Only valid if kOutputNRDData == true.
+    StructuredBuffer<float4> sampleNRDPrimaryHitNeeOnDelta; ///< Output per-sample NEE on paths classified as delta, from delta+diffuse
+                                                            ///< materials. Only valid if kOutputNRDData == true.
+    Texture2D<float4> primaryHitDiffuseReflectance; ///< Output per-pixel primary hit diffuse reflectance. Only valid if kOutputNRDData ==
+                                                    ///< true.
 
-    Texture2D<uint> sampleCount;                            ///< Optional input sample count buffer. Only valid when kSamplesPerPixel == 0.
-    Texture2D<uint> sampleOffset;                           ///< Output offset into per-sample buffers. Only valid when kSamplesPerPixel == 0.
+    Texture2D<uint> sampleCount;  ///< Optional input sample count buffer. Only valid when kSamplesPerPixel == 0.
+    Texture2D<uint> sampleOffset; ///< Output offset into per-sample buffers. Only valid when kSamplesPerPixel == 0.
 
-    RWTexture2D<float4> outputColor;                        ///< Output resolved color.
-    RWTexture2D<float4> outputAlbedo;                       ///< Output resolved albedo. Only valid if kOutputGuideData == true.
-    RWTexture2D<float4> outputSpecularAlbedo;               ///< Output resolved specular albedo. Only valid if kOutputGuideData == true.
-    RWTexture2D<float4> outputIndirectAlbedo;               ///< Output resolved indirect albedo. Only valid if kOutputGuideData == true.
-    RWTexture2D<float4> outputGuideNormal;                  ///< Output resolved guide normal. Only valid if kOutputGuideData == true.
-    RWTexture2D<float4> outputReflectionPosW;               ///< Output resolved reflection pos. Only valid if kOutputGuideData == true.
+    RWTexture2D<float4> outputColor;          ///< Output resolved color.
+    RWTexture2D<float4> outputAlbedo;         ///< Output resolved albedo. Only valid if kOutputGuideData == true.
+    RWTexture2D<float4> outputSpecularAlbedo; ///< Output resolved specular albedo. Only valid if kOutputGuideData == true.
+    RWTexture2D<float4> outputIndirectAlbedo; ///< Output resolved indirect albedo. Only valid if kOutputGuideData == true.
+    RWTexture2D<float4> outputGuideNormal;    ///< Output resolved guide normal. Only valid if kOutputGuideData == true.
+    RWTexture2D<float4> outputReflectionPosW; ///< Output resolved reflection pos. Only valid if kOutputGuideData == true.
 
-    RWTexture2D<float4> outputNRDDiffuseRadianceHitDist;            ///< Output resolved diffuse radiance in .rgb and hit distance in .a for NRD. Only valid if kOutputNRDData == true.
-    RWTexture2D<float4> outputNRDSpecularRadianceHitDist;           ///< Output resolved specular radiance in .rgb and hit distance in .a for NRD. Only valid if kOutputNRDData == true.
-    RWTexture2D<float4> outputNRDDeltaReflectionRadianceHitDist;    ///< Output resolved delta reflection radiance in .rgb and hit distance in .a for NRD. Only valid if kOutputNRDData == true.
-    RWTexture2D<float4> outputNRDDeltaTransmissionRadianceHitDist;  ///< Output resolved delta transmission radiance in .rgb and hit distance in .a for NRD. Only valid if kOutputNRDData == true.
-    RWTexture2D<float4> outputNRDResidualRadianceHitDist;           ///< Output resolved residual radiance in .rgb and hit distance in .a for NRD. Only valid if kOutputNRDData == true.
+    RWTexture2D<float4> outputNRDDiffuseRadianceHitDist;  ///< Output resolved diffuse radiance in .rgb and hit distance in .a for NRD. Only
+                                                          ///< valid if kOutputNRDData == true.
+    RWTexture2D<float4> outputNRDSpecularRadianceHitDist; ///< Output resolved specular radiance in .rgb and hit distance in .a for NRD.
+                                                          ///< Only valid if kOutputNRDData == true.
+    RWTexture2D<float4> outputNRDDeltaReflectionRadianceHitDist; ///< Output resolved delta reflection radiance in .rgb and hit distance in
+                                                                 ///< .a for NRD. Only valid if kOutputNRDData == true.
+    RWTexture2D<float4> outputNRDDeltaTransmissionRadianceHitDist; ///< Output resolved delta transmission radiance in .rgb and hit distance
+                                                                   ///< in .a for NRD. Only valid if kOutputNRDData == true.
+    RWTexture2D<float4> outputNRDResidualRadianceHitDist; ///< Output resolved residual radiance in .rgb and hit distance in .a for NRD.
+                                                          ///< Only valid if kOutputNRDData == true.
 
     static const bool kOutputGuideData = OUTPUT_GUIDE_DATA;
     static const bool kOutputNRDData = OUTPUT_NRD_DATA;
@@ -76,7 +83,8 @@ struct ResolvePass
     */
     void execute(const uint2 pixel)
     {
-        if (any(pixel >= params.frameDim)) return;
+        if (any(pixel >= params.frameDim))
+            return;
 
         // Compute offset into per-sample buffers. All samples are stored consecutively at this offset.
         const uint offset = params.getSampleOffset(pixel, sampleOffset);
@@ -99,7 +107,10 @@ struct ResolvePass
                 color += sampleColor[idx].get();
             }
 
-            outputColor[pixel] = float4(invSpp * color, 1.f);
+            if (kUseReSTIRPT)
+                outputColor[pixel] += float4(invSpp * color, 1.f);
+            else
+                outputColor[pixel] = float4(invSpp * color, 1.f);
         }
 
         // Guide data is always written per-sample and needs to be resolved.
@@ -129,7 +140,7 @@ struct ResolvePass
         }
 
         // NRD data is always written per-sample and needs to be resolved.
-        if (kOutputNRDData)
+        if (kOutputNRDData && !kUseReSTIRPT)
         {
             float3 diffuseRadiance = 0.f;
             float3 specularRadiance = 0.f;
@@ -166,7 +177,9 @@ struct ResolvePass
                     break;
                 case NRDPathType::DeltaReflection:
                     deltaReflectionRadiance += demodulatedRadiance;
-                    diffuseRadiance += select(primaryHitDiffuseReflectance[pixel].rgb > 0.f, neeOnDelta / primaryHitDiffuseReflectance[pixel].rgb, float3(0.f));
+                    diffuseRadiance += select(
+                        primaryHitDiffuseReflectance[pixel].rgb > 0.f, neeOnDelta / primaryHitDiffuseReflectance[pixel].rgb, float3(0.f)
+                    );
                     break;
                 case NRDPathType::DeltaTransmission:
                     deltaTransmissionRadiance += demodulatedRadiance;
@@ -195,7 +208,7 @@ cbuffer CB
 }
 
 [numthreads(16, 16, 1)]
-void main(uint3 dispatchThreadId : SV_DispatchThreadID)
+void main(uint3 dispatchThreadId: SV_DispatchThreadID)
 {
     gResolvePass.execute(dispatchThreadId.xy);
 }

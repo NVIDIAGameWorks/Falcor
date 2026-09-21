@@ -40,7 +40,7 @@
 
 struct Xoshiro128StarStar
 {
-    uint state[4];
+    uint state[4] = {};
 };
 
 uint rotl(const uint x, int k)

@@ -54,5 +54,5 @@ struct Xorshift32
         return state;
     }
 
-    uint state;
+    uint state = {};
 };

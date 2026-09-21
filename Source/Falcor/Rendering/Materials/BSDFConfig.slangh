@@ -34,16 +34,16 @@
     TODO: This file will be removed when we've settled on a new standard material definition.
 */
 
-#define DiffuseBrdfLambert      0
-#define DiffuseBrdfDisney       1
-#define DiffuseBrdfFrostbite    2
+#define DiffuseBrdfLambert 0
+#define DiffuseBrdfDisney 1
+#define DiffuseBrdfFrostbite 2
 
 #ifndef DiffuseBrdf
 #define DiffuseBrdf DiffuseBrdfFrostbite
 #endif
 
-#define SpecularMaskingFunctionSmithGGXSeparable    0       ///< Used by UE4.
-#define SpecularMaskingFunctionSmithGGXCorrelated   1       ///< Used by Frostbite. This is the more accurate form (default).
+#define SpecularMaskingFunctionSmithGGXSeparable 0  ///< Used by UE4.
+#define SpecularMaskingFunctionSmithGGXCorrelated 1 ///< Used by Frostbite. This is the more accurate form (default).
 
 #ifndef SpecularMaskingFunction
 #define SpecularMaskingFunction SpecularMaskingFunctionSmithGGXCorrelated

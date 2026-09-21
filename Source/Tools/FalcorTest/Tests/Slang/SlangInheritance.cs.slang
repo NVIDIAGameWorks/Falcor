@@ -32,7 +32,7 @@ BEGIN_NAMESPACE_FALCOR
 
 struct A
 {
-    uint scalar;
+    uint scalar = {};
 
     SETTER_DECL void setScalar(uint x) { scalar = x; }
     uint getScalar() { return scalar; }
@@ -40,7 +40,7 @@ struct A
 
 struct B : A
 {
-    float3 vector;
+    float3 vector = {};
 
     SETTER_DECL void setVector(float3 v) { vector = v; }
     float3 getVector() { return vector; }

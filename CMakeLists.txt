@@ -23,7 +23,7 @@ set_property(CACHE FALCOR_ENABLE_ASSERTS PROPERTY STRINGS AUTO ON OFF)
 # Enable/disable the profiler.
 set(FALCOR_ENABLE_PROFILER ON CACHE BOOL "Enable profiler")
 
-# Enable/disable using system Python distribution. This requires Python 3.7 to be available.
+# Enable/disable using system Python distribution.
 set(FALCOR_USE_SYSTEM_PYTHON OFF CACHE BOOL "Use system Python distribution")
 
 # Enable/disable USD.
@@ -123,7 +123,6 @@ endif()
 # CUDA
 # -----------------------------------------------------------------------------
 
-
 # Set default CUDA architecture to 75 (Turing).
 # This can be overwritten for individual targets using the CUDA_ARCHITECTURE property.
 if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
@@ -177,11 +176,11 @@ if(NOT SETUP_CONFIGURATION_TYPES)
 
     if(CMAKE_CONFIGURATION_TYPES)
         # multi config generator
-        set(CMAKE_CONFIGURATION_TYPES "Debug;Release" CACHE STRING "" FORCE)
+        set(CMAKE_CONFIGURATION_TYPES "Debug;Release;RelWithDebInfo" CACHE STRING "" FORCE)
     else()
         # single config generator
         set_property(CACHE CMAKE_BUILD_TYPE PROPERTY HELPSTRING "Choose the type of build")
-        set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug;Release")
+        set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug;Release;RelWithDebInfo")
     endif()
 endif()
 
@@ -266,7 +265,7 @@ function(target_copy_shaders target output_dir)
             )
         endif()
     endforeach()
-endfunction()
+endfunction() 
 
 # -----------------------------------------------------------------------------
 # Data file handling

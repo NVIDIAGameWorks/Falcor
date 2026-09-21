@@ -154,10 +154,7 @@ struct Brick2D
     int2 size;
     ByteAddressBuffer data;
 
-    static Brick2D fromManagedBuffers(int2 size, uint dataBufferID)
-    {
-        return Brick2D(size, gScene.materials.getBuffer(dataBufferID));
-    }
+    static Brick2D fromManagedBuffers(int2 size, uint dataBufferID) { return Brick2D(size, gScene.materials.getBuffer(dataBufferID)); }
 
     __init(int2 size, ByteAddressBuffer data)
     {
@@ -171,9 +168,9 @@ struct Brick2D
         int2 pos = clamp(int2(uv), int2(0), size - 2);
         uv = saturate(uv - pos);
         int idx = pos.x + pos.y * size.x;
-        float val00 = loadf(data, idx             );
-        float val10 = loadf(data, idx + 1         );
-        float val01 = loadf(data, idx     + size.x);
+        float val00 = loadf(data, idx);
+        float val10 = loadf(data, idx + 1);
+        float val01 = loadf(data, idx + size.x);
         float val11 = loadf(data, idx + 1 + size.x);
         return lerp(lerp(val00, val10, uv.x), lerp(val01, val11, uv.x), uv.y);
     }
@@ -195,10 +192,7 @@ struct Brick4D
     int4 size;
     ByteAddressBuffer data;
 
-    static Brick4D fromManagedBuffers(int4 size, uint dataBufferID)
-    {
-        return Brick4D(size, gScene.materials.getBuffer(dataBufferID));
-    }
+    static Brick4D fromManagedBuffers(int4 size, uint dataBufferID) { return Brick4D(size, gScene.materials.getBuffer(dataBufferID)); }
 
     __init(int4 size, ByteAddressBuffer data)
     {
@@ -208,9 +202,9 @@ struct Brick4D
 
     float interpolate(int base, int2 stride, float2 uv)
     {
-        float val00 = loadf(data, base                      );
-        float val10 = loadf(data, base + stride.x           );
-        float val01 = loadf(data, base            + stride.y);
+        float val00 = loadf(data, base);
+        float val10 = loadf(data, base + stride.x);
+        float val01 = loadf(data, base + stride.y);
         float val11 = loadf(data, base + stride.x + stride.y);
         return lerp(lerp(val00, val10, uv.x), lerp(val01, val11, uv.x), uv.y);
     }
@@ -280,9 +274,9 @@ struct InterpolatedDistribution2D
 
     float interpolate(ByteAddressBuffer buf, int base, int2 stride, float2 uv)
     {
-        float val00 = loadf(buf, base                      );
-        float val10 = loadf(buf, base + stride.x           );
-        float val01 = loadf(buf, base            + stride.y);
+        float val00 = loadf(buf, base);
+        float val10 = loadf(buf, base + stride.x);
+        float val01 = loadf(buf, base + stride.y);
         float val11 = loadf(buf, base + stride.x + stride.y);
         return lerp(lerp(val00, val10, uv.x), lerp(val01, val11, uv.x), uv.y);
     }
@@ -290,9 +284,9 @@ struct InterpolatedDistribution2D
     float4 gather(ByteAddressBuffer buf, int base, int4 stride, float2 uv)
     {
         return float4(
-            interpolate(buf, base                      , stride.xy, uv),
-            interpolate(buf, base            + stride.z, stride.xy, uv),
-            interpolate(buf, base + stride.w           , stride.xy, uv),
+            interpolate(buf, base, stride.xy, uv),
+            interpolate(buf, base + stride.z, stride.xy, uv),
+            interpolate(buf, base + stride.w, stride.xy, uv),
             interpolate(buf, base + stride.w + stride.z, stride.xy, uv)
         );
     }
@@ -345,10 +339,7 @@ struct InterpolatedDistribution2D
         return a - base;
     }
 
-    float evalQuadratic(float a, float b, float u)
-    {
-        return a * u + (b - a) * u * u * 0.5f;
-    }
+    float evalQuadratic(float a, float b, float u) { return a * u + (b - a) * u * u * 0.5f; }
 
     float solveQuadraticInterpolant(float a, float b, float x)
     {
@@ -377,7 +368,7 @@ struct InterpolatedDistribution2D
         int baseConditional = dot(int3(sliceI, row), strideConditional);
 
         float rowBase = interpolate(marginalCdf, baseMarginal + row, strideMarginal, uv);
-        float rowA = interpolate(conditionalCdf, baseConditional + size.z     - 1, strideConditional.xy, uv);
+        float rowA = interpolate(conditionalCdf, baseConditional + size.z - 1, strideConditional.xy, uv);
         float rowB = interpolate(conditionalCdf, baseConditional + size.z * 2 - 1, strideConditional.xy, uv);
         float rowF = solveQuadraticInterpolant(rowA, rowB, xi.y - rowBase);
 
@@ -412,7 +403,7 @@ struct InterpolatedDistribution2D
         int baseConditional = dot(int3(sliceI, row), strideConditional);
 
         float rowBase = interpolate(marginalCdf, baseMarginal + row, strideMarginal, uv);
-        float rowA = interpolate(conditionalCdf, baseConditional + size.z     - 1, strideConditional.xy, uv);
+        float rowA = interpolate(conditionalCdf, baseConditional + size.z - 1, strideConditional.xy, uv);
         float rowB = interpolate(conditionalCdf, baseConditional + size.z * 2 - 1, strideConditional.xy, uv);
         float xiY = rowBase + evalQuadratic(rowA, rowB, rowF);
 
@@ -421,7 +412,8 @@ struct InterpolatedDistribution2D
         float colA = lerp(corners.x, corners.y, rowF);
         float colB = lerp(corners.z, corners.w, rowF);
         float xiX = (colBase + evalQuadratic(colA, colB, colF)) / lerp(rowA, rowB, rowF);
-        float pdf = lerp(colA, colB, colF) * (size.z - 1) * (size.w - 1);;
+        float pdf = lerp(colA, colB, colF) * (size.z - 1) * (size.w - 1);
+        ;
 
         return float3(xiX, xiY, pdf);
     }

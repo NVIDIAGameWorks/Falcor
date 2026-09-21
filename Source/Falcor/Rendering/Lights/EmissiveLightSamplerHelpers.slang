@@ -51,11 +51,11 @@ import Rendering.Lights.EmissiveLightSamplerInterface;
     \param[out] ls Light sample. Only valid if true is returned.
     \return True if a sample was generated, false otherwise.
 */
-bool sampleTriangle(const float3 posW, const uint triangleIndex, const float2 u, out TriangleLightSample ls)
+bool sampleTriangle(const float3 posW, const uint triangleIndex, const float2 u, out TriangleLightSample ls, bool isPrevFrame)
 {
     ls = {};
     ls.triangleIndex = triangleIndex;
-    const EmissiveTriangle tri = gScene.lightCollection.getTriangle(triangleIndex);
+    const EmissiveTriangle tri = gScene.lightCollection.getTriangle(triangleIndex, isPrevFrame);
 
     // Sample the triangle uniformly.
     const float3 barycentrics = sample_triangle(u);
@@ -78,7 +78,7 @@ bool sampleTriangle(const float3 posW, const uint triangleIndex, const float2 u,
     float2 uv = tri.getTexCoord(barycentrics);
     ls.Le = gScene.materials.evalEmissive(tri.materialID, uv);
 
-    // DEMO21: Evaluate light profile.
+    // Evaluate light profile.
     if (gScene.materials.hasLightProfile(tri.materialID))
     {
         ls.Le *= gScene.materials.evalLightProfile(dot(ls.normalW, -ls.dir));
@@ -90,8 +90,10 @@ bool sampleTriangle(const float3 posW, const uint triangleIndex, const float2 u,
     float denom = max(FLT_MIN, cosTheta * tri.area);
     ls.pdf = distSqr / denom;
 
+    ls.geometryTerm = cosTheta / distSqr;
+
     // Save light sample triangle barycentric coordinates
-    ls.uv = u;
+    ls.uv = barycentrics.yz;
 
     // TODO: We can simplify the expressions by using the unnormalized quantities for computing the pdf.
     //ls.pdf = -2.f * distSqr * ls.distance / (dot(N, L);    // Optimized (except N would have to be properly flipped above, before normalW is computed).

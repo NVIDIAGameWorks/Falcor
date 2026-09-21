@@ -33,9 +33,12 @@ import Utils.Math.MathHelpers;
  */
 struct ShadingFrame : IDifferentiable
 {
-    float3 T; ///< Shading tangent. Normalized.
-    float3 B; ///< Shading bitangent. Normalized.
-    float3 N; ///< Shading normal. Normalized.
+    float3 T = {}; ///< Shading tangent. Normalized.
+    float3 B = {}; ///< Shading bitangent. Normalized.
+    float3 N = {}; ///< Shading normal. Normalized.
+
+    [Differentiable]
+    __init() {}
 
     /**
      * Initialize shading frame from normal and tangent.

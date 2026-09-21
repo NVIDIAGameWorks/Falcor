@@ -2,6 +2,8 @@
 # System dependencies
 # -----------------------------------------------------------------------------
 
+include(FetchPackage)
+
 # d3d12
 add_library(d3d12 INTERFACE)
 target_link_libraries(d3d12 INTERFACE dxgi.lib d3d12.lib)
@@ -101,11 +103,11 @@ if(FALCOR_WINDOWS)
         ${FALCOR_DEPS_DIR}/include/Imath
     )
     target_link_directories(OpenEXR INTERFACE
-        $<$<CONFIG:Release>:${FALCOR_DEPS_DIR}/lib>
+        $<$<CONFIG:Release,RelWithDebInfo>:${FALCOR_DEPS_DIR}/lib>
         $<$<CONFIG:Debug>:${FALCOR_DEPS_DIR}/debug/lib>
     )
     target_link_libraries(OpenEXR INTERFACE
-        $<$<CONFIG:Release>:OpenEXR-3_1.lib Imath-3_1.lib IlmThread-3_1.lib Iex-3_1.lib>
+        $<$<CONFIG:Release,RelWithDebInfo>:OpenEXR-3_1.lib Imath-3_1.lib IlmThread-3_1.lib Iex-3_1.lib>
         $<$<CONFIG:Debug>:OpenEXR-3_1_d.lib Imath-3_1_d.lib IlmThread-3_1_d.lib Iex-3_1_d.lib>
     )
 elseif(FALCOR_LINUX)
@@ -115,11 +117,11 @@ elseif(FALCOR_LINUX)
         ${FALCOR_DEPS_DIR}/include/Imath
     )
     target_link_directories(OpenEXR INTERFACE
-        $<$<CONFIG:Release>:${FALCOR_DEPS_DIR}/lib>
+        $<$<CONFIG:Release,RelWithDebInfo>:${FALCOR_DEPS_DIR}/lib>
         $<$<CONFIG:Debug>:${FALCOR_DEPS_DIR}/debug/lib>
     )
     target_link_libraries(OpenEXR INTERFACE
-        $<$<CONFIG:Release>:OpenEXR-3_1.so Imath-3_1.so IlmThread-3_1.so Iex-3_1.so>
+        $<$<CONFIG:Release,RelWithDebInfo>:OpenEXR-3_1.so Imath-3_1.so IlmThread-3_1.so Iex-3_1.so>
         $<$<CONFIG:Debug>:OpenEXR-3_1_d.so Imath-3_1_d.so IlmThread-3_1_d.so Iex-3_1_d.so>
     )
 endif()
@@ -131,11 +133,13 @@ if(FALCOR_WINDOWS)
         INTERFACE_INCLUDE_DIRECTORIES ${FALCOR_DEPS_DIR}/include
         IMPORTED_IMPLIB_RELEASE ${FALCOR_DEPS_DIR}/lib/tbb.lib
         IMPORTED_LOCATION_RELEASE ${FALCOR_DEPS_DIR}/bin/tbb.dll
+        IMPORTED_IMPLIB_RELWITHDEBINFO ${FALCOR_DEPS_DIR}/lib/tbb.lib
+        IMPORTED_LOCATION_RELWITHDEBINFO ${FALCOR_DEPS_DIR}/bin/tbb.dll
         IMPORTED_IMPLIB_DEBUG ${FALCOR_DEPS_DIR}/debug/lib/tbb_debug.lib
         IMPORTED_LOCATION_DEBUG ${FALCOR_DEPS_DIR}/debug/bin/tbb_debug.dll
     )
     target_compile_definitions(tbb INTERFACE
-        $<$<CONFIG:Release>:TBB_USE_DEBUG=0;__TBB_NO_IMPLICIT_LINKAGE=1>
+        $<$<CONFIG:Release,RelWithDebInfo>:TBB_USE_DEBUG=0;__TBB_NO_IMPLICIT_LINKAGE=1>
         $<$<CONFIG:Debug>:TBB_USE_DEBUG=1;__TBB_NO_IMPLICIT_LINKAGE=1>
     )
 elseif(FALCOR_LINUX)
@@ -143,10 +147,11 @@ elseif(FALCOR_LINUX)
     set_target_properties(tbb PROPERTIES
         INTERFACE_INCLUDE_DIRECTORIES ${FALCOR_DEPS_DIR}/include
         IMPORTED_LOCATION_RELEASE ${FALCOR_DEPS_DIR}/lib/libtbb.so
+        IMPORTED_LOCATION_RELWITHDEBINFO ${FALCOR_DEPS_DIR}/lib/libtbb.so
         IMPORTED_LOCATION_DEBUG ${FALCOR_DEPS_DIR}/debug/lib/libtbb_debug.so
     )
     target_compile_definitions(tbb INTERFACE
-        $<$<CONFIG:Release>:TBB_USE_DEBUG=0>
+        $<$<CONFIG:Release,RelWithDebInfo>:TBB_USE_DEBUG=0>
         $<$<CONFIG:Debug>:TBB_USE_DEBUG=1>
     )
 endif()
@@ -158,6 +163,7 @@ if(FALCOR_WINDOWS)
     set_target_properties(opensubdiv PROPERTIES
         INTERFACE_INCLUDE_DIRECTORIES ${FALCOR_DEPS_DIR}/include
         IMPORTED_LOCATION_RELEASE ${FALCOR_DEPS_DIR}/lib/osdCPU.lib
+        IMPORTED_LOCATION_RELWITHDEBINFO ${FALCOR_DEPS_DIR}/lib/osdCPU.lib
         IMPORTED_LOCATION_DEBUG ${FALCOR_DEPS_DIR}/debug/lib/osdCPU.lib
     )
 elseif(FALCOR_LINUX)
@@ -165,6 +171,7 @@ elseif(FALCOR_LINUX)
     set_target_properties(opensubdiv PROPERTIES
         INTERFACE_INCLUDE_DIRECTORIES ${FALCOR_DEPS_DIR}/include
         IMPORTED_LOCATION_RELEASE ${FALCOR_DEPS_DIR}/lib/libosdCPU.a
+        IMPORTED_LOCATION_RELWITHDEBINFO ${FALCOR_DEPS_DIR}/lib/libosdCPU.a
         IMPORTED_LOCATION_DEBUG ${FALCOR_DEPS_DIR}/debug/lib/libosdCPU.a
     )
 endif()
@@ -176,6 +183,8 @@ if(FALCOR_WINDOWS)
         INTERFACE_INCLUDE_DIRECTORIES ${FALCOR_DEPS_DIR}/include
         IMPORTED_IMPLIB_RELEASE ${FALCOR_DEPS_DIR}/lib/openvdb.lib
         IMPORTED_LOCATION_RELEASE ${FALCOR_DEPS_DIR}/bin/openvdb.dll
+        IMPORTED_IMPLIB_RELWITHDEBINFO ${FALCOR_DEPS_DIR}/lib/openvdb.lib
+        IMPORTED_LOCATION_RELWITHDEBINFO ${FALCOR_DEPS_DIR}/bin/openvdb.dll
         IMPORTED_IMPLIB_DEBUG ${FALCOR_DEPS_DIR}/debug/lib/openvdb.lib
         IMPORTED_LOCATION_DEBUG ${FALCOR_DEPS_DIR}/debug/bin/openvdb.dll
         INTERFACE_LINK_LIBRARIES "tbb;blosc"
@@ -185,6 +194,7 @@ elseif(FALCOR_LINUX)
     set_target_properties(OpenVDB PROPERTIES
         INTERFACE_INCLUDE_DIRECTORIES ${FALCOR_DEPS_DIR}/include
         IMPORTED_LOCATION_RELEASE ${FALCOR_DEPS_DIR}/lib/libopenvdb.so
+        IMPORTED_LOCATION_RELWITHDEBINFO ${FALCOR_DEPS_DIR}/lib/libopenvdb.so
         IMPORTED_LOCATION_DEBUG ${FALCOR_DEPS_DIR}/debug/lib/libopenvdb.so
         INTERFACE_LINK_LIBRARIES "tbb;blosc"
     )
@@ -204,6 +214,7 @@ elseif(FALCOR_LINUX)
     set_target_properties(assimp PROPERTIES
         INTERFACE_INCLUDE_DIRECTORIES ${FALCOR_DEPS_DIR}/include
         IMPORTED_LOCATION_RELEASE ${FALCOR_DEPS_DIR}/lib/libassimp.so
+        IMPORTED_LOCATION_RELWITHDEBINFO ${FALCOR_DEPS_DIR}/lib/libassimp.so
         IMPORTED_LOCATION_DEBUG ${FALCOR_DEPS_DIR}/debug/lib/libassimpd.so
     )
 endif()
@@ -215,6 +226,8 @@ if(FALCOR_WINDOWS)
         INTERFACE_INCLUDE_DIRECTORIES ${FALCOR_DEPS_DIR}/include
         IMPORTED_IMPLIB_RELEASE ${FALCOR_DEPS_DIR}/lib/FreeImage.lib
         IMPORTED_LOCATION_RELEASE ${FALCOR_DEPS_DIR}/bin/FreeImage.dll
+        IMPORTED_IMPLIB_RELWITHDEBINFO ${FALCOR_DEPS_DIR}/lib/FreeImage.lib
+        IMPORTED_LOCATION_RELWITHDEBINFO ${FALCOR_DEPS_DIR}/bin/FreeImage.dll
         IMPORTED_IMPLIB_DEBUG ${FALCOR_DEPS_DIR}/debug/lib/FreeImaged.lib
         IMPORTED_LOCATION_DEBUG ${FALCOR_DEPS_DIR}/debug/bin/FreeImaged.dll
     )
@@ -223,6 +236,7 @@ elseif(FALCOR_LINUX)
     set_target_properties(FreeImage PROPERTIES
         INTERFACE_INCLUDE_DIRECTORIES ${FALCOR_DEPS_DIR}/include
         IMPORTED_LOCATION_RELEASE ${FALCOR_DEPS_DIR}/lib/libFreeImage.so
+        IMPORTED_LOCATION_RELWITHDEBINFO ${FALCOR_DEPS_DIR}/lib/libFreeImage.so
         IMPORTED_LOCATION_DEBUG ${FALCOR_DEPS_DIR}/debug/lib/libFreeImaged.so
     )
 endif()
@@ -234,6 +248,8 @@ if(FALCOR_WINDOWS)
         INTERFACE_INCLUDE_DIRECTORIES ${FALCOR_DEPS_DIR}/include
         IMPORTED_IMPLIB_RELEASE ${FALCOR_DEPS_DIR}/lib/hdf5.lib
         IMPORTED_LOCATION_RELEASE ${FALCOR_DEPS_DIR}/bin/hdf5.dll
+        IMPORTED_IMPLIB_RELWITHDEBINFO ${FALCOR_DEPS_DIR}/lib/hdf5.lib
+        IMPORTED_LOCATION_RELWITHDEBINFO ${FALCOR_DEPS_DIR}/bin/hdf5.dll
         IMPORTED_IMPLIB_DEBUG ${FALCOR_DEPS_DIR}/debug/lib/hdf5_D.lib
         IMPORTED_LOCATION_DEBUG ${FALCOR_DEPS_DIR}/debug/bin/hdf5_D.dll
         INTERFACE_COMPILE_DEFINITIONS H5_BUILT_AS_DYNAMIC_LIB
@@ -243,6 +259,7 @@ elseif(FALCOR_LINUX)
     set_target_properties(hdf5 PROPERTIES
         INTERFACE_INCLUDE_DIRECTORIES ${FALCOR_DEPS_DIR}/include
         IMPORTED_LOCATION_RELEASE ${FALCOR_DEPS_DIR}/lib/libhdf5.so
+        IMPORTED_LOCATION_RELWITHDEBINFO ${FALCOR_DEPS_DIR}/lib/libhdf5.so
         IMPORTED_LOCATION_DEBUG ${FALCOR_DEPS_DIR}/debug/lib/libhdf5_debug.so
         INTERFACE_COMPILE_DEFINITIONS H5_BUILT_AS_DYNAMIC_LIB
     )
@@ -286,6 +303,7 @@ if(FALCOR_WINDOWS)
     set_target_properties(pugixml PROPERTIES
         INTERFACE_INCLUDE_DIRECTORIES ${FALCOR_DEPS_DIR}/include
         IMPORTED_LOCATION_RELEASE ${FALCOR_DEPS_DIR}/lib/pugixml.lib
+        IMPORTED_LOCATION_RELWITHDEBINFO ${FALCOR_DEPS_DIR}/lib/pugixml.lib
         IMPORTED_LOCATION_DEBUG ${FALCOR_DEPS_DIR}/debug/lib/pugixml.lib
     )
 elseif(FALCOR_LINUX)
@@ -293,6 +311,7 @@ elseif(FALCOR_LINUX)
     set_target_properties(pugixml PROPERTIES
         INTERFACE_INCLUDE_DIRECTORIES ${FALCOR_DEPS_DIR}/include
         IMPORTED_LOCATION_RELEASE ${FALCOR_DEPS_DIR}/lib/libpugixml.a
+        IMPORTED_LOCATION_RELWITHDEBINFO ${FALCOR_DEPS_DIR}/lib/libpugixml.a
         IMPORTED_LOCATION_DEBUG ${FALCOR_DEPS_DIR}/debug/lib/libpugixml.a
     )
 endif()
@@ -321,19 +340,6 @@ if(EXISTS ${AFTERMATH_DIR}/include/GFSDK_Aftermath.h)
     set(FALCOR_HAS_AFTERMATH ON PARENT_SCOPE)
 else()
     set(FALCOR_HAS_AFTERMATH OFF PARENT_SCOPE)
-endif()
-
-# nvapi
-set(NVAPI_DIR ${PACKMAN_DIR}/nvapi)
-if(EXISTS ${NVAPI_DIR}/nvapi.h)
-    add_library(nvapi STATIC IMPORTED GLOBAL)
-    set_target_properties(nvapi PROPERTIES
-        INTERFACE_INCLUDE_DIRECTORIES ${NVAPI_DIR}
-        IMPORTED_LOCATION ${NVAPI_DIR}/amd64/nvapi64.lib
-    )
-    set(FALCOR_HAS_NVAPI ON PARENT_SCOPE)
-else()
-    set(FALCOR_HAS_NVAPI OFF PARENT_SCOPE)
 endif()
 
 # slang
@@ -408,11 +414,11 @@ if((EXISTS ${NV_USD_RELEASE_DIR}) AND (EXISTS ${NV_USD_DEBUG_DIR}))
     if(FALCOR_WINDOWS)
         add_library(nv-usd INTERFACE)
         target_include_directories(nv-usd INTERFACE
-            $<$<CONFIG:Release>:${NV_USD_RELEASE_DIR}/include ${NV_USD_RELEASE_DIR}/include/boost-1_76>
+            $<$<CONFIG:Release,RelWithDebInfo>:${NV_USD_RELEASE_DIR}/include ${NV_USD_RELEASE_DIR}/include/boost-1_76>
             $<$<CONFIG:Debug>:${NV_USD_DEBUG_DIR}/include ${NV_USD_DEBUG_DIR}/include/boost-1_76>
         )
         target_link_directories(nv-usd INTERFACE
-            $<$<CONFIG:Release>:${NV_USD_RELEASE_DIR}/lib ${NV_USD_RELEASE_DIR}/plugin/usd>
+            $<$<CONFIG:Release,RelWithDebInfo>:${NV_USD_RELEASE_DIR}/lib ${NV_USD_RELEASE_DIR}/plugin/usd>
             $<$<CONFIG:Debug>:${NV_USD_DEBUG_DIR}/lib ${NV_USD_DEBUG_DIR}/plugin/usd>
         )
         target_link_libraries(nv-usd INTERFACE
@@ -420,7 +426,7 @@ if((EXISTS ${NV_USD_RELEASE_DIR}) AND (EXISTS ${NV_USD_DEBUG_DIR}))
         )
         target_compile_definitions(nv-usd INTERFACE
             _SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING
-            $<$<CONFIG:Release>:TBB_USE_DEBUG=0>
+            $<$<CONFIG:Release,RelWithDebInfo>:TBB_USE_DEBUG=0>
             $<$<CONFIG:Debug>:TBB_USE_DEBUG=1>
         )
     elseif(FALCOR_LINUX)
@@ -428,6 +434,7 @@ if((EXISTS ${NV_USD_RELEASE_DIR}) AND (EXISTS ${NV_USD_DEBUG_DIR}))
         set_target_properties(nv-usd PROPERTIES
             INTERFACE_INCLUDE_DIRECTORIES "${NV_USD_RELEASE_DIR}/include;${NV_USD_RELEASE_DIR}/include/boost"
             IMPORTED_LOCATION_RELEASE ${NV_USD_RELEASE_DIR}/lib/libusd_ms.so
+            IMPORTED_LOCATION_RELWITHDEBINFO ${NV_USD_RELEASE_DIR}/lib/libusd_ms.so
             IMPORTED_LOCATION_DEBUG ${NV_USD_DEBUG_DIR}/lib/libusd_ms.so
             INTERFACE_LINK_LIBRARIES "tbb"
         )
@@ -447,15 +454,6 @@ else()
     set(FALCOR_HAS_MDL_SDK OFF PARENT_SCOPE)
 endif()
 
-# dxcompiler
-set(DXCOMPILER_DIR ${PACKMAN_DIR}/dxcompiler)
-add_library(dxcompiler SHARED IMPORTED GLOBAL)
-set_target_properties(dxcompiler PROPERTIES
-    INTERFACE_INCLUDE_DIRECTORIES ${DXCOMPILER_DIR}/inc
-    IMPORTED_IMPLIB ${DXCOMPILER_DIR}/lib/x64/dxcompiler.lib
-    IMPORTED_LOCATION ${DXCOMPILER_DIR}/bin/x64/dxcompiler.dll
-)
-
 # nrd
 set(NRD_DIR ${PACKMAN_DIR}/nrd)
 if(EXISTS ${NRD_DIR}/Include/NRD.h)
@@ -464,6 +462,8 @@ if(EXISTS ${NRD_DIR}/Include/NRD.h)
         INTERFACE_INCLUDE_DIRECTORIES ${NRD_DIR}/Include
         IMPORTED_IMPLIB_RELEASE ${NRD_DIR}/Lib/Release/NRD.lib
         IMPORTED_LOCATION_RELEASE ${NRD_DIR}/Lib/Release/NRD.dll
+        IMPORTED_IMPLIB_RELWITHDEBINFO ${NRD_DIR}/Lib/Release/NRD.lib
+        IMPORTED_LOCATION_RELWITHDEBINFO ${NRD_DIR}/Lib/Release/NRD.dll
         IMPORTED_IMPLIB_DEBUG ${NRD_DIR}/Lib/Debug/NRD.lib
         IMPORTED_LOCATION_DEBUG ${NRD_DIR}/Lib/Debug/NRD.dll
     )
@@ -473,14 +473,16 @@ else()
 endif()
 
 # dlss
-set(DLSS_DIR ${PACKMAN_DIR}/dlss)
+FetchPackage(dlss URL "https://github.com/NVIDIA/DLSS/archive/refs/tags/v310.1.0.zip")
+set(DLSS_DIR ${dlss_SOURCE_DIR})
 set(FALCOR_DLSS_DIR ${DLSS_DIR} PARENT_SCOPE)
 if(EXISTS ${DLSS_DIR}/include/nvsdk_ngx.h)
     add_library(dlss STATIC IMPORTED GLOBAL)
     set_target_properties(dlss PROPERTIES
         INTERFACE_INCLUDE_DIRECTORIES ${DLSS_DIR}/include
-        IMPORTED_LOCATION_RELEASE ${DLSS_DIR}/lib/Windows_x86_64/x86_64/nvsdk_ngx_d.lib
-        IMPORTED_LOCATION_DEBUG ${DLSS_DIR}/lib/Windows_x86_64/x86_64/nvsdk_ngx_d_dbg.lib
+        IMPORTED_LOCATION_RELEASE ${DLSS_DIR}/lib/Windows_x86_64/x64/nvsdk_ngx_d.lib
+        IMPORTED_LOCATION_RELWITHDEBINFO ${DLSS_DIR}/lib/Windows_x86_64/x64/nvsdk_ngx_d.lib
+        IMPORTED_LOCATION_DEBUG ${DLSS_DIR}/lib/Windows_x86_64/x64/nvsdk_ngx_d_dbg.lib
         INTERFACE_COMPILE_DEFINITIONS NV_WINDOWS
     )
     set(FALCOR_HAS_DLSS ON PARENT_SCOPE)
@@ -516,17 +518,88 @@ elseif(FALCOR_LINUX)
     )
 endif()
 
-# agility-sdk
-set(D3D12_AGILITY_SDK_DIR ${PACKMAN_DIR}/agility-sdk)
-if(EXISTS ${D3D12_AGILITY_SDK_DIR}/build/native/include/d3d12.h)
+# rtxdi
+set(RTXDI_DIR ${PACKMAN_DIR}/rtxdi)
+add_library(rtxdi INTERFACE)
+target_include_directories(rtxdi INTERFACE ${RTXDI_DIR}/rtxdi-sdk/include)
+
+# -----------------------------------------------------------------------------
+# FetchPackage dependencies
+# -----------------------------------------------------------------------------
+
+set(FALCOR_COPY_FILES "")
+
+# Function to copy a file to the binary output directory
+macro(copy_file IN_FILE OUT_DIR)
+    if(EXISTS ${IN_FILE})
+        get_filename_component(FILENAME ${IN_FILE} NAME)
+        set(OUT_FILE_1 "${FALCOR_OUTPUT_DIRECTORY}/${OUT_DIR}/${FILENAME}")
+
+        if (UNIX)
+            add_custom_command(
+                OUTPUT ${OUT_FILE_1} DEPENDS ${IN_FILE} ${ARGN}
+                COMMAND ${CMAKE_COMMAND} -E copy ${IN_FILE} ${OUT_FILE_1}
+                COMMENT "Copying ${FILENAME}"
+            )
+            list(APPEND FALCOR_COPY_FILES ${OUT_FILE_1})
+        else()
+            # add_custom_command does not support generator expressions in OUTPUT argument
+            # make a dummy copy and then depend on that
+            add_custom_command(
+                OUTPUT ${OUT_FILE_1} DEPENDS ${IN_FILE} ${ARGN}
+                COMMAND ${CMAKE_COMMAND} -E copy ${IN_FILE} ${OUT_FILE_1}
+                COMMENT "Copying ${FILENAME}"
+            )
+            list(APPEND FALCOR_COPY_FILES ${OUT_FILE_1})
+        endif()
+    endif()
+endmacro()
+
+# Fetch agility-sdk
+if(FALCOR_HAS_D3D12 AND (CMAKE_SYSTEM_NAME STREQUAL "Windows"))
+    set(AGILITY_SDK_VERSION "1.717.0-preview")
+    FetchPackage(agility_sdk URL "https://www.nuget.org/api/v2/package/Microsoft.Direct3D.D3D12/${AGILITY_SDK_VERSION}")
+    copy_file(${agility_sdk_SOURCE_DIR}/build/native/bin/x64/D3D12Core.dll D3D12)
+    copy_file(${agility_sdk_SOURCE_DIR}/build/native/bin/x64/d3d12SDKLayers.dll D3D12)
     add_library(agility-sdk INTERFACE)
-    target_include_directories(agility-sdk INTERFACE ${D3D12_AGILITY_SDK_DIR}/build/native/include)
+    target_include_directories(agility-sdk INTERFACE ${agility_sdk_SOURCE_DIR}/build/native/include)
     set(FALCOR_HAS_D3D12_AGILITY_SDK ON PARENT_SCOPE)
 else()
     set(FALCOR_HAS_D3D12_AGILITY_SDK OFF PARENT_SCOPE)
 endif()
 
-# rtxdi
-set(RTXDI_DIR ${PACKMAN_DIR}/rtxdi)
-add_library(rtxdi INTERFACE)
-target_include_directories(rtxdi INTERFACE ${RTXDI_DIR}/rtxdi-sdk/include)
+# Fetch dxcompiler
+if(FALCOR_HAS_D3D12 AND (CMAKE_SYSTEM_NAME STREQUAL "Windows"))
+    set(DXC_VERSION "1.8.2505")
+    set(DXC_URL "https://github.com/microsoft/DirectXShaderCompiler/releases/download/v1.8.2505/dxc_2025_05_24.zip")
+    FetchPackage(dxc URL ${DXC_URL})
+    copy_file(${dxc_SOURCE_DIR}/bin/x64/dxcompiler.dll .)
+    copy_file(${dxc_SOURCE_DIR}/bin/x64/dxil.dll .)
+
+    add_library(dxcompiler SHARED IMPORTED GLOBAL)
+    set_target_properties(dxcompiler PROPERTIES
+        INTERFACE_INCLUDE_DIRECTORIES ${dxc_SOURCE_DIR}/inc
+        IMPORTED_IMPLIB ${dxc_SOURCE_DIR}/lib/x64/dxcompiler.lib
+        IMPORTED_LOCATION ${dxc_SOURCE_DIR}/bin/x64/dxcompiler.dll
+    )
+endif()
+
+# Fetch NVAPI
+if(FALCOR_HAS_D3D12 AND (CMAKE_SYSTEM_NAME STREQUAL "Windows"))
+    # Version R580-Developer SDK
+    FetchPackage(nvapi URL "https://github.com/NVIDIA/nvapi/archive/3d34a4faf095996663321646ebe003539a908f89.zip")
+    set(NVAPI_DIR ${nvapi_SOURCE_DIR})
+    add_library(nvapi STATIC IMPORTED GLOBAL)
+    set_target_properties(nvapi PROPERTIES
+        INTERFACE_INCLUDE_DIRECTORIES ${NVAPI_DIR}
+        IMPORTED_LOCATION ${NVAPI_DIR}/amd64/nvapi64.lib
+    )
+    copy_file(${nvapi_SOURCE_DIR}/nvHLSLExtns.h shaders/nvapi)
+    copy_file(${nvapi_SOURCE_DIR}/nvHLSLExtnsInternal.h shaders/nvapi)
+    copy_file(${nvapi_SOURCE_DIR}/nvShaderExtnEnums.h shaders/nvapi)
+    set(FALCOR_HAS_NVAPI ON PARENT_SCOPE)
+else()
+    set(FALCOR_HAS_NVAPI OFF PARENT_SCOPE)
+endif()
+
+add_custom_target(falcor-copy-files ALL DEPENDS ${FALCOR_COPY_FILES})

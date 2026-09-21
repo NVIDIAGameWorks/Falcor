@@ -29,6 +29,7 @@
 #include <vector>
 #include <memory>
 #include <type_traits>
+#include <utility>
 
 namespace Falcor
 {

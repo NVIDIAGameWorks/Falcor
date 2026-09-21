@@ -39,7 +39,12 @@ struct MERLMixMaterial : MaterialBase, IMaterial
     // Specify that the associated `MaterialInstance` type is `MERLMixMaterialInstance`.
     typedef MERLMixMaterialInstance MaterialInstance;
 
-    MERLMixMaterialInstance setupMaterialInstance(const MaterialSystem ms, const ShadingData sd, const ITextureSampler lod, const uint hints)
+    MERLMixMaterialInstance setupMaterialInstance(
+        const MaterialSystem ms,
+        const ShadingData sd,
+        const ITextureSampler lod,
+        const uint hints
+    )
     {
         let explicitLod = ExplicitLodTextureSampler(0.f);
 
@@ -94,7 +99,13 @@ struct MERLMixMaterial : MaterialBase, IMaterial
     }
 
     [Differentiable]
-    MERLMixMaterialInstance setupDiffMaterialInstance(out DiffMaterialData diffData, const MaterialSystem ms, const ShadingData sd, const ITextureSampler lod, const uint hints)
+    MERLMixMaterialInstance setupDiffMaterialInstance(
+        out DiffMaterialData diffData,
+        const MaterialSystem ms,
+        const ShadingData sd,
+        const ITextureSampler lod,
+        const uint hints
+    )
     {
         diffData = DiffMaterialData();
         return no_diff setupMaterialInstance(ms, sd, lod, hints);

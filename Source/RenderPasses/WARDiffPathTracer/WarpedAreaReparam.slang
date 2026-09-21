@@ -71,6 +71,7 @@ float computeHarmonicWeight(
 
 [Differentiable]
 [PreferRecompute]
+[__NoSideEffect]
 DifferentialPair<float> fwd_computeHarmonicWeight(
     IntersectionAD isect,
     float3 origin,
@@ -196,6 +197,7 @@ __generic<let N : int> bool traceAsymptoticWeightedMeanIntersection(
 
 [Differentiable]
 [PreferRecompute]
+[__NoSideEffect]
 void computeWarpedRay(
     SceneQueryAD sceneQuery,
     no_diff float kappa,
@@ -223,6 +225,7 @@ void computeWarpedRay(
 
 [Differentiable]
 [PreferRecompute]
+[__NoSideEffect]
 float reparameterizeRay(SceneQueryAD sceneQuery, inout RayAD ray, inout SampleGenerator sg)
 {
     DifferentialPair<float3[3]> dpDirections = DifferentialPair<float3[3]>(
@@ -266,6 +269,7 @@ float reparameterizeRay(SceneQueryAD sceneQuery, inout RayAD ray, inout SampleGe
 
 [Differentiable]
 [PreferRecompute]
+[__NoSideEffect]
 void computeWarpedPrimarySample(
     SceneQueryAD sceneQuery,
     no_diff float kappa,
@@ -302,6 +306,7 @@ void computeWarpedPrimarySample(
 
 [Differentiable]
 [PreferRecompute]
+[__NoSideEffect]
 float reparameterizeScreenSample(SceneQueryAD sceneQuery, uint2 frameDim, SampleGenerator sg, inout float2 posS, )
 {
     // Forward-mode gradients w.r.t. screen-space position.

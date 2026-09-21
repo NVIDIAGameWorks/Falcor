@@ -266,18 +266,7 @@ uint packSnorm16(precise float v)
  */
 float2 unpackSnorm2x16(uint packed)
 {
-    int2 bits = int2(packed << 16, packed) >> 16;
-    precise float2 unpacked = max((float2)bits / 32767.f, -1.0f);
-    return unpacked;
-}
-
-/**
- * Pack two floats into 16-bit snorm values in the lo/hi bits of a dword.
- * @return Two 16-bit snorm in low/high bits.
- */
-uint packSnorm2x16(precise float2 v)
-{
-    return (floatToSnorm16(v.x) & 0x0000ffff) | (floatToSnorm16(v.y) << 16);
+    return unpackSnorm2x16ToFloat(packed);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -306,14 +295,6 @@ uint packUnorm16(float v)
 }
 
 /**
- * Pack two floats into 16-bit unorm values in a dword.
- */
-uint packUnorm2x16(float2 v)
-{
-    return (packUnorm16(v.y) << 16) | packUnorm16(v.x);
-}
-
-/**
  * Pack two floats into 16-bit unorm values in a dword (unsafe version)
  * @param[in] v Two values assumed to be in [0,1].
  */
@@ -337,7 +318,7 @@ float unpackUnorm16(uint packed)
  */
 float2 unpackUnorm2x16(uint packed)
 {
-    return float2(packed & 0xffff, packed >> 16) * (1.f / 65535);
+    return unpackUnorm2x16ToFloat(packed);
 }
 
 ///////////////////////////////////////////////////////////////////////////////

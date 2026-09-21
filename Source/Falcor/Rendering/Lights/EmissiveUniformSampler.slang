@@ -52,7 +52,7 @@ struct EmissiveUniformSampler : IEmissiveLightSampler
         \param[out] ls Light sample. Only valid if true is returned.
         \return True if a sample was generated, false otherwise.
     */
-    bool sampleLight<S : ISampleGenerator>(const float3 posW, const float3 normalW, const bool upperHemisphere, inout S sg, out TriangleLightSample ls)
+    bool sampleLight<S : ISampleGenerator>(const float3 posW, const float3 normalW, const bool upperHemisphere, inout S sg, out TriangleLightSample ls, bool isPrevFrame=false)
     {
         ls = {};
 
@@ -67,7 +67,11 @@ struct EmissiveUniformSampler : IEmissiveLightSampler
 
         // Sample the triangle uniformly.
         float2 u = sampleNext2D(sg);
-        if (!sampleTriangle(posW, triangleIndex, u, ls)) return false;
+
+#if PAD_RANDOM_NUMBERS
+        sampleNext1D(sg);
+#endif
+        if (!sampleTriangle(posW, triangleIndex, u, ls, isPrevFrame)) return false;
 
         // The final probability density is the product of the sampling probabilities.
         ls.pdf *= triangleSelectionPdf;

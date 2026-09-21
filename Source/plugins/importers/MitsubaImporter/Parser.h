@@ -275,7 +275,7 @@ struct Version
 
     Version(const char* value)
     {
-        if (std::sscanf(value, "%lu.%lu.%lu", &major, &minor, &patch) != 3)
+        if (std::sscanf(value, "%u.%u.%u", &major, &minor, &patch) != 3)
         {
             FALCOR_THROW("Version string must have x.x.x format.");
         }

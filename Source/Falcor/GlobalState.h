@@ -53,4 +53,12 @@ FALCOR_API void setActivePythonRenderGraphDevice(ref<Device> pDevice);
 FALCOR_API ref<Device> getActivePythonRenderGraphDevice();
 FALCOR_API ref<Device> accessActivePythonRenderGraphDevice();
 
+/// Returns device from accessActivePythonSceneBuilder if available, accessActivePythonRenderGraphDevice if not.
+/// This allows providing Device by means other than SceneBuilder
+ref<Device> accessActivePythonSceneBuilderDevice();
+
+/// Allows overriding the asset resolver explicitly. This one always takes precedence.
+FALCOR_API AssetResolver* getRawAssetResolver();
+FALCOR_API void setRawAssetResolver(AssetResolver*);
+
 } // namespace Falcor

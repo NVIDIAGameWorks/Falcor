@@ -36,7 +36,12 @@ struct PBRTDiffuseTransmissionMaterial : MaterialBase, IMaterial
 
     typedef PBRTDiffuseTransmissionMaterialInstance MaterialInstance;
 
-    PBRTDiffuseTransmissionMaterialInstance setupMaterialInstance(const MaterialSystem ms, const ShadingData sd, const ITextureSampler lod, const uint hints)
+    PBRTDiffuseTransmissionMaterialInstance setupMaterialInstance(
+        const MaterialSystem ms,
+        const ShadingData sd,
+        const ITextureSampler lod,
+        const uint hints
+    )
     {
         SamplerState s = ms.getTextureSampler(header.getDefaultTextureSamplerID());
 
@@ -56,13 +61,19 @@ struct PBRTDiffuseTransmissionMaterial : MaterialBase, IMaterial
             adjustShadingNormal(sd, sf);
         }
 
-        PBRTDiffuseTransmissionMaterialInstance mi = {sf, baseColor, transColor};
+        PBRTDiffuseTransmissionMaterialInstance mi = { sf, baseColor, transColor };
 
         return mi;
     }
 
     [Differentiable]
-    PBRTDiffuseTransmissionMaterialInstance setupDiffMaterialInstance(out DiffMaterialData diffData, const MaterialSystem ms, const ShadingData sd, const ITextureSampler lod, const uint hints)
+    PBRTDiffuseTransmissionMaterialInstance setupDiffMaterialInstance(
+        out DiffMaterialData diffData,
+        const MaterialSystem ms,
+        const ShadingData sd,
+        const ITextureSampler lod,
+        const uint hints
+    )
     {
         diffData = DiffMaterialData();
         return no_diff setupMaterialInstance(ms, sd, lod, hints);
