@@ -14,7 +14,7 @@
     </dependency>
     <!-- Media -->
     <dependency name="media" linkPath="media">
-        <package name="falcor_media" version="41621865" />
+        <package name="falcor_media" version="7acdf8b0" />
     </dependency>
     <!-- Libraries -->
     <dependency name="falcor_dependencies" linkPath="external/packman/deps">

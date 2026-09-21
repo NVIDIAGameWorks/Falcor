@@ -3017,6 +3017,15 @@ namespace Falcor
             return pSceneBuilder->addNode(node);
         }, "name"_a, "transform"_a = Transform(), "parent"_a = NodeID());
         sceneBuilder.def("addMeshInstance", &SceneBuilder::addMeshInstance);
+        sceneBuilder.def(
+            "addMeshInstance",
+            [](SceneBuilder& builder, MeshID meshID, NodeID nodeID)
+            {
+                builder.addMeshInstance(nodeID, meshID);
+            },
+            "meshID"_a,
+            "nodeID"_a
+        );        
         sceneBuilder.def("addSDFGridInstance", &SceneBuilder::addSDFGridInstance);
         sceneBuilder.def("addCustomPrimitive", &SceneBuilder::addCustomPrimitive);
 
