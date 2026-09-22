@@ -701,6 +701,8 @@ gfx::IRenderCommandEncoder* RenderContext::drawCallCommon(GraphicsState* pState,
         encoder->setScissorRects(
             (uint32_t)pState->getScissors().size(), reinterpret_cast<const gfx::ScissorRect*>(pState->getScissors().data())
         );
+        if (pState->getDepthStencilState())
+            encoder->setStencilReference(pState->getDepthStencilState()->getStencilRef());
     }
 
     return encoder;
