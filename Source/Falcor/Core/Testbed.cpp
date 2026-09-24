@@ -158,6 +158,10 @@ void Testbed::loadScene(const std::filesystem::path& path, SceneBuilder::Flags b
 {
     mpScene = SceneBuilder(mpDevice, path, Settings(), buildFlags).getScene();
 
+    // Adjust the camera aspect ratio.
+    if (mpScene && mpTargetFBO)
+        mpScene->setCameraAspectRatio(mpTargetFBO->getWidth() / float(mpTargetFBO->getHeight()));
+
     if (mpRenderGraph)
         mpRenderGraph->setScene(mpScene);
 }
@@ -165,6 +169,10 @@ void Testbed::loadScene(const std::filesystem::path& path, SceneBuilder::Flags b
 void Testbed::loadSceneFromString(const std::string& scene, const std::string extension, SceneBuilder::Flags buildFlags)
 {
     mpScene = SceneBuilder(mpDevice, scene.data(), scene.length(), extension, Settings(), buildFlags).getScene();
+
+    // Adjust the camera aspect ratio.
+    if (mpScene && mpTargetFBO)
+        mpScene->setCameraAspectRatio(mpTargetFBO->getWidth() / float(mpTargetFBO->getHeight()));
 
     if (mpRenderGraph)
         mpRenderGraph->setScene(mpScene);
