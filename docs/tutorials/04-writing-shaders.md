@@ -36,32 +36,33 @@ Note that we are not specifying a register or space here. This is not required a
 Set up the pass as described in Tutorial 3 and add the shader file to the project. `reflect()` will need to return a `RenderPassReflection` containing a single output field, and change all descriptions to "Renders a scene as a wireframe". We will also need to add the following private variables to the class:
 
 ```c++
-Scene::SharedPtr mpScene;
-GraphicsProgram::SharedPtr mpProgram;
-GraphicsState::SharedPtr mpGraphicsState;
-RasterizerState::SharedPtr mpRasterState;
-GraphicsVars::SharedPtr mpVars;
+ref<Scene> mpScene;
+ref<Program> mpProgram;
+ref<GraphicsState> mpGraphicsState;
+ref<RasterizerState> mpRasterState;
+ref<ProgramVars> mpVars;
+ref<Device> mpDevice;
 ```
 
 Let's take a look at the other functions, most of which will be more complex than in `ExampleBlitPass`.
 
 ### `WireframePass()`
-While `create()` does not need to do more than calling the constructor and returning the result wrapped in a `SharedPtr`, we will need to initialize these objects in the constructor:
-- `GraphicsProgram::SharedPtr mpProgram` - Initialize this by calling `GraphicsProgram::createFromFile()` with the filename and names of the vertex and pixel shader functions within the shader's code.
-- `RasterizerState::SharedPtr mpRasterState` - For our example, we want the `FillMode` to be `Wireframe` and the `CullMode` to be `None`. To do this, first create a `RasterizerState::Desc` then use `setFillMode()` and `setCullMode()` to set these values. Then, create the `RasterizerState` object by calling `RasterizerState::create()` with the `Desc` object as an argument.
-- `GraphicsState::SharedPtr mpGraphicsState` - We can create a new `GraphicsState` by calling `GraphicsState::create()` and bind `mpProgram` and `mpRasterState` by calling `setProgram()` and `setRasterizerState()` on it.
+While `create()` does not need to do more than calling the constructor and returning the result wrapped in a `ref`, we will need to initialize these objects in the constructor:
+- `ref<Program> mpProgram` - Initialize this by calling `Program::createGraphics()` with the filename and names of the vertex and pixel shader functions within the shader's code.
+- `ref<RasterizerState> mpRasterState` - For our example, we want the `FillMode` to be `Wireframe` and the `CullMode` to be `None`. To do this, first create a `RasterizerState::Desc` then use `setFillMode()` and `setCullMode()` to set these values. Then, create the `RasterizerState` object by calling `RasterizerState::create()` with the `Desc` object as an argument.
+- `ref<GraphicsState> mpGraphicsState` - We can create a new `GraphicsState` by calling `GraphicsState::create()` and bind `mpProgram` and `mpRasterState` by calling `setProgram()` and `setRasterizerState()` on it.
 
 The constructor should look similar to this:
 ```c++
-WireframePass::WireframePass()
+WireframePass::WireframePass(ref<Device> pDevice, const Properties& props) : RenderPass(pDevice), mpDevice(pDevice)
 {
-    mpProgram = GraphicsProgram::createFromFile("RenderPasses/Wireframe/Wireframe.3d.slang", "vsMain", "psMain");
-    RasterizerState::Desc wireframeDesc;
-    wireframeDesc.setFillMode(RasterizerState::FillMode::Wireframe);
-    wireframeDesc.setCullMode(RasterizerState::CullMode::None);
-    mpRasterState = RasterizerState::create(wireframeDesc);
+	mpProgram = Program::createGraphics(mpDevice, "RenderPasses/WireframePass/WireframePass.slang", "vsMain", "psMain");
+    RasterizerState::Desc rasterizerDesc;
+    rasterizerDesc.setFillMode(RasterizerState::FillMode::Wireframe);
+    rasterizerDesc.setCullMode(RasterizerState::CullMode::None);
+    mpRasterState = RasterizerState::create(rasterizerDesc);
 
-    mpGraphicsState = GraphicsState::create();
+    mpGraphicsState = GraphicsState::create(mpDevice);
     mpGraphicsState->setProgram(mpProgram);
     mpGraphicsState->setRasterizerState(mpRasterState);
 }
@@ -85,7 +86,7 @@ void WireframePass::setScene(RenderContext* pRenderContext, const Scene::SharedP
 {
     mpScene = pScene;
     if (mpScene) mpProgram->addDefines(mpScene->getSceneDefines());
-    mpVars = GraphicsVars::create(mpProgram->getReflector());
+    mpVars = ProgramVars::create(mpDevice, mpProgram.get());
 }
 ```
 #### Why scene defines?
@@ -97,15 +98,16 @@ This function will need to perform several operations: create and bind an FBO fo
 #### Creating and Binding the FBO
 We can create and bind an FBO for our renderer to render to by first calling `Fbo::create()` on our output texture, clearing it to remove any data from previous executions (preventing it from leaving permanent trails if you try to move the camera), and calling `GraphicsState::setFbo()` to bind it. This step looks like this:
 ```c++
-auto pTargetFbo = Fbo::create({ renderData.getTexture("output") });
+ref<Fbo> pTargetFbo = Fbo::create(mpDevice, { renderData.getTexture("output") });
 const float4 clearColor(0, 0, 0, 1);
 pRenderContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
 mpGraphicsState->setFbo(pTargetFbo);
 ```
 
 #### Binding the shader
-Binding shader values is also fairly straightforward as Falcor allows you to set shader values in the `GraphicsVars` object in the same way as you would set values in a dictionary. Our shader requires a single color value, `gColor`, which is located inside the `perFrameCB` constant buffer. This step should look like this:
+Binding shader values is also fairly straightforward as Falcor allows you to set shader values in the `ProgramVars` object in the same way as you would set values in a dictionary. Our shader requires a single color value, `gColor`, which is located inside the `perFrameCB` constant buffer. This step should look like this:
 ```c++
+ShaderVar root_var = mpVars->getRootVar();
 mpVars["perFrameCB"]["gColor"] = float4(0, 1, 0, 1);
 ```
 
@@ -118,14 +120,17 @@ Your `execute()` function should now look like this, with a check for `mpScene` 
 ```c++
 void WireframePass::execute(RenderContext* pRenderContext, const RenderData& renderData)
 {
-    auto pTargetFbo = Fbo::create({renderData.getTexture("output")});
-    const float4 clearColor(0, 0, 0, 1);
-    pRenderContext->clearFbo(pTargetFbo.get(), clearColor, 1.0f, 0, FboAttachmentType::All);
-    mpGraphicsState->setFbo(pTargetFbo);
+    // Create and bind FBO
+    ref<Fbo> pTargetFBO = Fbo::create(mpDevice, { renderData.getTexture("output") });
+    const float4 clearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    pRenderContext->clearFbo(pTargetFBO.get(), clearColor, 1.0f, 0.0f, FboAttachmentType::All);
+    mpGraphicsState->setFbo(pTargetFBO);
 
+    // Bind shader
     if (mpScene)
     {
-        mpVars["PerFrameCB"]["gColor"] = float4(0, 1, 0, 1);
+        ShaderVar root_var = mpVars->getRootVar();
+        root_var["perFrameCB"]["gColor"] = float4(0.0f, 1.0f, 0.0f, 1.0f);
 
         mpScene->rasterize(pRenderContext, mpGraphicsState.get(), mpVars.get(), mpRasterState, mpRasterState);
     }
@@ -155,15 +160,15 @@ Using the Render Graph Editor, create a graph solely containing this pass then l
 from falcor import *
 
 def render_graph_WireframePass():
-    g = RenderGraph('WireframePass')
-    loadRenderPassLibrary('WireframePass.dll')
-    Wireframe = createPass('WireframePass')
-    g.addPass(WireframePass, 'WireframePass')
-    g.markOutput('WireframePass.output')
-    return g
+	g = RenderGraph("WireframePass")
+	wireframePass = createPass("WireframePass")
+	g.addPass(wireframePass, "WireframePass")
+	g.markOutput("WireframePass.output")
 
-WireframePass = render_graph_WireframePass()
-try: m.addGraph(WireframePass)
+	return g
+
+wireframePass = render_graph_WireframePass()
+try: m.addGraph(wireframePass)
 except NameError: None
 ```
 
