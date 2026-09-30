@@ -796,7 +796,7 @@ static void checkFileModifiedStatus(const std::filesystem::path& path, const std
         while (offset < buffer.size())
         {
             _FILE_NOTIFY_INFORMATION* pNotifyInformation = reinterpret_cast<_FILE_NOTIFY_INFORMATION*>(buffer.data());
-            std::wstring currentFilename(pNotifyInformation->FileName, pNotifyInformation->FileName + pNotifyInformation->FileNameLength);
+            std::wstring currentFilename(pNotifyInformation->FileName, pNotifyInformation->FileName + pNotifyInformation->FileNameLength / sizeof(wchar_t));
 
             if (currentFilename == filename && pNotifyInformation->Action == FILE_ACTION_MODIFIED)
             {
