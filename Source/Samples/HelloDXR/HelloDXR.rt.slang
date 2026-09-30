@@ -28,6 +28,8 @@
 import Scene.Raytracing;
 import Utils.Sampling.TinyUniformSampleGenerator;
 import Rendering.Lights.LightHelpers;
+import Scene.Material.MaterialSystem;
+//import Rendering.Materials.StandardMaterial;
 
 RWTexture2D<float4> gOutput;
 

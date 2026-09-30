@@ -1,0 +1,228 @@
+AnimatedVersion = True
+
+camera = Camera()
+camera.position = float3(2.13964, 1.78114, -0.539359)
+camera.target = float3(1.29115, 1.58455, -1.03071)
+camera.up = float3(-0.00315989, 0.999993, -0.00179484)
+camera.focalLength = 36.9504
+sceneBuilder.addCamera(camera)
+
+Landscape = Material('Landscape')
+Landscape.loadTexture(MaterialTextureSlot.BaseColor, 'textures/landscape-with-a-lake.jpg')
+Landscape.roughness = 1
+
+Table = Material('Table')
+Table.loadTexture(MaterialTextureSlot.BaseColor, 'textures/Good Textures_005844.jpg')
+Table.roughness = 0.8
+
+DoorHandle = Material('DoorHandle')
+DoorHandle.baseColor = float4(0.92804748,0.91780447,0.91890865,1)
+DoorHandle.roughness = 0.5
+DoorHandle.metallic = 1
+
+Door = Material('Door')
+Door.loadTexture(MaterialTextureSlot.BaseColor, 'textures/cherry-wood-texture.jpg')
+Door.roughness = 0.8
+
+Diffuse = Material('Diffuse')
+Diffuse.baseColor = float4(0.8,0.8,0.8,1)
+Diffuse.roughness = 1
+
+Floor = Material('Floor')
+Floor.roughness = 1
+Floor.loadTexture(MaterialTextureSlot.BaseColor, 'textures/checkerboxsmall.png')
+
+DoorFrame = Material('DoorFrame')
+DoorFrame.baseColor = float4(0.247059, 0.168627, 0.0901961, 1)
+DoorFrame.roughness = 0.8
+
+PictureFrame = Material('PictureFrame')
+PictureFrame.baseColor = float4(0.258824, 0.207843, 0.145098, 1)
+PictureFrame.roughness = 0.8
+
+Hinge = Material('Hinge')
+Hinge.roughness = 0.3162
+Hinge.metallic = 1
+Hinge.baseColor = float4(0.92804748,0.91780447,0.91890865,1)
+
+Light = Material('Light')
+Light.baseColor = float4(0,0,0,1)
+Light.roughness = 1.
+Light.emissiveColor = float3(1000,1000,1000)
+
+Pot2 = Material('Pot2')
+Pot2.roughness = 0.17
+Pot2.metallic = 1
+Pot2.baseColor = float4(0.92804748,0.91780447,0.91890865,1)
+
+Pot1 = Material('Pot1')
+Pot1.specularTransmission = 1.0
+Pot1.indexOfRefraction = 1.5
+
+Pot3 = Material('Pot3')
+Pot3.baseColor = float4(0.8,0.8,0.8,1)
+Pot3.roughness = 0.5
+
+# Pot3 = Material('Pot3')
+# Pot3.loadTexture(MaterialTextureSlot.BaseColor, 'textures/marble.jpg')
+# Pot3.roughness = 0.1
+
+
+DoorTransform = Transform()
+# use this for animated version
+if AnimatedVersion:
+    DoorTransform.translation = float3(-2.79817, 0, -4.67015)
+    #DoorTransform.rotationEulerDeg = float3(0, -80 + 16.68,0) # rotating around y axis
+
+obj = TriangleMesh.createFromFile('models/Light.obj')
+sceneBuilder.addMeshInstance(
+    sceneBuilder.addTriangleMesh(obj, Light),
+    sceneBuilder.addNode('Light', Transform())
+)
+
+obj = TriangleMesh.createFromFile('models/Mesh008.obj')
+sceneBuilder.addMeshInstance(
+    sceneBuilder.addTriangleMesh(obj, Landscape),
+    sceneBuilder.addNode('Landscape', Transform())
+)
+
+obj = TriangleMesh.createFromFile('models/Mesh013.obj')
+sceneBuilder.addMeshInstance(
+    sceneBuilder.addTriangleMesh(obj, PictureFrame),
+    sceneBuilder.addNode('PictureFrame', Transform())
+)
+
+obj = TriangleMesh.createFromFile('models/Mesh011.obj')
+sceneBuilder.addMeshInstance(
+    sceneBuilder.addTriangleMesh(obj, Floor),
+    sceneBuilder.addNode('Floor', Transform())
+)
+
+obj = TriangleMesh.createFromFile('models/DoorHandleTranslated.obj' if AnimatedVersion else 'models/Mesh015.obj' )
+DoorHandleNodeId = sceneBuilder.addNode('DoorHandle', DoorTransform)
+sceneBuilder.addMeshInstance(
+    sceneBuilder.addTriangleMesh(obj, DoorHandle),
+    DoorHandleNodeId
+)
+
+obj = TriangleMesh.createFromFile('models/Mesh016.obj')
+sceneBuilder.addMeshInstance(
+    sceneBuilder.addTriangleMesh(obj, Hinge),
+    sceneBuilder.addNode('Hinge1', Transform())
+)
+
+obj = TriangleMesh.createFromFile('models/Mesh012.obj')
+sceneBuilder.addMeshInstance(
+    sceneBuilder.addTriangleMesh(obj, Hinge),
+    sceneBuilder.addNode('Hinge2', Transform())
+)
+
+obj = TriangleMesh.createFromFile('models/Mesh010.obj')
+sceneBuilder.addMeshInstance(
+    sceneBuilder.addTriangleMesh(obj, Hinge),
+    sceneBuilder.addNode('Hinge3', Transform())
+)
+
+obj = TriangleMesh.createFromFile('models/DoorTranslated.obj' if AnimatedVersion else 'models/Mesh006.obj')
+DoorNodeId = sceneBuilder.addNode('Door', DoorTransform)
+sceneBuilder.addMeshInstance(
+    sceneBuilder.addTriangleMesh(obj, Door),
+    DoorNodeId
+)
+
+obj = TriangleMesh.createFromFile('models/Mesh005.obj')
+sceneBuilder.addMeshInstance(
+    sceneBuilder.addTriangleMesh(obj, DoorFrame),
+    sceneBuilder.addNode('DoorFrame', Transform())
+)
+
+obj = TriangleMesh.createFromFile('models/Mesh007.obj')
+sceneBuilder.addMeshInstance(
+    sceneBuilder.addTriangleMesh(obj, Diffuse),
+    sceneBuilder.addNode('TableLeg1', Transform())
+)
+
+obj = TriangleMesh.createFromFile('models/Mesh003.obj')
+sceneBuilder.addMeshInstance(
+    sceneBuilder.addTriangleMesh(obj, Diffuse),
+    sceneBuilder.addNode('TableLeg2', Transform())
+)
+
+obj = TriangleMesh.createFromFile('models/Mesh002.obj')
+sceneBuilder.addMeshInstance(
+    sceneBuilder.addTriangleMesh(obj, Diffuse),
+    sceneBuilder.addNode('TableLeg3', Transform())
+)
+
+obj = TriangleMesh.createFromFile('models/Mesh001.obj')
+sceneBuilder.addMeshInstance(
+    sceneBuilder.addTriangleMesh(obj, Diffuse),
+    sceneBuilder.addNode('TableLeg4', Transform())
+)
+
+obj = TriangleMesh.createFromFile('models/Mesh004.obj')
+sceneBuilder.addMeshInstance(
+    sceneBuilder.addTriangleMesh(obj, Table),
+    sceneBuilder.addNode('Table', Transform())
+)
+
+obj = TriangleMesh.createFromFile('models/Mesh014.obj')
+sceneBuilder.addMeshInstance(
+    sceneBuilder.addTriangleMesh(obj, Diffuse),
+    sceneBuilder.addNode('Room', Transform())
+)
+
+
+obj = TriangleMesh.createFromFile('models/Mesh000_Pot2.obj')
+sceneBuilder.addMeshInstance(
+    sceneBuilder.addTriangleMesh(obj, Pot2),
+    sceneBuilder.addNode('Pot2Lid', Transform())
+)
+
+obj = TriangleMesh.createFromFile('models/Mesh009_Pot2.obj')
+sceneBuilder.addMeshInstance(
+    sceneBuilder.addTriangleMesh(obj, Pot2),
+    sceneBuilder.addNode('Pot2', Transform())
+)
+
+obj = TriangleMesh.createFromFile('models/Mesh000_Pot3.obj')
+sceneBuilder.addMeshInstance(
+    sceneBuilder.addTriangleMesh(obj, Pot3),
+    sceneBuilder.addNode('Pot3Lid', Transform())
+)
+
+obj = TriangleMesh.createFromFile('models/Mesh009_Pot3.obj')
+sceneBuilder.addMeshInstance(
+    sceneBuilder.addTriangleMesh(obj, Pot3),
+    sceneBuilder.addNode('Pot3', Transform())
+)
+
+obj = TriangleMesh.createFromFile('models/Mesh000_Pot1.obj')
+sceneBuilder.addMeshInstance(
+    sceneBuilder.addTriangleMesh(obj, Pot1),
+    sceneBuilder.addNode('Pot1Lid', Transform())
+)
+
+obj = TriangleMesh.createFromFile('models/Mesh009_Pot1.obj')
+sceneBuilder.addMeshInstance(
+    sceneBuilder.addTriangleMesh(obj, Pot1),
+    sceneBuilder.addNode('Pot1', Transform())
+)
+
+if AnimatedVersion:
+    # a rotating door
+    anim = Animation('DoorAnimation', DoorNodeId, 18)
+    anim2 = Animation('DoorHandleAnimation', DoorHandleNodeId, 18)
+
+    angleList = [-90, -16.68, 2, -16.68, -90]
+    timeList = [0, 2, 8, 14, 16]
+    for time in range(len(timeList)):
+        DoorTransform = Transform()
+        DoorTransform.translation = float3(-2.79817, 0, -4.67015)
+        DoorTransform.rotationEulerDeg = float3(0, angleList[time] + 16.68,0) # rotating around y axis
+        anim.addKeyframe(timeList[time], DoorTransform)
+        anim2.addKeyframe(timeList[time], DoorTransform)
+        
+    sceneBuilder.addAnimation(anim)
+    sceneBuilder.addAnimation(anim2)
+

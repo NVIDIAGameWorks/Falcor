@@ -28,10 +28,12 @@
 import Scene.Raster;
 import Utils.Sampling.TinyUniformSampleGenerator;
 import Rendering.Lights.LightHelpers;
+import Scene.Material.MaterialSystem;
+// import Rendering.Materials.StandardMaterial;
 
-VSOut vsMain(VSIn vIn)
+VSOut vsMain(VSIn vsIn)
 {
-    return defaultVS(vIn);
+    return defaultVS(vsIn);
 }
 
 float4 psMain(VSOut vsOut, uint triangleIndex: SV_PrimitiveID) : SV_TARGET
@@ -48,8 +50,8 @@ float4 psMain(VSOut vsOut, uint triangleIndex: SV_PrimitiveID) : SV_TARGET
 
     float3 color = mi.getProperties(sd).emission;
 
-    uint3 launchIndex = DispatchRaysIndex();
-    TinyUniformSampleGenerator sg = TinyUniformSampleGenerator(launchIndex.xy, 0);
+    //uint3 launchIndex = DispatchRaysIndex();
+    TinyUniformSampleGenerator sg = TinyUniformSampleGenerator(vsOut.posH.xy, 0);
 
     // Direct lighting from analytic light sources
     for (int i = 0; i < gScene.getLightCount(); i++)

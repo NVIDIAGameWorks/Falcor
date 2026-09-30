@@ -38,10 +38,74 @@
 
 using namespace Falcor;
 
+const char kShaderPackRadiance[] = "RenderPasses/NRDPass/PackRadiance.cs.slang";
+
+// Input buffer names.
+const char kInputDiffuseRadianceHitDist[] = "diffuseRadianceHitDist";
+const char kInputSpecularRadianceHitDist[] = "specularRadianceHitDist";
+const char kInputSpecularHitDist[] = "specularHitDist";
+const char kInputMotionVectors[] = "mvec";
+const char kInputNormalRoughnessMaterialID[] = "normWRoughnessMaterialID";
+const char kInputViewZ[] = "viewZ";
+const char kInputDeltaPrimaryPosW[] = "deltaPrimaryPosW";
+const char kInputDeltaSecondaryPosW[] = "deltaSecondaryPosW";
+
+// Output buffer names.
+const char kOutputFilteredDiffuseRadianceHitDist[] = "filteredDiffuseRadianceHitDist";
+const char kOutputFilteredSpecularRadianceHitDist[] = "filteredSpecularRadianceHitDist";
+const char kOutputReflectionMotionVectors[] = "reflectionMvec";
+const char kOutputDeltaMotionVectors[] = "deltaMvec";
+
+// Serialized parameters.
+
+const char kEnabled[] = "enabled";
+const char kMethod[] = "method";
+const char kOutputSize[] = "outputSize";
+
+// Common settings.
+const char kWorldSpaceMotion[] = "worldSpaceMotion";
+const char kDisocclusionThreshold[] = "disocclusionThreshold";
+
+// Pack radiance settings.
+const char kMaxIntensity[] = "maxIntensity";
+
+// ReLAX diffuse/specular settings.
+const char kDiffusePrepassBlurRadius[] = "diffusePrepassBlurRadius";
+const char kSpecularPrepassBlurRadius[] = "specularPrepassBlurRadius";
+const char kDiffuseMaxAccumulatedFrameNum[] = "diffuseMaxAccumulatedFrameNum";
+const char kSpecularMaxAccumulatedFrameNum[] = "specularMaxAccumulatedFrameNum";
+const char kDiffuseMaxFastAccumulatedFrameNum[] = "diffuseMaxFastAccumulatedFrameNum";
+const char kSpecularMaxFastAccumulatedFrameNum[] = "specularMaxFastAccumulatedFrameNum";
+const char kDiffusePhiLuminance[] = "diffusePhiLuminance";
+const char kSpecularPhiLuminance[] = "specularPhiLuminance";
+const char kDiffuseLobeAngleFraction[] = "diffuseLobeAngleFraction";
+const char kSpecularLobeAngleFraction[] = "specularLobeAngleFraction";
+const char kRoughnessFraction[] = "roughnessFraction";
+const char kDiffuseHistoryRejectionNormalThreshold[] = "diffuseHistoryRejectionNormalThreshold";
+const char kSpecularVarianceBoost[] = "specularVarianceBoost";
+const char kSpecularLobeAngleSlack[] = "specularLobeAngleSlack";
+const char kDisocclusionFixEdgeStoppingNormalPower[] = "disocclusionFixEdgeStoppingNormalPower";
+const char kDisocclusionFixMaxRadius[] = "disocclusionFixMaxRadius";
+const char kDisocclusionFixNumFramesToFix[] = "disocclusionFixNumFramesToFix";
+const char kHistoryClampingColorBoxSigmaScale[] = "historyClampingColorBoxSigmaScale";
+const char kSpatialVarianceEstimationHistoryThreshold[] = "spatialVarianceEstimationHistoryThreshold";
+const char kAtrousIterationNum[] = "atrousIterationNum";
+const char kMinLuminanceWeight[] = "minLuminanceWeight";
+const char kDepthThreshold[] = "depthThreshold";
+const char kRoughnessEdgeStoppingRelaxation[] = "roughnessEdgeStoppingRelaxation";
+const char kNormalEdgeStoppingRelaxation[] = "normalEdgeStoppingRelaxation";
+const char kLuminanceEdgeStoppingRelaxation[] = "luminanceEdgeStoppingRelaxation";
+const char kEnableAntiFirefly[] = "enableAntiFirefly";
+const char kEnableReprojectionTestSkippingWithoutMotion[] = "enableReprojectionTestSkippingWithoutMotion";
+const char kEnableSpecularVirtualHistoryClamping[] = "enableSpecularVirtualHistoryClamping";
+const char kEnableRoughnessEdgeStopping[] = "enableRoughnessEdgeStopping";
+const char kEnableMaterialTestForDiffuse[] = "enableMaterialTestForDiffuse";
+const char kEnableMaterialTestForSpecular[] = "enableMaterialTestForSpecular";
+
 class NRDPass : public RenderPass
 {
 public:
-    FALCOR_PLUGIN_CLASS(NRDPass, "NRD", "NRD denoiser.");
+    //FALCOR_PLUGIN_CLASS(NRDPass, "NRD", "NRD denoiser.");
 
     enum class DenoisingMethod : uint32_t
     {
@@ -63,7 +127,7 @@ public:
         }
     );
 
-    static ref<NRDPass> create(ref<Device> pDevice, const Properties& props) { return make_ref<NRDPass>(pDevice, props); }
+    //static ref<NRDPass> create(ref<Device> pDevice, const Properties& props) { return make_ref<NRDPass>(pDevice, props); }
 
     NRDPass(ref<Device> pDevice, const Properties& props);
 
@@ -74,12 +138,13 @@ public:
     virtual void renderUI(Gui::Widgets& widget) override;
     virtual void setScene(RenderContext* pRenderContext, const ref<Scene>& pScene) override;
 
-private:
+protected:
     ref<Scene> mpScene;
     uint2 mScreenSize{};
     uint32_t mFrameIndex = 0;
     RenderPassHelpers::IOSize mOutputSizeSelection = RenderPassHelpers::IOSize::Default;
 
+private:
     void reinit();
     void createPipelines();
     void createResources();

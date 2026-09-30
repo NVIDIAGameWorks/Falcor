@@ -7,6 +7,8 @@ add_plugin(NRDPass)
 target_sources(NRDPass PRIVATE
     NRDPass.cpp
     NRDPass.h
+    NRDPasses/NRDPassNormal.cpp
+    NRDPasses/NRDPassNormal.h
     PackRadiance.cs.slang
 )
 

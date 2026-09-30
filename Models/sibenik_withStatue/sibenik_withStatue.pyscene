@@ -1,0 +1,17 @@
+# Load scene
+sceneBuilder.importScene("sibenik_withStatue.gltf")
+
+#sceneBuilder.removeLight("Spot01")
+#sceneBuilder.removeLight("Spot02")
+
+#Add a second Camera
+camera = Camera("Camera2")
+camera.position = float3(5.6593, -9.3273, -0.1707)
+camera.target = float3(6.6534, -9.4325, -0.1973)
+camera.up = float3(0.0, 1.0, 0.0)
+camera.focalLength = 41.481
+sceneBuilder.addCamera(camera)
+
+# Manually adjust emissives to zero so only the analytic lights are used
+for m in sceneBuilder.materials:
+    m.emissiveFactor *= 0

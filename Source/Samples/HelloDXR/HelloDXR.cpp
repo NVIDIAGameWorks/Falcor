@@ -32,7 +32,7 @@
 FALCOR_EXPORT_D3D12_AGILITY_SDK
 
 static const float4 kClearColor(0.38f, 0.52f, 0.10f, 1);
-static const std::string kDefaultScene = "Arcade/Arcade.pyscene";
+static const std::string kDefaultScene = "Arcade/ring.pyscene";
 
 HelloDXR::HelloDXR(const SampleAppConfig& config) : SampleApp(config) {}
 
@@ -168,11 +168,10 @@ void HelloDXR::loadScene(const std::filesystem::path& path, const Fbo* pTargetFb
     rtProgDesc.addShaderModules(shaderModules);
     rtProgDesc.addShaderLibrary("Samples/HelloDXR/HelloDXR.rt.slang");
     rtProgDesc.addTypeConformances(typeConformances);
-    rtProgDesc.setMaxTraceRecursionDepth(3); // 1 for calling TraceRay from RayGen, 1 for calling it from the
-                                             // primary-ray ClosestHit shader for reflections, 1 for reflection ray
-                                             // tracing a shadow ray
-    rtProgDesc.setMaxPayloadSize(24);        // The largest ray payload struct (PrimaryRayData) is 24 bytes. The payload size
-                                             // should be set as small as possible for maximum performance.
+    rtProgDesc.setMaxTraceRecursionDepth(3); // 1 for calling TraceRay from RayGen, 1 for calling it from the primary-ray
+                                             // ClosestHit shader for reflections, 1 for reflection raytracing a shadow ray
+    rtProgDesc.setMaxPayloadSize(24);        // The largest ray payload struct (PrimaryRayData) is 24 bytes.
+                                             // The payload size should be set as small as possible for maximum performance.
 
     ref<RtBindingTable> sbt = RtBindingTable::create(2, 2, mpScene->getGeometryCount());
     sbt->setRayGen(rtProgDesc.addRayGen("rayGen"));

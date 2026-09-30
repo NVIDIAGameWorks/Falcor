@@ -1,0 +1,27 @@
+# Load scene
+sceneBuilder.importScene("sibenik_withGlasStatue.gltf")
+
+#sceneBuilder.removeLight("Spot01")
+#sceneBuilder.removeLight("Spot02")
+
+#Green Glas Statue
+glas = sceneBuilder.getMaterial("glas")
+glas.roughness = 0
+glas.metallic = 0
+glas.indexOfRefraction = 1.30
+glas.transmissionColor = float3(0.5,1.0,0.5)
+glas.specularTransmission = 1
+glas.doubleSided = True
+glas.nestedPriority = 5
+
+#Add a second Camera
+camera = Camera("Camera2")
+camera.position = float3(5.6593, -9.3273, -0.1707)
+camera.target = float3(6.6534, -9.4325, -0.1973)
+camera.up = float3(0.0, 1.0, 0.0)
+camera.focalLength = 41.481
+sceneBuilder.addCamera(camera)
+
+# Manually adjust emissives to zero so only the analytic lights are used
+for m in sceneBuilder.materials:
+    m.emissiveFactor *= 0
