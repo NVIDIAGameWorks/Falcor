@@ -975,6 +975,19 @@ ref<Material> createMaterial(
             specularParams.g = roughness;
 
         pMaterial->setSpecularParams(specularParams);
+
+        // Transmission
+        float transmission;
+        if (pAiMaterial->Get(AI_MATKEY_TRANSMISSION_FACTOR, transmission) == AI_SUCCESS)
+        {
+            pMaterial->setSpecularTransmission(transmission);
+            if (transmission > 0.f)
+            {
+                //Use Base Color as Transmission Color. 
+                float3 transmissionColor = pMaterial->getBaseColor().xyz(); 
+                pMaterial->setTransmissionColor(transmissionColor);
+            }
+        }
     }
 
     // Parse the information contained in the name
